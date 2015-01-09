@@ -1,79 +1,60 @@
+use std::io;
 
-enum State {
-    Name,
-    Seq,
-    Qual
-}
 
-#[deriving(Default)]
-struct Record {
+/// A FASTQ record, returned by the FASTQ parser.
+pub struct Record {
     name: String,
     seq: String,
     qual: String
 }
 
 
-fn read_fastq(file) {
-    let (tx, rx) = channel();
-    spawn(move || {
-        let mut record : Record = None;
-        for (i, line) in file.lines().enumerate() {
-            match i % 4 {
-                0 => {
-                    if record != None {
-                        tx.send(record);
-                    }
-                    record = Record();
-                    record.name = line[1..-1];
-                },
-                1 => { record.seq = line; },
-                2 => { skip; },
-                3 => { record.qual = line; }
-            }
-        }
-    });
-    rx;
+/// An iterable FASTQ parser.
+pub struct FastqFile<T> {
+    buffer: T
 }
 
 
-fn read_fastq(file) {
-    let mut state = State::Name;
-    let mut record = Nil;
+/// Create a new FASTQ parser object.
+///
+/// # Arguments
+///
+/// * `buffer` - a buffer object (e.g. the io::BufferedReader over a file or STDIN)
+///
+/// # Example
+///
+/// ```rust
+/// use bio::io::fastq::FastqFile;
+/// use std::io::{BufferedReader, stdin};
+///
+/// let mut buffer = BufferedReader::new(stdin());
+/// let fastq = FastqFile::new(buffer);
+/// ```
+impl<T> FastqFile<T> where T: io::Buffer {
+    pub fn new(buffer: T) -> Self {
+        FastqFile { buffer: buffer }
+    }
+}
 
-    for (i, line) in file.lines().enumerate() {
-        if line[0] == '>' and state != State::Seq {
-            
+
+/// Iterator over the FASTQ file.
+impl<T> Iterator for FastqFile<T> where T: io::Buffer {
+    type Item = Record;
+
+    fn next(&mut self) -> Option<Record> {
+        let name;
+        match self.buffer.read_line() {
+            Ok(line) => {
+                name = line.slice(1, line.len()).trim().to_string();
+            },
+            Err(io::IoError { kind: io::IoErrorKind::EndOfFile, .. } ) => return None,
+            Err(e) => panic!(e.desc)
         }
-        match line[0] {
-            '>' => {
-                state = State::Name;
-            },
-            '+' => {
-                state = State::Qual;
-            },
-            _ => {
-                
-            }
-        }
-        match state {
-            State::Name => {
-                if line[0] == '>' {
-                    record = Record::new(line[1:]);
-                    state = State::Seq;
-                }
-                // TODO error reporting
-            },
-            State::Seq => {
-                if line[0] == '+' {
-                    state = State::Qual;
-                }
-                else {
-                    seq += line[:-1];
-                }
-            },
-            State::Qual => {
-                
-            }
-        }
+
+        let seq = self.buffer.read_line().ok().expect("Incomplete record").trim().to_string();
+        self.buffer.read_line().ok().expect("Incomplete record");
+        let qual = self.buffer.read_line().ok().expect("Incomplete record").trim().to_string();
+
+        Some(Record { name: name, seq: seq, qual: qual })
     }
 }
