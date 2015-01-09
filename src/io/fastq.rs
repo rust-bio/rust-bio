@@ -1,11 +1,14 @@
 use std::io;
 
 
+use utils::{trim_newline, is_iupac_alphabet};
+
+
 /// A FASTQ record, returned by the FASTQ parser.
 pub struct Record {
-    name: String,
-    seq: String,
-    qual: String
+    pub name: String,
+    pub seq: String,
+    pub qual: String
 }
 
 
@@ -42,18 +45,32 @@ impl<T> Iterator for FastqFile<T> where T: io::Buffer {
     type Item = Record;
 
     fn next(&mut self) -> Option<Record> {
-        let name;
+        let mut name;
         match self.buffer.read_line() {
             Ok(line) => {
-                name = line.slice(1, line.len()).trim().to_string();
+                name = line;
             },
             Err(io::IoError { kind: io::IoErrorKind::EndOfFile, .. } ) => return None,
             Err(e) => panic!(e.desc)
         }
 
-        let seq = self.buffer.read_line().ok().expect("Incomplete record").trim().to_string();
-        self.buffer.read_line().ok().expect("Incomplete record");
-        let qual = self.buffer.read_line().ok().expect("Incomplete record").trim().to_string();
+        if !name.starts_with("@") {
+            panic!("Expecting record to start with '>'.")
+        }
+        name.remove(0);
+
+        let mut seq = self.buffer.read_line().ok().expect("Incomplete record");
+
+        let sep = self.buffer.read_line().ok().expect("Incomplete record");
+        if !sep.starts_with("+") {
+            panic!("Expecting '+' separator between sequence and quals.")
+        }
+
+        let mut qual = self.buffer.read_line().ok().expect("Incomplete record");
+        trim_newline(&mut name);
+        trim_newline(&mut seq);
+        trim_newline(&mut qual);
+        is_iupac_alphabet(&seq);
 
         Some(Record { name: name, seq: seq, qual: qual })
     }

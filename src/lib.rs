@@ -2,6 +2,7 @@
 extern crate itertools;
 
 pub mod io;
+pub mod utils;
 
 
 #[test]
