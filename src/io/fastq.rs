@@ -1,14 +1,14 @@
 use std::io;
+use std::ascii::AsciiExt;
 
-
-use utils::{trim_newline, is_iupac_alphabet};
+use utils::trim_newline;
 
 
 /// A FASTQ record, returned by the FASTQ parser.
 pub struct Record {
     pub name: String,
-    pub seq: String,
-    pub qual: String
+    pub seq: Vec<u8>,
+    pub qual: Vec<u8>
 }
 
 
@@ -70,8 +70,7 @@ impl<T> Iterator for FastqFile<T> where T: io::Buffer {
         trim_newline(&mut name);
         trim_newline(&mut seq);
         trim_newline(&mut qual);
-        is_iupac_alphabet(&seq);
 
-        Some(Record { name: name, seq: seq, qual: qual })
+        Some(Record { name: name, seq: seq.to_ascii_uppercase().into_bytes(), qual: qual.into_bytes() })
     }
 }
