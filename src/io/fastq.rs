@@ -13,16 +13,6 @@ pub struct Record {
 
 
 /// An iterable FASTQ parser.
-pub struct FastqFile<T> {
-    buffer: T
-}
-
-
-/// Create a new FASTQ parser object.
-///
-/// # Arguments
-///
-/// * `buffer` - a buffer object (e.g. the io::BufferedReader over a file or STDIN)
 ///
 /// # Example
 ///
@@ -33,7 +23,17 @@ pub struct FastqFile<T> {
 /// let mut buffer = BufferedReader::new(stdin());
 /// let fastq = FastqFile::new(buffer);
 /// ```
+pub struct FastqFile<T> {
+    buffer: T
+}
+
+
 impl<T> FastqFile<T> where T: io::Buffer {
+    /// Create a new FASTQ parser object.
+    ///
+    /// # Arguments
+    ///
+    /// * `buffer` - a buffer object (e.g. the io::BufferedReader over a file or STDIN)
     pub fn new(buffer: T) -> Self {
         FastqFile { buffer: buffer }
     }
