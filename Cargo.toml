@@ -5,5 +5,4 @@ version = "0.0.1"
 authors = ["Johannes Köster <johannes.koester@tu-dortmund.de>"]
 
 [dependencies]
-
-itertools = "~0.0.16"
+log= "0.1.9"

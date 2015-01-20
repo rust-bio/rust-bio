@@ -1,13 +1,10 @@
 
-extern crate core;
-extern crate itertools;
+#[macro_use]
+extern crate log;
+
 
 pub mod io;
 pub mod utils;
 pub mod alphabets;
 pub mod pattern_matching;
-
-
-#[test]
-fn it_works() {
-}
+pub mod data_structures;

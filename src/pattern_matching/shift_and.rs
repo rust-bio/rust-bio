@@ -1,5 +1,5 @@
-use core::iter::Enumerate;
-use core::slice;
+use std::iter::Enumerate;
+use std::slice;
 
 /// ShiftAnd algorithm for pattern matching.
 ///
@@ -15,7 +15,7 @@ use core::slice;
 /// ```
 #[derive(Copy)]
 pub struct ShiftAnd {
-    m: uint,
+    m: u8,
     masks: [u64; 255],
     accept: u64
 }
@@ -24,15 +24,18 @@ pub struct ShiftAnd {
 impl ShiftAnd {
     /// Create new ShiftAnd instance.
     pub fn new(pattern: &[u8]) -> ShiftAnd {
+        if pattern.len() > 64 {
+            panic!("Expecting pattern of size at most 64");
+        }
         let mut masks = [0; 255];
 
         let mut bit = 1;
         for c in pattern.iter() {
-            masks[*c as uint] |= bit;
+            masks[*c as usize] |= bit;
             bit *= 2;
         }
 
-        ShiftAnd { m: pattern.len(), masks: masks, accept: bit / 2 }
+        ShiftAnd { m: pattern.len() as u8, masks: masks, accept: bit / 2 }
 
     }
 
@@ -51,13 +54,13 @@ pub struct FindAll<'a> {
 
 
 impl<'a> Iterator for FindAll<'a> {
-    type Item = uint;
+    type Item = usize;
 
-    fn next(&mut self) -> Option<uint> {
+    fn next(&mut self) -> Option<usize> {
         for (i, c) in self.text {
-            self.active = ((self.active << 1) | 1) & self.shiftand.masks[*c as uint];
+            self.active = ((self.active << 1) | 1) & self.shiftand.masks[*c as usize];
             if self.active & self.shiftand.accept > 0 {
-                return Some(i - self.shiftand.m + 1);
+                return Some(i - self.shiftand.m as usize + 1);
             }
         }
 
