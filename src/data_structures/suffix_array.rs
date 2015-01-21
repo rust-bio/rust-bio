@@ -1,6 +1,31 @@
 use std::collections::Bitv;
 
-fn step2(text: &[usize], pos_types: Bitv, lms_pos: &[usize]) -> Vec<usize> {
+
+/// Sort LMS suffixes (step 1).
+fn get_lms_pos(text: &[usize], pos_types: Bitv) {
+    let lms: Vec<bool> = pos_types.iter().enumerate().scan(false, |prev, (i, is_s)| {
+        let prev_is_l = !*prev;
+        *prev = is_s;
+        Some(prev_is_l && is_s)
+    }).collect();
+
+    // determine LMS positions
+    let lms_init_pos: Vec<usize> = lms.iter().enumerate().filter_map(|(i, &is_lms)| {
+        if is_lms { Some(i) } else { None }
+    }).collect();
+
+    // sort LMS substrings
+    let lms_substring_pos = get_pos(text, pos_types, &lms_init_pos[]);
+
+    let mut i = 0;
+    for r in 0..lms_substring_pos.len() {
+        
+    }
+}
+
+
+/// Sort other suffixes using sorted LMS suffixes (step 2).
+fn get_pos(text: &[usize], pos_types: Bitv, lms_pos: &[usize]) -> Vec<usize> {
     let n = text.len();
     let mut pos = Vec::with_capacity(text.len());
 
