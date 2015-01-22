@@ -4,6 +4,7 @@ use std::mem::swap;
 
 use alphabets::Alphabet;
 
+
 /// Construct suffix array for given text.
 ///
 /// # Arguments
@@ -13,7 +14,7 @@ use alphabets::Alphabet;
 /// ```rust
 /// use bio::data_structures::suffix_array;
 /// let text = b"GCCTTAACATTATTACGCCTA$";
-/// 
+/// let pos = suffix_array::construct(text);
 /// ```
 pub fn construct(text: &[u8]) -> Vec<usize> {
     let n = text.len();
