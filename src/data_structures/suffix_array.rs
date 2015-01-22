@@ -1,103 +1,158 @@
-use std::collections::Bitv;
+use std::collections::{Bitv, VecMap};
+use std::collections::bitv::Iter;
 
 
-/// Sort LMS suffixes (step 1).
-fn get_lms_pos(text: &[usize], pos_types: Bitv) {
-    let lms: Vec<bool> = pos_types.iter().enumerate().scan(false, |prev, (i, is_s)| {
-        let prev_is_l = !*prev;
-        *prev = is_s;
-        Some(prev_is_l && is_s)
-    }).collect();
+struct SAIS {
+    pos: Vec<usize>,
+    pos_types: Bitv,
+    lms_pos: Vec<usize>,
+    bucket_sizes: VecMap<usize>,
+    bucket_start: Vec<usize>,
+    bucket_end: Vec<usize>
+}
 
-    // determine LMS positions
-    let lms_init_pos: Vec<usize> = lms.iter().enumerate().filter_map(|(i, &is_lms)| {
-        if is_lms { Some(i) } else { None }
-    }).collect();
 
-    // sort LMS substrings
-    let lms_substring_pos = get_pos(text, pos_types, &lms_init_pos[]);
+impl SAIS {
+    fn new(n: usize) -> Self {
+        SAIS {
+            pos: Vec::with_capacity(n),
+            pos_types: Bitv::with_capacity(n),
+            lms_pos: Vec::with_capacity(n),
+            bucket_sizes: VecMap::new(),
+            bucket_start: Vec::with_capacity(n),
+            bucket_end: Vec::with_capacity(n)
+        }
+    }
 
-    let mut i = 0;
-    for r in 0..lms_substring_pos.len() {
+    fn init_pos_types(&mut self, text: &[usize]) {
+        let n = text.len();
+        self.pos_types.clear();
+
+        for _ in 0..n-1 {
+            self.pos_types.push(false);
+        }
+        self.pos_types.push(true);
+
+        for p in (0..n-1).rev() {
+            if text[p] == text[p + 1] {
+                // if the characters are equal, the next position determines
+                // the lexicographical order
+                let v = self.pos_types.get(p + 1).unwrap();
+                self.pos_types.set(p, v);
+            }
+            else {
+                self.pos_types.set(p, text[p] < text[p + 1]);
+            }
+        }
+    }
+
+    fn init_bucket_start(&mut self, text: &[usize]) {
+        self.bucket_sizes.clear();
+        self.bucket_start.clear();
+
+        for &c in text.iter() {
+            if !self.bucket_sizes.contains_key(&c) {
+                self.bucket_sizes.insert(c, 0);
+            }
+            *(self.bucket_sizes.get_mut(&c).unwrap()) += 1;
+        }
+
+        let mut sum = 0;
+        for &size in self.bucket_sizes.values() {
+            self.bucket_start.push(sum);
+            sum += size;
+        }
+    }
+
+    fn init_bucket_end(&mut self, text: &[usize]) {
+        self.bucket_end.clear();
+        for &r in self.bucket_start[1..].iter() {
+            self.bucket_end.push(r);
+        }
+        self.bucket_end.push(text.len());
+    }
+
+    fn is_s_pos(&self, r: usize) -> bool {
+        self.pos_types.get(r).unwrap()
+    }
+
+    fn is_l_pos(&self, r: usize) -> bool {
+        !self.pos_types.get(r).unwrap()
+    }
+
+    fn is_lms_pos(&self, r: usize) -> bool {
+        self.is_s_pos(r) && self.is_l_pos(r)
+    }
+
+    /// Step 1 of the SAIS algorithm.
+    fn calc_lms_pos(&mut self, text: &[usize]) {
+        let n = text.len();
+
+        // collect LMS positions
+        self.lms_pos.clear();
+        for r in (0..n) {
+            if self.is_lms_pos(r) {
+                self.lms_pos.push(r);
+            }
+        }
+
+        // sort LMS substrings
+        self.calc_pos(text);
+
         
     }
+
+    /// Step 2 of the SAIS algorithm.
+    fn calc_pos(&mut self, text: &[usize]) {
+        let n = text.len();
+        self.pos.clear();
+
+        self.init_bucket_start(text);
+        self.init_bucket_end(text);
+
+        // init all positions as unknown (n-1 is max position)
+        for _ in text.iter() {
+            self.pos.push(n);
+        }
+
+        // insert LMS positions to the end of their buckets
+        for &p in self.lms_pos.iter().rev() {
+            let c = text[p];
+            self.pos[self.bucket_end[c]] = p;
+            self.bucket_end[c] -= 1;
+        }
+
+        // reset bucket ends
+        self.init_bucket_end(text);
+
+        // insert L-positions into buckets
+        for r in (0..n) {
+            let p = self.pos[r];
+            if p == n {
+                continue;
+            }
+            let prev = p - 1;
+            if self.is_l_pos(prev) {
+                let c = text[prev];
+                self.pos[self.bucket_start[c]] = prev;
+                self.bucket_start[c] += 1;
+            }
+        }
+
+        // insert S-positions into buckets
+        for r in (0..n).rev() {
+            let prev = self.pos[r] - 1;
+            if self.is_s_pos(prev) {
+                let c = text[prev];
+                self.pos[self.bucket_end[c]] = prev;
+                self.bucket_end[c] -= 1;
+            }
+        }
+    }
 }
 
 
-/// Sort other suffixes using sorted LMS suffixes (step 2).
-fn get_pos(text: &[usize], pos_types: Bitv, lms_pos: &[usize]) -> Vec<usize> {
-    let n = text.len();
-    let mut pos = Vec::with_capacity(text.len());
-
-    let mut bucket_start = get_bucket_start(text);
-    let mut bucket_end = bucket_start.clone()[1..].to_vec();
-    bucket_end.push(text.len());
-    let mut bucket_end_lms = bucket_end.clone();
-
-    // init all positions as unknown
-    for _ in text.iter() {
-        pos.push(n);
-    }
-
-    // insert LMS positions to the end of their buckets
-    for &p in lms_pos.iter().rev() {
-        let c = text[p];
-        pos[bucket_end_lms[c]] = p;
-        bucket_end_lms[c] -= 1;
-    }
-
-    // insert L-positions into buckets
-    for r in 0..pos.len() {
-        let p = pos[r];
-        if p == n {
-            continue;
-        }
-        let prev = p - 1;
-        if !pos_types.get(prev).unwrap() {
-            // L-position, insert into bucket
-            let c = text[prev];
-            pos[bucket_start[c]] = prev;
-            bucket_start[c] += 1;
-        }
-    }
-
-    for r in (0..pos.len()).rev() {
-        let prev = pos[r] - 1;
-        if pos_types.get(prev).unwrap() {
-            let c = text[prev];
-            pos[bucket_end[c]] = prev;
-            bucket_end[c] -= 1;
-        }
-    }
-
-    pos
-}
-
-
-fn get_bucket_start(text: &[usize]) -> Vec<usize> {
-    let alphabet_size = *text.iter().max().unwrap();
-    let mut bucket_sizes = Vec::with_capacity(alphabet_size);
-
-    for _ in (0..alphabet_size) {
-        bucket_sizes.push(0);
-    }
-
-    for &c in text.iter() {
-        bucket_sizes[c as usize] += 1;
-    }
-
-    let mut bucket_start = Vec::with_capacity(alphabet_size as usize);
-    let mut sum = 0;
-    for &size in bucket_sizes.iter() {
-        bucket_start.push(sum);
-        sum += size;
-    }
-
-    bucket_start
-}
-
-
-/// Calculate the text position type.
+/// DEPRECATED: Calculate the text position type.
 /// S-type marks suffixes being lexicographically smaller than their successor,
 /// L-type marks those being larger.
 /// This function returns a Bitv, with 1-bits denoting S-type
@@ -135,4 +190,4 @@ pub fn get_pos_types(text: &[usize]) -> Bitv {
     }
 
     pos_types
-}
+}   
