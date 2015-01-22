@@ -10,11 +10,11 @@
 /// assert!(!alphabet.is_word(b"AXYZ"));
 /// ```
 
-use std::collections::BitvSet;
+use std::collections::{BitvSet, VecMap};
 
 /// Representation of an alphabet.
 pub struct Alphabet {
-    set: BitvSet
+    symbols: BitvSet
 }
 
 
@@ -23,11 +23,20 @@ impl Alphabet {
         let mut s = BitvSet::new();
         s.extend(letters.iter().map(|&c| c as usize));
 
-        Alphabet { set: s }
+        Alphabet { symbols: s }
     }
 
     pub fn is_word(&self, text: &[u8]) -> bool {
-        text.iter().all(|&c| self.set.contains(&(c as usize)))
+        text.iter().all(|&c| self.symbols.contains(&(c as usize)))
+    }
+
+    pub fn get_ranks(&self) -> VecMap<usize> {
+        let mut ranks = VecMap::new();
+        for (r, c) in self.symbols.iter().enumerate() {
+            ranks.insert(c, r);
+        }
+
+        ranks
     }
 }
 
