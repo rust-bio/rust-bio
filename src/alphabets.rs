@@ -5,8 +5,8 @@
 ///
 /// ```rust
 /// use bio::alphabets;
-/// let alphabet = alphabets::dna_alphabet();
-/// assert!(alphabet.is_word(b"AACCT"));
+/// let alphabet = alphabets::get_dna_alphabet();
+/// assert!(alphabet.is_word(b"AACCTgga"));
 /// assert!(!alphabet.is_word(b"AXYZ"));
 /// ```
 
@@ -42,12 +42,12 @@ impl Alphabet {
 
 
 /// Obtain the DNA alphabet.
-pub fn dna_alphabet() -> Alphabet {
-    Alphabet::new(b"ACGT")
+pub fn get_dna_alphabet() -> Alphabet {
+    Alphabet::new(b"ACGTacgt")
 }
 
 
 /// Obtain the IUPAC DNA alphabet
-pub fn iupac_dna_alphabet() -> Alphabet {
-    Alphabet::new(b"ACGTURYSWKMBDHVN")
+pub fn get_iupac_dna_alphabet() -> Alphabet {
+    Alphabet::new(b"ACGTURYSWKMBDHVNacgturyswkmbdhvn")
 }

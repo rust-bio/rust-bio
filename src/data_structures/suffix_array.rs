@@ -1,6 +1,4 @@
 use std::collections::{Bitv, VecMap};
-use std::collections::bitv::Iter;
-use std::mem::swap;
 use std::iter::count;
 
 use alphabets::Alphabet;

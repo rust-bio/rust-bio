@@ -71,6 +71,6 @@ impl<T> Iterator for FastqFile<T> where T: io::Buffer {
         trim_newline(&mut seq);
         trim_newline(&mut qual);
 
-        Some(Record { name: name, seq: seq.to_ascii_uppercase().into_bytes(), qual: qual.into_bytes() })
+        Some(Record { name: name, seq: seq.into_bytes(), qual: qual.into_bytes() })
     }
 }
