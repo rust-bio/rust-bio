@@ -1,5 +1,6 @@
 use std::collections::{Bitv, VecMap};
 use std::iter::count;
+use test::Bencher;
 
 use alphabets::Alphabet;
 
@@ -23,7 +24,8 @@ pub fn get_suffix_array(text: &[u8]) -> Vec<usize> {
     let n = text.len();
     let transformed_text = transform_text(text);
     if transformed_text[n-1] != 0 {
-        panic!("Expecting extra sentinel character being lexicographically smallest at the end of the text.");
+        panic!("Expecting extra sentinel character being lexicographically \
+        smallest at the end of the text.");
     }
 
     let mut sais = SAIS::new(n);
@@ -334,4 +336,10 @@ fn test_lms_pos() {
     let mut sais = SAIS::new(n);
     let pos_types = PosTypes::new(text.as_slice());
     sais.calc_lms_pos(text.as_slice(), &pos_types);
+}
+
+
+#[bench]
+fn bench_get_suffix_array(b: &mut Bencher) {
+    b.iter(|| get_suffix_array(b"GCCTTAACATTATTACGCCTA$"));
 }

@@ -1,6 +1,7 @@
 
 #[macro_use]
 extern crate log;
+extern crate test;
 
 
 pub mod io;
