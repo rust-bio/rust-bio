@@ -99,7 +99,7 @@ impl RankSelect {
             let p = ctpop(b) as u32;
             if rank + p >= j {
                 let mut bit = 0b10000000;
-                for i in 0..8 {
+                for i in 0us..8us {
                     rank += (b & bit > 0) as u32;
                     if rank == j {
                         return Some((first_block + block) * 8 + i);

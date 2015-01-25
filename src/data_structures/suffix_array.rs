@@ -1,6 +1,7 @@
 use std::collections::{Bitv, VecMap};
 use std::collections::bitv::Iter;
 use std::mem::swap;
+use std::iter::count;
 
 use alphabets::Alphabet;
 
@@ -14,15 +15,15 @@ use alphabets::Alphabet;
 /// ```rust
 /// use bio::data_structures::suffix_array;
 /// let text = b"GCCTTAACATTATTACGCCTA$";
-/// let pos = suffix_array::construct(text);
+/// let pos = suffix_array::get_suffix_array(text);
+/// assert_eq!(pos, vec![
+///     21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18,
+///     2, 16, 0, 19, 4, 13, 10, 3, 12, 9
+/// ]);
 /// ```
-pub fn construct(text: &[u8]) -> Vec<usize> {
+pub fn get_suffix_array(text: &[u8]) -> Vec<usize> {
     let n = text.len();
-    let ranks = Alphabet::new(text).get_ranks();
-
-    let transformed_text: Vec<usize> = text.iter()
-        .map(|&c| *ranks.get(&(c as usize)).unwrap())
-        .collect();
+    let transformed_text = transform_text(text);
     if transformed_text[n-1] != 0 {
         panic!("Expecting extra sentinel character being lexicographically smallest at the end of the text.");
     }
@@ -31,6 +32,15 @@ pub fn construct(text: &[u8]) -> Vec<usize> {
     sais.construct(transformed_text.as_slice());
 
     sais.pos
+}
+
+
+fn transform_text(text: &[u8]) -> Vec<usize> {
+    let ranks = Alphabet::new(text).get_ranks();
+
+    text.iter()
+        .map(|&c| *ranks.get(&(c as usize)).unwrap())
+        .collect()
 }
 
 
@@ -72,12 +82,39 @@ impl SAIS {
         }
     }
 
+    /// initialize pointers to the last element of the buckets
     fn init_bucket_end(&mut self, text: &[usize]) {
         self.bucket_end.clear();
         for &r in self.bucket_start[1..].iter() {
-            self.bucket_end.push(r);
+            self.bucket_end.push(r - 1);
         }
-        self.bucket_end.push(text.len());
+        self.bucket_end.push(text.len() - 1);
+    }
+
+    fn lms_substring_eq(
+        &self,
+        text: &[usize],
+        pos_types: &PosTypes,
+        i: usize,
+        j: usize
+    ) -> bool {
+        for k in count(0us, 1us) {
+            let lmsi = pos_types.is_lms_pos(i + k);
+            let lmsj = pos_types.is_lms_pos(j + k);
+            if text[i + k] != text[j + k] {
+                // different symbols
+                return false;
+            }
+            if lmsi != lmsj {
+                // different length
+                return false;
+            }
+            if k > 0 && lmsi && lmsj {
+                // same symbols and same length
+                return true;
+            }
+        }
+        false
     }
 
     fn construct(&mut self, text: &[usize]) {
@@ -112,19 +149,22 @@ impl SAIS {
 
         // if less than 2 LMS substrings are present, no further sorting is needed
         if lms_substring_count > 1 {
-            // sort LMS suffixes
+            // sort LMS suffixes by recursively building SA on reduced text
             let mut reduced_text = Vec::with_capacity(self.lms_pos.len());
             let mut label = 0;
             reduced_text.push(label);
-            for ((&l, &m), &r) in self.lms_pos.iter()
-                .zip(self.lms_pos[1..].iter())
-                .zip(self.lms_pos[2..].iter()) {
+            let mut prev = self.lms_pos[0];
+            for &p in self.lms_pos[1..].iter() {
                 // choose same label if substrings are equal
-                if text[l..m+1] != text[m..r+1] {
+                if !self.lms_substring_eq(
+                    text, pos_types, prev, p
+                ) {
                     label += 1;
                 }
                 reduced_text.push(label);
+                prev = p;
             }
+
             // if we have less labels than substrings, we have to sort by recursion
             // because two or more substrings are equal
             if label + 1 < lms_substring_count {
@@ -167,23 +207,28 @@ impl SAIS {
         // insert L-positions into buckets
         for r in (0..n) {
             let p = self.pos[r];
-            if p == n {
+            // ignore undefined positions and the zero since it has no predecessor
+            if p == n || p == 0 {
                 continue;
             }
-            let prev = p - 1;
-            if pos_types.is_l_pos(prev) {
-                let c = text[prev];
-                self.pos[self.bucket_start[c]] = prev;
+            let pred = p - 1;
+            if pos_types.is_l_pos(pred) {
+                let c = text[pred];
+                self.pos[self.bucket_start[c]] = pred;
                 self.bucket_start[c] += 1;
             }
         }
 
         // insert S-positions into buckets
         for r in (0..n).rev() {
-            let prev = self.pos[r] - 1;
-            if pos_types.is_s_pos(prev) {
-                let c = text[prev];
-                self.pos[self.bucket_end[c]] = prev;
+            let p = self.pos[r];
+            if p == 0 {
+                continue;
+            }
+            let pred = p - 1;
+            if pos_types.is_s_pos(pred) {
+                let c = text[pred];
+                self.pos[self.bucket_end[c]] = pred;
                 self.bucket_end[c] -= 1;
             }
         }
@@ -235,17 +280,60 @@ impl PosTypes {
     }
 
     fn is_lms_pos(&self, p: usize) -> bool {
-        self.is_s_pos(p) && self.is_l_pos(p)
+        !(p == 0) && self.is_s_pos(p) && self.is_l_pos(p-1)
     }
 }
 
 
-// ```rust
-// use std::collections::Bitv;
-// use bio::data_structures::suffix_array::get_pos_types;
-// let text = b"GCCTTAACATTATTACGCCTA$";
-// let pos_type = get_pos_types(text);
-// let mut test = Bitv::from_bytes(&[0b01100110, 0b10010011,  0b01100100]);
-// test.truncate(text.len());
-// assert_eq!(pos_type, test);
-// ```
+#[test]
+fn test_pos_types() {
+    let text = transform_text(b"GCCTTAACATTATTACGCCTA$");
+    let n = text.len();
+
+    let pos_types = PosTypes::new(text.as_slice());
+    let mut test = Bitv::from_bytes(&[0b01100110, 0b10010011,  0b01100100]);
+    test.truncate(n);
+    assert_eq!(pos_types.pos_types, test);
+    let lms_pos: Vec<usize> = (0..n).filter(|&p| pos_types.is_lms_pos(p)).collect();
+    assert_eq!(lms_pos, vec![1, 5, 8, 11, 14, 17, 21]);
+}
+
+
+#[test]
+fn test_buckets() {
+    let text = transform_text(b"GCCTTAACATTATTACGCCTA$");
+    let n = text.len();
+
+    let mut sais = SAIS::new(n);
+    sais.init_bucket_start(text.as_slice());
+    assert_eq!(sais.bucket_start, vec![0, 1, 7, 13, 15]);
+    sais.init_bucket_end(text.as_slice());
+    assert_eq!(sais.bucket_end, vec![0, 6, 12, 14, 21]);
+}
+
+
+#[test]
+fn test_pos() {
+    let text = transform_text(b"GCCTTAACATTATTACGCCTA$");
+    let n = text.len();
+
+    let mut sais = SAIS::new(n);
+    let pos_types = PosTypes::new(text.as_slice());
+    sais.lms_pos = vec![21, 5, 14, 8, 11, 17, 1];
+    sais.calc_pos(text.as_slice(), &pos_types);
+    assert_eq!(sais.pos, vec![
+        21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18,
+        2, 16, 0, 19, 4, 13, 10, 3, 12, 9
+    ]);
+}
+
+
+#[test]
+fn test_lms_pos() {
+    let text = transform_text(b"GCCTTAACATTATTACGCCTA$");
+    let n = text.len();
+
+    let mut sais = SAIS::new(n);
+    let pos_types = PosTypes::new(text.as_slice());
+    sais.calc_lms_pos(text.as_slice(), &pos_types);
+}
