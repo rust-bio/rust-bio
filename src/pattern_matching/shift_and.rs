@@ -17,7 +17,7 @@ use std::slice;
 #[derive(Copy)]
 pub struct ShiftAnd {
     m: u8,
-    masks: [u64; 255],
+    masks: [u64; 256],
     accept: u64
 }
 
@@ -28,7 +28,7 @@ impl ShiftAnd {
         if pattern.len() > 64 {
             panic!("Expecting pattern of size at most 64");
         }
-        let mut masks = [0; 255];
+        let mut masks = [0; 256];
 
         let mut bit = 1;
         for c in pattern.iter() {

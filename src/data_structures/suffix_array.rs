@@ -126,7 +126,7 @@ fn transform_text(text: &[u8]) -> Vec<usize> {
     let ranks = Alphabet::new(text).get_ranks();
 
     text.iter()
-        .map(|&c| *ranks.get(&(c as usize)).unwrap())
+        .map(|&c| *ranks.get(&(c as usize)).unwrap() as usize)
         .collect()
 }
 

@@ -11,3 +11,4 @@ license = "MIT"
 [dependencies]
 
 log = "*"
+itertools = "*"

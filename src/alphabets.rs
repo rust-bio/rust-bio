@@ -12,6 +12,22 @@
 
 use std::collections::{BitvSet, VecMap};
 
+
+pub type SymbolRanks = VecMap<u8>;
+
+
+pub fn max_symbol(text: &[u8]) -> Option<&u8> {
+    text.iter().max()
+}
+
+
+pub fn rank_transform(text: &[u8], ranks: SymbolRanks) -> Vec<u8> {
+    text.iter()
+        .map(|&c| *ranks.get(&(c as usize)).unwrap())
+        .collect()
+}
+
+
 /// Representation of an alphabet.
 pub struct Alphabet {
     symbols: BitvSet
@@ -30,10 +46,10 @@ impl Alphabet {
         text.iter().all(|&c| self.symbols.contains(&(c as usize)))
     }
 
-    pub fn get_ranks(&self) -> VecMap<usize> {
+    pub fn get_ranks(&self) -> SymbolRanks {
         let mut ranks = VecMap::new();
         for (r, c) in self.symbols.iter().enumerate() {
-            ranks.insert(c, r);
+            ranks.insert(c, r as u8);
         }
 
         ranks
