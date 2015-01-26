@@ -1,5 +1,4 @@
 use std::io;
-use std::ascii::AsciiExt;
 
 use utils::trim_newline;
 
