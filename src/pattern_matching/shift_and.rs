@@ -1,6 +1,7 @@
 use std::iter::Enumerate;
 use std::slice;
 
+
 /// ShiftAnd algorithm for pattern matching.
 ///
 /// # Example
@@ -65,5 +66,22 @@ impl<'a> Iterator for FindAll<'a> {
         }
 
         None
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use test::Bencher;
+    use super::ShiftAnd;
+
+    #[bench]
+    fn bench_find_all(b: &mut Bencher) {
+        let pattern = b"AAAAGTAGGGAATGGGATAGAGGAGTAGAGAGAT";
+        let text = b"ACGGCTAGAAAAGGCTAGGAGTAGGATTCTGCATGCACGACTCGAGCACTAGCACT";
+        let shiftand = ShiftAnd::new(pattern);
+        b.iter(|| {
+            let occ: Vec<usize> = shiftand.find_all(text).collect();
+        });
     }
 }

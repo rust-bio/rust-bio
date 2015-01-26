@@ -10,4 +10,5 @@ license = "MIT"
 
 [dependencies]
 
-log= "0.1.9"
+log = "*"
+num = "*"
