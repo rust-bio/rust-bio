@@ -7,7 +7,7 @@ pub type BWT = Vec<u8>;
 
 
 /// Calculate Burrows-Wheeler-Transform of the given text of length n.
-/// Complexity: O(n)
+/// Complexity: O(n).
 ///
 /// # Arguments
 ///

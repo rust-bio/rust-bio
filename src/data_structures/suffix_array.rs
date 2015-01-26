@@ -66,7 +66,8 @@ pub fn get_suffix_array(text: &[u8]) -> SuffixArray {
 }
 
 
-/// Construct lcp array for given suffix array.
+/// Construct lcp array for given text and suffix array of length n.
+/// Complexity: O(n).
 ///
 /// # Arguments
 ///

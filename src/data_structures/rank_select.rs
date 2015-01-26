@@ -9,7 +9,7 @@ fn ctpop(v: u8) -> u8 {
 }
 
 
-/// Rank/Select data structure based on Gonzalez, Grabowski, Mäkinen, Navarro, WEA 2005
+/// Rank/Select data structure based on Gonzalez, Grabowski, Mäkinen, Navarro (2005).
 /// This implementation uses only a single level of blocks, and performs well for large n.
 ///
 /// # Example
@@ -45,7 +45,9 @@ impl RankSelect {
     /// # Arguments
     ///
     /// * `bits` - A bit vector.
-    /// * `k` - Determines the size (k * 32 bits) of the superblocks. A small k means faster access times at the expense of using more space
+    /// * `k` - Determines the size (k * 32 bits) of the superblocks.
+    ///   A small k means faster rank query times at the expense of using more
+    ///   space and slower select query times.
     pub fn new(bits: Bitv, k: usize) -> RankSelect {
         let n = bits.len();
         let raw = bits.to_bytes();
@@ -55,6 +57,7 @@ impl RankSelect {
     }
 
     /// Get the rank of a given bit.
+    /// Complexity: O(k).
     ///
     /// # Arguments
     ///
@@ -74,12 +77,13 @@ impl RankSelect {
             rank += self.bits[s * 32 / 8..b].iter()
                 .map(|&a| ctpop(a) as u32)
                 .fold(0, |a, b| a + b);
-        
+
             Some(rank)
         }
     }
 
     /// Get the smallest bit with a given rank.
+    /// Complexity: O(log (n / k) + k).
     ///
     /// # Arguments
     ///
