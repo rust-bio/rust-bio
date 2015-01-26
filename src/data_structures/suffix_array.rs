@@ -40,7 +40,7 @@ pub fn get_suffix_array(text: &[u8]) -> Vec<usize> {
 ///
 /// # Arguments
 ///
-/// * `text` - the text, ended by sentinel symbol (being lexicographically smallest)
+/// * `text` - the text ended by sentinel symbol (being lexicographically smallest)
 /// * `pos` - the suffix array for the text
 ///
 /// # Example
