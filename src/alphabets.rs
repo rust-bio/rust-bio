@@ -38,6 +38,10 @@ impl Alphabet {
 
         ranks
     }
+
+    pub fn len(&self) -> usize {
+        self.symbols.len()
+    }
 }
 
 

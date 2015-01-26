@@ -77,11 +77,11 @@ mod tests {
 
     #[bench]
     fn bench_find_all(b: &mut Bencher) {
-        let pattern = b"AAAAGTAGGGAATGGGATAGAGGAGTAGAGAGAT";
+        let pattern = b"AAAA";
         let text = b"ACGGCTAGAAAAGGCTAGGAGTAGGATTCTGCATGCACGACTCGAGCACTAGCACT";
         let shiftand = ShiftAnd::new(pattern);
         b.iter(|| {
-            let occ: Vec<usize> = shiftand.find_all(text).collect();
+            shiftand.find_all(text).collect::<Vec<usize>>()
         });
     }
 }

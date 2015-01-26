@@ -8,7 +8,33 @@ pub type SuffixArray = Vec<usize>;
 pub type LCPArray = Vec<Option<usize>>;
 
 
-/// Construct suffix array for given text.
+/// Construct suffix array for given text of length n.
+/// Complexity: O(n).
+/// This is an implementation of the induced sorting as presented by 
+/// Ge Nong, Sen Zhang und Wai Hong Chan (2009), also known as SAIS.
+/// The implementation is based on the following lecture notes:
+/// http://ls11-www.cs.tu-dortmund.de/people/rahmann/algoseq.pdf
+///
+/// The idea is to first mark positions as L or S, with L being a position
+/// the suffix of which is lexicographically larger than that of the next position.
+/// Then, LMS-positions (leftmost S) are S-positions right to an L-positions.
+/// An LMS substring is the substring from one LMS position to the next (inclusive).
+/// The algorithm works as follows:
+///
+/// 1. Sort LMS positions: first step 2 is applied to the unsorted sequence
+///    of positions. Suprisingly, this sorts the LMS substrings. If all substrings
+///    are different, LMS positions (and their suffixes are sorted). Else, a reduced
+///    text is build (at most half the size of the original text) and we recurse into
+///    suffix array construction on the reduced text, yielding the sorted LMS positions.
+/// 2. Derive the order of the other positions/suffixes from the (sorted) LMS positions.
+///    For this, the (still empty) suffix array is partitioned into buckets.
+///    Each bucket denotes an interval of suffixes with the same first symbol.
+///    We know that the L-suffixes have to occur first in the buckets, because they
+///    have to be lexicographically smaller than the S-suffixes with the same first letter.
+///    The LMS-positions now be used to insert the L-positions in the correct order
+///    into the buckets.
+///    Then, the S-positions can be inserted, again using the already existing entries
+///    in the array.
 ///
 /// # Arguments
 ///
@@ -303,8 +329,8 @@ struct PosTypes {
 
 impl PosTypes {
     /// Calculate the text position type.
-    /// S-type marks suffixes being lexicographically smaller than their successor,
-    /// L-type marks those being larger.
+    /// L-type marks suffixes being lexicographically larger than their successor,
+    /// S-type marks the others.
     /// This function fills a Bitv, with 1-bits denoting S-type
     /// and 0-bits denoting L-type.
     ///

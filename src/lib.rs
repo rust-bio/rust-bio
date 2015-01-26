@@ -4,7 +4,6 @@
 #[macro_use]
 extern crate log;
 extern crate test;
-extern crate num;
 
 
 pub mod io;
