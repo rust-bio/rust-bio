@@ -4,6 +4,11 @@ use std::iter::{count, repeat};
 use alphabets::Alphabet;
 
 
+pub type SuffixArray = Vec<usize>;
+pub type LCPArray = Vec<Option<usize>>;
+pub type BWT = Vec<u8>;
+
+
 /// Construct suffix array for given text.
 ///
 /// # Arguments
@@ -21,7 +26,7 @@ use alphabets::Alphabet;
 ///     2, 16, 0, 19, 4, 13, 10, 3, 12, 9
 /// ]);
 /// ```
-pub fn get_suffix_array(text: &[u8]) -> Vec<usize> {
+pub fn get_suffix_array(text: &[u8]) -> SuffixArray {
     let n = text.len();
     let transformed_text = transform_text(text);
     if transformed_text[n-1] != 0 {
@@ -49,7 +54,7 @@ pub fn get_suffix_array(text: &[u8]) -> Vec<usize> {
 /// use bio::data_structures::suffix_array::{get_suffix_array,get_lcp};
 /// let text = b"GCCTTAACATTATTACGCCTA$";
 /// let pos = get_suffix_array(text);
-/// let lcp = get_lcp(text.as_slice(), pos.as_slice());
+/// let lcp = get_lcp(text.as_slice(), &pos);
 /// assert_eq!(
 ///     lcp,
 ///     vec![
@@ -60,7 +65,7 @@ pub fn get_suffix_array(text: &[u8]) -> Vec<usize> {
 ///     ]
 /// )
 /// ```
-pub fn get_lcp(text: &[u8], pos: &[usize]) -> Vec<Option<usize>> {
+pub fn get_lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
     assert!(text.len() == pos.len());
     let n = text.len();
 
@@ -70,7 +75,7 @@ pub fn get_lcp(text: &[u8], pos: &[usize]) -> Vec<Option<usize>> {
         rank[pos[r]] = r;
     }
 
-    let mut lcp: Vec<Option<usize>> = repeat(None).take(n).collect();
+    let mut lcp: LCPArray = repeat(None).take(n).collect();
     let mut l = 0us;
     for p in (0..n-1) {
         let r = rank[p];
@@ -88,6 +93,35 @@ pub fn get_lcp(text: &[u8], pos: &[usize]) -> Vec<Option<usize>> {
     }
 
     lcp
+}
+
+
+/// Calculate Burrows-Wheeler-Transform of the given text.
+///
+/// # Arguments
+///
+/// * `text` - the text ended by sentinel symbol (being lexicographically smallest)
+/// * `pos` - the suffix array for the text
+///
+/// # Example
+///
+/// ```
+/// use bio::data_structures::suffix_array::{get_suffix_array,get_bwt};
+/// let text = b"GCCTTAACATTATTACGCCTA$";
+/// let pos = get_suffix_array(text);
+/// let bwt = get_bwt(text, &pos);
+/// assert_eq!(bwt, b"ATTATTCAGGACCC$CTTTCAA");
+/// ```
+pub fn get_bwt(text: &[u8], pos: &SuffixArray) -> BWT {
+    assert!(text.len() == pos.len());
+    let n = text.len();
+    let mut bwt: BWT = repeat(0).take(n).collect();
+    for r in 0..n {
+        let p = pos[r];
+        bwt[r] = if p > 0 {text[p-1]} else {text[n-1]};
+    }
+
+    bwt
 }
 
 
