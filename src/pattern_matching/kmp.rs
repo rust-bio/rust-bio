@@ -67,6 +67,10 @@ impl Delta {
 
         Delta { table: table }
     }
+
+    fn get(&self, q: usize, a: u8) -> usize {
+        *self.table[q].get(&(a as usize)).expect("Missing symbol in alphabet (is the text a word of the given alphabet?)")
+    }
 }
 
 
@@ -108,9 +112,20 @@ mod tests {
 
     #[test]
     fn test_delta() {
-        let pattern = b"ababaca";
+        let pattern = b"abbab";
         let alphabet = Alphabet::new(pattern);
         let delta = Delta::new(pattern, alphabet);
-        
+        assert_eq!(delta.get(0, b'a'), 1);
+        assert_eq!(delta.get(0, b'b'), 0);
+        assert_eq!(delta.get(1, b'a'), 1);
+        assert_eq!(delta.get(1, b'b'), 2);
+        assert_eq!(delta.get(2, b'a'), 1);
+        assert_eq!(delta.get(2, b'b'), 3);
+        assert_eq!(delta.get(3, b'a'), 4);
+        assert_eq!(delta.get(3, b'b'), 0);
+        assert_eq!(delta.get(4, b'a'), 1);
+        assert_eq!(delta.get(4, b'b'), 5);
+        assert_eq!(delta.get(5, b'a'), 1);
+        assert_eq!(delta.get(5, b'b'), 3);
     }
 }
