@@ -18,7 +18,7 @@ pub type SymbolRanks = VecMap<u8>;
 
 /// Representation of an alphabet.
 pub struct Alphabet {
-    symbols: BitvSet
+    pub symbols: BitvSet
 }
 
 
