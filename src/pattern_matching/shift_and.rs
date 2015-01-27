@@ -58,8 +58,8 @@ impl<'a> Iterator for FindAll<'a> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {
-        for (i, c) in self.text {
-            self.active = ((self.active << 1) | 1) & self.shiftand.masks[*c as usize];
+        for (i, &c) in self.text {
+            self.active = ((self.active << 1) | 1) & self.shiftand.masks[c as usize];
             if self.active & self.shiftand.accept > 0 {
                 return Some(i - self.shiftand.m as usize + 1);
             }

@@ -3,10 +3,12 @@ use std::iter::AdditiveIterator;
 
 use data_structures::suffix_array::SuffixArray;
 use utils::prescan;
-use alphabets::max_symbol;
+use alphabets::Alphabet;
 
 
 pub type BWT = Vec<u8>;
+type Less = Vec<usize>;
+type BWTFind = Vec<usize>;
 
 
 /// Calculate Burrows-Wheeler-Transform of the given text of length n.
@@ -47,8 +49,9 @@ pub fn get_bwt(text: &[u8], pos: &SuffixArray) -> BWT {
 ///
 /// * `bwt` - the BWT
 pub fn get_inverse(bwt: &BWT) -> Vec<u8> {
+    let alphabet = Alphabet::new(bwt.as_slice());
     let n = bwt.len();
-    let bwtfind = get_bwtfind(bwt);
+    let bwtfind = get_bwtfind(bwt, &alphabet);
     let mut inverse = Vec::with_capacity(n);
 
     let mut r = bwtfind[0];
@@ -63,14 +66,14 @@ pub fn get_inverse(bwt: &BWT) -> Vec<u8> {
 
 pub struct FMIndex<'a> {
     bwt: &'a BWT,
-    less: Vec<usize>,
+    less: Less,
     occ: Occ
 }
 
 
 impl<'a> FMIndex<'a> {
-    pub fn new(bwt: &'a BWT, k: usize) -> Self {
-        FMIndex { bwt: bwt, less: get_less(bwt), occ: Occ::new(bwt, k)}
+    pub fn new(bwt: &'a BWT, k: usize, alphabet: &Alphabet) -> Self {
+        FMIndex { bwt: bwt, less: get_less(bwt, alphabet), occ: Occ::new(bwt, k, alphabet)}
     }
 
     /// Perform backward search, yielding suffix array
@@ -85,29 +88,25 @@ impl<'a> FMIndex<'a> {
     /// ```
     /// use bio::data_structures::bwt::{get_bwt, FMIndex};
     /// use bio::data_structures::suffix_array::get_suffix_array;
+    /// use bio::alphabets::get_dna_alphabet;
     /// let text = b"GCCTTAACATTATTACGCCTA$";
+    /// let alphabet = get_dna_alphabet();
     /// let pos = get_suffix_array(text);
     /// let bwt = get_bwt(text, &pos);
-    /// let fm = FMIndex::new(&bwt, 3);
+    /// let fm = FMIndex::new(&bwt, 3, &alphabet);
     /// let pattern = b"TTA";
     /// let sai = fm.backward_search(pattern);
     /// assert_eq!(sai, (19, 21));
     /// ```
     pub fn backward_search(&self, pattern: &[u8]) -> (usize, usize) {
-        if pattern.len() == 0 {
-            (0, self.bwt.len() - 1)
-        }
-        else {
-            let (l, r) = self.backward_search(&(pattern[1..]));
-            let a = pattern[0];
+        let (mut l, mut r) = (0, self.bwt.len() - 1);
+        for &a in pattern.iter().rev() {
             let less = self.less[a as usize];
-            (
-                less + if l > 0 {
-                    self.occ.get_occ(self.bwt, l - 1, a)
-                } else { 0 },
-                less + self.occ.get_occ(self.bwt, r, a) - 1
-            )
+            l = less + if l > 0 { self.occ.get_occ(self.bwt, l - 1, a) } else { 0 };
+            r = less + self.occ.get_occ(self.bwt, r, a) - 1;
         }
+
+        (l, r)
     }
 }
 
@@ -130,12 +129,9 @@ impl Occ {
     ///
     /// * `bwt` - the BWT
     /// * `k` - the sampling rate: every k-th entry will be stored
-    pub fn new(bwt: &BWT, k: usize) -> Self {
+    pub fn new(bwt: &BWT, k: usize, alphabet: &Alphabet) -> Self {
         let n = bwt.len();
-        let m = match max_symbol(bwt.as_slice()) {
-            Some(&c) => c as usize + 1,
-            None => 0
-        };
+        let m = alphabet.max_symbol().expect("Expecting non-empty alphabet.") as usize + 1;
         let mut occ = Vec::with_capacity(n / k);
         let mut curr_occ: Vec<usize> = repeat(0).take(m).collect();
         for (i, &c) in bwt.iter().enumerate() {
@@ -156,12 +152,9 @@ impl Occ {
 }
 
 
-fn get_less(bwt: &BWT) -> Vec<usize> {
-    let m = match max_symbol(bwt.as_slice()) {
-        Some(&c) => c as usize + 1,
-        None => 0
-    };
-    let mut less: Vec<usize> = repeat(0)
+fn get_less(bwt: &BWT, alphabet: &Alphabet) -> Less {
+    let m = alphabet.max_symbol().expect("Expecting non-empty alphabet.") as usize + 1;
+    let mut less: Less = repeat(0)
         .take(m).collect();
     for &c in bwt.iter() {
         less[c as usize] += 1;
@@ -174,11 +167,11 @@ fn get_less(bwt: &BWT) -> Vec<usize> {
 
 
 /// Calculate the bwtfind array needed for inverting the BWT.
-fn get_bwtfind(bwt: &BWT) -> Vec<usize> {
+fn get_bwtfind(bwt: &BWT, alphabet: &Alphabet) -> BWTFind {
     let n = bwt.len();
-    let mut less = get_less(bwt);
+    let mut less = get_less(bwt, alphabet);
 
-    let mut bwtfind: Vec<usize> = repeat(0).take(n).collect();
+    let mut bwtfind: BWTFind = repeat(0).take(n).collect();
     for (r, &c) in bwt.iter().enumerate() {
         bwtfind[less[c as usize]] = r;
         less[c as usize] += 1;
@@ -192,13 +185,15 @@ fn get_bwtfind(bwt: &BWT) -> Vec<usize> {
 mod tests {
     use super::{get_bwtfind, get_bwt, get_inverse, Occ};
     use data_structures::suffix_array::get_suffix_array;
+    use alphabets::Alphabet;
 
     #[test]
     fn test_get_bwtfind() {
         let text = b"cabca$";
+        let alphabet = Alphabet::new(b"abc$");
         let pos = get_suffix_array(text);
         let bwt = get_bwt(text, &pos);
-        let bwtfind = get_bwtfind(&bwt);
+        let bwtfind = get_bwtfind(&bwt, &alphabet);
         assert_eq!(bwtfind, vec![5, 0, 3, 4, 1, 2]);
     }
 
@@ -214,7 +209,8 @@ mod tests {
     #[test]
     fn test_occ () {
         let bwt = vec![1u8, 3u8, 3u8, 1u8, 2u8, 0u8];
-        let occ = Occ::new(&bwt, 3);
+        let alphabet = Alphabet::new([0u8, 1u8, 2u8, 3u8].as_slice());
+        let occ = Occ::new(&bwt, 3, &alphabet);
         assert_eq!(occ.occ, [
             [0, 1, 0, 0],
             [0, 2, 0, 2]

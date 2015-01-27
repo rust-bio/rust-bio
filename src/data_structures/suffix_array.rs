@@ -1,7 +1,7 @@
 use std::collections::{Bitv, VecMap};
 use std::iter::{count, repeat};
 
-use alphabets::Alphabet;
+use alphabets::{Alphabet, RankTransform};
 
 
 pub type SuffixArray = Vec<usize>;
@@ -123,10 +123,11 @@ pub fn get_lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
 
 
 fn transform_text(text: &[u8]) -> Vec<usize> {
-    let ranks = Alphabet::new(text).get_ranks();
+    let alphabet = Alphabet::new(text);
+    let transform = RankTransform::new(&alphabet);
 
     text.iter()
-        .map(|&c| *ranks.get(&(c as usize)).unwrap() as usize)
+        .map(|&c| *transform.ranks.get(&(c as usize)).unwrap() as usize)
         .collect()
 }
 
