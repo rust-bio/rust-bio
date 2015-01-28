@@ -9,36 +9,14 @@ use alphabets::Alphabet;
 type LPS = Vec<usize>;
 
 
-#[derive(Copy)]
 pub struct KMP {
-    m: usize
-}
-
-
-fn get_lps(pattern: &[u8]) -> LPS {
-    let (m, mut q) = (pattern.len(), 0us);
-    let mut lps: LPS = repeat(0).take(m).collect();
-    for i in 1..m {
-        while q > 0 && pattern[q] != pattern[i] {
-            q = lps[q];
-        }
-        if pattern[q] == pattern[i] {
-            q += 1;
-        }
-        lps[i] = q;
-    }
-
-    lps
-}
-
-
-struct Delta {
+    m: usize,
     table: Vec<VecMap<usize>>
 }
 
 
-impl Delta {
-    fn new(pattern: &[u8], alphabet: Alphabet) -> Self {
+impl KMP {
+    pub fn new(pattern: &[u8], alphabet: Alphabet) -> Self {
         //assert!(alphabet.is_word(pattern));
         let k = alphabet.max_symbol()
             .expect("Expecting non-empty alphabet.") as usize + 1;
@@ -60,24 +38,43 @@ impl Delta {
                 dq.insert(c, *table[lps[q - 1]].get(&c).unwrap());
             }
             if q < m {
-                *dq.get_mut(&(pattern[q] as usize)).unwrap() = q;
+                *dq.get_mut(&(pattern[q] as usize)).unwrap() = q + 1;
             }
             table.push(dq);
         }
 
-        Delta { table: table }
+        KMP { table: table, m: m }
     }
 
-    fn get(&self, q: usize, a: u8) -> usize {
+    fn delta(&self, q: usize, a: u8) -> usize {
         *self.table[q].get(&(a as usize)).expect("Missing symbol in alphabet (is the text a word of the given alphabet?)")
+    }
+
+    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> FindAll {
+        FindAll { kmp: self, q: 0, text: text.iter().enumerate() }
     }
 }
 
 
+fn get_lps(pattern: &[u8]) -> LPS {
+    let (m, mut q) = (pattern.len(), 0us);
+    let mut lps: LPS = repeat(0).take(m).collect();
+    for i in 1..m {
+        while q > 0 && pattern[q] != pattern[i] {
+            q = lps[q];
+        }
+        if pattern[q] == pattern[i] {
+            q += 1;
+        }
+        lps[i] = q;
+    }
+
+    lps
+}
 
 
 pub struct FindAll<'a> {
-    kmp: KMP,
+    kmp: &'a KMP,
     q: usize,
     text: Enumerate<slice::Iter<'a, u8>>
 }
@@ -88,7 +85,7 @@ impl<'a> Iterator for FindAll<'a> {
 
     fn next(&mut self) -> Option<usize> {
         for (i, &c) in self.text {
-            // TODO self.q = self.kmp.delta(self.q, c);
+            self.q = self.kmp.delta(self.q, c);
             if self.q == self.kmp.m {
                 return Some(i - self.kmp.m + 1);
             }
@@ -100,7 +97,7 @@ impl<'a> Iterator for FindAll<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{get_lps, Delta};
+    use super::{get_lps, KMP};
     use alphabets::Alphabet;
 
     #[test]
@@ -114,18 +111,28 @@ mod tests {
     fn test_delta() {
         let pattern = b"abbab";
         let alphabet = Alphabet::new(pattern);
-        let delta = Delta::new(pattern, alphabet);
-        assert_eq!(delta.get(0, b'a'), 1);
-        assert_eq!(delta.get(0, b'b'), 0);
-        assert_eq!(delta.get(1, b'a'), 1);
-        assert_eq!(delta.get(1, b'b'), 2);
-        assert_eq!(delta.get(2, b'a'), 1);
-        assert_eq!(delta.get(2, b'b'), 3);
-        assert_eq!(delta.get(3, b'a'), 4);
-        assert_eq!(delta.get(3, b'b'), 0);
-        assert_eq!(delta.get(4, b'a'), 1);
-        assert_eq!(delta.get(4, b'b'), 5);
-        assert_eq!(delta.get(5, b'a'), 1);
-        assert_eq!(delta.get(5, b'b'), 3);
+        let kmp = KMP::new(pattern, alphabet);
+        assert_eq!(kmp.delta(0, b'a'), 1);
+        assert_eq!(kmp.delta(0, b'b'), 0);
+        assert_eq!(kmp.delta(1, b'a'), 1);
+        assert_eq!(kmp.delta(1, b'b'), 2);
+        assert_eq!(kmp.delta(2, b'a'), 1);
+        assert_eq!(kmp.delta(2, b'b'), 3);
+        assert_eq!(kmp.delta(3, b'a'), 4);
+        assert_eq!(kmp.delta(3, b'b'), 0);
+        assert_eq!(kmp.delta(4, b'a'), 1);
+        assert_eq!(kmp.delta(4, b'b'), 5);
+        assert_eq!(kmp.delta(5, b'a'), 1);
+        assert_eq!(kmp.delta(5, b'b'), 3);
+    }
+
+    #[test]
+    fn test_find_all() {
+        let text = b"aaaaabbabbbbbbbabbab";
+        let pattern = b"abbab";
+        let alphabet = Alphabet::new(pattern);
+        let kmp = KMP::new(pattern, alphabet);
+        let occ: Vec<usize> = kmp.find_all(text).collect();
+        assert_eq!(occ, [4, 15]);
     }
 }
