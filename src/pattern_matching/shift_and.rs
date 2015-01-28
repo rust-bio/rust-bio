@@ -41,14 +41,14 @@ impl ShiftAnd {
     }
 
     /// Find all occurences of pattern in the given text.
-    pub fn find_all(self, text: &[u8]) -> FindAll {
+    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> FindAll {
         FindAll { shiftand: self, active: 0, text: text.iter().enumerate() }
     }
 }
 
 
 pub struct FindAll<'a> {
-    shiftand: ShiftAnd,
+    shiftand: &'a ShiftAnd,
     active: u64,
     text: Enumerate<slice::Iter<'a, u8>>
 }
