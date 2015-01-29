@@ -3,6 +3,8 @@ use std::slice;
 
 
 /// ShiftAnd algorithm for pattern matching.
+/// Patterns may contain at most 64 symbols.
+/// Complexity: O(n) with text length n.
 ///
 /// # Example
 ///
@@ -16,7 +18,7 @@ use std::slice;
 /// ```
 #[derive(Copy)]
 pub struct ShiftAnd {
-    m: u8,
+    m: usize,
     masks: [u64; 256],
     accept: u64
 }
@@ -25,43 +27,48 @@ pub struct ShiftAnd {
 impl ShiftAnd {
     /// Create new ShiftAnd instance.
     pub fn new(pattern: &[u8]) -> ShiftAnd {
-        if pattern.len() > 64 {
-            panic!("Expecting pattern of size at most 64");
-        }
-        let mut masks = [0; 256];
+        assert!(pattern.len() <= 64, "Expecting a pattern of at most 64 symbols.");
+        let (masks, accept) = get_masks(pattern);
 
-        let mut bit = 1;
-        for c in pattern.iter() {
-            masks[*c as usize] |= bit;
-            bit *= 2;
-        }
-
-        ShiftAnd { m: pattern.len() as u8, masks: masks, accept: bit / 2 }
+        ShiftAnd { m: pattern.len(), masks: masks, accept: accept }
 
     }
 
     /// Find all occurences of pattern in the given text.
-    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> FindAll {
-        FindAll { shiftand: self, active: 0, text: text.iter().enumerate() }
+    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> ShiftAndMatches {
+        ShiftAndMatches { shiftand: self, active: 0, text: text.iter().enumerate() }
     }
 }
 
 
-pub struct FindAll<'a> {
+pub fn get_masks(pattern: &[u8]) -> ([u64; 256], u64) {
+    let mut masks = [0; 256];
+
+    let mut bit = 1;
+    for &c in pattern.iter() {
+        masks[c as usize] |= bit;
+        bit *= 2;
+    }
+
+    (masks, bit / 2)
+}
+
+
+pub struct ShiftAndMatches<'a> {
     shiftand: &'a ShiftAnd,
     active: u64,
     text: Enumerate<slice::Iter<'a, u8>>
 }
 
 
-impl<'a> Iterator for FindAll<'a> {
+impl<'a> Iterator for ShiftAndMatches<'a> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {
         for (i, &c) in self.text {
             self.active = ((self.active << 1) | 1) & self.shiftand.masks[c as usize];
             if self.active & self.shiftand.accept > 0 {
-                return Some(i - self.shiftand.m as usize + 1);
+                return Some(i - self.shiftand.m + 1);
             }
         }
 

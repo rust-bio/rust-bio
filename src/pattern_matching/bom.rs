@@ -86,20 +86,20 @@ impl BOM {
     /// # Arguments
     ///
     /// * `text` - the given text
-    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> FindAll {
-        FindAll { bom: self, text: text, window: self.m }
+    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> BOMMatches {
+        BOMMatches { bom: self, text: text, window: self.m }
     }
 }
 
 
-pub struct FindAll<'a> {
+pub struct BOMMatches<'a> {
     bom: &'a BOM,
     text: &'a [u8],
     window: usize
 }
 
 
-impl<'a> Iterator for FindAll<'a> {
+impl<'a> Iterator for BOMMatches<'a> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {

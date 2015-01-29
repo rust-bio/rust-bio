@@ -50,8 +50,8 @@ impl KMP {
         *self.table[q].get(&(a as usize)).expect("Missing symbol in alphabet (is the text a word of the given alphabet?)")
     }
 
-    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> FindAll {
-        FindAll { kmp: self, q: 0, text: text.iter().enumerate() }
+    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> KMPMatches {
+        KMPMatches { kmp: self, q: 0, text: text.iter().enumerate() }
     }
 }
 
@@ -73,14 +73,14 @@ fn get_lps(pattern: &[u8]) -> LPS {
 }
 
 
-pub struct FindAll<'a> {
+pub struct KMPMatches<'a> {
     kmp: &'a KMP,
     q: usize,
     text: Enumerate<slice::Iter<'a, u8>>
 }
 
 
-impl<'a> Iterator for FindAll<'a> {
+impl<'a> Iterator for KMPMatches<'a> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {

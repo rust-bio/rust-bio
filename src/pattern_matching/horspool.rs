@@ -54,8 +54,8 @@ impl<'a> Horspool<'a> {
         }
     }
 
-    pub fn find_all<'b>(&'b self, text: &'b [u8]) -> Matches {
-        Matches {
+    pub fn find_all<'b>(&'b self, text: &'b [u8]) -> HorspoolMatches {
+        HorspoolMatches {
             horspool: self, text: text, n: text.len(),
             last: self.m - 1,
             pattern_last: self.pattern[self.m - 1]
@@ -64,7 +64,7 @@ impl<'a> Horspool<'a> {
 }
 
 
-pub struct Matches<'a> {
+pub struct HorspoolMatches<'a> {
     horspool: &'a Horspool<'a>,
     text: &'a [u8],
     n: usize,
@@ -73,7 +73,7 @@ pub struct Matches<'a> {
 }
 
 
-impl<'a> Iterator for Matches<'a> {
+impl<'a> Iterator for HorspoolMatches<'a> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {
