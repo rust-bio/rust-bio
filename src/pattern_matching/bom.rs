@@ -1,6 +1,19 @@
 use std::collections::VecMap;
 use std::iter::repeat;
 
+
+/// Backward oracle matching algorithm.
+/// 
+/// # Example
+///
+/// ```
+/// use bio::pattern_matching::bom::BOM;
+/// let text = b"ACGGCTAGGAAAAAGACTGAGGACTGAAAA";
+/// let pattern = b"AAAA";
+/// let bom = BOM::new(pattern);
+/// let occ: Vec<usize> = bom.find_all(text).collect();
+/// assert_eq!(occ, [9, 10, 26]);
+/// ```
 pub struct BOM {
     m: usize,
     table: Vec<VecMap<usize>>
@@ -60,6 +73,11 @@ impl BOM {
         }
     }
 
+    /// Find all exact occurrences of the pattern in the given text.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - the given text
     pub fn find_all<'a>(&'a self, text: &'a [u8]) -> FindAll {
         FindAll { bom: self, text: text, window: self.m }
     }
