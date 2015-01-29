@@ -1,5 +1,3 @@
-use std::iter::repeat;
-
 /// Algorithm of Horspool.
 /// Window-based, similar to but faster than Boyer-Moore.
 ///
@@ -44,7 +42,7 @@ pub struct Horspool<'a> {
 impl<'a> Horspool<'a> {
     pub fn new(pattern: &'a [u8]) -> Self {
         let m = pattern.len();
-        let mut shift: Vec<usize> = repeat(m).take(256).collect();
+        let mut shift = vec![m; 256];
         // shift is m for all not occurring characters
         // and m - 1 - j for all others
         for (j, &a) in pattern[..m-1].iter().enumerate() {

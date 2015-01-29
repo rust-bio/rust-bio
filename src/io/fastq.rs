@@ -1,4 +1,4 @@
-use std::io;
+use std::old_io;
 
 use utils::trim_newline;
 
@@ -17,7 +17,7 @@ pub struct Record {
 ///
 /// ```rust
 /// use bio::io::fastq::FastqFile;
-/// use std::io::{BufferedReader, stdin};
+/// use std::old_io::{BufferedReader, stdin};
 ///
 /// let mut buffer = BufferedReader::new(stdin());
 /// let fastq = FastqFile::new(buffer);
@@ -27,12 +27,12 @@ pub struct FastqFile<T> {
 }
 
 
-impl<T> FastqFile<T> where T: io::Buffer {
+impl<T> FastqFile<T> where T: old_io::Buffer {
     /// Create a new FASTQ parser object.
     ///
     /// # Arguments
     ///
-    /// * `buffer` - a buffer object (e.g. the io::BufferedReader over a file or STDIN)
+    /// * `buffer` - a buffer object (e.g. the old_io::BufferedReader over a file or STDIN)
     pub fn new(buffer: T) -> Self {
         FastqFile { buffer: buffer }
     }
@@ -40,7 +40,7 @@ impl<T> FastqFile<T> where T: io::Buffer {
 
 
 /// Iterator over the FASTQ file.
-impl<T> Iterator for FastqFile<T> where T: io::Buffer {
+impl<T> Iterator for FastqFile<T> where T: old_io::Buffer {
     type Item = Record;
 
     fn next(&mut self) -> Option<Record> {
@@ -49,7 +49,7 @@ impl<T> Iterator for FastqFile<T> where T: io::Buffer {
             Ok(line) => {
                 name = line;
             },
-            Err(io::IoError { kind: io::IoErrorKind::EndOfFile, .. } ) => return None,
+            Err(old_io::IoError { kind: old_io::IoErrorKind::EndOfFile, .. } ) => return None,
             Err(e) => panic!(e.desc)
         }
 
