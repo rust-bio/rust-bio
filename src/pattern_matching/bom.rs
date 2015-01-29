@@ -9,10 +9,10 @@ use std::iter::repeat;
 /// ```
 /// use bio::pattern_matching::bom::BOM;
 /// let text = b"ACGGCTAGGAAAAAGACTGAGGACTGAAAA";
-/// let pattern = b"AAAA";
+/// let pattern = b"GAAAA";
 /// let bom = BOM::new(pattern);
 /// let occ: Vec<usize> = bom.find_all(text).collect();
-/// assert_eq!(occ, [9, 10, 26]);
+/// assert_eq!(occ, [8, 25]);
 /// ```
 pub struct BOM {
     m: usize,
@@ -30,8 +30,11 @@ impl BOM {
         // pattern[..i+1] ends that does not end in i
         let mut suff: Vec<Option<usize>> = repeat(None).take(m + 1).collect();
 
-        for i in 1..m+1 {
-            let a = pattern[i - 1] as usize;
+        for (j, &b) in pattern.iter().rev().enumerate() {
+            let i = j + 1;
+            let a = b as usize;
+        //for i in 1..m+1 {
+            //let a = pattern[i - 1] as usize;
             let mut delta = VecMap::with_capacity(maxsym);
             // reading symbol a leads into state i (this is an inner edge)
             delta.insert(a, i);
@@ -67,9 +70,14 @@ impl BOM {
     }
 
     fn delta(&self, q: usize, a: u8) -> Option<usize> {
-        match self.table[q].get(&(a as usize)) {
-            Some(&q) => Some(q),
-            None => None
+        if q >= self.table.len() {
+            None
+        }
+        else {
+            match self.table[q].get(&(a as usize)) {
+                Some(&q) => Some(q),
+                None => None
+            }
         }
     }
 
@@ -125,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_delta() {
-        let pattern = b"nannannnq";
+        let pattern = b"qnnnannan"; // reverse of nannannnq
         let bom = BOM::new(pattern);
         assert_eq!(bom.delta(0, b'n'), Some(1));
         assert_eq!(bom.delta(1, b'a'), Some(2));
@@ -143,5 +151,6 @@ mod tests {
         assert_eq!(bom.delta(1, b'q'), Some(9));
         assert_eq!(bom.delta(4, b'n'), Some(8));
         assert_eq!(bom.delta(4, b'q'), Some(9));
+        bom.delta(9, b'a');
     }
 }
