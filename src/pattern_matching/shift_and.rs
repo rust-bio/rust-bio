@@ -68,20 +68,3 @@ impl<'a> Iterator for FindAll<'a> {
         None
     }
 }
-
-
-#[cfg(test)]
-mod tests {
-    use test::Bencher;
-    use super::ShiftAnd;
-
-    #[bench]
-    fn bench_find_all(b: &mut Bencher) {
-        let pattern = b"AAAA";
-        let text = b"ACGGCTAGAAAAGGCTAGGAGTAGGATTCTGCATGCACGACTCGAGCACTAGCACT";
-        let shiftand = ShiftAnd::new(pattern);
-        b.iter(|| {
-            shiftand.find_all(text).collect::<Vec<usize>>()
-        });
-    }
-}
