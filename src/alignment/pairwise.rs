@@ -91,14 +91,17 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         }
     }
 
+    /// Calculate global alignment.
     pub fn global(&mut self, x: &[u8], y: &[u8]) -> Alignment {
         self.align(x, y, AlignmentType::Global)
     }
 
+    /// Calculate semiglobal alignment.
     pub fn semiglobal(&mut self, x: &[u8], y: &[u8]) -> Alignment {
         self.align(x, y, AlignmentType::Semiglobal)
     }
 
+    /// Calculate local alignment.
     pub fn local(&mut self, x: &[u8], y: &[u8]) -> Alignment {
         self.align(x, y, AlignmentType::Local)
     }
