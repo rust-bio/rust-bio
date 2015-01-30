@@ -13,6 +13,7 @@ pub enum AlignmentOperation {
 
 
 pub struct Alignment {
+    pub score: i32,
     pub i: usize,
     pub j: usize,
     pub operations: Vec<AlignmentOperation>
