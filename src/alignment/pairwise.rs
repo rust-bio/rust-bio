@@ -135,14 +135,17 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
             for j in 1..m+1 {
                 let a = x[j - 1];
 
+                // score for deletion
                 let d_score = max(
                     self.S[prev][j] + self.gap_open,
                     self.D[prev][j] + self.gap_extend
                 );
+                // score for insertion
                 let i_score = max(
                     self.S[col][j-1] + self.gap_open,
                     self.I[col][j-1] + self.gap_extend
                 );
+                // score for substitution
                 score = self.S[prev][j-1] + (self.score)(a, b);
 
                 if d_score > score {
