@@ -13,7 +13,8 @@ enum AlignmentType {
 }
 
 
-/// Calculate alignments.
+/// Calculate alignments with a generalized variant of the Smith Waterman algorithm.
+/// Complexity: O(n * m) for strings of length m and n.
 ///
 /// # Example
 ///
@@ -42,6 +43,17 @@ pub struct Aligner<F> where F: Fn(u8, u8) -> i32 {
 
 
 impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
+    /// Create new aligner instance. The size hints help to
+    /// avoid unnecessary memory allocations.
+    ///
+    /// # Arguments
+    ///
+    /// * `m` - the expected size of x
+    /// * `n` - the expected size of y
+    /// * `gap_open` - the score for opening a gap (should be negative)
+    /// * `gap_extend` - the score for extending a gap (should be negative)
+    /// * `score` - function that returns the score for substitutions
+    ///
     pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, score: F) -> Self {
         let get_vec = |&:| Vec::with_capacity(m + 1);
         Aligner {
