@@ -1,56 +1,58 @@
 
 use std::iter::{repeat, Enumerate};
 use std::slice;
-use std::collections::VecMap;
-
-use alphabets::Alphabet;
 
 
 type LPS = Vec<usize>;
 
 
-pub struct KMP {
+/// Algorithm of Knuth Morris and Pratt.
+/// Constructs an automaton recognizing the pattern, and scans linearly over
+/// a text of length n. Complexity: O(n). Here, the automaton is implemented
+/// by directly storing the transition function delta in a table for each state
+/// and symbol in the alphabet.
+/// For this, it uses the lps-function, that assigns to each position q in the
+/// pattern the longest prefix of the pattern that is suffix of pattern[..q+1].
+/// Then, in the NFA for the pattern, active states after reading position q are
+/// {q, lps(q), lps(lps(q)), ... 0}.
+///
+/// # Example
+///
+/// ```
+/// use bio::pattern_matching::kmp::KMP;
+/// let text = b"aaaaabbabbbbbbbabbab";
+/// let pattern = b"abbab";
+/// let kmp = KMP::new(pattern);
+/// let occ: Vec<usize> = kmp.find_all(text).collect();
+/// assert_eq!(occ, [4, 15]);
+/// ```
+pub struct KMP<'a> {
     m: usize,
-    table: Vec<VecMap<usize>>
+    lps: LPS,
+    pattern: &'a [u8]
 }
 
 
-impl KMP {
-    pub fn new(pattern: &[u8], alphabet: Alphabet) -> Self {
-        //assert!(alphabet.is_word(pattern));
-        let k = alphabet.max_symbol()
-            .expect("Expecting non-empty alphabet.") as usize + 1;
+impl<'a> KMP<'a> {
+    pub fn new(pattern: &'a [u8]) -> Self {
         let m = pattern.len();
-
-        let mut init = VecMap::with_capacity(k);
-        for c in alphabet.symbols.iter() {
-            init.insert(c, 0);
-        }
-        *init.get_mut(&(pattern[0] as usize)).unwrap() = 1;
-
         let lps = get_lps(pattern);
 
-        let mut table = Vec::with_capacity(m + 1);
-        table.push(init);
-        for q in 1..m+1 {
-            let mut dq = VecMap::with_capacity(k);
-            for c in alphabet.symbols.iter() {
-                dq.insert(c, *table[lps[q - 1]].get(&c).unwrap());
-            }
-            if q < m {
-                *dq.get_mut(&(pattern[q] as usize)).unwrap() = q + 1;
-            }
-            table.push(dq);
+        KMP { lps: lps, m: m, pattern: pattern }
+    }
+
+    fn delta(&self, mut q: usize, a: u8) -> usize {
+        while q == self.m || (self.pattern[q] != a && q > 0) {
+            q = self.lps[q-1];
+        }
+        if self.pattern[q] == a {
+            q += 1;
         }
 
-        KMP { table: table, m: m }
+        q
     }
 
-    fn delta(&self, q: usize, a: u8) -> usize {
-        *self.table[q].get(&(a as usize)).expect("Missing symbol in alphabet (is the text a word of the given alphabet?)")
-    }
-
-    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> KMPMatches {
+    pub fn find_all<'b>(&'b self, text: &'b [u8]) -> KMPMatches {
         KMPMatches { kmp: self, q: 0, text: text.iter().enumerate() }
     }
 }
@@ -61,7 +63,7 @@ fn get_lps(pattern: &[u8]) -> LPS {
     let mut lps: LPS = repeat(0).take(m).collect();
     for i in 1..m {
         while q > 0 && pattern[q] != pattern[i] {
-            q = lps[q];
+            q = lps[q - 1];
         }
         if pattern[q] == pattern[i] {
             q += 1;
@@ -74,7 +76,7 @@ fn get_lps(pattern: &[u8]) -> LPS {
 
 
 pub struct KMPMatches<'a> {
-    kmp: &'a KMP,
+    kmp: &'a KMP<'a>,
     q: usize,
     text: Enumerate<slice::Iter<'a, u8>>
 }
@@ -98,7 +100,6 @@ impl<'a> Iterator for KMPMatches<'a> {
 #[cfg(test)]
 mod tests {
     use super::{get_lps, KMP};
-    use alphabets::Alphabet;
 
     #[test]
     fn test_get_lps() {
@@ -110,8 +111,7 @@ mod tests {
     #[test]
     fn test_delta() {
         let pattern = b"abbab";
-        let alphabet = Alphabet::new(pattern);
-        let kmp = KMP::new(pattern, alphabet);
+        let kmp = KMP::new(pattern);
         assert_eq!(kmp.delta(0, b'a'), 1);
         assert_eq!(kmp.delta(0, b'b'), 0);
         assert_eq!(kmp.delta(1, b'a'), 1);
@@ -124,15 +124,5 @@ mod tests {
         assert_eq!(kmp.delta(4, b'b'), 5);
         assert_eq!(kmp.delta(5, b'a'), 1);
         assert_eq!(kmp.delta(5, b'b'), 3);
-    }
-
-    #[test]
-    fn test_find_all() {
-        let text = b"aaaaabbabbbbbbbabbab";
-        let pattern = b"abbab";
-        let alphabet = Alphabet::new(pattern);
-        let kmp = KMP::new(pattern, alphabet);
-        let occ: Vec<usize> = kmp.find_all(text).collect();
-        assert_eq!(occ, [4, 15]);
     }
 }
