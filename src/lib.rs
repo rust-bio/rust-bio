@@ -20,7 +20,6 @@
 #[macro_use]
 extern crate log;
 extern crate test;
-extern crate itertools;
 
 pub mod io;
 pub mod utils;
