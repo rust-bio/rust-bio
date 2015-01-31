@@ -1,3 +1,27 @@
+//! Rank/Select data structure based on Gonzalez, Grabowski, Mäkinen, Navarro (2005).
+//! This implementation uses only a single level of blocks, and performs well for large n.
+//!
+//! Example
+//!
+//! ```
+//! use bio::data_structures::rank_select::RankSelect;
+//! use std::collections::Bitv;
+//! let mut bits = Bitv::from_elem(64, false);
+//! bits.set(5, true);
+//! bits.set(32, true);
+//! let rs = RankSelect::new(bits, 1);
+//! assert!(rs.rank(1).unwrap() == 0);
+//! assert!(rs.rank(5).unwrap() == 1);
+//! assert!(rs.rank(6).unwrap() == 1);
+//! assert!(rs.rank(32).unwrap() == 2);
+//! assert!(rs.rank(33).unwrap() == 2);
+//! assert!(rs.rank(64) == None);
+//!
+//! assert!(rs.select(0).unwrap() == 0);
+//! assert!(rs.select(1).unwrap() == 5);
+//! ```
+
+
 use std::collections::Bitv;
 use std::intrinsics::ctpop8;
 
@@ -9,28 +33,6 @@ fn ctpop(v: u8) -> u8 {
 }
 
 
-/// Rank/Select data structure based on Gonzalez, Grabowski, Mäkinen, Navarro (2005).
-/// This implementation uses only a single level of blocks, and performs well for large n.
-///
-/// # Example
-///
-/// ```rust
-/// use bio::data_structures::rank_select::RankSelect;
-/// use std::collections::Bitv;
-/// let mut bits = Bitv::from_elem(64, false);
-/// bits.set(5, true);
-/// bits.set(32, true);
-/// let rs = RankSelect::new(bits, 1);
-/// assert!(rs.rank(1).unwrap() == 0);
-/// assert!(rs.rank(5).unwrap() == 1);
-/// assert!(rs.rank(6).unwrap() == 1);
-/// assert!(rs.rank(32).unwrap() == 2);
-/// assert!(rs.rank(33).unwrap() == 2);
-/// assert!(rs.rank(64) == None);
-///
-/// assert!(rs.select(0).unwrap() == 0);
-/// assert!(rs.select(1).unwrap() == 5);
-/// ```
 pub struct RankSelect {
     n: usize,
     bits: Vec<u8>,

@@ -1,14 +1,14 @@
+//! Handling different alphabets.
+//!
+//! # Example
+//!
+//! ```rust
+//! use bio::alphabets;
+//! let alphabet = alphabets::get_dna_alphabet();
+//! assert!(alphabet.is_word(b"AACCTgga"));
+//! assert!(!alphabet.is_word(b"AXYZ"));
+//! ```
 
-/// A module to handle different alphabets
-///
-/// # Example
-///
-/// ```rust
-/// use bio::alphabets;
-/// let alphabet = alphabets::get_dna_alphabet();
-/// assert!(alphabet.is_word(b"AACCTgga"));
-/// assert!(!alphabet.is_word(b"AXYZ"));
-/// ```
 
 use std::collections::{BitvSet, VecMap};
 

@@ -1,18 +1,21 @@
+//! A fixed-width bit encoding implementation.
+//!
+//! # Example
+//!
+//! ```
+//! use bio::bitencoding::BitEnc;
+//! let mut bitenc = BitEnc::new(2);
+//! bitenc.push(0);
+//! bitenc.push(2);
+//! bitenc.push(1);
+//! let values: Vec<u8> = bitenc.iter().collect();
+//! assert_eq!(values, [0, 2, 1]);
+//! ```
+
+
 use std::iter::range_step;
 
-/// A fixed-width bit encoding implementation.
-///
-/// # Example
-///
-/// ```
-/// use bio::bitencoding::BitEnc;
-/// let mut bitenc = BitEnc::new(2);
-/// bitenc.push(0);
-/// bitenc.push(2);
-/// bitenc.push(1);
-/// let values: Vec<u8> = bitenc.iter().collect();
-/// assert_eq!(values, [0, 2, 1]);
-/// ```
+
 pub struct BitEnc {
     pub storage: Vec<u32>,
     width: usize,

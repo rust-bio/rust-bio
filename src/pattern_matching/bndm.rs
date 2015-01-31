@@ -1,22 +1,23 @@
+//! Backward nondeterministic DAWG matching (BNDM).
+//! Best-case complexity: O(n / m) with pattern of length m <= 64 and text of length n.
+//! Worst case complexity: O(n * m).
+//!
+//! # Example
+//!
+//! ```
+//! use bio::pattern_matching::bndm;
+//! let pattern = b"GAAAA";
+//! let text = b"ACGGCTAGAAAAGGCTAGAAAA";
+//! let bndm = bndm::BNDM::new(pattern);
+//! let occ: Vec<usize> = bndm.find_all(text).collect();
+//! assert_eq!(occ, [7, 17]);
+//! ```
+
 
 use pattern_matching::shift_and::get_masks;
 use std::slice::SliceExt;
 
 
-/// Backward nondeterministic DAWG matching (BNDM).
-/// Best-case complexity: O(n / m) with pattern of length m <= 64 and text of length n.
-/// Worst case complexity: O(n * m).
-///
-/// # Example
-///
-/// ```
-/// use bio::pattern_matching::bndm;
-/// let pattern = b"GAAAA";
-/// let text = b"ACGGCTAGAAAAGGCTAGAAAA";
-/// let bndm = bndm::BNDM::new(pattern);
-/// let occ: Vec<usize> = bndm.find_all(text).collect();
-/// assert_eq!(occ, [7, 17]);
-/// ```
 #[derive(Copy)]
 pub struct BNDM {
     m: usize,

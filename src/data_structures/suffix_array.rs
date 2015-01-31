@@ -1,3 +1,5 @@
+//! Suffix arrays and related algorithms.
+
 use std::collections::{Bitv, VecMap};
 use std::iter::{count, repeat};
 

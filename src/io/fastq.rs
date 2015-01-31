@@ -1,3 +1,17 @@
+//! An iterable FASTQ parser. The io modules of Rust are currently rewritten.
+//! Hence, this modules will be subject to changes soon.
+//!
+//! # Example
+//!
+//! ```rust
+//! use bio::io::fastq::FastqFile;
+//! use std::old_io::{BufferedReader, stdin};
+//!
+//! let mut buffer = BufferedReader::new(stdin());
+//! let fastq = FastqFile::new(buffer);
+//! ```
+
+
 use std::old_io;
 
 use utils::trim_newline;
@@ -11,17 +25,6 @@ pub struct Record {
 }
 
 
-/// An iterable FASTQ parser.
-///
-/// # Example
-///
-/// ```rust
-/// use bio::io::fastq::FastqFile;
-/// use std::old_io::{BufferedReader, stdin};
-///
-/// let mut buffer = BufferedReader::new(stdin());
-/// let fastq = FastqFile::new(buffer);
-/// ```
 pub struct FastqFile<T> {
     buffer: T
 }

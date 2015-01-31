@@ -1,3 +1,5 @@
+//! Alignment algorithms.
+
 pub mod pairwise;
 
 

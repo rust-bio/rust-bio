@@ -1,19 +1,21 @@
+//! Backward oracle matching algorithm.
+//! 
+//! # Example
+//!
+//! ```
+//! use bio::pattern_matching::bom::BOM;
+//! let text = b"ACGGCTAGGAAAAAGACTGAGGACTGAAAA";
+//! let pattern = b"GAAAA";
+//! let bom = BOM::new(pattern);
+//! let occ: Vec<usize> = bom.find_all(text).collect();
+//! assert_eq!(occ, [8, 25]);
+//! ```
+
+
 use std::collections::VecMap;
 use std::iter::repeat;
 
 
-/// Backward oracle matching algorithm.
-/// 
-/// # Example
-///
-/// ```
-/// use bio::pattern_matching::bom::BOM;
-/// let text = b"ACGGCTAGGAAAAAGACTGAGGACTGAAAA";
-/// let pattern = b"GAAAA";
-/// let bom = BOM::new(pattern);
-/// let occ: Vec<usize> = bom.find_all(text).collect();
-/// assert_eq!(occ, [8, 25]);
-/// ```
 pub struct BOM {
     m: usize,
     table: Vec<VecMap<usize>>

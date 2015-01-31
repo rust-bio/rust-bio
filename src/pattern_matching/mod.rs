@@ -1,19 +1,19 @@
+//! This module contains various useful pattern matching algorithms.
+//! The implementations are based on the lecture notes
+//! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
+//!
+//! * Algorithm of Horspool: fastest for a sufficiently large alphabet
+//! * Shift And algorithm: fast for patterns with less than 64 symbols and very small alphabets.
+//! * BNDM algorithm: fast for patterns with less than 64 symbols.
+//! * BOM algorithm: fast for long patterns and small alphabet.
+//! * KMP algorithm: the classic.
+
+
 pub mod shift_and;
 pub mod kmp;
 pub mod bom;
 pub mod horspool;
 pub mod bndm;
-
-
-/// This module contains various useful pattern matching algorithms.
-/// The implementations are based on the lecture notes
-/// "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
-///
-/// * Algorithm of Horspool: fastest for a sufficiently large alphabet
-/// * Shift And algorithm: fast for patterns with less than 64 symbols and very small alphabets.
-/// * BNDM algorithm: fast for patterns with less than 64 symbols.
-/// * BOM algorithm: fast for long patterns and small alphabet.
-/// * KMP algorithm: the classic.
 
 
 #[cfg(test)]
@@ -25,7 +25,14 @@ mod tests {
     use super::bom::BOM;
     use super::horspool::Horspool;
 
-    static TEXT: &'static [u8] = b"ACGGCTAGAAAAGGCTAGGAGTAGGATTCTGCATGCACGACTCGAGCACTAGCACGGGGGGAGGAGTAGGAGATAGATAGAGGATAGATGATACGGCTAGAAAAGGCTAGGAGTAGGATTCTGCATGCACGACTCGAGCACTAGCACGGGGGGAGGAGTAGGAGATAGATAGAGGATAGATGATACGGCTAGAAAAGGCTAGGAGTAGGATTCTGCATGCACGACTCGAGCACTAGCACGGGGGGAGGAGTAGGAGATAGATAGAGGATAGATGATACGGCTAGAAAAGGCTAGGAGTAGGATTCTGCATGCACGACTCGAGCACTAGCACGGGGGGAGGAGTAGGAGATAGATAGAGGATAGATGATACGGCTAGAAAAGGCTAGGAGTAGGATTCTGCATGCACGACTCGAGCACTAGCACGGGGGGAGGAGTAGGAGATAGATAGAGGATAGATGAT";
+    static TEXT: &'static [u8] = b"ACGGCTAGAAAAGGCTAGGAGTAGGATTCTGCATGCACGACT\
+CGAGCACTAGCACGGGGGGAGGAGTAGGAGATAGATAGAGGATAGATGATACGGCTAGAAAAGGCTA\
+GGAGTAGGATTCTGCATGCACGACTCGAGCACTAGCACGGGGGGAGGAGTAGGAGATAGATAGAGGA\
+TAGATGATACGGCTAGAAAAGGCTAGGAGTAGGATTCTGCATGCACGACTCGAGCACTAGCACGGGG\
+GGAGGAGTAGGAGATAGATAGAGGATAGATGATACGGCTAGAAAAGGCTAGGAGTAGGATTCTGCAT\
+GCACGACTCGAGCACTAGCACGGGGGGAGGAGTAGGAGATAGATAGAGGATAGATGATACGGCTAGA\
+AAAGGCTAGGAGTAGGATTCTGCATGCACGACTCGAGCACTAGCACGGGGGGAGGAGTAGGAGATAG\
+ATAGAGGATAGATGAT";
     static PATTERN: &'static [u8] = b"GGATTCTGCA";
 
 

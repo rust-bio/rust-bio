@@ -1,21 +1,23 @@
+//! ShiftAnd algorithm for pattern matching.
+//! Patterns may contain at most 64 symbols.
+//! Complexity: O(n) with text length n.
+//!
+//! # Example
+//!
+//! ```rust
+//! use bio::pattern_matching::shift_and;
+//! let pattern = b"AAAA";
+//! let text = b"ACGGCTAGAAAAGGCTAG";
+//! let shiftand = shift_and::ShiftAnd::new(pattern);
+//! let occ = shiftand.find_all(text).next().unwrap();
+//! assert_eq!(occ, 8);
+//! ```
+
+
 use std::iter::Enumerate;
 use std::slice;
 
 
-/// ShiftAnd algorithm for pattern matching.
-/// Patterns may contain at most 64 symbols.
-/// Complexity: O(n) with text length n.
-///
-/// # Example
-///
-/// ```rust
-/// use bio::pattern_matching::shift_and;
-/// let pattern = b"AAAA";
-/// let text = b"ACGGCTAGAAAAGGCTAG";
-/// let shiftand = shift_and::ShiftAnd::new(pattern);
-/// let occ = shiftand.find_all(text).next().unwrap();
-/// assert_eq!(occ, 8);
-/// ```
 #[derive(Copy)]
 pub struct ShiftAnd {
     m: usize,

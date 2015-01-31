@@ -1,37 +1,39 @@
-/// Algorithm of Horspool.
-/// Window-based, similar to but faster than Boyer-Moore.
-///
-/// # Idea
-/// Look at a search window m, match pattern backwards.
-/// In case of a mismatch, you can jump behind that.
-/// Best case time complexity: O(n / m)
-/// Worst case time complexity: O(n * m)
-/// With a large alphabet, you are likely
-/// around the best case, and faster than the rather
-/// complicated Boyer-Moore.
-///
-/// The algorithm has two phases (let a be the last symbol in the window):
-///
-/// 1. test phase: compare the last symbol of the window.
-///    If it matches, compare the whole pattern.
-///    If it does not match, continue with the shift phase.
-/// 2. shift phase: let l[a] be the rightmost position of a in 
-///    the pattern without the last symbol. If it does not occur
-///    let l be -1. Shift the window by m - 1 - l[a]. I.e.
-///    we shift the window such that the rightmost a matches
-///    the a at the end of the last window.
-///    If a does not occur in the pattern, we shift by the whole length.
-///
-/// # Example
-///
-/// ```
-/// use bio::pattern_matching::horspool::Horspool;
-/// let text = b"ACGGCTAGGAAAAAGACTGAGGACTGAAAA";
-/// let pattern = b"GAAAA";
-/// let horspool = Horspool::new(pattern);
-/// let occ: Vec<usize> = horspool.find_all(text).collect();
-/// assert_eq!(occ, [8, 25]);
-/// ```
+//! Algorithm of Horspool.
+//! Window-based, similar to but faster than Boyer-Moore.
+//!
+//! # Idea
+//! Look at a search window m, match pattern backwards.
+//! In case of a mismatch, you can jump behind that.
+//! Best case time complexity: O(n / m)
+//! Worst case time complexity: O(n * m)
+//! With a large alphabet, you are likely
+//! around the best case, and faster than the rather
+//! complicated Boyer-Moore.
+//!
+//! The algorithm has two phases (let a be the last symbol in the window):
+//!
+//! 1. test phase: compare the last symbol of the window.
+//!    If it matches, compare the whole pattern.
+//!    If it does not match, continue with the shift phase.
+//! 2. shift phase: let l[a] be the rightmost position of a in 
+//!    the pattern without the last symbol. If it does not occur
+//!    let l be -1. Shift the window by m - 1 - l[a]. I.e.
+//!    we shift the window such that the rightmost a matches
+//!    the a at the end of the last window.
+//!    If a does not occur in the pattern, we shift by the whole length.
+//!
+//! # Example
+//!
+//! ```
+//! use bio::pattern_matching::horspool::Horspool;
+//! let text = b"ACGGCTAGGAAAAAGACTGAGGACTGAAAA";
+//! let pattern = b"GAAAA";
+//! let horspool = Horspool::new(pattern);
+//! let occ: Vec<usize> = horspool.find_all(text).collect();
+//! assert_eq!(occ, [8, 25]);
+//! ```
+
+
 pub struct Horspool<'a> {
     shift: Vec<usize>,
     m: usize,

@@ -1,3 +1,5 @@
+//! The Burrows-Wheeler-Transform and related data structures.
+
 use std::iter::repeat;
 use std::iter::AdditiveIterator;
 

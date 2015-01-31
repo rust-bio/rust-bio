@@ -1,3 +1,22 @@
+//! Calculate alignments with a generalized variant of the Smith Waterman algorithm.
+//! Complexity: O(n * m) for strings of length m and n.
+//!
+//! # Example
+//!
+//! ```
+//! use bio::alignment::pairwise::Aligner;
+//! use bio::alignment::AlignmentOperation::{Match, Subst, Ins, Del};
+//! let x = b"ACCGTGGAT";
+//! let y = b"AAAAACCGTTGAT";
+//! let score = |&: a: u8, b: u8| if a == b {1i32} else {-1i32};
+//! let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+//! let alignment = aligner.semiglobal(x, y);
+//! assert_eq!(alignment.i, 4);
+//! assert_eq!(alignment.j, 0);
+//! assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
+//! ```
+
+
 use std::i32;
 use std::iter::repeat;
 use std::cmp::max;
@@ -13,23 +32,6 @@ enum AlignmentType {
 }
 
 
-/// Calculate alignments with a generalized variant of the Smith Waterman algorithm.
-/// Complexity: O(n * m) for strings of length m and n.
-///
-/// # Example
-///
-/// ```
-/// use bio::alignment::pairwise::Aligner;
-/// use bio::alignment::AlignmentOperation::{Match, Subst, Ins, Del};
-/// let x = b"ACCGTGGAT";
-/// let y = b"AAAAACCGTTGAT";
-/// let score = |&: a: u8, b: u8| if a == b {1i32} else {-1i32};
-/// let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
-/// let alignment = aligner.semiglobal(x, y);
-/// assert_eq!(alignment.i, 4);
-/// assert_eq!(alignment.j, 0);
-/// assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
-/// ```
 #[allow(non_snake_case)]
 pub struct Aligner<F> where F: Fn(u8, u8) -> i32 {
     S: [Vec<i32>; 2],
