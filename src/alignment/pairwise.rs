@@ -1,9 +1,9 @@
 use std::i32;
 use std::iter::repeat;
 use std::cmp::max;
-use std::collections::Bitv;
 
 use alignment::{Alignment, AlignmentOperation};
+use bitencoding::BitEnc;
 
 #[derive(Copy)]
 enum AlignmentType {
@@ -110,7 +110,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         let (m, n) = (x.len(), y.len());
 
         self.init(m, alignment_type);
-        self.traceback.init(n, alignment_type);
+        self.traceback.init(m, n, alignment_type);
 
         let (mut best, mut best_i, mut best_j) = (0, 0, 0);
         let mut col = 0;
@@ -205,76 +205,73 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
 
 
 struct Traceback {
-    subst: Vec<Bitv>,
-    del: Vec<Bitv>,
-    ins: Vec<Bitv>
+    matrix: Vec<BitEnc>
 }
 
 
+static TBSTART: u8 = 0b00;
+static TBSUBST: u8 = 0b01;
+static TBINS: u8   = 0b10;
+static TBDEL: u8   = 0b11;
+
+
 impl Traceback {
+
     fn with_capacity(m: usize, n: usize) -> Self {
-        let get_vec = |&:| repeat(Bitv::from_elem(m + 1, false)).take(n + 1).collect::<Vec<Bitv>>();
+        let mut matrix = Vec::with_capacity(n+1);
+        for _ in 0..n+1 {
+            matrix.push(BitEnc::with_capacity(2, m + 1));
+        }
         Traceback {
-            subst: get_vec(),
-            del: get_vec(),
-            ins: get_vec()
+            matrix: matrix
         }
     }
 
-    fn init(&mut self, n: usize, alignment_type: AlignmentType) {
+    fn init(&mut self, m: usize, n: usize, alignment_type: AlignmentType) {
         match alignment_type {
             AlignmentType::Global => {
-                for i in 0..n+1 {
-                    self.subst[i].set_all();
-                    self.subst[i].negate();
-                    self.del[i].set_all();
-                    self.ins[i].set_all();
-                    self.ins[i].negate();
-                }
                 // set the first cell to start, the rest to deletions
-                self.del[0].set(0, false);
+                for i in 0..n+1 {
+                    self.matrix[i].clear();
+                    self.matrix[i].push_values(m + 1, TBDEL);
+                }
+                self.matrix[0].set(0, TBSTART);
             },
             _ => {
                 for i in 0..n+1 {
-                    self.subst[i].set_all();
-                    self.subst[i].negate();
-                    self.del[i].set_all();
-                    self.del[i].negate();
-                    self.ins[i].set_all();
-                    self.ins[i].negate();
+                    self.matrix[i].clear();
+                    self.matrix[i].push_values(m + 1, TBSTART);
                 }
             }
         }
     }
 
     fn start(&mut self, i: usize, j: usize) {
-        self.subst[i].set(j, false);
-        self.del[i].set(j, false);
-        self.ins[i].set(j, false);
+        self.matrix[i].set(j, TBSTART);
     }
 
     fn subst(&mut self, i: usize, j: usize) {
-        self.subst[i].set(j, true);
+        self.matrix[i].set(j, TBSUBST);
     }
 
     fn del(&mut self, i: usize, j: usize) {
-        self.del[i].set(j, true);
+        self.matrix[i].set(j, TBDEL);
     }
 
     fn ins(&mut self, i: usize, j: usize) {
-        self.ins[i].set(j, true);
+        self.matrix[i].set(j, TBINS);
     }
 
     fn is_subst(&self, i: usize, j: usize) -> bool {
-        self.subst[i].get(j).unwrap()
+        self.matrix[i].get(j).unwrap() == TBSUBST
     }
 
     fn is_del(&self, i: usize, j: usize) -> bool {
-        self.del[i].get(j).unwrap()
+        self.matrix[i].get(j).unwrap() == TBDEL
     }
 
     fn is_ins(&self, i: usize, j: usize) -> bool {
-        self.ins[i].get(j).unwrap()
+        self.matrix[i].get(j).unwrap() == TBINS
     }
 
     fn get_alignment(&self, mut i: usize, mut j: usize, x: &[u8], y: &[u8], score: i32) -> Alignment {
