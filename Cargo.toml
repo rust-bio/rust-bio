@@ -3,8 +3,8 @@
 name = "bio"
 version = "0.0.1"
 authors = ["Johannes Köster <johannes.koester@tu-dortmund.de>"]
-description = "A rusty bioinformatics library. This library will provide various algorithms and functions useful for bioinformatics applications. Currently, it is focused towards NGS, and content is added as needed."
-homepage = "https://rust-bio.readthedocs.org"
+description = "A rusty bioinformatics library. This library provides implementations of many algorithms and data structures that are useful for bioinformatics."
+homepage = "https://github.com/johanneskoester/rust-bio"
 readme = "README.md"
 license = "MIT"
 
