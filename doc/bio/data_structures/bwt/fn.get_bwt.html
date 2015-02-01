@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `get_bwt` fn in crate `bio`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, get_bwt">
+
+    <title>bio::data_structures::bwt::get_bwt - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        
+        <p class='location'><a href='../../index.html'>bio</a>::<wbr><a href='../index.html'>data_structures</a>::<wbr><a href='index.html'>bwt</a></p><div class='block struct'><h2>Structs</h2><a class='struct ' href='struct.FMIndex.html' title=''>FMIndex</a><a class='struct ' href='struct.Occ.html' title=''>Occ</a></div><div class='block fn'><h2>Functions</h2><a class='fn current' href='fn.get_bwt.html' title='Calculate Burrows-Wheeler-Transform of the given text of length n. Complexity: O(n).'>get_bwt</a><a class='fn ' href='fn.get_inverse.html' title='Calculate the inverse of a BWT of length n, which is the original text. Complexity: O(n).'>get_inverse</a></div>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press 'S' to search, '?' for more options..."
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content fn">
+<h1 class='fqn'><span class='in-band'>Function <a href='../../index.html'>bio</a>::<wbr><a href='../index.html'>data_structures</a>::<wbr><a href='index.html'>bwt</a>::<wbr><a class='fn' href=''>get_bwt</a><wbr></span><span class='out-of-band'><span id='render-detail'>
+            <a id="collapse-all" href="#">[-]
+            </a>&nbsp;<a id="expand-all" href="#">[+]</a>
+        </span><a id='src-3636' href='../../../src/bio/data_structures/bwt.rs.html#34-44'>[src]</a></span></h1>
+<pre class='rust fn'>pub fn get_bwt(text: <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a href='http://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>, pos: &amp;<a class='type' href='../../../bio/data_structures/suffix_array/type.SuffixArray.html' title='bio::data_structures::suffix_array::SuffixArray'>SuffixArray</a>) -&gt; <a class='type' href='../../../bio/data_structures/bwt/type.BWT.html' title='bio::data_structures::bwt::BWT'>BWT</a></pre><div class='docblock'><p>Calculate Burrows-Wheeler-Transform of the given text of length n.
+Complexity: O(n).</p>
+
+<h1 id="arguments" class='section-header'><a
+                           href="#arguments">Arguments</a></h1>
+<ul>
+<li><code>text</code> - the text ended by sentinel symbol (being lexicographically smallest)</li>
+<li><code>pos</code> - the suffix array for the text</li>
+</ul>
+
+<h1 id="example" class='section-header'><a
+                           href="#example">Example</a></h1><pre id='rust-example-rendered' class='rust '>
+<span class='kw'>use</span> <span class='ident'>bio</span>::<span class='ident'>data_structures</span>::<span class='ident'>suffix_array</span>::<span class='ident'>get_suffix_array</span>;
+<span class='kw'>use</span> <span class='ident'>bio</span>::<span class='ident'>data_structures</span>::<span class='ident'>bwt</span>::<span class='ident'>get_bwt</span>;
+<span class='kw'>let</span> <span class='ident'>text</span> <span class='op'>=</span> <span class='string'>b&quot;GCCTTAACATTATTACGCCTA$&quot;</span>;
+<span class='kw'>let</span> <span class='ident'>pos</span> <span class='op'>=</span> <span class='ident'>get_suffix_array</span>(<span class='ident'>text</span>);
+<span class='kw'>let</span> <span class='ident'>bwt</span> <span class='op'>=</span> <span class='ident'>get_bwt</span>(<span class='ident'>text</span>, <span class='kw-2'>&amp;</span><span class='ident'>pos</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>bwt</span>, <span class='string'>b&quot;ATTATTCAGGACCC$CTTTCAA&quot;</span>);
+</pre>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div class="shortcuts">
+            <h1>Keyboard shortcuts</h1>
+            <dl>
+                <dt>?</dt>
+                <dd>Show this help dialog</dd>
+                <dt>S</dt>
+                <dd>Focus the search field</dd>
+                <dt>&larrb;</dt>
+                <dd>Move up in search results</dd>
+                <dt>&rarrb;</dt>
+                <dd>Move down in search results</dd>
+                <dt>&#9166;</dt>
+                <dd>Go to active search result</dd>
+            </dl>
+        </div>
+        <div class="infos">
+            <h1>Search tricks</h1>
+            <p>
+                Prefix searches with a type followed by a colon (e.g.
+                <code>fn:</code>) to restrict the search to a given type.
+            </p>
+            <p>
+                Accepted types are: <code>fn</code>, <code>mod</code>,
+                <code>struct</code>, <code>enum</code>,
+                <code>trait</code>, <code>typedef</code> (or
+                <code>tdef</code>).
+            </p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "bio";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../../jquery.js"></script>
+    <script src="../../../main.js"></script>
+    
+    <script async src="../../../search-index.js"></script>
+</body>
+</html>
