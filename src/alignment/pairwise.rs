@@ -24,11 +24,76 @@ use std::cmp::max;
 use alignment::{Alignment, AlignmentOperation};
 use bitencoding::BitEnc;
 
-#[derive(Copy)]
-enum AlignmentType {
-    Global,
-    Semiglobal,
-    Local
+
+struct AlignmentState {
+    m: usize,
+    n: usize,
+    best: i32,
+}
+
+
+macro_rules! align {
+    (
+        $obj:ident, $state:ident,
+        $init:block, $inner:block, $outer:block, $ret:block
+    ) => (
+        {
+            let (mut best, mut best_i, mut best_j) = (0, 0, 0);
+            let mut col = 0;
+
+            for i in 1..$n+1 {
+                col = i % 2;
+                let prev = 1 - col;
+
+                // init code
+                $init
+
+                let b = y[i - 1];
+                let mut score = 0i32;
+                for j in 1..$m+1 {
+                    let a = x[j - 1];
+
+                    // score for deletion
+                    let d_score = max(
+                        $obj.S[prev][j] + $obj.gap_open,
+                        $obj.D[prev][j] + $obj.gap_extend
+                    );
+                    // score for insertion
+                    let i_score = max(
+                        $obj.S[col][j-1] + $obj.gap_open,
+                        $obj.I[col][j-1] + $obj.gap_extend
+                    );
+                    // score for substitution
+                    score = $obj.S[prev][j-1] + ($obj.score)(a, b);
+
+                    if d_score > score {
+                        score = d_score;
+                        $obj.traceback.del(i, j);
+                    }
+                    else if i_score > score {
+                        score = i_score;
+                        $obj.traceback.ins(i, j);
+                    }
+                    else {
+                        $obj.traceback.subst(i, j);
+                    }
+
+                    // inner code
+                    $inner
+
+                    $obj.S[col][j] = score;
+                    $obj.D[col][j] = d_score;
+                    $obj.I[col][j] = i_score;
+                }
+
+                // outer code
+                $outer
+            }
+
+            // return code
+            $ret
+        }
+    );
 }
 
 
@@ -69,7 +134,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         }
     }
 
-    fn init(&mut self, m: usize, alignment_type: AlignmentType) {
+    fn init(&mut self, m: usize, global: bool) {
         // set minimum score to -inf, and allow to add gap_extend
         // without overflow
         let min_score = i32::MIN - self.gap_extend;
@@ -79,129 +144,83 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
             self.D[k].clear();
             self.I[k].extend(repeat(min_score).take(m + 1));
             self.D[k].extend(repeat(min_score).take(m + 1));
-            match alignment_type {
-                AlignmentType::Global => {
-                    let ref mut s = self.S[k];
-                    let mut score = self.gap_open;
-                    for _ in 0..m+1 {
-                        s.push(score);
-                        score += self.gap_extend;
-                    }
-                },
-                _ => self.S[k].extend(repeat(0).take(m + 1))
+            if global {
+                let ref mut s = self.S[k];
+                let mut score = self.gap_open;
+                for _ in 0..m+1 {
+                    s.push(score);
+                    score += self.gap_extend;
+                }
+            }
+            else {
+                self.S[k].extend(repeat(0).take(m + 1))
             }
         }
     }
 
     /// Calculate global alignment.
     pub fn global(&mut self, x: &[u8], y: &[u8]) -> Alignment {
-        self.align(x, y, AlignmentType::Global)
+        let (m, n) = (x.len(), y.len());
+        self.init(m, true);
+        self.traceback.init(m, n, true);
+
+        align!(
+            self, m, n,
+            {
+                self.S[col][0] = self.gap_open + (i as i32 - 1) * self.gap_extend;
+                self.traceback.del(i, 0);
+            }, {}, {},
+            {
+                let score = self.S[col][m];
+                self.traceback.get_alignment(n, m, x, y, score)
+            }
+        );
     }
 
     /// Calculate semiglobal alignment.
     pub fn semiglobal(&mut self, x: &[u8], y: &[u8]) -> Alignment {
-        self.align(x, y, AlignmentType::Semiglobal)
+        let (m, n) = (x.len(), y.len());
+        self.init(m, false);
+        self.traceback.init(m, n, false);
+
+        align!(
+            self, m, n,
+            { self.S[col][0] = 0; },
+            {},
+            {
+                if score > best {
+                    best = score;
+                    best_i = i;
+                    best_j = m;
+                }
+            },
+            { self.traceback.get_alignment(best_i, best_j, x, y, best) }
+        );
     }
 
     /// Calculate local alignment.
     pub fn local(&mut self, x: &[u8], y: &[u8]) -> Alignment {
-        self.align(x, y, AlignmentType::Local)
-    }
-
-    fn align(&mut self, x: &[u8], y: &[u8], alignment_type: AlignmentType) -> Alignment {
         let (m, n) = (x.len(), y.len());
+        self.init(m, false);
+        self.traceback.init(m, n, false);
 
-        self.init(m, alignment_type);
-        self.traceback.init(m, n, alignment_type);
-
-        let (mut best, mut best_i, mut best_j) = (0, 0, 0);
-        let mut col = 0;
-
-        for i in 1..n+1 {
-            col = i % 2;
-            let prev = 1 - col;
-
-            match alignment_type {
-                AlignmentType::Global => {
-                    self.S[col][0] = self.gap_open + (i as i32 - 1) * self.gap_extend;
-                    self.traceback.del(i, 0);
-                },
-                _ => {
-                    // with local and semiglobal, allow to begin anywhere in y
-                    self.S[col][0] = 0;
+        align!(
+            self, m, n,
+            { self.S[col][0] = 0; },
+            {
+                if score < 0 {
+                    self.traceback.start(i, j);
+                    score = 0;
                 }
-            }
-
-            let b = y[i - 1];
-            let mut score = 0i32;
-            for j in 1..m+1 {
-                let a = x[j - 1];
-
-                // score for deletion
-                let d_score = max(
-                    self.S[prev][j] + self.gap_open,
-                    self.D[prev][j] + self.gap_extend
-                );
-                // score for insertion
-                let i_score = max(
-                    self.S[col][j-1] + self.gap_open,
-                    self.I[col][j-1] + self.gap_extend
-                );
-                // score for substitution
-                score = self.S[prev][j-1] + (self.score)(a, b);
-
-                if d_score > score {
-                    score = d_score;
-                    self.traceback.del(i, j);
+                else if score > best {
+                    best = score;
+                    best_i = i;
+                    best_j = j;
                 }
-                else if i_score > score {
-                    score = i_score;
-                    self.traceback.ins(i, j);
-                }
-                else {
-                    self.traceback.subst(i, j);
-                }
-
-                match alignment_type {
-                    AlignmentType::Local => {
-                        if score < 0 {
-                            self.traceback.start(i, j);
-                            score = 0;
-                        }
-                        else if score > best {
-                            best = score;
-                            best_i = i;
-                            best_j = j;
-                        }
-                    },
-                    _ => ()
-                }
-
-                self.S[col][j] = score;
-                self.D[col][j] = d_score;
-                self.I[col][j] = i_score;
-            }
-
-            match alignment_type {
-                AlignmentType::Semiglobal => {
-                    if score > best {
-                        best = score;
-                        best_i = i;
-                        best_j = m;
-                    }
-                },
-                _ => ()
-            }
-        }
-        match alignment_type {
-            AlignmentType::Global => {
-                let score = self.S[col][m];
-                self.traceback.get_alignment(n, m, x, y, score)
             },
-            _ => self.traceback.get_alignment(best_i, best_j, x, y, best)
-        }
-
-        
+            {},
+            { self.traceback.get_alignment(best_i, best_j, x, y, best) }
+        );
     }
 }
 
@@ -229,21 +248,19 @@ impl Traceback {
         }
     }
 
-    fn init(&mut self, m: usize, n: usize, alignment_type: AlignmentType) {
-        match alignment_type {
-            AlignmentType::Global => {
-                // set the first cell to start, the rest to deletions
-                for i in 0..n+1 {
-                    self.matrix[i].clear();
-                    self.matrix[i].push_values(m + 1, TBDEL);
-                }
-                self.matrix[0].set(0, TBSTART);
-            },
-            _ => {
-                for i in 0..n+1 {
-                    self.matrix[i].clear();
-                    self.matrix[i].push_values(m + 1, TBSTART);
-                }
+    fn init(&mut self, m: usize, n: usize, global: bool) {
+        if global {
+            // set the first cell to start, the rest to deletions
+            for i in 0..n+1 {
+                self.matrix[i].clear();
+                self.matrix[i].push_values(m + 1, TBDEL);
+            }
+            self.matrix[0].set(0, TBSTART);
+        }
+        else {
+            for i in 0..n+1 {
+                self.matrix[i].clear();
+                self.matrix[i].push_values(m + 1, TBSTART);
             }
         }
     }
