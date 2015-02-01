@@ -13,5 +13,31 @@ Currently, rust-bio provides
 * BWT and FM-Index,
 * rank/select data structures.
 
-Find out more at https://github.com/johanneskoester/rust-bio and in the API
-documentation at https://johanneskoester.github.io/rust-bio/doc/bio/index.html.
+Find out more at https://github.com/johanneskoester/rust-bio.
+
+## Usage
+
+To use rust-bio in your Rust project, add the following to your `Cargo.toml`
+
+```
+[dependencies]
+bio = "*"
+```
+
+and import the crate from your source code:
+
+```
+extern crate bio;
+// use e.g. a pattern matching algorithm
+use bio::pattern_matching::bndm::BNDM;
+```
+
+For more information, please read the API documentation: https://johanneskoester.github.io/rust-bio/doc/bio/index.html
+
+## Authors 
+
+* Johannes Köster <johannes.koester@tu-dortmund.de>
+
+## License
+
+Licensed under the MIT license http://opensource.org/licenses/MIT. This project may not be copied, modified, or distributed except according to those terms.
