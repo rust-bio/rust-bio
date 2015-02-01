@@ -25,23 +25,19 @@ use alignment::{Alignment, AlignmentOperation};
 use bitencoding::BitEnc;
 
 
-struct AlignmentState {
-    m: usize,
-    n: usize,
-    best: i32,
-}
-
-
 macro_rules! align {
     (
-        $obj:ident, $state:ident,
+        $obj:ident, $m:ident, $n:ident, $i: ident, $j:ident,
         $init:block, $inner:block, $outer:block, $ret:block
     ) => (
         {
-            let (mut best, mut best_i, mut best_j) = (0, 0, 0);
+            $obj.best = 0;
+            $obj.best_i = 0;
+            $obj.best_j = 0;
+
             let mut col = 0;
 
-            for i in 1..$n+1 {
+            for $i in 1..$n+1 {
                 col = i % 2;
                 let prev = 1 - col;
 
@@ -50,7 +46,7 @@ macro_rules! align {
 
                 let b = y[i - 1];
                 let mut score = 0i32;
-                for j in 1..$m+1 {
+                for $j in 1..$m+1 {
                     let a = x[j - 1];
 
                     // score for deletion
@@ -105,7 +101,7 @@ pub struct Aligner<F> where F: Fn(u8, u8) -> i32 {
     traceback: Traceback,
     gap_open: i32,
     gap_extend: i32,
-    score: F
+    score: F,
 }
 
 
@@ -165,7 +161,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         self.traceback.init(m, n, true);
 
         align!(
-            self, m, n,
+            self, m, n, i, j,
             {
                 self.S[col][0] = self.gap_open + (i as i32 - 1) * self.gap_extend;
                 self.traceback.del(i, 0);
@@ -184,17 +180,17 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         self.traceback.init(m, n, false);
 
         align!(
-            self, m, n,
+            self, m, n, i, j,
             { self.S[col][0] = 0; },
             {},
             {
-                if score > best {
-                    best = score;
-                    best_i = i;
-                    best_j = m;
+                if score > self.best {
+                    self.best = score;
+                    self.best_i = i;
+                    self.best_j = m;
                 }
             },
-            { self.traceback.get_alignment(best_i, best_j, x, y, best) }
+            { self.traceback.get_alignment(self.best_i, self.best_j, x, y, self.best) }
         );
     }
 
@@ -205,7 +201,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         self.traceback.init(m, n, false);
 
         align!(
-            self, m, n,
+            self, m, n, i, j,
             { self.S[col][0] = 0; },
             {
                 if score < 0 {
