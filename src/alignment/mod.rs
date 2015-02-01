@@ -14,6 +14,7 @@ pub enum AlignmentOperation {
 }
 
 
+#[derive(Show)]
 pub struct Alignment {
     pub score: i32,
     pub i: usize,

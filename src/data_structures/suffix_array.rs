@@ -89,7 +89,7 @@ pub fn get_suffix_array(text: &[u8]) -> SuffixArray {
 ///         None,    Some(0), Some(1), Some(1), Some(2), Some(1), Some(4),
 ///         Some(0), Some(1), Some(3), Some(1), Some(1), Some(2), Some(0),
 ///         Some(4), Some(0), Some(2), Some(2), Some(2), Some(1), Some(3),
-///         Some(3)
+///         Some(3), None
 ///     ]
 /// )
 /// ```
@@ -103,7 +103,7 @@ pub fn get_lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
         rank[pos[r]] = r;
     }
 
-    let mut lcp: LCPArray = repeat(None).take(n).collect();
+    let mut lcp: LCPArray = repeat(None).take(n + 1).collect();
     let mut l = 0us;
     for p in (0..n-1) {
         let r = rank[p];

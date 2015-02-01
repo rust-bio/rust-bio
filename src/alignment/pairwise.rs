@@ -25,65 +25,87 @@ use alignment::{Alignment, AlignmentOperation};
 use bitencoding::BitEnc;
 
 
+struct AlignmentState {
+    m: usize,
+    n: usize,
+    best: i32,
+    best_i: usize,
+    best_j: usize,
+    i: usize,
+    j: usize,
+    score: i32,
+    col: usize
+}
+
+
 macro_rules! align {
     (
-        $obj:ident, $m:ident, $n:ident, $i: ident, $j:ident,
+        $aligner:ident, $x:ident, $y:ident, $state:ident,
         $init:block, $inner:block, $outer:block, $ret:block
     ) => (
         {
-            $obj.best = 0;
-            $obj.best_i = 0;
-            $obj.best_j = 0;
+            let mut $state = AlignmentState {
+                m: $x.len(), n: $y.len(),
+                best: 0, best_i: 0, best_j: 0,
+                i: 1, j: 1,
+                score: 0,
+                col: 0
+            };
 
-            let mut col = 0;
-
-            for $i in 1..$n+1 {
-                col = i % 2;
-                let prev = 1 - col;
+            while $state.i <= $state.n {
+                $state.col = $state.i % 2;
+                let prev = 1 - $state.col;
 
                 // init code
                 $init
 
-                let b = y[i - 1];
-                let mut score = 0i32;
-                for $j in 1..$m+1 {
-                    let a = x[j - 1];
+                // read next y symbol
+                let b = $y[$state.i - 1];
+                $state.j = 1;
+
+                while $state.j <= $state.m {
+                    // read next x symbol
+                    let a = $x[$state.j - 1];
 
                     // score for deletion
                     let d_score = max(
-                        $obj.S[prev][j] + $obj.gap_open,
-                        $obj.D[prev][j] + $obj.gap_extend
+                        $aligner.S[prev][$state.j] + $aligner.gap_open,
+                        $aligner.D[prev][$state.j] + $aligner.gap_extend
                     );
                     // score for insertion
                     let i_score = max(
-                        $obj.S[col][j-1] + $obj.gap_open,
-                        $obj.I[col][j-1] + $obj.gap_extend
+                        $aligner.S[$state.col][$state.j-1] + $aligner.gap_open,
+                        $aligner.I[$state.col][$state.j-1] + $aligner.gap_extend
                     );
                     // score for substitution
-                    score = $obj.S[prev][j-1] + ($obj.score)(a, b);
+                    $state.score = $aligner.S[prev][$state.j-1] + ($aligner.score)(a, b);
 
-                    if d_score > score {
-                        score = d_score;
-                        $obj.traceback.del(i, j);
+                    if d_score > $state.score {
+                        $state.score = d_score;
+                        $aligner.traceback.del($state.i, $state.j);
                     }
-                    else if i_score > score {
-                        score = i_score;
-                        $obj.traceback.ins(i, j);
+                    else if i_score > $state.score {
+                        $state.score = i_score;
+                        $aligner.traceback.ins($state.i, $state.j);
                     }
                     else {
-                        $obj.traceback.subst(i, j);
+                        $aligner.traceback.subst($state.i, $state.j);
                     }
 
                     // inner code
                     $inner
 
-                    $obj.S[col][j] = score;
-                    $obj.D[col][j] = d_score;
-                    $obj.I[col][j] = i_score;
+                    $aligner.S[$state.col][$state.j] = $state.score;
+                    $aligner.D[$state.col][$state.j] = d_score;
+                    $aligner.I[$state.col][$state.j] = i_score;
+
+                    $state.j += 1;
                 }
 
                 // outer code
                 $outer
+
+                $state.i += 1;
             }
 
             // return code
@@ -161,16 +183,15 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         self.traceback.init(m, n, true);
 
         align!(
-            self, m, n, i, j,
+            self, x, y, state,
             {
-                self.S[col][0] = self.gap_open + (i as i32 - 1) * self.gap_extend;
-                self.traceback.del(i, 0);
+                self.S[state.col][0] = self.gap_open + (state.i as i32 - 1) * self.gap_extend;
+                self.traceback.del(state.i, 0);
             }, {}, {},
             {
-                let score = self.S[col][m];
-                self.traceback.get_alignment(n, m, x, y, score)
+                self.traceback.get_alignment(state.n, state.m, x, y, state.score)
             }
-        );
+        )
     }
 
     /// Calculate semiglobal alignment.
@@ -180,18 +201,18 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         self.traceback.init(m, n, false);
 
         align!(
-            self, m, n, i, j,
-            { self.S[col][0] = 0; },
+            self, x, y, state,
+            { self.S[state.col][0] = 0; },
             {},
             {
-                if score > self.best {
-                    self.best = score;
-                    self.best_i = i;
-                    self.best_j = m;
+                if state.score > state.best {
+                    state.best = state.score;
+                    state.best_i = state.i;
+                    state.best_j = state.m;
                 }
             },
-            { self.traceback.get_alignment(self.best_i, self.best_j, x, y, self.best) }
-        );
+            { self.traceback.get_alignment(state.best_i, state.best_j, x, y, state.best) }
+        )
     }
 
     /// Calculate local alignment.
@@ -201,22 +222,22 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         self.traceback.init(m, n, false);
 
         align!(
-            self, m, n, i, j,
-            { self.S[col][0] = 0; },
+            self, x, y, state,
+            { self.S[state.col][0] = 0; },
             {
-                if score < 0 {
-                    self.traceback.start(i, j);
-                    score = 0;
+                if state.score < 0 {
+                    self.traceback.start(state.i, state.j);
+                    state.score = 0;
                 }
-                else if score > best {
-                    best = score;
-                    best_i = i;
-                    best_j = j;
+                else if state.score > state.best {
+                    state.best = state.score;
+                    state.best_i = state.i;
+                    state.best_j = state.j;
                 }
             },
             {},
-            { self.traceback.get_alignment(best_i, best_j, x, y, best) }
-        );
+            { self.traceback.get_alignment(state.best_i, state.best_j, x, y, state.best) }
+        )
     }
 }
 
@@ -226,10 +247,10 @@ struct Traceback {
 }
 
 
-static TBSTART: u8 = 0b00;
-static TBSUBST: u8 = 0b01;
-static TBINS: u8   = 0b10;
-static TBDEL: u8   = 0b11;
+const TBSTART: u8 = 0b00;
+const TBSUBST: u8 = 0b01;
+const TBINS: u8   = 0b10;
+const TBDEL: u8   = 0b11;
 
 
 impl Traceback {
@@ -277,40 +298,35 @@ impl Traceback {
         self.matrix[i].set(j, TBINS);
     }
 
-    fn is_subst(&self, i: usize, j: usize) -> bool {
-        self.matrix[i].get(j).unwrap() == TBSUBST
-    }
-
-    fn is_del(&self, i: usize, j: usize) -> bool {
-        self.matrix[i].get(j).unwrap() == TBDEL
-    }
-
-    fn is_ins(&self, i: usize, j: usize) -> bool {
-        self.matrix[i].get(j).unwrap() == TBINS
+    fn get(&self, i: usize, j: usize) -> u8 {
+        self.matrix[i].get(j).unwrap()
     }
 
     fn get_alignment(&self, mut i: usize, mut j: usize, x: &[u8], y: &[u8], score: i32) -> Alignment {
         let mut ops = Vec::with_capacity(x.len());
 
         loop {
-            let (ii, jj, op) = if self.is_subst(i, j) {
-                let op = if y[i-1] == x[j-1] {
-                    AlignmentOperation::Match
+            let (ii, jj, op) = match self.get(i, j) {
+                TBSUBST => {
+                    let op = if y[i-1] == x[j-1] {
+                        AlignmentOperation::Match
+                    }
+                    else {
+                        AlignmentOperation::Subst
+                    };
+                    (i - 1, j - 1, op)
                 }
-                else {
-                    AlignmentOperation::Subst
-                };
-                (i - 1, j - 1, op)
-            }
-            else if self.is_del(i, j) {
-                (i - 1, j, AlignmentOperation::Del)
-            }
-            else if self.is_ins(i, j) {
-                (i, j - 1, AlignmentOperation::Ins)
-            } else {
-                // reached alignment start
-                break;
+                TBDEL => {
+                    (i - 1, j, AlignmentOperation::Del)
+                }
+                TBINS => {
+                    (i, j - 1, AlignmentOperation::Ins)
+                }
+                _ => {
+                    break;
+                }
             };
+
             ops.push(op);
             i = ii;
             j = jj;
@@ -333,6 +349,7 @@ mod tests {
         let score = |&: a: u8, b: u8| if a == b {1i32} else {-1i32};
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
         let alignment = aligner.semiglobal(x, y);
+        println!("{:?}", alignment);
         assert_eq!(alignment.i, 4);
         assert_eq!(alignment.j, 0);
         assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
