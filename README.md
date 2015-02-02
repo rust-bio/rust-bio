@@ -33,7 +33,7 @@ use bio::pattern_matching::bndm::BNDM;
 
 let pattern = b"GAAAA";
 let text = b"ACGGCTAGAAAAGGCTAGAAAA";
-let bndm = bndm::BNDM::new(pattern);
+let bndm = BNDM::new(pattern);
 let let matches = bndm.find_all(text);
 ```
 
