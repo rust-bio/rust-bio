@@ -43,6 +43,8 @@ For more information, please read the API documentation: https://johanneskoester
 
 * Johannes Köster <johannes.koester@tu-dortmund.de>
 
+The next name in this list could be you! If you are interested in joining the effort to build a general purpose Rust bioinformatics library, just send me an email, or issue a pull request with your first contribution.
+
 ## License
 
 Licensed under the MIT license http://opensource.org/licenses/MIT. This project may not be copied, modified, or distributed except according to those terms.
