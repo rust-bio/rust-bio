@@ -34,7 +34,7 @@ use bio::pattern_matching::bndm::BNDM;
 let pattern = b"GAAAA";
 let text = b"ACGGCTAGAAAAGGCTAGAAAA";
 let bndm = BNDM::new(pattern);
-let let matches = bndm.find_all(text);
+let matches = bndm.find_all(text);
 ```
 
 For more information, please read the API documentation: https://johanneskoester.github.io/rust-bio/doc/bio/index.html
