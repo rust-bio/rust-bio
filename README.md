@@ -1,4 +1,4 @@
-# Rust-bio, a rusty bioinformatics library.
+# Rust-Bio, a rusty bioinformatics library.
 
 This library provides implementations of many algorithms and data structures
 that are useful for bioinformatics.
