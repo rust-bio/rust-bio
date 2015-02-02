@@ -19,14 +19,14 @@ Find out more at https://github.com/johanneskoester/rust-bio.
 
 To use rust-bio in your Rust project, add the following to your `Cargo.toml`
 
-```
+```toml
 [dependencies]
 bio = "*"
 ```
 
 and import the crate from your source code:
 
-```
+```rust
 extern crate bio;
 // use e.g. a pattern matching algorithm
 use bio::pattern_matching::bndm::BNDM;
