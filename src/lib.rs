@@ -1,4 +1,7 @@
-#![allow(unstable)]
+#![feature(core)]
+#![feature(collections)]
+#![feature(io)]
+#![feature(test)]
 
 //! # Rust-bio, a rusty bioinformatics library.
 //!
@@ -17,9 +20,9 @@
 //!
 //! Find out more at https://github.com/johanneskoester/rust-bio.
 
-#[macro_use]
-extern crate log;
+
 extern crate test;
+
 
 pub mod io;
 pub mod utils;

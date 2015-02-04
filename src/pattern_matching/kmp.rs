@@ -20,8 +20,7 @@
 //! ```
 
 
-use std::iter::{repeat, Enumerate};
-use std::slice;
+use std::iter::repeat;
 
 
 type LPS = Vec<usize>;
@@ -54,7 +53,7 @@ impl<'a> KMP<'a> {
     }
 
     pub fn find_all<'b>(&'b self, text: &'b [u8]) -> KMPMatches {
-        KMPMatches { kmp: self, q: 0, text: text.iter().enumerate() }
+        KMPMatches { kmp: self, q: 0, i: 0, text: text }
     }
 }
 
@@ -79,7 +78,8 @@ fn get_lps(pattern: &[u8]) -> LPS {
 pub struct KMPMatches<'a> {
     kmp: &'a KMP<'a>,
     q: usize,
-    text: Enumerate<slice::Iter<'a, u8>>
+    i: usize,
+    text: &'a [u8],
 }
 
 
@@ -87,11 +87,13 @@ impl<'a> Iterator for KMPMatches<'a> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {
-        for (i, &c) in self.text {
+        while self.i < self.text.len() {
+            let c = self.text[self.i];
             self.q = self.kmp.delta(self.q, c);
             if self.q == self.kmp.m {
-                return Some(i - self.kmp.m + 1);
+                return Some(self.i - self.kmp.m + 1);
             }
+            self.i += 1;
         }
 
         None

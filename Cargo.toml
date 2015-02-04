@@ -7,7 +7,3 @@ description = "A rusty bioinformatics library. This library provides implementat
 homepage = "https://github.com/johanneskoester/rust-bio"
 readme = "README.md"
 license = "MIT"
-
-[dependencies]
-
-log = "*"

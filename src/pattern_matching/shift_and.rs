@@ -14,10 +14,6 @@
 //! ```
 
 
-use std::iter::Enumerate;
-use std::slice;
-
-
 #[derive(Copy)]
 pub struct ShiftAnd {
     m: usize,
@@ -38,7 +34,7 @@ impl ShiftAnd {
 
     /// Find all occurences of pattern in the given text.
     pub fn find_all<'a>(&'a self, text: &'a [u8]) -> ShiftAndMatches {
-        ShiftAndMatches { shiftand: self, active: 0, text: text.iter().enumerate() }
+        ShiftAndMatches { shiftand: self, active: 0, text: text, i: 0 }
     }
 }
 
@@ -59,7 +55,8 @@ pub fn get_masks(pattern: &[u8]) -> ([u64; 256], u64) {
 pub struct ShiftAndMatches<'a> {
     shiftand: &'a ShiftAnd,
     active: u64,
-    text: Enumerate<slice::Iter<'a, u8>>
+    i: usize,
+    text: &'a [u8],
 }
 
 
@@ -67,11 +64,13 @@ impl<'a> Iterator for ShiftAndMatches<'a> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {
-        for (i, &c) in self.text {
+        while self.i < self.text.len() {
+            let c = self.text[self.i];
             self.active = ((self.active << 1) | 1) & self.shiftand.masks[c as usize];
             if self.active & self.shiftand.accept > 0 {
-                return Some(i - self.shiftand.m + 1);
+                return Some(self.i - self.shiftand.m + 1);
             }
+            self.i += 1;
         }
 
         None
