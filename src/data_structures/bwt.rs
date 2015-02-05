@@ -1,7 +1,7 @@
 //! The Burrows-Wheeler-Transform and related data structures.
 
 use std::iter::repeat;
-use std::iter::AdditiveIterator;
+use std::iter::{AdditiveIterator, DoubleEndedIterator};
 
 use data_structures::suffix_array::SuffixArray;
 use utils::prescan;
@@ -97,12 +97,12 @@ impl<'a> FMIndex<'a> {
     /// let bwt = get_bwt(text, &pos);
     /// let fm = FMIndex::new(&bwt, 3, &alphabet);
     /// let pattern = b"TTA";
-    /// let sai = fm.backward_search(pattern);
+    /// let sai = fm.backward_search(pattern.iter());
     /// assert_eq!(sai, (19, 21));
     /// ```
-    pub fn backward_search(&self, pattern: &[u8]) -> (usize, usize) {
+    pub fn backward_search<'b, P: Iterator<Item=&'b u8> + DoubleEndedIterator>(&self, pattern: P) -> (usize, usize) {
         let (mut l, mut r) = (0, self.bwt.len() - 1);
-        for &a in pattern.iter().rev() {
+        for &a in pattern.rev() {
             let less = self.less[a as usize];
             l = less + if l > 0 { self.occ.get_occ(self.bwt, l - 1, a) } else { 0 };
             r = less + self.occ.get_occ(self.bwt, r, a) - 1;

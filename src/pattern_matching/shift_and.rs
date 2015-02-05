@@ -9,10 +9,11 @@
 //! let pattern = b"AAAA";
 //! let text = b"ACGGCTAGAAAAGGCTAG";
 //! let shiftand = shift_and::ShiftAnd::new(pattern);
-//! let occ = shiftand.find_all(text).next().unwrap();
+//! let occ = shiftand.find_all(text.iter()).next().unwrap();
 //! assert_eq!(occ, 8);
 //! ```
 
+use std::iter::Enumerate;
 
 #[derive(Copy)]
 pub struct ShiftAnd {
@@ -33,8 +34,8 @@ impl ShiftAnd {
     }
 
     /// Find all occurences of pattern in the given text.
-    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> ShiftAndMatches {
-        ShiftAndMatches { shiftand: self, active: 0, text: text, i: 0 }
+    pub fn find_all<'a, I: Iterator<Item=&'a u8>>(&'a self, text: I) -> ShiftAndMatches<I> {
+        ShiftAndMatches { shiftand: self, active: 0, text: text.enumerate() }
     }
 }
 
@@ -52,25 +53,22 @@ pub fn get_masks(pattern: &[u8]) -> ([u64; 256], u64) {
 }
 
 
-pub struct ShiftAndMatches<'a> {
+pub struct ShiftAndMatches<'a, I: Iterator<Item=&'a u8>> {
     shiftand: &'a ShiftAnd,
     active: u64,
-    i: usize,
-    text: &'a [u8],
+    text: Enumerate<I>,
 }
 
 
-impl<'a> Iterator for ShiftAndMatches<'a> {
+impl<'a, I: Iterator<Item=&'a u8>> Iterator for ShiftAndMatches<'a, I> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {
-        while self.i < self.text.len() {
-            let c = self.text[self.i];
+        for (i, &c) in self.text.by_ref() {
             self.active = ((self.active << 1) | 1) & self.shiftand.masks[c as usize];
             if self.active & self.shiftand.accept > 0 {
-                return Some(self.i - self.shiftand.m + 1);
+                return Some(i - self.shiftand.m + 1);
             }
-            self.i += 1;
         }
 
         None

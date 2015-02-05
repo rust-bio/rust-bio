@@ -24,12 +24,12 @@ pub struct Alphabet {
 
 impl Alphabet {
     pub fn new(symbols: &[u8]) -> Self {
-        Alphabet::from_iter(symbols.iter().map(|&c| c))
+        Alphabet::from_iter(symbols.iter())
     }
 
-    pub fn from_iter<I: Iterator<Item=u8>>(symbols: I) -> Self {
+    pub fn from_iter<'a, I: Iterator<Item=&'a u8>>(symbols: I) -> Self {
         let mut s = BitvSet::new();
-        s.extend(symbols.map(|c| c as usize));
+        s.extend(symbols.map(|&c| c as usize));
 
         Alphabet { symbols: s }
     }
@@ -69,8 +69,10 @@ impl RankTransform {
             .collect()
     }
 
-    pub fn get_alphabet(&self) -> Alphabet {
-        Alphabet::from_iter(self.ranks.keys().map(|c| c as u8))
+    pub fn get_alphabet<'a>(&self) -> Alphabet {
+        let mut symbols = BitvSet::with_capacity(self.ranks.len());
+        symbols.extend(self.ranks.keys());
+        Alphabet { symbols: symbols }
     }
 }
 

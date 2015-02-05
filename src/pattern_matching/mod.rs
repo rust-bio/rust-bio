@@ -40,7 +40,7 @@ ATAGAGGATAGATGAT";
     fn bench_shift_and(b: &mut Bencher) {
         let shiftand = ShiftAnd::new(PATTERN);
         b.iter(|| {
-            shiftand.find_all(TEXT).collect::<Vec<usize>>()
+            shiftand.find_all(TEXT.iter()).collect::<Vec<usize>>()
         });
     }
 
@@ -72,7 +72,7 @@ ATAGAGGATAGATGAT";
     fn bench_kmp(b: &mut Bencher) {
         let kmp = KMP::new(PATTERN);
         b.iter(|| {
-            kmp.find_all(TEXT).collect::<Vec<usize>>()
+            kmp.find_all(TEXT.iter()).collect::<Vec<usize>>()
         });
     }
 }

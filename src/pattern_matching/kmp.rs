@@ -15,12 +15,12 @@
 //! let text = b"aaaaabbabbbbbbbabbab";
 //! let pattern = b"abbab";
 //! let kmp = KMP::new(pattern);
-//! let occ: Vec<usize> = kmp.find_all(text).collect();
+//! let occ: Vec<usize> = kmp.find_all(text.iter()).collect();
 //! assert_eq!(occ, [4, 15]);
 //! ```
 
 
-use std::iter::repeat;
+use std::iter::{repeat, Enumerate};
 
 
 type LPS = Vec<usize>;
@@ -52,8 +52,8 @@ impl<'a> KMP<'a> {
         q
     }
 
-    pub fn find_all<'b>(&'b self, text: &'b [u8]) -> KMPMatches {
-        KMPMatches { kmp: self, q: 0, i: 0, text: text }
+    pub fn find_all<'b, I: Iterator<Item=&'b u8>>(&'b self, text: I) -> KMPMatches<I> {
+        KMPMatches { kmp: self, q: 0, text: text.enumerate() }
     }
 }
 
@@ -75,25 +75,22 @@ fn get_lps(pattern: &[u8]) -> LPS {
 }
 
 
-pub struct KMPMatches<'a> {
+pub struct KMPMatches<'a, I: Iterator<Item=&'a u8>> {
     kmp: &'a KMP<'a>,
     q: usize,
-    i: usize,
-    text: &'a [u8],
+    text: Enumerate<I>,
 }
 
 
-impl<'a> Iterator for KMPMatches<'a> {
+impl<'a, I: Iterator<Item=&'a u8>> Iterator for KMPMatches<'a, I> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {
-        while self.i < self.text.len() {
-            let c = self.text[self.i];
+        for (i, &c) in self.text.by_ref() {
             self.q = self.kmp.delta(self.q, c);
             if self.q == self.kmp.m {
-                return Some(self.i - self.kmp.m + 1);
+                return Some(i - self.kmp.m + 1);
             }
-            self.i += 1;
         }
 
         None

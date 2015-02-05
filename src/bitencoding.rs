@@ -17,7 +17,7 @@ use std::iter::range_step;
 
 
 pub struct BitEnc {
-    pub storage: Vec<u32>,
+    storage: Vec<u32>,
     width: usize,
     mask: u32,
     len: usize
