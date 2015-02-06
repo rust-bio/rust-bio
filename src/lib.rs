@@ -22,7 +22,7 @@
 
 
 extern crate test;
-
+use std::collections::HashMap;
 
 pub mod io;
 pub mod utils;
