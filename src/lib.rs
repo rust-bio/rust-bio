@@ -24,7 +24,6 @@
 extern crate test;
 use std::collections::HashMap;
 
-pub mod io;
 pub mod utils;
 pub mod alphabets;
 pub mod pattern_matching;
