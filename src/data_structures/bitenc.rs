@@ -3,7 +3,7 @@
 //! # Example
 //!
 //! ```
-//! use bio::bitencoding::BitEnc;
+//! use bio::data_structures::bitenc::BitEnc;
 //! let mut bitenc = BitEnc::new(2);
 //! bitenc.push(0);
 //! bitenc.push(2);

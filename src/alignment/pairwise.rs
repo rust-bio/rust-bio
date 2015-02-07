@@ -22,7 +22,7 @@ use std::iter::repeat;
 use std::cmp::max;
 
 use alignment::{Alignment, AlignmentOperation};
-use bitencoding::BitEnc;
+use data_structures::bitenc::BitEnc;
 
 
 struct AlignmentState {
