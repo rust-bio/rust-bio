@@ -83,9 +83,15 @@ pub fn get_suffix_array(text: &[u8]) -> SuffixArray {
 /// use bio::data_structures::suffix_array::{get_suffix_array,get_lcp};
 /// let text = b"GCCTTAACATTATTACGCCTA$";
 /// let pos = get_suffix_array(text);
+///
+/// // obtain compressed LCP array
 /// let lcp = get_lcp(text.as_slice(), &pos);
+///
+/// // get most values in O(1).
 /// assert_eq!(lcp.get(6).unwrap(), 4);
-/// let uncompressed: Vec<isize> = lcp.iter().collect();
+///
+/// // obtain uncompressed LCP array.
+/// let uncompressed = lcp.decompress();
 /// assert_eq!(
 ///     uncompressed,
 ///     [
