@@ -1,6 +1,5 @@
 #![feature(core)]
 #![feature(collections)]
-#![feature(io)]
 #![feature(test)]
 
 //! # Rust-bio, a rusty bioinformatics library.
@@ -24,7 +23,6 @@
 extern crate test;
 
 
-pub mod io;
 pub mod utils;
 pub mod alphabets;
 pub mod pattern_matching;
