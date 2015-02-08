@@ -89,6 +89,10 @@ impl<S: Int + NumCast + FromPrimitive, B: Int + NumCast> SmallInts<S, B> {
         self.iter().collect()
     }
 
+    pub fn len(&self) -> usize {
+        self.smallints.len()
+    }
+
     fn real_value(&self, i: usize, v: S) -> Option<B> {
         if v < Int::max_value() {
             cast(v)
