@@ -4,7 +4,9 @@
 // except according to those terms.
 
 //! Backward oracle matching algorithm.
-//! 
+//! Best-case complexity: O(n / m) with pattern of length m and text of length n.
+//! Worst case complexity: O(n * m).
+//!
 //! # Example
 //!
 //! ```
@@ -48,7 +50,7 @@ impl BOM {
             // now, add edges for substrings ending with a
             let mut k = suff[i - 1];
 
-            // for this iterator over the known suffixes until
+            // for this iterate over the known suffixes until
             // reaching an edge labelled with a or the start
             loop {
                 match k {

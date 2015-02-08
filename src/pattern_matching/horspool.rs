@@ -22,7 +22,7 @@
 //!    If it does not match, continue with the shift phase.
 //! 2. shift phase: let l[a] be the rightmost position of a in 
 //!    the pattern without the last symbol. If it does not occur
-//!    let l be -1. Shift the window by m - 1 - l[a]. I.e.
+//!    let l[a] be -1. Shift the window by m - 1 - l[a]. I.e.
 //!    we shift the window such that the rightmost a matches
 //!    the a at the end of the last window.
 //!    If a does not occur in the pattern, we shift by the whole length.
