@@ -1,3 +1,8 @@
+// Copyright 2014 Johannes Köster.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
 //! A data structure for a sequence of small integers with a few big integers.
 //! Small ints are stored in type S (e.g. a byte), big ints are stored separately (in type B) in a BTree.
 //!

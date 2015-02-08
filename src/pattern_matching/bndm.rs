@@ -1,3 +1,8 @@
+// Copyright 2014 Johannes Köster.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
 //! Backward nondeterministic DAWG matching (BNDM).
 //! Best-case complexity: O(n / m) with pattern of length m <= 64 and text of length n.
 //! Worst case complexity: O(n * m).

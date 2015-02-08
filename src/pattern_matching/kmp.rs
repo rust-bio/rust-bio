@@ -1,3 +1,8 @@
+// Copyright 2014 Johannes Köster.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
 //! Algorithm of Knuth Morris and Pratt.
 //! Constructs an automaton recognizing the pattern, and scans linearly over
 //! a text of length n. Complexity: O(n). Here, the automaton is implemented

@@ -1,4 +1,11 @@
+// Copyright 2014 Johannes Köster.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
 //! The Burrows-Wheeler-Transform and related data structures.
+//! The implementation is based on the lecture notes
+//! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
 use std::iter::repeat;
 use std::iter::{AdditiveIterator, DoubleEndedIterator};

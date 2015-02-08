@@ -2,6 +2,11 @@
 #![feature(collections)]
 #![feature(test)]
 
+// Copyright 2014 Johannes Köster.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
 //! # Rust-bio, a rusty bioinformatics library.
 //!
 //! This library provides implementations of many algorithms and data structures
