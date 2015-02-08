@@ -55,7 +55,7 @@ impl RankSelect {
         let raw = bits.to_bytes();
         let s = k * 32;
 
-        RankSelect { n: n, s: s, superblocks: get_superblocks(n, s, &raw), bits: raw }
+        RankSelect { n: n, s: s, superblocks: superblocks(n, s, &raw), bits: raw }
     }
 
     /// Get the rank of a given bit.
@@ -121,7 +121,7 @@ impl RankSelect {
 }
 
 
-fn get_superblocks(n: usize, s: usize, raw_bits: &Vec<u8>) -> Vec<u32> {
+fn superblocks(n: usize, s: usize, raw_bits: &Vec<u8>) -> Vec<u32> {
     let mut superblocks = Vec::with_capacity(n / s + 1);
     let mut rank: u32 = 0;
     let mut i = 0;

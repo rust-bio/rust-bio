@@ -24,7 +24,7 @@ pub struct BitEnc {
 }
 
 
-fn get_mask(width: usize) -> u32 {
+fn mask(width: usize) -> u32 {
     (1 << width) - 1
 }
 
@@ -32,16 +32,16 @@ fn get_mask(width: usize) -> u32 {
 impl BitEnc {
     pub fn new(width: usize) -> Self {
         assert!(width <= 8, "Only encoding widths up to 8 supported");
-        BitEnc { storage: Vec::new(), width: width, mask: get_mask(width), len: 0 }
+        BitEnc { storage: Vec::new(), width: width, mask: mask(width), len: 0 }
     }
 
     pub fn with_capacity(width: usize, n: usize) -> Self {
         assert!(width <= 8, "Only encoding widths up to 8 supported");
-        BitEnc { storage: Vec::with_capacity(n * width / 32), width: width, mask: get_mask(width), len: 0 }
+        BitEnc { storage: Vec::with_capacity(n * width / 32), width: width, mask: mask(width), len: 0 }
     }
 
     pub fn push(&mut self, value: u8) {
-        let (block, bit) = self.get_addr(self.len);
+        let (block, bit) = self.addr(self.len);
         if bit == 0 {
             self.storage.push(0);
         }
@@ -52,7 +52,7 @@ impl BitEnc {
     pub fn push_values(&mut self, mut n: usize, value: u8) {
         {
             // fill the last block
-            let (block, bit) = self.get_addr(self.len);
+            let (block, bit) = self.addr(self.len);
             if bit > 0 {
                 for bit in range_step(bit, 32, self.width) {
                     self.set_by_addr(block, bit, value);
@@ -73,7 +73,7 @@ impl BitEnc {
 
         // push as many value blocks as needed
         let i = self.len + n;
-        let (block, bit) = self.get_addr(i);
+        let (block, bit) = self.addr(i);
         for _ in self.storage.len()..block {
             self.storage.push(value_block);
         }
@@ -87,7 +87,7 @@ impl BitEnc {
     }
 
     pub fn set(&mut self, i: usize, value: u8) {
-        let (block, bit) = self.get_addr(i);
+        let (block, bit) = self.addr(i);
         self.set_by_addr(block, bit, value);
     }
 
@@ -96,7 +96,7 @@ impl BitEnc {
             None
         }
         else {
-            let (block, bit) = self.get_addr(i);
+            let (block, bit) = self.addr(i);
             Some(self.get_by_addr(block, bit))
         }
     }
@@ -121,7 +121,7 @@ impl BitEnc {
         self.storage[block] |= (value as u32 & self.mask) << bit;
     }
 
-    fn get_addr(&self, i: usize) -> (usize, usize) {
+    fn addr(&self, i: usize) -> (usize, usize) {
         let k = i * self.width;
         (k / 32, k % 32)
     }

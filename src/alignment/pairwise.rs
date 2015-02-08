@@ -189,7 +189,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
                 self.traceback.del(state.i, 0);
             }, {}, {},
             {
-                self.traceback.get_alignment(state.n, state.m, x, y, state.score)
+                self.traceback.alignment(state.n, state.m, x, y, state.score)
             }
         )
     }
@@ -211,7 +211,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
                     state.best_j = state.m;
                 }
             },
-            { self.traceback.get_alignment(state.best_i, state.best_j, x, y, state.best) }
+            { self.traceback.alignment(state.best_i, state.best_j, x, y, state.best) }
         )
     }
 
@@ -236,7 +236,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
                 }
             },
             {},
-            { self.traceback.get_alignment(state.best_i, state.best_j, x, y, state.best) }
+            { self.traceback.alignment(state.best_i, state.best_j, x, y, state.best) }
         )
     }
 }
@@ -302,7 +302,7 @@ impl Traceback {
         self.matrix[i].get(j).unwrap()
     }
 
-    fn get_alignment(&self, mut i: usize, mut j: usize, x: &[u8], y: &[u8], score: i32) -> Alignment {
+    fn alignment(&self, mut i: usize, mut j: usize, x: &[u8], y: &[u8], score: i32) -> Alignment {
         let mut ops = Vec::with_capacity(x.len());
 
         loop {

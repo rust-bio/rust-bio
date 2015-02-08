@@ -4,7 +4,7 @@
 //!
 //! ```rust
 //! use bio::alphabets;
-//! let alphabet = alphabets::get_dna_alphabet();
+//! let alphabet = alphabets::dna_alphabet();
 //! assert!(alphabet.is_word(b"AACCTgga"));
 //! assert!(!alphabet.is_word(b"AXYZ"));
 //! ```
@@ -69,7 +69,7 @@ impl RankTransform {
             .collect()
     }
 
-    pub fn get_alphabet<'a>(&self) -> Alphabet {
+    pub fn alphabet<'a>(&self) -> Alphabet {
         let mut symbols = BitvSet::with_capacity(self.ranks.len());
         symbols.extend(self.ranks.keys());
         Alphabet { symbols: symbols }
@@ -78,12 +78,12 @@ impl RankTransform {
 
 
 /// Obtain the DNA alphabet.
-pub fn get_dna_alphabet() -> Alphabet {
+pub fn dna_alphabet() -> Alphabet {
     Alphabet::new(b"ACGTacgt")
 }
 
 
 /// Obtain the IUPAC DNA alphabet
-pub fn get_iupac_dna_alphabet() -> Alphabet {
+pub fn iupac_dna_alphabet() -> Alphabet {
     Alphabet::new(b"ACGTURYSWKMBDHVNacgturyswkmbdhvn")
 }

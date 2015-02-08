@@ -24,14 +24,14 @@ type BWTFind = Vec<usize>;
 /// # Example
 ///
 /// ```
-/// use bio::data_structures::suffix_array::get_suffix_array;
-/// use bio::data_structures::bwt::get_bwt;
+/// use bio::data_structures::suffix_array::suffix_array;
+/// use bio::data_structures::bwt::bwt;
 /// let text = b"GCCTTAACATTATTACGCCTA$";
-/// let pos = get_suffix_array(text);
-/// let bwt = get_bwt(text, &pos);
+/// let pos = suffix_array(text);
+/// let bwt = bwt(text, &pos);
 /// assert_eq!(bwt, b"ATTATTCAGGACCC$CTTTCAA");
 /// ```
-pub fn get_bwt(text: &[u8], pos: &SuffixArray) -> BWT {
+pub fn bwt(text: &[u8], pos: &SuffixArray) -> BWT {
     assert!(text.len() == pos.len());
     let n = text.len();
     let mut bwt: BWT = repeat(0).take(n).collect();
@@ -50,10 +50,10 @@ pub fn get_bwt(text: &[u8], pos: &SuffixArray) -> BWT {
 /// # Arguments
 ///
 /// * `bwt` - the BWT
-pub fn get_inverse(bwt: &BWT) -> Vec<u8> {
+pub fn invert_bwt(bwt: &BWT) -> Vec<u8> {
     let alphabet = Alphabet::new(bwt.as_slice());
     let n = bwt.len();
-    let bwtfind = get_bwtfind(bwt, &alphabet);
+    let bwtfind = bwtfind(bwt, &alphabet);
     let mut inverse = Vec::with_capacity(n);
 
     let mut r = bwtfind[0];
@@ -75,7 +75,7 @@ pub struct FMIndex<'a> {
 
 impl<'a> FMIndex<'a> {
     pub fn new(bwt: &'a BWT, k: usize, alphabet: &Alphabet) -> Self {
-        FMIndex { bwt: bwt, less: get_less(bwt, alphabet), occ: Occ::new(bwt, k, alphabet)}
+        FMIndex { bwt: bwt, less: less(bwt, alphabet), occ: Occ::new(bwt, k, alphabet)}
     }
 
     /// Perform backward search, yielding suffix array
@@ -88,13 +88,13 @@ impl<'a> FMIndex<'a> {
     /// # Example
     ///
     /// ```
-    /// use bio::data_structures::bwt::{get_bwt, FMIndex};
-    /// use bio::data_structures::suffix_array::get_suffix_array;
-    /// use bio::alphabets::get_dna_alphabet;
+    /// use bio::data_structures::bwt::{bwt, FMIndex};
+    /// use bio::data_structures::suffix_array::suffix_array;
+    /// use bio::alphabets::dna_alphabet;
     /// let text = b"GCCTTAACATTATTACGCCTA$";
-    /// let alphabet = get_dna_alphabet();
-    /// let pos = get_suffix_array(text);
-    /// let bwt = get_bwt(text, &pos);
+    /// let alphabet = dna_alphabet();
+    /// let pos = suffix_array(text);
+    /// let bwt = bwt(text, &pos);
     /// let fm = FMIndex::new(&bwt, 3, &alphabet);
     /// let pattern = b"TTA";
     /// let sai = fm.backward_search(pattern.iter());
@@ -104,8 +104,8 @@ impl<'a> FMIndex<'a> {
         let (mut l, mut r) = (0, self.bwt.len() - 1);
         for &a in pattern.rev() {
             let less = self.less[a as usize];
-            l = less + if l > 0 { self.occ.get_occ(self.bwt, l - 1, a) } else { 0 };
-            r = less + self.occ.get_occ(self.bwt, r, a) - 1;
+            l = less + if l > 0 { self.occ.get(self.bwt, l - 1, a) } else { 0 };
+            r = less + self.occ.get(self.bwt, r, a) - 1;
         }
 
         (l, r)
@@ -146,7 +146,7 @@ impl Occ {
         Occ { occ: occ, k: k }
     }
 
-    pub fn get_occ(&self, bwt: &BWT, r: usize, a: u8) -> usize {
+    pub fn get(&self, bwt: &BWT, r: usize, a: u8) -> usize {
         let i = r / self.k;
         self.occ[i][a as usize] +
         bwt[(i * self.k) + 1 .. r + 1].iter().map(|&c| (c == a) as usize).sum()
@@ -154,7 +154,7 @@ impl Occ {
 }
 
 
-fn get_less(bwt: &BWT, alphabet: &Alphabet) -> Less {
+fn less(bwt: &BWT, alphabet: &Alphabet) -> Less {
     let m = alphabet.max_symbol().expect("Expecting non-empty alphabet.") as usize + 1;
     let mut less: Less = repeat(0)
         .take(m).collect();
@@ -169,9 +169,9 @@ fn get_less(bwt: &BWT, alphabet: &Alphabet) -> Less {
 
 
 /// Calculate the bwtfind array needed for inverting the BWT.
-fn get_bwtfind(bwt: &BWT, alphabet: &Alphabet) -> BWTFind {
+fn bwtfind(bwt: &BWT, alphabet: &Alphabet) -> BWTFind {
     let n = bwt.len();
-    let mut less = get_less(bwt, alphabet);
+    let mut less = less(bwt, alphabet);
 
     let mut bwtfind: BWTFind = repeat(0).take(n).collect();
     for (r, &c) in bwt.iter().enumerate() {
@@ -185,31 +185,31 @@ fn get_bwtfind(bwt: &BWT, alphabet: &Alphabet) -> BWTFind {
 
 #[cfg(test)]
 mod tests {
-    use super::{get_bwtfind, get_bwt, get_inverse, Occ};
-    use data_structures::suffix_array::get_suffix_array;
+    use super::{bwtfind, bwt, invert_bwt, Occ};
+    use data_structures::suffix_array::suffix_array;
     use alphabets::Alphabet;
 
     #[test]
-    fn test_get_bwtfind() {
+    fn test_bwtfind() {
         let text = b"cabca$";
         let alphabet = Alphabet::new(b"abc$");
-        let pos = get_suffix_array(text);
-        let bwt = get_bwt(text, &pos);
-        let bwtfind = get_bwtfind(&bwt, &alphabet);
+        let pos = suffix_array(text);
+        let bwt = bwt(text, &pos);
+        let bwtfind = bwtfind(&bwt, &alphabet);
         assert_eq!(bwtfind, vec![5, 0, 3, 4, 1, 2]);
     }
 
     #[test]
-    fn test_get_inverse() {
+    fn test_invert_bwt() {
         let text = b"cabca$";
-        let pos = get_suffix_array(text);
-        let bwt = get_bwt(text, &pos);
-        let inverse = get_inverse(&bwt);
+        let pos = suffix_array(text);
+        let bwt = bwt(text, &pos);
+        let inverse = invert_bwt(&bwt);
         assert_eq!(inverse, text);
     }
 
     #[test]
-    fn test_occ () {
+    fn test_occ() {
         let bwt = vec![1u8, 3u8, 3u8, 1u8, 2u8, 0u8];
         let alphabet = Alphabet::new([0u8, 1u8, 2u8, 3u8].as_slice());
         let occ = Occ::new(&bwt, 3, &alphabet);
@@ -217,7 +217,7 @@ mod tests {
             [0, 1, 0, 0],
             [0, 2, 0, 2]
         ]);
-        assert_eq!(occ.get_occ(&bwt, 4, 2u8), 1);
-        assert_eq!(occ.get_occ(&bwt, 4, 3u8), 2);
+        assert_eq!(occ.get(&bwt, 4, 2u8), 1);
+        assert_eq!(occ.get(&bwt, 4, 3u8), 2);
     }
 }

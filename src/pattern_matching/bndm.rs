@@ -14,7 +14,7 @@
 //! ```
 
 
-use pattern_matching::shift_and::get_masks;
+use pattern_matching::shift_and::masks;
 use std::slice::SliceExt;
 
 
@@ -35,7 +35,7 @@ impl BNDM {
         let mut rev = pattern.to_vec();
         rev.reverse();
 
-        let (masks, accept) = get_masks(rev.as_slice());
+        let (masks, accept) = masks(rev.as_slice());
 
         BNDM { m: m, masks: masks, accept: accept }
     }

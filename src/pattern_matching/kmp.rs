@@ -36,7 +36,7 @@ pub struct KMP<'a> {
 impl<'a> KMP<'a> {
     pub fn new(pattern: &'a [u8]) -> Self {
         let m = pattern.len();
-        let lps = get_lps(pattern);
+        let lps = lps(pattern);
 
         KMP { lps: lps, m: m, pattern: pattern }
     }
@@ -58,7 +58,7 @@ impl<'a> KMP<'a> {
 }
 
 
-fn get_lps(pattern: &[u8]) -> LPS {
+fn lps(pattern: &[u8]) -> LPS {
     let (m, mut q) = (pattern.len(), 0us);
     let mut lps: LPS = repeat(0).take(m).collect();
     for i in 1..m {
@@ -99,12 +99,12 @@ impl<'a, I: Iterator<Item=&'a u8>> Iterator for KMPMatches<'a, I> {
 
 #[cfg(test)]
 mod tests {
-    use super::{get_lps, KMP};
+    use super::{lps, KMP};
 
     #[test]
-    fn test_get_lps() {
+    fn test_lps() {
         let pattern = b"ababaca";
-        let lps = get_lps(pattern);
+        let lps = lps(pattern);
         assert_eq!(lps, [0, 0, 1, 2, 3, 0, 1]);
     }
 

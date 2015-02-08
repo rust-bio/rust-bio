@@ -27,7 +27,7 @@ impl ShiftAnd {
     /// Create new ShiftAnd instance.
     pub fn new(pattern: &[u8]) -> ShiftAnd {
         assert!(pattern.len() <= 64, "Expecting a pattern of at most 64 symbols.");
-        let (masks, accept) = get_masks(pattern);
+        let (masks, accept) = masks(pattern);
 
         ShiftAnd { m: pattern.len(), masks: masks, accept: accept }
 
@@ -40,7 +40,7 @@ impl ShiftAnd {
 }
 
 
-pub fn get_masks(pattern: &[u8]) -> ([u64; 256], u64) {
+pub fn masks(pattern: &[u8]) -> ([u64; 256], u64) {
     let mut masks = [0; 256];
 
     let mut bit = 1;

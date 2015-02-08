@@ -46,15 +46,15 @@ pub type LCPArray = SmallInts<i8, isize>;
 /// # Example
 ///
 /// ```
-/// use bio::data_structures::suffix_array::get_suffix_array;
+/// use bio::data_structures::suffix_array::suffix_array;
 /// let text = b"GCCTTAACATTATTACGCCTA$";
-/// let pos = get_suffix_array(text);
+/// let pos = suffix_array(text);
 /// assert_eq!(pos, vec![
 ///     21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18,
 ///     2, 16, 0, 19, 4, 13, 10, 3, 12, 9
 /// ]);
 /// ```
-pub fn get_suffix_array(text: &[u8]) -> SuffixArray {
+pub fn suffix_array(text: &[u8]) -> SuffixArray {
     let n = text.len();
     let transformed_text = transform_text(text);
     if transformed_text[n-1] != 0 {
@@ -80,12 +80,12 @@ pub fn get_suffix_array(text: &[u8]) -> SuffixArray {
 /// # Example
 ///
 /// ```
-/// use bio::data_structures::suffix_array::{get_suffix_array,get_lcp};
+/// use bio::data_structures::suffix_array::{suffix_array,lcp};
 /// let text = b"GCCTTAACATTATTACGCCTA$";
-/// let pos = get_suffix_array(text);
+/// let pos = suffix_array(text);
 ///
 /// // obtain compressed LCP array
-/// let lcp = get_lcp(text.as_slice(), &pos);
+/// let lcp = lcp(text.as_slice(), &pos);
 ///
 /// // get most values in O(1).
 /// assert_eq!(lcp.get(6).unwrap(), 4);
@@ -102,7 +102,7 @@ pub fn get_suffix_array(text: &[u8]) -> SuffixArray {
 ///     ]
 /// )
 /// ```
-pub fn get_lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
+pub fn lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
     assert!(text.len() == pos.len());
     let n = text.len();
 
@@ -448,7 +448,7 @@ mod tests {
 
 
     #[bench]
-    fn bench_get_suffix_array(b: &mut Bencher) {
-        b.iter(|| get_suffix_array(b"GCCTTAACATTATTACGCCTA$"));
+    fn bench_suffix_array(b: &mut Bencher) {
+        b.iter(|| suffix_array(b"GCCTTAACATTATTACGCCTA$"));
     }
 }
