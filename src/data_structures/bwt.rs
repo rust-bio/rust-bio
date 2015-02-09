@@ -97,9 +97,9 @@ impl<'a> FMIndex<'a> {
     /// ```
     /// use bio::data_structures::bwt::{bwt, FMIndex};
     /// use bio::data_structures::suffix_array::suffix_array;
-    /// use bio::alphabets::dna_alphabet;
+    /// use bio::alphabets::dna;
     /// let text = b"GCCTTAACATTATTACGCCTA$";
-    /// let alphabet = dna_alphabet();
+    /// let alphabet = dna::alphabet();
     /// let pos = suffix_array(text);
     /// let bwt = bwt(text, &pos);
     /// let fm = FMIndex::new(&bwt, 3, &alphabet);

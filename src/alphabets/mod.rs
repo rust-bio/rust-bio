@@ -9,13 +9,16 @@
 //!
 //! ```rust
 //! use bio::alphabets;
-//! let alphabet = alphabets::dna_alphabet();
+//! let alphabet = alphabets::dna::alphabet();
 //! assert!(alphabet.is_word(b"AACCTgga"));
 //! assert!(!alphabet.is_word(b"AXYZ"));
 //! ```
 
 
 use std::collections::{BitvSet, VecMap};
+
+
+pub mod dna;
 
 
 pub type SymbolRanks = VecMap<u8>;
@@ -79,16 +82,4 @@ impl RankTransform {
         symbols.extend(self.ranks.keys());
         Alphabet { symbols: symbols }
     }
-}
-
-
-/// Obtain the DNA alphabet.
-pub fn dna_alphabet() -> Alphabet {
-    Alphabet::new(b"ACGTacgt")
-}
-
-
-/// Obtain the IUPAC DNA alphabet
-pub fn iupac_dna_alphabet() -> Alphabet {
-    Alphabet::new(b"ACGTURYSWKMBDHVNacgturyswkmbdhvn")
 }
