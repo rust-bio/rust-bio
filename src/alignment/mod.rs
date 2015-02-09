@@ -22,14 +22,15 @@ pub enum AlignmentOperation {
 #[derive(Debug)]
 pub struct Alignment {
     pub score: i32,
-    pub i: usize,
-    pub j: usize,
+    pub ystart: usize,
+    pub xstart: usize,
+    pub xlen: usize,
     pub operations: Vec<AlignmentOperation>
 }
 
 
 impl Alignment {
-    pub fn get_cigar(&self) -> String {
+    pub fn cigar(&self, hard_clip: bool) -> String {
         let add_op = |&: op, k, cigar: &mut String| {
             cigar.push_str(format!("{}{}", k, match op {
                 AlignmentOperation::Match => "=",
@@ -38,16 +39,24 @@ impl Alignment {
                 AlignmentOperation::Ins => "I",
             }).as_slice());
         };
+
+        let op_len = |op: AlignmentOperation| {
+            (op == AlignmentOperation::Match || op == AlignmentOperation::Subst || op == AlignmentOperation::Ins) as usize
+        };
+
+        let clip_str = if hard_clip {"H"} else {"S"};
+
         let mut cigar = String::new();
 
-        if self.j > 0 {
-            cigar.push_str(format!("{}{}", self.j, "S").as_slice());
-        }
-
         if !self.operations.is_empty() {
+            if self.xstart > 0 {
+                cigar.push_str(format!("{}{}", self.xstart, clip_str).as_slice());
+            }
+
             let mut last = self.operations[0];
             let mut k = 1;
-            for &op in self.operations.iter() {
+            let mut alen = op_len(last);
+            for &op in self.operations[1..].iter() {
                 if op == last {
                     k += 1;
                 } else {
@@ -55,11 +64,32 @@ impl Alignment {
                     k = 1;
                 }
                 last = op;
+                alen += op_len(op);
+            }
+            add_op(last, k, &mut cigar);
+
+            let clip = self.xlen - alen;
+            if clip > 0 {
+                cigar.push_str(format!("{}{}", clip, clip_str).as_slice());
             }
         }
-
-        // TODO add end clipping
+        else {
+            cigar.push_str(format!("{}{}", self.xlen, clip_str).as_slice());
+        }
 
         cigar
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::AlignmentOperation::*;
+
+    #[test]
+    fn test_cigar() {
+        let alignment = Alignment { score: 5, xstart: 3, ystart: 0, xlen: 10, operations: vec![Match, Match, Match, Subst, Ins, Ins, Del, Del] };
+        assert_eq!(alignment.cigar(false), "3S3=1X2I2D4S");
     }
 }

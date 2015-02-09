@@ -16,8 +16,8 @@
 //! let score = |&: a: u8, b: u8| if a == b {1i32} else {-1i32};
 //! let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
 //! let alignment = aligner.semiglobal(x, y);
-//! assert_eq!(alignment.i, 4);
-//! assert_eq!(alignment.j, 0);
+//! assert_eq!(alignment.ystart, 4);
+//! assert_eq!(alignment.xstart, 0);
 //! assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
 //! ```
 
@@ -338,7 +338,7 @@ impl Traceback {
         }
 
         ops.reverse();
-        Alignment { i: i, j: j, operations: ops, score: score}
+        Alignment { ystart: i, xstart: j, xlen: x.len(), operations: ops, score: score}
     }
 }
 
@@ -355,8 +355,8 @@ mod tests {
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
         let alignment = aligner.semiglobal(x, y);
         println!("{:?}", alignment);
-        assert_eq!(alignment.i, 4);
-        assert_eq!(alignment.j, 0);
+        assert_eq!(alignment.ystart, 4);
+        assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
     }
 
@@ -367,8 +367,8 @@ mod tests {
         let score = |&: a: u8, b: u8| if a == b {1i32} else {-1i32};
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
         let alignment = aligner.local(x, y);
-        assert_eq!(alignment.i, 4);
-        assert_eq!(alignment.j, 0);
+        assert_eq!(alignment.ystart, 4);
+        assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
     }
 
@@ -379,8 +379,8 @@ mod tests {
         let score = |&: a: u8, b: u8| if a == b {1i32} else {-1i32};
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
         let alignment = aligner.global(x, y);
-        assert_eq!(alignment.i, 0);
-        assert_eq!(alignment.j, 0);
+        assert_eq!(alignment.ystart, 0);
+        assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
     }
 }
