@@ -1,3 +1,8 @@
+// Copyright 2014 Johannes Köster.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
 //! ShiftAnd algorithm for pattern matching.
 //! Patterns may contain at most 64 symbols.
 //! Complexity: O(n) with text length n.

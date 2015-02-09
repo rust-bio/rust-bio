@@ -19,6 +19,7 @@ pub mod kmp;
 pub mod bom;
 pub mod horspool;
 pub mod bndm;
+pub mod ukkonen;
 
 
 #[cfg(test)]
