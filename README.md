@@ -7,13 +7,12 @@ integration.
 
 Currently, rust-bio provides
 
-* pattern matching,
+* most major pattern matching algorithms,
 * pairwise alignment,
 * suffix arrays,
 * BWT and FM-Index,
-* rank/select data structures.
-
-Find out more at https://github.com/johanneskoester/rust-bio.
+* FMD-Index for finding supermaximal exact matches,
+* a rank/select data structure.
 
 ## Resources
 
