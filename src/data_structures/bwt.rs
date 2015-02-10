@@ -8,7 +8,7 @@
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
 use std::iter::repeat;
-use std::iter::{AdditiveIterator, DoubleEndedIterator};
+use std::iter::{AdditiveIterator};
 
 use data_structures::suffix_array::SuffixArray;
 use utils::prescan;
@@ -16,8 +16,8 @@ use alphabets::Alphabet;
 
 
 pub type BWT = Vec<u8>;
-type Less = Vec<usize>;
-type BWTFind = Vec<usize>;
+pub type Less = Vec<usize>;
+pub type BWTFind = Vec<usize>;
 
 
 /// Calculate Burrows-Wheeler-Transform of the given text of length n.
@@ -73,53 +73,6 @@ pub fn invert_bwt(bwt: &BWT) -> Vec<u8> {
 }
 
 
-pub struct FMIndex<'a> {
-    bwt: &'a BWT,
-    less: Less,
-    occ: Occ
-}
-
-
-impl<'a> FMIndex<'a> {
-    pub fn new(bwt: &'a BWT, k: usize, alphabet: &Alphabet) -> Self {
-        FMIndex { bwt: bwt, less: less(bwt, alphabet), occ: Occ::new(bwt, k, alphabet)}
-    }
-
-    /// Perform backward search, yielding suffix array
-    /// interval denoting positions where the given pattern occurs.
-    ///
-    /// # Arguments
-    ///
-    /// * `pattern` - the pattern to search
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use bio::data_structures::bwt::{bwt, FMIndex};
-    /// use bio::data_structures::suffix_array::suffix_array;
-    /// use bio::alphabets::dna;
-    /// let text = b"GCCTTAACATTATTACGCCTA$";
-    /// let alphabet = dna::alphabet();
-    /// let pos = suffix_array(text);
-    /// let bwt = bwt(text, &pos);
-    /// let fm = FMIndex::new(&bwt, 3, &alphabet);
-    /// let pattern = b"TTA";
-    /// let sai = fm.backward_search(pattern.iter());
-    /// assert_eq!(sai, (19, 21));
-    /// ```
-    pub fn backward_search<'b, P: Iterator<Item=&'b u8> + DoubleEndedIterator>(&self, pattern: P) -> (usize, usize) {
-        let (mut l, mut r) = (0, self.bwt.len() - 1);
-        for &a in pattern.rev() {
-            let less = self.less[a as usize];
-            l = less + if l > 0 { self.occ.get(self.bwt, l - 1, a) } else { 0 };
-            r = less + self.occ.get(self.bwt, r, a) - 1;
-        }
-
-        (l, r)
-    }
-}
-
-
 pub struct Occ {
     occ: Vec<Vec<usize>>,
     k: usize
@@ -161,7 +114,7 @@ impl Occ {
 }
 
 
-fn less(bwt: &BWT, alphabet: &Alphabet) -> Less {
+pub fn less(bwt: &BWT, alphabet: &Alphabet) -> Less {
     let m = alphabet.max_symbol().expect("Expecting non-empty alphabet.") as usize + 1;
     let mut less: Less = repeat(0)
         .take(m).collect();
@@ -176,7 +129,7 @@ fn less(bwt: &BWT, alphabet: &Alphabet) -> Less {
 
 
 /// Calculate the bwtfind array needed for inverting the BWT.
-fn bwtfind(bwt: &BWT, alphabet: &Alphabet) -> BWTFind {
+pub fn bwtfind(bwt: &BWT, alphabet: &Alphabet) -> BWTFind {
     let n = bwt.len();
     let mut less = less(bwt, alphabet);
 
