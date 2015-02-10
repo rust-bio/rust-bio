@@ -11,6 +11,11 @@ pub fn alphabet() -> Alphabet {
 }
 
 
+pub fn n_alphabet() -> Alphabet {
+    Alphabet::new(b"ACGTNacgtn")
+}
+
+
 /// Obtain the IUPAC DNA alphabet
 pub fn iupac_alphabet() -> Alphabet {
     Alphabet::new(b"ACGTURYSWKMBDHVNacgturyswkmbdhvn")
@@ -25,7 +30,10 @@ pub struct RevComp {
 
 impl RevComp {
     pub fn new() -> Self {
-        let mut comp = [b'N'; 256];
+        let mut comp = [0u8; 256];
+        for a in 0..256 {
+            comp[a] = a as u8;
+        }
         for (&a, &b) in SYMBOLS.iter().zip(SYMBOLS.iter().rev()) {
             comp[a as usize] = b;
             comp[a as usize + 32] = b + 32;  // lowercase variants
@@ -33,9 +41,13 @@ impl RevComp {
         RevComp { comp: comp }
     }
 
+    pub fn comp(&self, a: u8) -> u8 {
+        self.comp[a as usize]
+    }
+
     /// Calculate the reverse complement of given text.
     /// The text has to be in DNA alphabet containing only ACGTacgt symbols.
-    /// Other symbols will be silently converted into N.
+    /// Other symbols won't be converted.
     ///
     /// # Example
     ///
@@ -48,6 +60,6 @@ impl RevComp {
     /// assert_eq!(text, revcomp.get(revcomp_text.as_slice()));
     /// ```
     pub fn get(&self, text: &[u8]) -> Vec<u8> {
-        text.iter().rev().map(|&a| self.comp[a as usize]).collect()
+        text.iter().rev().map(|&a| self.comp(a)).collect()
     }
 }

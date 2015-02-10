@@ -115,7 +115,7 @@ impl Occ {
 
 
 pub fn less(bwt: &BWT, alphabet: &Alphabet) -> Less {
-    let m = alphabet.max_symbol().expect("Expecting non-empty alphabet.") as usize + 1;
+    let m = alphabet.max_symbol().expect("Expecting non-empty alphabet.") as usize + 2;
     let mut less: Less = repeat(0)
         .take(m).collect();
     for &c in bwt.iter() {

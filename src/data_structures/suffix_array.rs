@@ -48,7 +48,9 @@ pub type LCPArray = SmallInts<i8, isize>;
 ///
 /// # Arguments
 ///
-/// * `text` - the text, ended by sentinel symbol (being lexicographically smallest)
+/// * `text` - the text, ended by sentinel symbol (being lexicographically smallest). The text may
+///   also contain multiple sentinel symbols, used to concatenate multiple sequences without mixing
+///   their suffixes together.
 ///
 /// # Example
 ///
@@ -64,10 +66,6 @@ pub type LCPArray = SmallInts<i8, isize>;
 pub fn suffix_array(text: &[u8]) -> SuffixArray {
     let n = text.len();
     let transformed_text = transform_text(text);
-    if transformed_text[n-1] != 0 {
-        panic!("Expecting extra sentinel symbol being lexicographically \
-        smallest at the end of the text.");
-    }
 
     let mut sais = SAIS::new(n);
     sais.construct(transformed_text.as_slice());
@@ -141,12 +139,28 @@ pub fn lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
 
 
 fn transform_text(text: &[u8]) -> Vec<usize> {
+    let sentinel = text[text.len() - 1];
+    assert!(text.iter().all(|&a| a >= sentinel), "Expecting extra sentinel symbol being \
+lexicographically smallest at the end of the text.");
+
+    let offset = text.iter().fold(0, |count, &a| count + (a == sentinel) as usize) - 1;
+
     let alphabet = Alphabet::new(text);
     let transform = RankTransform::new(&alphabet);
 
-    text.iter()
-        .map(|&c| *transform.ranks.get(&(c as usize)).unwrap() as usize)
-        .collect()
+    let mut transformed = Vec::with_capacity(text.len());
+    let mut s = 0;
+    for &a in text.iter() {
+        if a == sentinel {
+            transformed.push(s);
+            s += 1;
+        }
+        else {
+            transformed.push(*transform.ranks.get(&(a as usize)).unwrap() as usize + offset);
+        }
+    }
+
+    transformed
 }
 
 
