@@ -13,6 +13,20 @@ use alphabets::{Alphabet, dna};
 use std::mem::swap;
 
 
+#[derive(Copy)]
+pub struct Interval {
+    lower: usize,
+    upper: usize
+}
+
+
+impl Interval {
+    pub fn occ<'a>(&self, pos: &'a SuffixArray) -> &'a [usize] {
+        &pos[self.lower..self.upper + 1]
+    }
+}
+
+
 pub struct FMIndex<'a> {
     bwt: &'a BWT,
     less: Less,
@@ -48,16 +62,21 @@ impl<'a> FMIndex<'a> {
     /// use bio::data_structures::fmindex::FMIndex;
     /// use bio::data_structures::suffix_array::suffix_array;
     /// use bio::alphabets::dna;
+    ///
     /// let text = b"GCCTTAACATTATTACGCCTA$";
     /// let alphabet = dna::alphabet();
     /// let pos = suffix_array(text);
     /// let bwt = bwt(text, &pos);
     /// let fm = FMIndex::new(&bwt, 3, &alphabet);
+    ///
     /// let pattern = b"TTA";
     /// let sai = fm.backward_search(pattern.iter());
-    /// assert_eq!(sai, (19, 21));
+    ///
+    /// let occ = sai.occ(&pos);
+    ///
+    /// assert_eq!(occ, [3, 12, 9]);
     /// ```
-    pub fn backward_search<'b, P: Iterator<Item=&'b u8> + DoubleEndedIterator>(&self, pattern: P) -> (usize, usize) {
+    pub fn backward_search<'b, P: Iterator<Item=&'b u8> + DoubleEndedIterator>(&self, pattern: P) -> Interval {
         let (mut l, mut r) = (0, self.bwt.len() - 1);
         for &a in pattern.rev() {
             let less = self.less(a);
@@ -65,7 +84,7 @@ impl<'a> FMIndex<'a> {
             r = less + self.occ(r, a) - 1;
         }
 
-        (l, r)
+        Interval { lower: l, upper: r }
     }
 
     fn occ(&self, r: usize, a: u8) -> usize {
