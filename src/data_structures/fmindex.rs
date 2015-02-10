@@ -21,6 +21,7 @@ pub struct Interval {
 
 
 impl Interval {
+    /// Return the occurrence positions of the pattern as a slice of the suffix array.
     pub fn occ<'a>(&self, pos: &'a SuffixArray) -> &'a [usize] {
         &pos[self.lower..self.upper + 1]
     }
@@ -108,10 +109,12 @@ pub struct BiInterval {
 
 
 impl BiInterval {
+    /// Return the occurrence positions of the pattern as a slice of the suffix array.
     pub fn occ<'a>(&self, pos: &'a SuffixArray) -> &'a [usize] {
         self._pos(pos, self.lower)
     }
 
+    /// Return the occurrence positions of the reverse complement of the pattern as a slice of the suffix array.
     pub fn occ_revcomp<'a>(&self, pos: &'a SuffixArray) -> &'a [usize] {
         self._pos(pos, self.lower_rev)
     }
