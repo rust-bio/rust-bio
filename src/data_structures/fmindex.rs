@@ -258,18 +258,22 @@ impl<'a> FMDIndex<'a> {
     }
 
     fn backward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
-        let mut k = 0;
         let mut s = 0;
+        let mut o = 0;
         let mut l = interval.lower_rev;
+        // calculate lower revcomp bounds by iterating over
+        // symbols and updating from previous one.
         for &b in b"$TGCAN".iter() {
             l = l + s;
-            let o = self.fmindex.occ(interval.lower - 1, b);
-            k = self.fmindex.less(b) + o;
+            o = self.fmindex.occ(interval.lower - 1, b);
+            // calculate size
             s = self.fmindex.occ(interval.lower + interval.size - 1, b) - o;
             if b == a {
                 break;
             }
         }
+        // calculate lower bound
+        let k = self.fmindex.less(a) + o;
 
         BiInterval {
             lower: k,
