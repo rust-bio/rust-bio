@@ -3,7 +3,7 @@
 This library provides implementations of many algorithms and data structures
 that are useful for bioinformatics.
 All provided implementations are rigorously tested via continuous
-integration (https://travis-ci.org/johanneskoester/rust-bio).
+integration.
 
 Currently, rust-bio provides
 
@@ -14,6 +14,12 @@ Currently, rust-bio provides
 * rank/select data structures.
 
 Find out more at https://github.com/johanneskoester/rust-bio.
+
+## Resources
+
+* Homepage: https://github.com/johanneskoester/rust-bio
+* API documentation: https://johanneskoester.github.io/rust-bio/doc/bio/index.html
+* Continous integration tests: https://travis-ci.org/johanneskoester/rust-bio
 
 ## Usage
 
