@@ -137,7 +137,6 @@ impl BiInterval {
 pub struct FMDIndex<'a> {
     fmindex: FMIndex<'a>,
     revcomp: dna::RevComp,
-    interval_buffer: [BiInterval; 256],
 }
 
 
@@ -164,8 +163,7 @@ impl<'a> FMDIndex<'a> {
 
         FMDIndex {
             fmindex: FMIndex::new(bwt, k, &alphabet),
-            revcomp: dna::RevComp::new(),
-            interval_buffer: [BiInterval { lower: 0, lower_rev: 0, size: 0, match_size: 0 }; 256]
+            revcomp: dna::RevComp::new()
         }
     }
 
@@ -181,7 +179,7 @@ impl<'a> FMDIndex<'a> {
     /// let text = b"ATTC$GAAT$";
     /// let pos = suffix_array(text);
     /// let bwt = bwt(text, &pos);
-    /// let mut fmdindex = FMDIndex::new(&bwt, 3);
+    /// let fmdindex = FMDIndex::new(&bwt, 3);
     ///
     /// let pattern = b"ATT";
     /// let intervals = fmdindex.smems(pattern, 2);
@@ -191,7 +189,7 @@ impl<'a> FMDIndex<'a> {
     /// assert_eq!(occ, [0]);
     /// assert_eq!(occ_revcomp, [6]);
     /// ```
-    pub fn smems(&mut self, pattern: &[u8], i: usize) -> Vec<BiInterval> {
+    pub fn smems(&self, pattern: &[u8], i: usize) -> Vec<BiInterval> {
 
         let curr = &mut Vec::new();
         let prev = &mut Vec::new();
@@ -259,34 +257,30 @@ impl<'a> FMDIndex<'a> {
         }
     }
 
-    fn backward_ext(&mut self, interval: &BiInterval, a: u8) -> BiInterval {
-        // calculate lower bound and size for all symbols
-        for &b in b"$ACGTN".iter() {
+    fn backward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
+        let mut k = 0;
+        let mut s = 0;
+        let mut l = interval.lower_rev;
+        for &b in b"$TGCAN".iter() {
+            l = l + s;
             let o = self.fmindex.occ(interval.lower - 1, b);
-            let b_interval = &mut self.interval_buffer[b as usize];
-            b_interval.lower = self.fmindex.less(b) + o;
-            b_interval.size = self.fmindex.occ(interval.lower + interval.size - 1, b) - o;
+            k = self.fmindex.less(b) + o;
+            s = self.fmindex.occ(interval.lower + interval.size - 1, b) - o;
+            if b == a {
+                break;
+            }
         }
 
-        // calculate lower revcomp bounds
-        {
-            let sentinel_interval = &mut self.interval_buffer[b'$' as usize];
-            sentinel_interval.lower_rev = interval.lower_rev;
+        BiInterval {
+            lower: k,
+            lower_rev: l,
+            size: s,
+            match_size: interval.match_size + 1
         }
-
-        let mut last = b'$' as usize;
-        for &b in b"TGCAN".iter() {
-            self.interval_buffer[b as usize].lower_rev = self.interval_buffer[last].lower_rev + self.interval_buffer[last].size;
-            last = b as usize;
-        }
-
-        let mut ret = self.interval_buffer[a as usize];
-        ret.match_size = interval.match_size + 1;
-
-        ret
     }
 
-    fn forward_ext(&mut self, interval: &BiInterval, a: u8) -> BiInterval {
+
+    fn forward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
         let _a = self.revcomp.comp(a);
 
         self.backward_ext(
@@ -313,7 +307,7 @@ mod tests {
         println!("pos {:?}", pos);
         println!("text {:?}", text);
         let bwt = bwt(text.as_slice(), &pos);
-        let mut fmdindex = FMDIndex::new(&bwt, 3);
+        let fmdindex = FMDIndex::new(&bwt, 3);
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
