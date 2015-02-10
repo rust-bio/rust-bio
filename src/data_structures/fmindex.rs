@@ -3,6 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! The Ferragina-Mancini Index for finding suffix array intervals matching a given pattern.
+
 use std::iter::DoubleEndedIterator;
 
 use data_structures::bwt::{Occ, Less, less, BWT};
@@ -17,12 +19,14 @@ pub struct FMIndex<'a> {
 
 
 impl<'a> FMIndex<'a> {
+    /// Construct a new instance of the FM index.
     pub fn new(bwt: &'a BWT, k: usize, alphabet: &Alphabet) -> Self {
         FMIndex { bwt: bwt, less: less(bwt, alphabet), occ: Occ::new(bwt, k, alphabet)}
     }
 
     /// Perform backward search, yielding suffix array
-    /// interval denoting positions where the given pattern occurs.
+    /// interval denoting exact occurences of the given pattern of length m in the text.
+    /// Complexity: O(m).
     ///
     /// # Arguments
     ///
