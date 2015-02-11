@@ -18,7 +18,7 @@ Currently, rust-bio provides
 
 * Homepage: https://github.com/johanneskoester/rust-bio
 * API documentation: https://johanneskoester.github.io/rust-bio/doc/bio/index.html
-* Continous integration tests: https://travis-ci.org/johanneskoester/rust-bio
+* Continuous integration tests: https://travis-ci.org/johanneskoester/rust-bio
 
 ## Usage
 
