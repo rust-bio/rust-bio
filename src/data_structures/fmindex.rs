@@ -221,8 +221,8 @@ impl<'a> FMDIndex<'a> {
         for k in (-1..i as isize).rev() {
             let a = if k == -1 { b'$' } else { pattern[k as usize] };
             curr.clear();
-            // size of the last investigated interval
-            let mut s = -1;
+            // size of the last confirmed interval
+            let mut last_size = -1;
             // iterate over forward extensions in reverse, as they are sorted by size
             // and we prefer longer matches
             for &interval in prev.iter().rev() {
@@ -239,8 +239,8 @@ impl<'a> FMDIndex<'a> {
                     }
                 }
                 // add _interval to curr (will be further extended next iteration)
-                if _interval.size != 0 && _interval.size != s {
-                    s = _interval.size;
+                if _interval.size != 0 && _interval.size != last_size {
+                    last_size = _interval.size;
                     curr.push(_interval);
                 }
             }

@@ -51,7 +51,7 @@ impl Alphabet {
     }
 
     pub fn max_symbol(&self) -> Option<u8> {
-        self.symbols.iter().max().map(|c| c as u8)
+        self.symbols.iter().max().map(|a| a as u8)
     }
 
     pub fn len(&self) -> usize {
