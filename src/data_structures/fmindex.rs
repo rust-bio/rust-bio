@@ -142,8 +142,8 @@ pub struct FMDIndex<'a> {
 
 impl<'a> FMDIndex<'a> {
     /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
-    /// This expects a BWT that was created from a text over the DNA alphabet
-    /// (ACGTN) consisting of the
+    /// This expects a BWT that was created from a text over the DNA alphabet with N
+    /// (`alphabets::dna::n_alphabet()`) consisting of the
     /// concatenation with its reverse complement, separated by the sentinel symbol `$`.
     /// I.e., let T be the original text and R be its reverse complement.
     /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
@@ -155,7 +155,8 @@ impl<'a> FMDIndex<'a> {
     /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
     ///   less memory usage, but worse performance)
     pub fn new(bwt: &'a BWT, k: usize) -> Self {
-        let alphabet = Alphabet::new(b"$ACGTN");
+        let mut alphabet = dna::n_alphabet();
+        alphabet.insert(b'$');
         assert!(
             alphabet.is_word(bwt),
             "Expecting BWT over the DNA alphabet (including N) with the sentinel $."
@@ -198,18 +199,21 @@ impl<'a> FMDIndex<'a> {
         let mut interval = self.init_interval(pattern, i);
 
         for &a in pattern[i+1..].iter() {
+            // forward extend interval
             let _interval = self.forward_ext(&interval, a);
 
+            // if size changed, add last interval to list
             if interval.size != _interval.size {
                 curr.push(interval);
             }
+            // if new interval size is zero, stop, as no further forward extension is possible
             if _interval.size == 0 {
                 break;
             }
             interval = _interval;
         }
+        // add the last non-zero interval
         curr.push(interval);
-        println!("{:?}", curr);
 
         swap(curr, prev);
         let mut j = pattern.len() as isize;
@@ -217,19 +221,24 @@ impl<'a> FMDIndex<'a> {
         for k in (-1..i as isize).rev() {
             let a = if k == -1 { b'$' } else { pattern[k as usize] };
             curr.clear();
+            // size of the last investigated interval
             let mut s = -1;
             // iterate over forward extensions in reverse, as they are sorted by size
-            // and we want longer matches first
+            // and we prefer longer matches
             for &interval in prev.iter().rev() {
+                // backward extend interval
                 let _interval = self.backward_ext(&interval, a);
 
                 if _interval.size == 0 || k == -1 {
+                    // interval could not be extended further
+                    // if no interval has been extended this iteration,
+                    // interval is maximal and can be added to the matches
                     if curr.is_empty() && k < j {
                         j = k;
                         matches.push(interval);
                     }
                 }
-                // add _interval to curr (will be further extended next iteration
+                // add _interval to curr (will be further extended next iteration)
                 if _interval.size != 0 && _interval.size != s {
                     s = _interval.size;
                     curr.push(_interval);
@@ -261,9 +270,12 @@ impl<'a> FMDIndex<'a> {
         let mut s = 0;
         let mut o = 0;
         let mut l = interval.lower_rev;
-        // calculate lower revcomp bounds by iterating over
+        // Interval [l(c(aP)), u(c(aP))] is a subinterval of [l(c(P)), u(c(P))] for each a,
+        // starting with the lexicographically smallest ($),
+        // then c(T) = A, c(G) = C, c(C) = G, N, c(A) = T, ...
+        // Hence, we calculate lower revcomp bounds by iterating over
         // symbols and updating from previous one.
-        for &b in b"$TGCAN".iter() {
+        for &b in b"$TGCNAtgcna".iter() {
             l = l + s;
             o = self.fmindex.occ(interval.lower - 1, b);
             // calculate size

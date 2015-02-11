@@ -42,6 +42,10 @@ impl Alphabet {
         Alphabet { symbols: s }
     }
 
+    pub fn insert(&mut self, a: u8) {
+        self.symbols.insert(a as usize);
+    }
+
     pub fn is_word(&self, text: &[u8]) -> bool {
         text.iter().all(|&c| self.symbols.contains(&(c as usize)))
     }
