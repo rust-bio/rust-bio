@@ -33,7 +33,7 @@ pub type LCPArray = SmallInts<i8, isize>;
 ///
 /// 1. Sort LMS positions: first step 2 is applied to the unsorted sequence
 ///    of positions. Suprisingly, this sorts the LMS substrings. If all substrings
-///    are different, LMS positions (and their suffixes are sorted). Else, a reduced
+///    are different, LMS positions (and their suffixes) are sorted. Else, a reduced
 ///    text is build (at most half the size of the original text) and we recurse into
 ///    suffix array construction on the reduced text, yielding the sorted LMS positions.
 /// 2. Derive the order of the other positions/suffixes from the (sorted) LMS positions.
@@ -41,7 +41,7 @@ pub type LCPArray = SmallInts<i8, isize>;
 ///    Each bucket denotes an interval of suffixes with the same first symbol.
 ///    We know that the L-suffixes have to occur first in the buckets, because they
 ///    have to be lexicographically smaller than the S-suffixes with the same first letter.
-///    The LMS-positions now be used to insert the L-positions in the correct order
+///    The LMS-positions can now be used to insert the L-positions in the correct order
 ///    into the buckets.
 ///    Then, the S-positions can be inserted, again using the already existing entries
 ///    in the array.

@@ -106,6 +106,8 @@ impl Occ {
         Occ { occ: occ, k: k }
     }
 
+    /// Get occurrence count of symbol a in BWT[..r+1].
+    /// Complexity: O(k).
     pub fn get(&self, bwt: &BWT, r: usize, a: u8) -> usize {
         let i = r / self.k;
         self.occ[i][a as usize] +

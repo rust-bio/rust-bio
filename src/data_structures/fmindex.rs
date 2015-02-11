@@ -23,7 +23,7 @@ pub struct Interval {
 impl Interval {
     /// Return the occurrence positions of the pattern as a slice of the suffix array.
     pub fn occ<'a>(&self, pos: &'a SuffixArray) -> &'a [usize] {
-        &pos[self.lower..self.upper + 1]
+        &pos[self.lower..self.upper]
     }
 }
 
@@ -85,7 +85,7 @@ impl<'a> FMIndex<'a> {
             r = less + self.occ(r, a) - 1;
         }
 
-        Interval { lower: l, upper: r }
+        Interval { lower: l, upper: r + 1 }
     }
 
     fn occ(&self, r: usize, a: u8) -> usize {
