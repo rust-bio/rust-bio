@@ -58,7 +58,7 @@ pub fn bwt(text: &[u8], pos: &SuffixArray) -> BWT {
 ///
 /// * `bwt` - the BWT
 pub fn invert_bwt(bwt: &BWT) -> Vec<u8> {
-    let alphabet = Alphabet::new(bwt.as_slice());
+    let alphabet = Alphabet::new(bwt);
     let n = bwt.len();
     let bwtfind = bwtfind(bwt, &alphabet);
     let mut inverse = Vec::with_capacity(n);
@@ -173,7 +173,7 @@ mod tests {
     #[test]
     fn test_occ() {
         let bwt = vec![1u8, 3u8, 3u8, 1u8, 2u8, 0u8];
-        let alphabet = Alphabet::new([0u8, 1u8, 2u8, 3u8].as_slice());
+        let alphabet = Alphabet::new(&[0u8, 1u8, 2u8, 3u8]);
         let occ = Occ::new(&bwt, 3, &alphabet);
         assert_eq!(occ.occ, [
             [0, 1, 0, 0],

@@ -40,7 +40,7 @@ impl BNDM {
         let mut rev = pattern.to_vec();
         rev.reverse();
 
-        let (masks, accept) = masks(rev.as_slice());
+        let (masks, accept) = masks(&rev);
 
         BNDM { m: m, masks: masks, accept: accept }
     }

@@ -68,7 +68,7 @@ pub fn suffix_array(text: &[u8]) -> SuffixArray {
     let transformed_text = transform_text(text);
 
     let mut sais = SAIS::new(n);
-    sais.construct(transformed_text.as_slice());
+    sais.construct(&transformed_text);
 
     sais.pos
 }
@@ -90,7 +90,7 @@ pub fn suffix_array(text: &[u8]) -> SuffixArray {
 /// let pos = suffix_array(text);
 ///
 /// // obtain compressed LCP array
-/// let lcp = lcp(text.as_slice(), &pos);
+/// let lcp = lcp(text, &pos);
 ///
 /// // get most values in O(1).
 /// assert_eq!(lcp.get(6).unwrap(), 4);
@@ -291,7 +291,7 @@ impl SAIS {
                 // backup lms_pos
                 let lms_pos = self.lms_pos.clone();
                 // recurse SA construction for reduced text
-                self.construct(reduced_text.as_slice());
+                self.construct(&reduced_text);
                 // obtain sorted lms suffixes
                 self.lms_pos.clear();
                 for &p in self.pos.iter() {
@@ -419,7 +419,7 @@ mod tests {
         let text = transform_text(b"GCCTTAACATTATTACGCCTA$");
         let n = text.len();
 
-        let pos_types = PosTypes::new(text.as_slice());
+        let pos_types = PosTypes::new(&text);
         let mut test = Bitv::from_bytes(&[0b01100110, 0b10010011,  0b01100100]);
         test.truncate(n);
         assert_eq!(pos_types.pos_types, test);
@@ -434,9 +434,9 @@ mod tests {
         let n = text.len();
 
         let mut sais = SAIS::new(n);
-        sais.init_bucket_start(text.as_slice());
+        sais.init_bucket_start(&text);
         assert_eq!(sais.bucket_start, vec![0, 1, 7, 13, 15]);
-        sais.init_bucket_end(text.as_slice());
+        sais.init_bucket_end(&text);
         assert_eq!(sais.bucket_end, vec![0, 6, 12, 14, 21]);
     }
 
@@ -447,9 +447,9 @@ mod tests {
         let n = text.len();
 
         let mut sais = SAIS::new(n);
-        let pos_types = PosTypes::new(text.as_slice());
+        let pos_types = PosTypes::new(&text);
         sais.lms_pos = vec![21, 5, 14, 8, 11, 17, 1];
-        sais.calc_pos(text.as_slice(), &pos_types);
+        sais.calc_pos(&text, &pos_types);
         assert_eq!(sais.pos, vec![
             21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18,
             2, 16, 0, 19, 4, 13, 10, 3, 12, 9
@@ -463,8 +463,8 @@ mod tests {
         let n = text.len();
 
         let mut sais = SAIS::new(n);
-        let pos_types = PosTypes::new(text.as_slice());
-        sais.calc_lms_pos(text.as_slice(), &pos_types);
+        let pos_types = PosTypes::new(&text);
+        sais.calc_lms_pos(&text, &pos_types);
     }
 
 

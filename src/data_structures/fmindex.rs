@@ -319,10 +319,10 @@ mod tests {
         let revcomp = dna::RevComp::new();
         let orig_text = b"GCCTTAACAT";
         let text = [orig_text, b"$", revcomp.get(orig_text).as_slice(), b"$"].concat();
-        let pos = suffix_array(text.as_slice());
+        let pos = suffix_array(&text);
         println!("pos {:?}", pos);
         println!("text {:?}", text);
-        let bwt = bwt(text.as_slice(), &pos);
+        let bwt = bwt(&text, &pos);
         let fmdindex = FMDIndex::new(&bwt, 3);
         {
             let pattern = b"AA";
