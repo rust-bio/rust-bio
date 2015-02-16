@@ -174,7 +174,7 @@ impl<W: io::Write> FastqWriter<W> {
     /// * `seq` - the sequence
     /// * `qual` - the qualities
     pub fn write(&mut self, id: &str, desc: &[&str], seq: &[u8], qual: &[u8]) -> io::Result<()> {
-        try!(self.writer.write(b"@ "));
+        try!(self.writer.write(b"@"));
         try!(self.writer.write(id.as_bytes()));
         if !desc.is_empty() {
             for d in desc {
@@ -203,7 +203,7 @@ mod tests {
     use super::*;
     use std::io;
 
-    const FASTQ_FILE: &'static [u8] = b"@ id desc
+    const FASTQ_FILE: &'static [u8] = b"@id desc
 ACCGTAGGCTGA
 +
 IIIIIIJJJJJJ
