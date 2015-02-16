@@ -1,6 +1,9 @@
 #![feature(core)]
 #![feature(collections)]
 #![feature(test)]
+#![feature(std_misc)]
+#![feature(io)]
+
 
 // Copyright 2014 Johannes Köster.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
@@ -33,3 +36,4 @@ pub mod alphabets;
 pub mod pattern_matching;
 pub mod data_structures;
 pub mod alignment;
+pub mod io;
