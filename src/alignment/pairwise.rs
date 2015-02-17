@@ -13,7 +13,7 @@
 //! use bio::alignment::AlignmentOperation::{Match, Subst, Ins, Del};
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
-//! let score = |&: a: u8, b: u8| if a == b {1i32} else {-1i32};
+//! let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
 //! let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
 //! let alignment = aligner.semiglobal(x, y);
 //! assert_eq!(alignment.ystart, 4);
@@ -145,7 +145,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
     /// * `score` - function that returns the score for substitutions
     ///
     pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, score: F) -> Self {
-        let get_vec = |&:| Vec::with_capacity(m + 1);
+        let get_vec = || Vec::with_capacity(m + 1);
         Aligner {
             S: [get_vec(), get_vec()],
             I: [get_vec(), get_vec()],
@@ -351,7 +351,7 @@ mod tests {
     fn test_semiglobal() {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
-        let score = |&: a: u8, b: u8| if a == b {1i32} else {-1i32};
+        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
         let alignment = aligner.semiglobal(x, y);
         println!("{:?}", alignment);
@@ -364,7 +364,7 @@ mod tests {
     fn test_local() {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
-        let score = |&: a: u8, b: u8| if a == b {1i32} else {-1i32};
+        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
         let alignment = aligner.local(x, y);
         assert_eq!(alignment.ystart, 4);
@@ -376,7 +376,7 @@ mod tests {
     fn test_global() {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
-        let score = |&: a: u8, b: u8| if a == b {1i32} else {-1i32};
+        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);

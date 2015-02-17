@@ -31,7 +31,7 @@ pub struct Ukkonen<F> where F: Fn(u8, u8) -> u32 {
 
 impl<F> Ukkonen<F> where F: Fn(u8, u8) -> u32 {
     pub fn with_capacity(m: usize, cost: F) -> Self {
-        let get_vec = |&:| Vec::with_capacity(m + 1);
+        let get_vec = || Vec::with_capacity(m + 1);
         Ukkonen { D: [get_vec(), get_vec()], cost: cost }
     }
 
