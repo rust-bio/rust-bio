@@ -59,6 +59,14 @@ impl<R: io::Read> FastaReader<R> {
 }
 
 
+impl<R: io::Read + io::Seek> FastaReader<R> {
+    /// Seek to a given offset. Intended for internal use by IndexedFastaReader.
+    fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
+        self.reader.get_mut().seek(pos)
+    }
+}
+
+
 pub struct Record {
     header: String,
     seq: String,
