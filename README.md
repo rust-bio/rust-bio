@@ -13,7 +13,7 @@ Currently, rust-bio provides
 * BWT and FM-Index,
 * FMD-Index for finding supermaximal exact matches,
 * a rank/select data structure,
-* a FastQ reader and writer.
+* FastQ and Fasta readers and writers.
 
 ## Resources
 
