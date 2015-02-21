@@ -7,7 +7,7 @@
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
-use std::collections::{Bitv, VecMap};
+use std::collections::{BitVec, VecMap};
 use std::iter::{count, repeat};
 
 use alphabets::{Alphabet, RankTransform};
@@ -357,7 +357,7 @@ impl SAIS {
 
 
 struct PosTypes {
-    pos_types: Bitv,
+    pos_types: BitVec,
 }
 
 
@@ -365,7 +365,7 @@ impl PosTypes {
     /// Calculate the text position type.
     /// L-type marks suffixes being lexicographically larger than their successor,
     /// S-type marks the others.
-    /// This function fills a Bitv, with 1-bits denoting S-type
+    /// This function fills a BitVec, with 1-bits denoting S-type
     /// and 0-bits denoting L-type.
     ///
     /// # Arguments
@@ -373,7 +373,7 @@ impl PosTypes {
     /// * `text` - the text, ending with a sentinel.
     fn new(text: &[usize]) -> Self {
         let n = text.len();
-        let mut pos_types = Bitv::from_elem(n, false);
+        let mut pos_types = BitVec::from_elem(n, false);
         pos_types.set(n-1, true);
 
         for p in (0..n-1).rev() {
@@ -411,7 +411,7 @@ mod tests {
 
     use super::*;
     use super::{PosTypes,SAIS,transform_text};
-    use std::collections::Bitv;
+    use std::collections::BitVec;
 
 
     #[test]
@@ -420,7 +420,7 @@ mod tests {
         let n = text.len();
 
         let pos_types = PosTypes::new(&text);
-        let mut test = Bitv::from_bytes(&[0b01100110, 0b10010011,  0b01100100]);
+        let mut test = BitVec::from_bytes(&[0b01100110, 0b10010011,  0b01100100]);
         test.truncate(n);
         assert_eq!(pos_types.pos_types, test);
         let lms_pos: Vec<usize> = (0..n).filter(|&p| pos_types.is_lms_pos(p)).collect();
