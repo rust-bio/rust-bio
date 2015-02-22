@@ -15,7 +15,7 @@
 //! ```
 
 
-use std::collections::{BitvSet, VecMap};
+use std::collections::{BitSet, VecMap};
 
 
 pub mod dna;
@@ -26,7 +26,7 @@ pub type SymbolRanks = VecMap<u8>;
 
 /// Representation of an alphabet.
 pub struct Alphabet {
-    pub symbols: BitvSet
+    pub symbols: BitSet
 }
 
 
@@ -36,7 +36,7 @@ impl Alphabet {
     }
 
     pub fn from_iter<'a, I: Iterator<Item=&'a u8>>(symbols: I) -> Self {
-        let mut s = BitvSet::new();
+        let mut s = BitSet::new();
         s.extend(symbols.map(|&c| c as usize));
 
         Alphabet { symbols: s }
@@ -82,7 +82,7 @@ impl RankTransform {
     }
 
     pub fn alphabet<'a>(&self) -> Alphabet {
-        let mut symbols = BitvSet::with_capacity(self.ranks.len());
+        let mut symbols = BitSet::with_capacity(self.ranks.len());
         symbols.extend(self.ranks.keys());
         Alphabet { symbols: symbols }
     }
