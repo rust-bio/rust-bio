@@ -9,6 +9,7 @@
 
 use std::collections::{BitVec, VecMap};
 use std::iter::{count, repeat};
+use std::num::{UnsignedInt, NumCast, cast};
 
 use alphabets::{Alphabet, RankTransform};
 use data_structures::smallints::SmallInts;
@@ -16,7 +17,6 @@ use data_structures::smallints::SmallInts;
 
 pub type SuffixArray = Vec<usize>;
 pub type LCPArray = SmallInts<i8, isize>;
-
 
 /// Construct suffix array for given text of length n.
 /// Complexity: O(n).
@@ -118,7 +118,7 @@ pub fn lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
     }
 
     let mut lcp = SmallInts::from_elem(-1, n + 1);
-    let mut l = 0us;
+    let mut l = 0usize;
     for p in (0..n-1) {
         let r = rank[p];
         // since the sentinel has rank 0 and is excluded above,
@@ -184,15 +184,15 @@ impl SAIS {
         }
     }
 
-    fn init_bucket_start(&mut self, text: &[usize]) {
+    fn init_bucket_start<T: UnsignedInt + NumCast>(&mut self, text: &[T]) {
         self.bucket_sizes.clear();
         self.bucket_start.clear();
 
         for &c in text.iter() {
-            if !self.bucket_sizes.contains_key(&c) {
-                self.bucket_sizes.insert(c, 0);
+            if !self.bucket_sizes.contains_key(&cast(c).unwrap()) {
+                self.bucket_sizes.insert(cast(c).unwrap(), 0);
             }
-            *(self.bucket_sizes.get_mut(&c).unwrap()) += 1;
+            *(self.bucket_sizes.get_mut(&cast(c).unwrap()).unwrap()) += 1;
         }
 
         let mut sum = 0;
@@ -203,7 +203,7 @@ impl SAIS {
     }
 
     /// initialize pointers to the last element of the buckets
-    fn init_bucket_end(&mut self, text: &[usize]) {
+    fn init_bucket_end<T: UnsignedInt + NumCast>(&mut self, text: &[T]) {
         self.bucket_end.clear();
         for &r in self.bucket_start[1..].iter() {
             self.bucket_end.push(r - 1);
@@ -211,14 +211,14 @@ impl SAIS {
         self.bucket_end.push(text.len() - 1);
     }
 
-    fn lms_substring_eq(
+    fn lms_substring_eq<T: UnsignedInt + NumCast>(
         &self,
-        text: &[usize],
+        text: &[T],
         pos_types: &PosTypes,
         i: usize,
         j: usize
     ) -> bool {
-        for k in count(0us, 1us) {
+        for k in count(0, 1) {
             let lmsi = pos_types.is_lms_pos(i + k);
             let lmsj = pos_types.is_lms_pos(j + k);
             if text[i + k] != text[j + k] {
@@ -237,14 +237,14 @@ impl SAIS {
         false
     }
 
-    fn construct(&mut self, text: &[usize]) {
+    fn construct<T: UnsignedInt + NumCast>(&mut self, text: &[T]) {
         let pos_types = PosTypes::new(text);
         self.calc_lms_pos(text, &pos_types);
         self.calc_pos(text, &pos_types);
     }
 
     /// Step 1 of the SAIS algorithm.
-    fn calc_lms_pos(&mut self, text: &[usize], pos_types: &PosTypes) {
+    fn calc_lms_pos<T: UnsignedInt + NumCast>(&mut self, text: &[T], pos_types: &PosTypes) {
         let n = text.len();
 
         // collect LMS positions
@@ -302,7 +302,7 @@ impl SAIS {
     }
 
     /// Step 2 of the SAIS algorithm.
-    fn calc_pos(&mut self, text: &[usize], pos_types: &PosTypes) {
+    fn calc_pos<T: UnsignedInt + NumCast>(&mut self, text: &[T], pos_types: &PosTypes) {
         let n = text.len();
         self.pos.clear();
 
@@ -316,7 +316,7 @@ impl SAIS {
 
         // insert LMS positions to the end of their buckets
         for &p in self.lms_pos.iter().rev() {
-            let c = text[p];
+            let c: usize = cast(text[p]).unwrap();
             self.pos[self.bucket_end[c]] = p;
             self.bucket_end[c] -= 1;
         }
@@ -333,7 +333,7 @@ impl SAIS {
             }
             let pred = p - 1;
             if pos_types.is_l_pos(pred) {
-                let c = text[pred];
+                let c: usize = cast(text[pred]).unwrap();
                 self.pos[self.bucket_start[c]] = pred;
                 self.bucket_start[c] += 1;
             }
@@ -347,7 +347,7 @@ impl SAIS {
             }
             let pred = p - 1;
             if pos_types.is_s_pos(pred) {
-                let c = text[pred];
+                let c: usize = cast(text[pred]).unwrap();
                 self.pos[self.bucket_end[c]] = pred;
                 self.bucket_end[c] -= 1;
             }
@@ -371,7 +371,7 @@ impl PosTypes {
     /// # Arguments
     ///
     /// * `text` - the text, ending with a sentinel.
-    fn new(text: &[usize]) -> Self {
+    fn new<T: UnsignedInt + NumCast>(text: &[T]) -> Self {
         let n = text.len();
         let mut pos_types = BitVec::from_elem(n, false);
         pos_types.set(n-1, true);
