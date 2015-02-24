@@ -10,6 +10,7 @@
 use std::collections::{BitVec, VecMap};
 use std::iter::{count, repeat};
 use std::num::{UnsignedInt, NumCast, cast};
+use std;
 
 use alphabets::{Alphabet, RankTransform};
 use data_structures::smallints::SmallInts;
@@ -65,10 +66,16 @@ pub type LCPArray = SmallInts<i8, isize>;
 /// ```
 pub fn suffix_array(text: &[u8]) -> SuffixArray {
     let n = text.len();
-    let transformed_text = transform_text(text);
-
+    let alphabet = Alphabet::new(text);
+    let sentinel_count = sentinel_count(text);
     let mut sais = SAIS::new(n);
-    sais.construct(&transformed_text);
+
+    match alphabet.len() + sentinel_count {
+        a if a <= std::u8::MAX as usize  => sais.construct(&transform_text::<u8>(text, &alphabet, sentinel_count)),
+        a if a <= std::u16::MAX as usize => sais.construct(&transform_text::<u16>(text, &alphabet, sentinel_count)),
+        a if a <= std::u32::MAX as usize => sais.construct(&transform_text::<u32>(text, &alphabet, sentinel_count)),
+        _ => sais.construct(&transform_text::<u64>(text, &alphabet, sentinel_count)),
+    }
 
     sais.pos
 }
@@ -138,25 +145,34 @@ pub fn lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
 }
 
 
-fn transform_text(text: &[u8]) -> Vec<usize> {
-    let sentinel = text[text.len() - 1];
+fn sentinel(text: &[u8]) -> u8 {
+    text[text.len() - 1]
+}
+
+
+fn sentinel_count(text: &[u8]) -> usize {
+    let sentinel = sentinel(text);
     assert!(text.iter().all(|&a| a >= sentinel), "Expecting extra sentinel symbol being \
 lexicographically smallest at the end of the text.");
 
-    let offset = text.iter().fold(0, |count, &a| count + (a == sentinel) as usize) - 1;
+    text.iter().fold(0, |count, &a| count + (a == sentinel) as usize)
+}
 
-    let alphabet = Alphabet::new(text);
-    let transform = RankTransform::new(&alphabet);
 
-    let mut transformed = Vec::with_capacity(text.len());
+fn transform_text<T: UnsignedInt + NumCast>(text: &[u8], alphabet: &Alphabet, sentinel_count: usize) -> Vec<T> {
+    let sentinel = sentinel(text);
+    let offset = sentinel_count - 1;
+    let transform = RankTransform::new(alphabet);
+
+    let mut transformed: Vec<T> = Vec::with_capacity(text.len());
     let mut s = 0;
     for &a in text.iter() {
         if a == sentinel {
-            transformed.push(s);
+            transformed.push(cast(s).unwrap());
             s += 1;
         }
         else {
-            transformed.push(*transform.ranks.get(&(a as usize)).unwrap() as usize + offset);
+            transformed.push(cast(*transform.ranks.get(&(a as usize)).unwrap() as usize + offset).unwrap());
         }
     }
 
@@ -412,11 +428,14 @@ mod tests {
     use super::*;
     use super::{PosTypes,SAIS,transform_text};
     use std::collections::BitVec;
+    use alphabets::Alphabet;
 
 
     #[test]
     fn test_pos_types() {
-        let text = transform_text(b"GCCTTAACATTATTACGCCTA$");
+        let orig_text = b"GCCTTAACATTATTACGCCTA$";
+        let alphabet = Alphabet::new(orig_text);
+        let text: Vec<u8> = transform_text(orig_text, &alphabet, 1);
         let n = text.len();
 
         let pos_types = PosTypes::new(&text);
@@ -430,7 +449,9 @@ mod tests {
 
     #[test]
     fn test_buckets() {
-        let text = transform_text(b"GCCTTAACATTATTACGCCTA$");
+        let orig_text = b"GCCTTAACATTATTACGCCTA$";
+        let alphabet = Alphabet::new(orig_text);
+        let text: Vec<u8> = transform_text(orig_text, &alphabet, 1);
         let n = text.len();
 
         let mut sais = SAIS::new(n);
@@ -443,7 +464,9 @@ mod tests {
 
     #[test]
     fn test_pos() {
-        let text = transform_text(b"GCCTTAACATTATTACGCCTA$");
+        let orig_text = b"GCCTTAACATTATTACGCCTA$";
+        let alphabet = Alphabet::new(orig_text);
+        let text: Vec<u8> = transform_text(orig_text, &alphabet, 1);
         let n = text.len();
 
         let mut sais = SAIS::new(n);
@@ -459,7 +482,9 @@ mod tests {
 
     #[test]
     fn test_lms_pos() {
-        let text = transform_text(b"GCCTTAACATTATTACGCCTA$");
+        let orig_text = b"GCCTTAACATTATTACGCCTA$";
+        let alphabet = Alphabet::new(orig_text);
+        let text: Vec<u8> = transform_text(orig_text, &alphabet, 1);
         let n = text.len();
 
         let mut sais = SAIS::new(n);
