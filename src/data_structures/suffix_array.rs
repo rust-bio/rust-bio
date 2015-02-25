@@ -253,6 +253,43 @@ impl SAIS {
         false
     }
 
+    fn sort_lms_suffixes<T: UnsignedInt + NumCast, S: UnsignedInt + NumCast>(&mut self, text: &[T], pos_types: &PosTypes) {
+        let lms_substring_count = self.lms_pos.len() - 1;
+
+        // if less than 2 LMS substrings are present, no further sorting is needed
+        if lms_substring_count > 1 {
+            // sort LMS suffixes by recursively building SA on reduced text
+            let mut reduced_text: Vec<S> = Vec::with_capacity(self.lms_pos.len());
+            let mut label = 0;
+            reduced_text.push(cast(label).unwrap());
+            let mut prev = self.lms_pos[0];
+            for &p in self.lms_pos[1..].iter() {
+                // choose same label if substrings are equal
+                if !self.lms_substring_eq(
+                    text, pos_types, prev, p
+                ) {
+                    label += 1;
+                }
+                reduced_text.push(cast(label).unwrap());
+                prev = p;
+            }
+
+            // if we have less labels than substrings, we have to sort by recursion
+            // because two or more substrings are equal
+            if label + 1 < lms_substring_count {
+                // backup lms_pos
+                let lms_pos = self.lms_pos.clone();
+                // recurse SA construction for reduced text
+                self.construct(&reduced_text);
+                // obtain sorted lms suffixes
+                self.lms_pos.clear();
+                for &p in self.pos.iter() {
+                    self.lms_pos.push(lms_pos[p]);
+                }
+            }
+        }
+    }
+
     fn construct<T: UnsignedInt + NumCast>(&mut self, text: &[T]) {
         let pos_types = PosTypes::new(text);
         self.calc_lms_pos(text, &pos_types);
@@ -281,40 +318,12 @@ impl SAIS {
                 self.lms_pos.push(p);
             }
         }
-        let lms_substring_count = self.lms_pos.len() - 1;
-
-        // if less than 2 LMS substrings are present, no further sorting is needed
-        if lms_substring_count > 1 {
-            // sort LMS suffixes by recursively building SA on reduced text
-            let mut reduced_text = Vec::with_capacity(self.lms_pos.len());
-            let mut label = 0;
-            reduced_text.push(label);
-            let mut prev = self.lms_pos[0];
-            for &p in self.lms_pos[1..].iter() {
-                // choose same label if substrings are equal
-                if !self.lms_substring_eq(
-                    text, pos_types, prev, p
-                ) {
-                    label += 1;
-                }
-                reduced_text.push(label);
-                prev = p;
-            }
-
-            // if we have less labels than substrings, we have to sort by recursion
-            // because two or more substrings are equal
-            if label + 1 < lms_substring_count {
-                // backup lms_pos
-                let lms_pos = self.lms_pos.clone();
-                // recurse SA construction for reduced text
-                self.construct(&reduced_text);
-                // obtain sorted lms suffixes
-                self.lms_pos.clear();
-                for &p in self.pos.iter() {
-                    self.lms_pos.push(lms_pos[p]);
-                }
-            }
-        }
+        match self.lms_pos.len() - 1 {
+            a if a <= std::u8::MAX as usize  => self.sort_lms_suffixes::<T, u8>(text, pos_types),
+            a if a <= std::u16::MAX as usize => self.sort_lms_suffixes::<T, u16>(text, pos_types),
+            a if a <= std::u32::MAX as usize => self.sort_lms_suffixes::<T, u32>(text, pos_types),
+            _ => self.sort_lms_suffixes::<T, u64>(text, pos_types),
+        };
     }
 
     /// Step 2 of the SAIS algorithm.
