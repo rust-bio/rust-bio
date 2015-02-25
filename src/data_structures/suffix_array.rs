@@ -7,8 +7,10 @@
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
-use std::collections::{Bitv, VecMap};
+use std::collections::{BitVec, VecMap};
 use std::iter::{count, repeat};
+use std::num::{UnsignedInt, NumCast, cast};
+use std;
 
 use alphabets::{Alphabet, RankTransform};
 use data_structures::smallints::SmallInts;
@@ -16,7 +18,6 @@ use data_structures::smallints::SmallInts;
 
 pub type SuffixArray = Vec<usize>;
 pub type LCPArray = SmallInts<i8, isize>;
-
 
 /// Construct suffix array for given text of length n.
 /// Complexity: O(n).
@@ -65,10 +66,16 @@ pub type LCPArray = SmallInts<i8, isize>;
 /// ```
 pub fn suffix_array(text: &[u8]) -> SuffixArray {
     let n = text.len();
-    let transformed_text = transform_text(text);
-
+    let alphabet = Alphabet::new(text);
+    let sentinel_count = sentinel_count(text);
     let mut sais = SAIS::new(n);
-    sais.construct(&transformed_text);
+
+    match alphabet.len() + sentinel_count {
+        a if a <= std::u8::MAX as usize  => sais.construct(&transform_text::<u8>(text, &alphabet, sentinel_count)),
+        a if a <= std::u16::MAX as usize => sais.construct(&transform_text::<u16>(text, &alphabet, sentinel_count)),
+        a if a <= std::u32::MAX as usize => sais.construct(&transform_text::<u32>(text, &alphabet, sentinel_count)),
+        _ => sais.construct(&transform_text::<u64>(text, &alphabet, sentinel_count)),
+    }
 
     sais.pos
 }
@@ -118,7 +125,7 @@ pub fn lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
     }
 
     let mut lcp = SmallInts::from_elem(-1, n + 1);
-    let mut l = 0us;
+    let mut l = 0usize;
     for p in (0..n-1) {
         let r = rank[p];
         // since the sentinel has rank 0 and is excluded above,
@@ -138,25 +145,34 @@ pub fn lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
 }
 
 
-fn transform_text(text: &[u8]) -> Vec<usize> {
-    let sentinel = text[text.len() - 1];
+fn sentinel(text: &[u8]) -> u8 {
+    text[text.len() - 1]
+}
+
+
+fn sentinel_count(text: &[u8]) -> usize {
+    let sentinel = sentinel(text);
     assert!(text.iter().all(|&a| a >= sentinel), "Expecting extra sentinel symbol being \
 lexicographically smallest at the end of the text.");
 
-    let offset = text.iter().fold(0, |count, &a| count + (a == sentinel) as usize) - 1;
+    text.iter().fold(0, |count, &a| count + (a == sentinel) as usize)
+}
 
-    let alphabet = Alphabet::new(text);
-    let transform = RankTransform::new(&alphabet);
 
-    let mut transformed = Vec::with_capacity(text.len());
+fn transform_text<T: UnsignedInt + NumCast>(text: &[u8], alphabet: &Alphabet, sentinel_count: usize) -> Vec<T> {
+    let sentinel = sentinel(text);
+    let offset = sentinel_count - 1;
+    let transform = RankTransform::new(alphabet);
+
+    let mut transformed: Vec<T> = Vec::with_capacity(text.len());
     let mut s = 0;
     for &a in text.iter() {
         if a == sentinel {
-            transformed.push(s);
+            transformed.push(cast(s).unwrap());
             s += 1;
         }
         else {
-            transformed.push(*transform.ranks.get(&(a as usize)).unwrap() as usize + offset);
+            transformed.push(cast(*transform.ranks.get(&(a as usize)).unwrap() as usize + offset).unwrap());
         }
     }
 
@@ -184,15 +200,15 @@ impl SAIS {
         }
     }
 
-    fn init_bucket_start(&mut self, text: &[usize]) {
+    fn init_bucket_start<T: UnsignedInt + NumCast>(&mut self, text: &[T]) {
         self.bucket_sizes.clear();
         self.bucket_start.clear();
 
         for &c in text.iter() {
-            if !self.bucket_sizes.contains_key(&c) {
-                self.bucket_sizes.insert(c, 0);
+            if !self.bucket_sizes.contains_key(&cast(c).unwrap()) {
+                self.bucket_sizes.insert(cast(c).unwrap(), 0);
             }
-            *(self.bucket_sizes.get_mut(&c).unwrap()) += 1;
+            *(self.bucket_sizes.get_mut(&cast(c).unwrap()).unwrap()) += 1;
         }
 
         let mut sum = 0;
@@ -203,7 +219,7 @@ impl SAIS {
     }
 
     /// initialize pointers to the last element of the buckets
-    fn init_bucket_end(&mut self, text: &[usize]) {
+    fn init_bucket_end<T: UnsignedInt + NumCast>(&mut self, text: &[T]) {
         self.bucket_end.clear();
         for &r in self.bucket_start[1..].iter() {
             self.bucket_end.push(r - 1);
@@ -211,14 +227,14 @@ impl SAIS {
         self.bucket_end.push(text.len() - 1);
     }
 
-    fn lms_substring_eq(
+    fn lms_substring_eq<T: UnsignedInt + NumCast>(
         &self,
-        text: &[usize],
+        text: &[T],
         pos_types: &PosTypes,
         i: usize,
         j: usize
     ) -> bool {
-        for k in count(0us, 1us) {
+        for k in count(0, 1) {
             let lmsi = pos_types.is_lms_pos(i + k);
             let lmsj = pos_types.is_lms_pos(j + k);
             if text[i + k] != text[j + k] {
@@ -237,14 +253,14 @@ impl SAIS {
         false
     }
 
-    fn construct(&mut self, text: &[usize]) {
+    fn construct<T: UnsignedInt + NumCast>(&mut self, text: &[T]) {
         let pos_types = PosTypes::new(text);
         self.calc_lms_pos(text, &pos_types);
         self.calc_pos(text, &pos_types);
     }
 
     /// Step 1 of the SAIS algorithm.
-    fn calc_lms_pos(&mut self, text: &[usize], pos_types: &PosTypes) {
+    fn calc_lms_pos<T: UnsignedInt + NumCast>(&mut self, text: &[T], pos_types: &PosTypes) {
         let n = text.len();
 
         // collect LMS positions
@@ -302,7 +318,7 @@ impl SAIS {
     }
 
     /// Step 2 of the SAIS algorithm.
-    fn calc_pos(&mut self, text: &[usize], pos_types: &PosTypes) {
+    fn calc_pos<T: UnsignedInt + NumCast>(&mut self, text: &[T], pos_types: &PosTypes) {
         let n = text.len();
         self.pos.clear();
 
@@ -316,7 +332,7 @@ impl SAIS {
 
         // insert LMS positions to the end of their buckets
         for &p in self.lms_pos.iter().rev() {
-            let c = text[p];
+            let c: usize = cast(text[p]).unwrap();
             self.pos[self.bucket_end[c]] = p;
             self.bucket_end[c] -= 1;
         }
@@ -333,7 +349,7 @@ impl SAIS {
             }
             let pred = p - 1;
             if pos_types.is_l_pos(pred) {
-                let c = text[pred];
+                let c: usize = cast(text[pred]).unwrap();
                 self.pos[self.bucket_start[c]] = pred;
                 self.bucket_start[c] += 1;
             }
@@ -347,7 +363,7 @@ impl SAIS {
             }
             let pred = p - 1;
             if pos_types.is_s_pos(pred) {
-                let c = text[pred];
+                let c: usize = cast(text[pred]).unwrap();
                 self.pos[self.bucket_end[c]] = pred;
                 self.bucket_end[c] -= 1;
             }
@@ -357,7 +373,7 @@ impl SAIS {
 
 
 struct PosTypes {
-    pos_types: Bitv,
+    pos_types: BitVec,
 }
 
 
@@ -365,15 +381,15 @@ impl PosTypes {
     /// Calculate the text position type.
     /// L-type marks suffixes being lexicographically larger than their successor,
     /// S-type marks the others.
-    /// This function fills a Bitv, with 1-bits denoting S-type
+    /// This function fills a BitVec, with 1-bits denoting S-type
     /// and 0-bits denoting L-type.
     ///
     /// # Arguments
     ///
     /// * `text` - the text, ending with a sentinel.
-    fn new(text: &[usize]) -> Self {
+    fn new<T: UnsignedInt + NumCast>(text: &[T]) -> Self {
         let n = text.len();
-        let mut pos_types = Bitv::from_elem(n, false);
+        let mut pos_types = BitVec::from_elem(n, false);
         pos_types.set(n-1, true);
 
         for p in (0..n-1).rev() {
@@ -411,16 +427,19 @@ mod tests {
 
     use super::*;
     use super::{PosTypes,SAIS,transform_text};
-    use std::collections::Bitv;
+    use std::collections::BitVec;
+    use alphabets::Alphabet;
 
 
     #[test]
     fn test_pos_types() {
-        let text = transform_text(b"GCCTTAACATTATTACGCCTA$");
+        let orig_text = b"GCCTTAACATTATTACGCCTA$";
+        let alphabet = Alphabet::new(orig_text);
+        let text: Vec<u8> = transform_text(orig_text, &alphabet, 1);
         let n = text.len();
 
         let pos_types = PosTypes::new(&text);
-        let mut test = Bitv::from_bytes(&[0b01100110, 0b10010011,  0b01100100]);
+        let mut test = BitVec::from_bytes(&[0b01100110, 0b10010011,  0b01100100]);
         test.truncate(n);
         assert_eq!(pos_types.pos_types, test);
         let lms_pos: Vec<usize> = (0..n).filter(|&p| pos_types.is_lms_pos(p)).collect();
@@ -430,7 +449,9 @@ mod tests {
 
     #[test]
     fn test_buckets() {
-        let text = transform_text(b"GCCTTAACATTATTACGCCTA$");
+        let orig_text = b"GCCTTAACATTATTACGCCTA$";
+        let alphabet = Alphabet::new(orig_text);
+        let text: Vec<u8> = transform_text(orig_text, &alphabet, 1);
         let n = text.len();
 
         let mut sais = SAIS::new(n);
@@ -443,7 +464,9 @@ mod tests {
 
     #[test]
     fn test_pos() {
-        let text = transform_text(b"GCCTTAACATTATTACGCCTA$");
+        let orig_text = b"GCCTTAACATTATTACGCCTA$";
+        let alphabet = Alphabet::new(orig_text);
+        let text: Vec<u8> = transform_text(orig_text, &alphabet, 1);
         let n = text.len();
 
         let mut sais = SAIS::new(n);
@@ -459,7 +482,9 @@ mod tests {
 
     #[test]
     fn test_lms_pos() {
-        let text = transform_text(b"GCCTTAACATTATTACGCCTA$");
+        let orig_text = b"GCCTTAACATTATTACGCCTA$";
+        let alphabet = Alphabet::new(orig_text);
+        let text: Vec<u8> = transform_text(orig_text, &alphabet, 1);
         let n = text.len();
 
         let mut sais = SAIS::new(n);

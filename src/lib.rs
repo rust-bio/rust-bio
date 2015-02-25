@@ -1,9 +1,8 @@
 #![feature(core)]
 #![feature(collections)]
 #![feature(test)]
-#![feature(std_misc)]
 #![feature(io)]
-
+#![feature(str_words)]
 
 // Copyright 2014 Johannes Köster.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)

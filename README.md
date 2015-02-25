@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/johanneskoester/rust-bio.svg?branch=master)](https://travis-ci.org/johanneskoester/rust-bio)
+
 # Rust-Bio, a rusty bioinformatics library.
 
 This library provides implementations of many algorithms and data structures
@@ -13,13 +15,14 @@ Currently, rust-bio provides
 * BWT and FM-Index,
 * FMD-Index for finding supermaximal exact matches,
 * a rank/select data structure,
-* a FastQ reader and writer.
+* FastQ and Fasta readers and writers.
 
 ## Resources
 
 * Homepage: https://github.com/johanneskoester/rust-bio
 * API documentation: https://johanneskoester.github.io/rust-bio/doc/bio/index.html
 * Continuous integration tests: https://travis-ci.org/johanneskoester/rust-bio
+* Roadmap: https://github.com/johanneskoester/rust-bio/issues/3
 
 ## Usage
 

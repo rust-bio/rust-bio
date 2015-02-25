@@ -161,7 +161,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         // set minimum score to -inf, and allow to add gap_extend
         // without overflow
         let min_score = i32::MIN - self.gap_extend;
-        for k in 0..2us {
+        for k in 0..2 {
             self.S[k].clear();
             self.I[k].clear();
             self.D[k].clear();

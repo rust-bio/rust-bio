@@ -62,7 +62,7 @@ impl<'a> KMP<'a> {
 
 
 fn lps(pattern: &[u8]) -> LPS {
-    let (m, mut q) = (pattern.len(), 0us);
+    let (m, mut q) = (pattern.len(), 0);
     let mut lps: LPS = repeat(0).take(m).collect();
     for i in 1..m {
         while q > 0 && pattern[q] != pattern[i] {

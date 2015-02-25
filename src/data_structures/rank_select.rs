@@ -10,8 +10,8 @@
 //!
 //! ```
 //! use bio::data_structures::rank_select::RankSelect;
-//! use std::collections::Bitv;
-//! let mut bits = Bitv::from_elem(64, false);
+//! use std::collections::BitVec;
+//! let mut bits = BitVec::from_elem(64, false);
 //! bits.set(5, true);
 //! bits.set(32, true);
 //! let rs = RankSelect::new(bits, 1);
@@ -27,7 +27,7 @@
 //! ```
 
 
-use std::collections::Bitv;
+use std::collections::BitVec;
 use std::intrinsics::ctpop8;
 
 
@@ -58,7 +58,7 @@ impl RankSelect {
     ///   The data structure needs O(n + n log n / (k * 32)) bits with n being the bits of the given bitvector.
     ///   The data structure is succinct if k is chosen as a sublinear function of n
     ///   (e.g. k = (log n)² / 32).
-    pub fn new(bits: Bitv, k: usize) -> RankSelect {
+    pub fn new(bits: BitVec, k: usize) -> RankSelect {
         let n = bits.len();
         let raw = bits.to_bytes();
         let s = k * 32;
@@ -113,7 +113,7 @@ impl RankSelect {
             let p = ctpop(b) as u32;
             if rank + p >= j {
                 let mut bit = 0b10000000;
-                for i in 0us..8us {
+                for i in 0..8usize {
                     rank += (b & bit > 0) as u32;
                     if rank == j {
                         return Some((first_block + block) * 8 + i);
