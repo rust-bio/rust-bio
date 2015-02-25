@@ -1,4 +1,4 @@
-// Copyright 2014 Johannes Köster.
+// Copyright 2014-2015 Johannes Köster, Peer Aramillo Irizar.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -19,7 +19,7 @@ use std::collections::{BitSet, VecMap};
 
 
 pub mod dna;
-
+pub mod protein;
 
 pub type SymbolRanks = VecMap<u8>;
 
