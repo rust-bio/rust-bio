@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/johanneskoester/rust-bio.svg?branch=master)](https://travis-ci.org/johanneskoester/rust-bio)
 
-# Rust-Bio, a rusty bioinformatics library.
+# Rust-Bio, a bioinformatics library for Rust.
 
 This library provides implementations of many algorithms and data structures
 that are useful for bioinformatics.
