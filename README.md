@@ -52,6 +52,7 @@ For more information, please read the API documentation: https://johanneskoester
 
 * Johannes Köster (<johannes.koester@tu-dortmund.de>)
 * Christopher Schröder (<christopher.schroeder@uni-due.de>)
+* Peer Aramillo Irizar @parir
 
 The next name in this list could be you! If you are interested in joining the effort to build a general purpose Rust bioinformatics library, just send me an email, or issue a pull request with your first contribution.
 
