@@ -10,6 +10,7 @@
 use std::collections::{BitVec, VecMap};
 use std::iter::{count, repeat};
 use std::num::{UnsignedInt, NumCast, cast};
+use std::num::wrapping::WrappingOps;
 use std;
 
 use alphabets::{Alphabet, RankTransform};
@@ -343,7 +344,8 @@ impl SAIS {
         for &p in self.lms_pos.iter().rev() {
             let c: usize = cast(text[p]).unwrap();
             self.pos[self.bucket_end[c]] = p;
-            self.bucket_end[c] -= 1;
+            // subtract without overflow: last -1 will cause overflow, but it does not matter
+            self.bucket_end[c] = self.bucket_end[c].wrapping_sub(1);
         }
 
         // reset bucket ends
@@ -374,7 +376,8 @@ impl SAIS {
             if pos_types.is_s_pos(pred) {
                 let c: usize = cast(text[pred]).unwrap();
                 self.pos[self.bucket_end[c]] = pred;
-                self.bucket_end[c] -= 1;
+                // subtract without overflow: last -1 will cause overflow, but it won't be used
+                self.bucket_end[c] = self.bucket_end[c].wrapping_sub(1);
             }
         }
     }

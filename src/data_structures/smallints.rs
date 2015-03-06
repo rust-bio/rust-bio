@@ -47,7 +47,7 @@ impl<S: Int + NumCast + FromPrimitive, B: Int + NumCast> SmallInts<S, B> {
 
     pub fn from_elem(v: S, n: usize) -> Self {
         assert!(size_of::<S>() < size_of::<B>(), "S has to be smaller than B");
-        if v > FromPrimitive::from_int(0).unwrap() {
+        if v > cast(0).unwrap() {
             assert!(v < Int::max_value(), "v has to be smaller than maximum value");
         }
         
