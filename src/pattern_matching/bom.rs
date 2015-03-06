@@ -125,7 +125,7 @@ impl<'a> Iterator for BOMMatches<'a> {
             }
             // putative start position
             let i = self.window - self.bom.m;
-            self.window += self.bom.m - j + 2;
+            self.window += self.bom.m + 2 - j;
             if q.is_some() {
                 // return match
                 return Some(i);
