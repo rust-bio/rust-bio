@@ -31,7 +31,7 @@ pub struct Alignment {
 
 impl Alignment {
     pub fn cigar(&self, hard_clip: bool) -> String {
-        let add_op = |&: op, k, cigar: &mut String| {
+        let add_op = |op, k, cigar: &mut String| {
             cigar.push_str(format!("{}{}", k, match op {
                 AlignmentOperation::Match => "=",
                 AlignmentOperation::Subst => "X",
