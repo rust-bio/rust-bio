@@ -75,6 +75,10 @@ impl RankTransform {
         RankTransform { ranks: ranks }
     }
 
+    pub fn get(&self, a: u8) -> u8 {
+        *self.ranks.get(&(a as usize)).expect("Unexpected character.")
+    }
+
     pub fn transform(&self, text: &[u8]) -> Vec<u8> {
         text.iter()
             .map(|&c| *self.ranks.get(&(c as usize)).expect("Unexpected character in text."))
