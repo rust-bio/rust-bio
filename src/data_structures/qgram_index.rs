@@ -5,14 +5,16 @@
 
 
 use std::num::{Int, UnsignedInt, NumCast, cast};
+use std::collections;
 use std::slice;
 
 use alphabets::{Alphabet, RankTransform};
 
 
 fn qgram_push<Q: UnsignedInt + NumCast>(qgram: &mut Q, a: u8) {
-    *qgram = *qgram << 2;
+    *qgram = *qgram << 2; // TODO generalize this for n-bit encoding!
     *qgram = *qgram | cast(a).unwrap();
+    // TODO mask unused bits with q
 }
 
 
@@ -27,8 +29,7 @@ struct QGrams<'a, Q: UnsignedInt + NumCast> {
 impl<'a, Q: UnsignedInt + NumCast> QGrams<'a, Q> {
     pub fn new(q: usize, text: &'a [u8], alphabet: &Alphabet) -> Self {
         let ranks = RankTransform::new(alphabet);
-        let mut qgram: Q = cast(0).unwrap();
-        let mut qgrams = QGrams { text: text.iter(), qgram: qgram, q: q, ranks: ranks };
+        let mut qgrams = QGrams { text: text.iter(), qgram: cast(0).unwrap(), q: q, ranks: ranks };
         for _ in 0..q-1 {
             qgrams.next();
         }
@@ -89,4 +90,57 @@ impl<'a> QGramIndex<'a> {
     pub fn matches(&self, qgram: u32) -> &[usize] {
         &self.pos[self.address[qgram as usize]..self.address[qgram as usize + 1]]
     }
+
+    pub fn exact_matches(&self, pattern: &[u8]) -> Vec<ExactMatch> {
+        let mut diagonals: collections::HashMap<usize, Vec<ExactMatch>> = collections::HashMap::new();
+        for (i, qgram) in QGrams::<u32>::new(self.q, pattern, self.alphabet).enumerate() {
+            for &p in self.matches(qgram) {
+                let diagonal = p - i;
+                if !diagonals.contains_key(&diagonal) {
+                    // nothing yet, start new match
+                    let mut intervals = vec![
+                        ExactMatch {
+                            pattern_start: i,
+                            pattern_stop: i + self.q,
+                            text_start: p,
+                            text_stop: p + self.q
+                        }
+                    ];
+                    diagonals.insert(diagonal, intervals);
+                }
+                else {
+                    let mut intervals = diagonals.get_mut(&diagonal).unwrap();
+
+                    let exact_match = intervals.iter().last().unwrap().pattern_stop == i;
+                    if exact_match {
+                        let mut interval = intervals.iter_mut().last().unwrap();
+                        // extend exact match
+                        interval.pattern_stop = i + self.q;
+                        interval.text_stop = p + self.q;
+                    }
+                    else {
+                        // mismatch or indel, start new match
+                        intervals.push(
+                            ExactMatch {
+                                pattern_start: i,
+                                pattern_stop: i + self.q,
+                                text_start: p,
+                                text_stop: p + self.q
+                            }
+                        )
+                    }
+
+                }
+            }
+        }
+        diagonals.into_iter().flat_map(|(usize, intervals)| intervals.into_iter()).collect()
+    }
+}
+
+
+pub struct ExactMatch {
+    pub pattern_start: usize,
+    pub pattern_stop: usize,
+    pub text_start: usize,
+    pub text_stop: usize,
 }
