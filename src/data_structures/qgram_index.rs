@@ -4,24 +4,19 @@
 // except according to those terms.
 
 
-use std::num::{Int, UnsignedInt, NumCast, cast};
+use std::num::{Int, UnsignedInt, NumCast, cast, Float};
 use std::collections;
 use std::slice;
+use std;
 
 use alphabets::{Alphabet, RankTransform};
-
-
-fn qgram_push<Q: UnsignedInt + NumCast>(qgram: &mut Q, a: u8) {
-    *qgram = *qgram << 2; // TODO generalize this for n-bit encoding!
-    *qgram = *qgram | cast(a).unwrap();
-    // TODO mask unused bits with q
-}
 
 
 struct QGrams<'a, Q: UnsignedInt + NumCast> {
     text: slice::Iter<'a, u8>,
     qgram: Q,
-    q: usize,
+    bits: usize,
+    mask: Q,
     ranks: RankTransform,
 }
 
@@ -29,12 +24,23 @@ struct QGrams<'a, Q: UnsignedInt + NumCast> {
 impl<'a, Q: UnsignedInt + NumCast> QGrams<'a, Q> {
     pub fn new(q: usize, text: &'a [u8], alphabet: &Alphabet) -> Self {
         let ranks = RankTransform::new(alphabet);
-        let mut qgrams = QGrams { text: text.iter(), qgram: cast(0).unwrap(), q: q, ranks: ranks };
+        let mut qgrams = QGrams {
+            text: text.iter(),
+            qgram: cast(0).unwrap(),
+            ranks: ranks,
+            bits: (alphabet.len() as f32).log2().ceil() as usize,
+            mask: cast((1 << q) - 1).unwrap(),
+        };
         for _ in 0..q-1 {
             qgrams.next();
         }
 
         qgrams
+    }
+
+    fn qgram_push(&mut self, a: u8) {
+        self.qgram = self.qgram << self.bits;
+        self.qgram = (self.qgram | cast(a).unwrap()) & self.mask;
     }
 }
 
@@ -45,7 +51,8 @@ impl<'a, Q: UnsignedInt + NumCast> Iterator for QGrams<'a, Q> {
     fn next(&mut self) -> Option<Q> {
         match self.text.next() {
             Some(a) => {
-                qgram_push(&mut self.qgram, self.ranks.get(*a));
+                let b = self.ranks.get(*a);
+                self.qgram_push(b);
                 Some(self.qgram)
             },
             None    => None
@@ -64,12 +71,23 @@ pub struct QGramIndex<'a> {
 
 impl<'a> QGramIndex<'a> {
     pub fn new(q: usize, text: &[u8], alphabet: &'a Alphabet) -> Self {
+        QGramIndex::with_max_count(q, text, alphabet, std::usize::MAX)
+    }
+
+    pub fn with_max_count(q: usize, text: &[u8], alphabet: &'a Alphabet, max_count: usize) -> Self {
         let qgram_count = alphabet.len().pow(q as u32);
-        let mut address = vec![0; qgram_count];
+        let mut address = vec![0; qgram_count + 1];
         let mut pos = vec![0; text.len()];
 
         for qgram in QGrams::<u32>::new(q, text, alphabet) {
             address[qgram as usize] += 1;
+        }
+
+        for g in 1..address.len() {
+            if address[g] > max_count {
+                // mask qgram
+                address[g] = 0;
+            }
         }
 
         for i in 1..address.len() {
@@ -79,8 +97,12 @@ impl<'a> QGramIndex<'a> {
         {
             let mut offset = vec![0; qgram_count];
             for (i, qgram) in QGrams::<u32>::new(q, text, alphabet).enumerate() {
-                pos[address[qgram as usize] + offset[qgram as usize]] = i;
-                offset[qgram as usize] += 1;
+                let a = address[qgram as usize];
+                if address[qgram as usize + 1] - a != 0 {
+                    // if not masked, insert positions
+                    pos[a + offset[qgram as usize]] = i;
+                    offset[qgram as usize] += 1;
+                }
             }
         }
 
@@ -123,7 +145,7 @@ impl<'a> QGramIndex<'a> {
                     });
                 }
                 else {
-                    let mut interval = diagonals.get_mut(&diagonal).unwrap();
+                    let interval = diagonals.get_mut(&diagonal).unwrap();
                     if interval.pattern_stop == i {
                         // extend exact match
                         interval.pattern_stop = i + self.q;
@@ -143,7 +165,7 @@ impl<'a> QGramIndex<'a> {
             }
         }
         // report remaining intervals
-        for (diagonal, interval) in diagonals.into_iter() {
+        for (_, interval) in diagonals.into_iter() {
             intervals.push(interval);
         }
         intervals
@@ -152,8 +174,8 @@ impl<'a> QGramIndex<'a> {
 
 
 pub struct Diagonal {
-    pos: usize,
-    count: usize,
+    pub pos: usize,
+    pub count: usize,
 }
 
 
