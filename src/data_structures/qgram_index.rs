@@ -153,7 +153,7 @@ impl<'a> QGramIndex<'a> {
                     }
                     else {
                         // report previous match
-                        intervals.push(*interval);
+                        intervals.push(interval.clone());
                         // mismatch or indel, start new match
                         interval.pattern_start = i;
                         interval.pattern_stop = i + self.q;
@@ -179,7 +179,7 @@ pub struct Diagonal {
 }
 
 
-#[derive(Copy)]
+#[derive(Clone)]
 pub struct ExactMatch {
     pub pattern_start: usize,
     pub pattern_stop: usize,
