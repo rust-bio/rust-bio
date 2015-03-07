@@ -91,53 +91,73 @@ impl<'a> QGramIndex<'a> {
         &self.pos[self.address[qgram as usize]..self.address[qgram as usize + 1]]
     }
 
+    pub fn diagonals(&self, pattern: &[u8]) -> Vec<Diagonal> {
+        let mut diagonals = collections::HashMap::new();
+        for (i, qgram) in QGrams::<u32>::new(self.q, pattern, self.alphabet).enumerate() {
+            for p in self.matches(qgram) {
+                let diagonal = p - i;
+                if diagonals.contains_key(&diagonal) {
+                    diagonals.insert(diagonal, 1);
+                }
+                else {
+                    *diagonals.get_mut(&diagonal).unwrap() += 1;
+                }
+            }
+        }
+        diagonals.into_iter().map(|(diagonal, count)| Diagonal { pos: diagonal, count: count }).collect()
+    }
+
     pub fn exact_matches(&self, pattern: &[u8]) -> Vec<ExactMatch> {
-        let mut diagonals: collections::HashMap<usize, Vec<ExactMatch>> = collections::HashMap::new();
+        let mut diagonals: collections::HashMap<usize, ExactMatch> = collections::HashMap::new();
+        let mut intervals = Vec::new();
         for (i, qgram) in QGrams::<u32>::new(self.q, pattern, self.alphabet).enumerate() {
             for &p in self.matches(qgram) {
                 let diagonal = p - i;
                 if !diagonals.contains_key(&diagonal) {
                     // nothing yet, start new match
-                    let mut intervals = vec![
-                        ExactMatch {
+                    diagonals.insert(diagonal, ExactMatch {
                             pattern_start: i,
                             pattern_stop: i + self.q,
                             text_start: p,
                             text_stop: p + self.q
-                        }
-                    ];
-                    diagonals.insert(diagonal, intervals);
+                    });
                 }
                 else {
-                    let mut intervals = diagonals.get_mut(&diagonal).unwrap();
-
-                    let exact_match = intervals.iter().last().unwrap().pattern_stop == i;
-                    if exact_match {
-                        let mut interval = intervals.iter_mut().last().unwrap();
+                    let mut interval = diagonals.get_mut(&diagonal).unwrap();
+                    if interval.pattern_stop == i {
                         // extend exact match
                         interval.pattern_stop = i + self.q;
                         interval.text_stop = p + self.q;
                     }
                     else {
+                        // report previous match
+                        intervals.push(*interval);
                         // mismatch or indel, start new match
-                        intervals.push(
-                            ExactMatch {
-                                pattern_start: i,
-                                pattern_stop: i + self.q,
-                                text_start: p,
-                                text_stop: p + self.q
-                            }
-                        )
+                        interval.pattern_start = i;
+                        interval.pattern_stop = i + self.q;
+                        interval.text_start = p;
+                        interval.text_stop = p + self.q;
                     }
 
                 }
             }
         }
-        diagonals.into_iter().flat_map(|(usize, intervals)| intervals.into_iter()).collect()
+        // report remaining intervals
+        for (diagonal, interval) in diagonals.into_iter() {
+            intervals.push(interval);
+        }
+        intervals
     }
 }
 
 
+pub struct Diagonal {
+    pos: usize,
+    count: usize,
+}
+
+
+#[derive(Copy)]
 pub struct ExactMatch {
     pub pattern_start: usize,
     pub pattern_stop: usize,
