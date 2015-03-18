@@ -10,11 +10,16 @@ use std::slice;
 use std;
 
 use alphabets::{Alphabet, RankTransform};
+use utils;
 
 
-struct QGrams<'a, Q: UnsignedInt + NumCast> {
-    text: slice::Iter<'a, u8>,
-    qgram: Q,
+/// Iterator over the q-grams of a given text. Q-grams are encoded as integers.
+/// The number of bits for encoding a single symbol is chosen as log2(A) with A being the alphabet
+/// size.
+///
+/// The type Q has to be chosen such that the q-gram fits into it.
+pub struct QGrams<'a, Q: UnsignedInt + NumCast> {
+    text: &'a [u8],
     bits: usize,
     mask: Q,
     ranks: RankTransform,
@@ -22,36 +27,58 @@ struct QGrams<'a, Q: UnsignedInt + NumCast> {
 
 
 impl<'a, Q: UnsignedInt + NumCast> QGrams<'a, Q> {
+    /// Create new instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `q` - the length of the q-gram
+    /// * `text` - the text
+    /// * `alphabet` - the alphabet to use
     pub fn new(q: usize, text: &'a [u8], alphabet: &Alphabet) -> Self {
         let ranks = RankTransform::new(alphabet);
-        let mut qgrams = QGrams {
-            text: text.iter(),
-            qgram: cast(0).unwrap(),
+        let bits = (alphabet.len() as f32).log2().ceil() as usize;
+        assert!(bits * q <= Q::
+        QGrams {
+            text: text,
             ranks: ranks,
-            bits: (alphabet.len() as f32).log2().ceil() as usize,
-            mask: cast((1 << q) - 1).unwrap(),
-        };
-        for _ in 0..q-1 {
-            qgrams.next();
+            bits: bits,
+            mask: cast((1 << q * bits) - 1).unwrap(),
         }
-
-        qgrams
     }
 
-    fn qgram_push(&mut self, a: u8) {
-        self.qgram = self.qgram << self.bits;
-        self.qgram = (self.qgram | cast(a).unwrap()) & self.mask;
+    pub fn iter(&self) -> QGramIter {
+        let mut iter = QGramIter { qgrams: self, text: text.iter(), qgram: cast(0).unwrap() };
+        for _ in 0..q-1 {
+            iter.next();
+        }
+
+        iter
     }
 }
 
 
-impl<'a, Q: UnsignedInt + NumCast> Iterator for QGrams<'a, Q> {
+pub struct QGramIter<'a, Q: UnsignedInt + NumCast> {
+    qgrams: &'a QGrams,
+    text: slice::Iter<'a, u8>,
+    qgram: Q,
+}
+
+
+impl<'a, Q: UnsignedInt + NumCast> QGramIter<'a, Q> {
+    fn qgram_push(&mut self, a: u8) {
+        self.qgram = self.qgram << self.qgrams.bits;
+        self.qgram = (self.qgram | cast(a).unwrap()) & self.qgrams.mask;
+    }
+}
+
+
+impl<'a, Q: UnsignedInt + NumCast> Iterator for QGramIter<'a, Q> {
     type Item = Q;
 
     fn next(&mut self) -> Option<Q> {
         match self.text.next() {
             Some(a) => {
-                let b = self.ranks.get(*a);
+                let b = self.qgrams.ranks.get(*a);
                 self.qgram_push(b);
                 Some(self.qgram)
             },
@@ -90,9 +117,7 @@ impl<'a> QGramIndex<'a> {
             }
         }
 
-        for i in 1..address.len() {
-            address[i] += address[i - 1];
-        }
+        utils::prescan(&mut address, 0, |a, b| a + b);
 
         {
             let mut offset = vec![0; qgram_count];
@@ -118,7 +143,7 @@ impl<'a> QGramIndex<'a> {
         for (i, qgram) in QGrams::<u32>::new(self.q, pattern, self.alphabet).enumerate() {
             for p in self.matches(qgram) {
                 let diagonal = p - i;
-                if diagonals.contains_key(&diagonal) {
+                if !diagonals.contains_key(&diagonal) {
                     diagonals.insert(diagonal, 1);
                 }
                 else {
@@ -138,27 +163,25 @@ impl<'a> QGramIndex<'a> {
                 if !diagonals.contains_key(&diagonal) {
                     // nothing yet, start new match
                     diagonals.insert(diagonal, ExactMatch {
-                            pattern_start: i,
-                            pattern_stop: i + self.q,
-                            text_start: p,
-                            text_stop: p + self.q
+                            pattern: Interval{ start: i, stop: i + self.q},
+                            text: Interval { start: p, stop: p + self.q },
                     });
                 }
                 else {
                     let interval = diagonals.get_mut(&diagonal).unwrap();
-                    if interval.pattern_stop == i {
+                    if interval.pattern.stop - self.q + 1 == i {
                         // extend exact match
-                        interval.pattern_stop = i + self.q;
-                        interval.text_stop = p + self.q;
+                        interval.pattern.stop = i + self.q;
+                        interval.text.stop = p + self.q;
                     }
                     else {
                         // report previous match
                         intervals.push(interval.clone());
                         // mismatch or indel, start new match
-                        interval.pattern_start = i;
-                        interval.pattern_stop = i + self.q;
-                        interval.text_start = p;
-                        interval.text_stop = p + self.q;
+                        interval.pattern.start = i;
+                        interval.pattern.stop = i + self.q;
+                        interval.text.start = p;
+                        interval.text.stop = p + self.q;
                     }
 
                 }
@@ -173,16 +196,86 @@ impl<'a> QGramIndex<'a> {
 }
 
 
+#[derive(PartialEq)]
+#[derive(Debug)]
 pub struct Diagonal {
     pub pos: usize,
     pub count: usize,
 }
 
 
+/// An interval, consisting of start and stop position (the latter exclusive).
 #[derive(Clone)]
+#[derive(PartialEq)]
+#[derive(Debug)]
+pub struct Interval {
+    pub start: usize,
+    pub stop: usize
+}
+
+
+impl Interval {
+    pub fn get<'a>(&self, text: &'a [u8]) -> &'a [u8] {
+        &text[self.start..self.stop]
+    }
+}
+
+
+#[derive(Clone)]
+#[derive(PartialEq)]
+#[derive(Debug)]
 pub struct ExactMatch {
-    pub pattern_start: usize,
-    pub pattern_stop: usize,
-    pub text_start: usize,
-    pub text_stop: usize,
+    pub pattern: Interval,
+    pub text: Interval,
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alphabets;
+
+    fn setup() -> (&'static [u8], alphabets::Alphabet) {
+        let text = b"ACGGCTGAGATGAT";
+        let alphabet = alphabets::dna::alphabet();
+
+        (text, alphabet)
+    }
+
+    #[test]
+    fn test_matches() {
+        let (text, alphabet) = setup();
+        let q = 3;
+        let qgram_index = QGramIndex::new(q, text, &alphabet);
+
+        let qgram = QGrams::new(q, b"TGA", &alphabet).next().unwrap();
+
+        let matches = qgram_index.matches(qgram);
+        assert_eq!(matches, [5, 10]);
+    }
+
+    #[test]
+    fn test_diagonals() {
+        let (text, alphabet) = setup();
+        let q = 3;
+        let qgram_index = QGramIndex::new(q, text, &alphabet);
+
+        let pattern = b"GCTG";
+        let diagonals = qgram_index.diagonals(pattern);
+        assert_eq!(diagonals, [Diagonal { pos: 3, count: 2 }]);
+    }
+
+    #[test]
+    fn test_exact_matches() {
+        let (text, alphabet) = setup();
+        let q = 3;
+        let qgram_index = QGramIndex::new(q, text, &alphabet);
+
+        let pattern = b"GCTGA";
+        let exact_matches = qgram_index.exact_matches(pattern);
+        assert!(exact_matches.len() == 2);
+        for m in exact_matches {
+            assert_eq!(m.pattern.get(pattern), m.text.get(text));
+        }
+    }
 }
