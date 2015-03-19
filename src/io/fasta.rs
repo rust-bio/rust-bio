@@ -18,6 +18,9 @@
 use std::io;
 use std::io::prelude::*;
 use std::ascii::AsciiExt;
+use std::collections;
+
+use csv;
 
 
 pub struct FastaReader<R: io::Read> {
@@ -68,11 +71,125 @@ impl<R: io::Read> FastaReader<R> {
 }
 
 
-impl<R: io::Read + io::Seek> FastaReader<R> {
-    /// Seek to a given offset. Intended for internal use by IndexedFastaReader.
-    #[allow(dead_code)]
-    fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
-        self.reader.get_mut().seek(pos)
+pub struct IndexedFastaReader<R: io::Read + io::Seek> {
+    reader: R,
+    index: collections::HashMap<Vec<u8>, IndexRecord>,
+}
+
+
+impl<R: io::Read + io::Seek> IndexedFastaReader<R> {
+    pub fn new<I: io::Read>(fasta: R, fai: I) -> Self {
+        let mut index = collections::HashMap::new();
+        let mut fai_reader = csv::Reader::from_reader(fai);
+        for row in fai_reader.decode() {
+            let (name, record): (Vec<u8>, IndexRecord) = row.unwrap();
+            index.insert(name, record);
+        }
+        IndexedFastaReader { reader: fasta, index: index }
+    }
+
+    pub fn read_all(&mut self, seqname: &[u8], seq: &mut Vec<u8>) -> io::Result<()> {
+        match self.index.get(seqname) {
+            Some(&idx) => self.read(seqname, 0, idx.len, seq),
+            None      => Err(
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    "Unknown sequence name.",
+                    None,
+                )
+            )
+        }
+    }
+
+    pub fn read(&mut self, seqname: &[u8], start: u64, stop: u64, seq: &mut Vec<u8>) -> io::Result<()> {
+        match self.index.get(seqname) {
+            Some(idx) => {
+                seq.clear();
+                // derived from
+                // http://www.allenyu.info/item/24-quickly-fetch-sequence-from-samtools-faidx-indexed-fasta-sequences.html
+                let line = start / idx.line_bases * idx.line_bytes;
+                let line_offset = start % idx.line_bases;
+                let offset = idx.offset + line + line_offset;
+                let lines = stop / idx.line_bases * idx.line_bytes - line;
+                let line_stop = stop % idx.line_bases;
+
+                try!(self.reader.seek(io::SeekFrom::Start(offset)));
+                let mut buf = vec![0u8; idx.line_bases as usize];
+                for _ in 0..lines {
+                    // read full lines
+                    try!(self.reader.read(&mut buf));
+                    seq.push_all(&buf);
+                }
+                // read last line
+                try!(self.reader.read(&mut buf[..line_stop as usize]));
+                seq.push_all(&buf);
+                Ok(())
+            },
+            None      => Err(
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    "Unknown sequence name.",
+                    None,
+                )
+            )
+        }
+    }
+}
+
+
+#[derive(RustcDecodable)]
+#[derive(Copy)]
+struct IndexRecord {
+    len: u64,
+    offset: u64,
+    line_bases: u64,
+    line_bytes: u64,
+}
+
+
+/// A Fasta writer.
+pub struct FastaWriter<W: io::Write> {
+    writer: io::BufWriter<W>,
+}
+
+
+impl<W: io::Write> FastaWriter<W> {
+    /// Create a new Fasta writer.
+    pub fn new(writer: W) -> Self {
+        FastaWriter { writer: io::BufWriter::new(writer) }
+    }
+
+    /// Directly write a Fasta record.
+    pub fn write_record(&mut self, record: Record) -> io::Result<()> {
+        self.write(record.id().unwrap_or(""), &record.desc(), record.seq())
+    }
+
+    /// Write a Fasta record with given values.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - the record id
+    /// * `desc` - the optional descriptions
+    /// * `seq` - the sequence
+    pub fn write(&mut self, id: &str, desc: &[&str], seq: &[u8]) -> io::Result<()> {
+        try!(self.writer.write(b">"));
+        try!(self.writer.write(id.as_bytes()));
+        if !desc.is_empty() {
+            for d in desc {
+                try!(self.writer.write(b" "));
+                try!(self.writer.write(d.as_bytes()));
+            }
+        }
+        try!(self.writer.write(b"\n"));
+        try!(self.writer.write(seq));
+        try!(self.writer.write(b"\n"));
+
+        Ok(())
+    }
+
+    /// Flush the writer, ensuring that everything is written.
+    pub fn flush(&mut self) -> io::Result<()> {
+        self.writer.flush()
     }
 }
 
@@ -142,53 +259,6 @@ impl<R: io::Read> Iterator for Records<R> {
             Ok(())   => Some(Ok(record)),
             Err(err) => Some(Err(err))
         }
-    }
-}
-
-
-/// A Fasta writer.
-pub struct FastaWriter<W: io::Write> {
-    writer: io::BufWriter<W>,
-}
-
-
-impl<W: io::Write> FastaWriter<W> {
-    /// Create a new Fasta writer.
-    pub fn new(writer: W) -> Self {
-        FastaWriter { writer: io::BufWriter::new(writer) }
-    }
-
-    /// Directly write a Fasta record.
-    pub fn write_record(&mut self, record: Record) -> io::Result<()> {
-        self.write(record.id().unwrap_or(""), &record.desc(), record.seq())
-    }
-
-    /// Write a Fasta record with given values.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - the record id
-    /// * `desc` - the optional descriptions
-    /// * `seq` - the sequence
-    pub fn write(&mut self, id: &str, desc: &[&str], seq: &[u8]) -> io::Result<()> {
-        try!(self.writer.write(b">"));
-        try!(self.writer.write(id.as_bytes()));
-        if !desc.is_empty() {
-            for d in desc {
-                try!(self.writer.write(b" "));
-                try!(self.writer.write(d.as_bytes()));
-            }
-        }
-        try!(self.writer.write(b"\n"));
-        try!(self.writer.write(seq));
-        try!(self.writer.write(b"\n"));
-
-        Ok(())
-    }
-
-    /// Flush the writer, ensuring that everything is written.
-    pub fn flush(&mut self) -> io::Result<()> {
-        self.writer.flush()
     }
 }
 

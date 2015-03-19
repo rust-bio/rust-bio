@@ -28,7 +28,8 @@
 
 
 extern crate test;
-
+extern crate "rustc-serialize" as rustc_serialize;
+extern crate csv;
 
 pub mod utils;
 pub mod alphabets;
