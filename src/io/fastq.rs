@@ -10,7 +10,7 @@
 //! ```
 //! use std::io;
 //! use bio::io::fastq;
-//! let reader = fastq::FastqReader::new(io::stdin());
+//! let reader = fastq::Reader::new(io::stdin());
 //! ```
 
 use std::io;
@@ -19,16 +19,16 @@ use std::ascii::AsciiExt;
 
 
 /// A FastQ reader.
-pub struct FastqReader<R: io::Read> {
+pub struct Reader<R: io::Read> {
     reader: io::BufReader<R>,
     sep_line: String
 }
 
 
-impl<R: io::Read> FastqReader<R> {
+impl<R: io::Read> Reader<R> {
     /// Create a new FastQ reader.
     pub fn new(reader: R) -> Self {
-        FastqReader { reader: io::BufReader::new(reader), sep_line: String::new() }
+        Reader { reader: io::BufReader::new(reader), sep_line: String::new() }
     }
 
     /// Read into a given record.
@@ -138,7 +138,7 @@ impl Record {
 
 /// An iterator over the records of a FastQ file.
 pub struct Records<R: io::Read> {
-    reader: FastqReader<R>,
+    reader: Reader<R>,
 }
 
 
@@ -157,15 +157,15 @@ impl<R: io::Read> Iterator for Records<R> {
 
 
 /// A FastQ writer.
-pub struct FastqWriter<W: io::Write> {
+pub struct Writer<W: io::Write> {
     writer: io::BufWriter<W>,
 }
 
 
-impl<W: io::Write> FastqWriter<W> {
+impl<W: io::Write> Writer<W> {
     /// Create a new FastQ writer.
     pub fn new(writer: W) -> Self {
-        FastqWriter { writer: io::BufWriter::new(writer) }
+        Writer { writer: io::BufWriter::new(writer) }
     }
 
     /// Directly write a FastQ record.
@@ -219,7 +219,7 @@ IIIIIIJJJJJJ
 
     #[test]
     fn test_reader() {
-        let reader = FastqReader::new(FASTQ_FILE);
+        let reader = Reader::new(FASTQ_FILE);
         let records: Vec<io::Result<Record>> = reader.records().collect();
         assert!(records.len() == 1);
         for res in records {
@@ -234,7 +234,7 @@ IIIIIIJJJJJJ
 
     #[test]
     fn test_writer() {
-        let mut writer = FastqWriter::new(Vec::new());
+        let mut writer = Writer::new(Vec::new());
         writer.write("id", &["desc"], b"ACCGTAGGCTGA", b"IIIIIIJJJJJJ").ok().expect("Expected successful write");
         writer.flush().ok().expect("Expected successful write");
         assert_eq!(writer.writer.get_ref(), &FASTQ_FILE);

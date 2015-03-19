@@ -11,7 +11,7 @@
 //! ```
 //! use std::io;
 //! use bio::io::fasta;
-//! let reader = fasta::FastaReader::new(io::stdin());
+//! let reader = fasta::Reader::new(io::stdin());
 //! ```
 
 
@@ -23,16 +23,16 @@ use std::collections;
 use csv;
 
 
-pub struct FastaReader<R: io::Read> {
+pub struct Reader<R: io::Read> {
     reader: io::BufReader<R>,
     line: String
 }
 
 
-impl<R: io::Read> FastaReader<R> {
+impl<R: io::Read> Reader<R> {
     /// Create a new FastQ reader.
     pub fn new(reader: R) -> Self {
-        FastaReader { reader: io::BufReader::new(reader), line: String::new() }
+        Reader { reader: io::BufReader::new(reader), line: String::new() }
     }
 
     pub fn read(&mut self, record: &mut Record) -> io::Result<()> {
@@ -71,13 +71,13 @@ impl<R: io::Read> FastaReader<R> {
 }
 
 
-pub struct IndexedFastaReader<R: io::Read + io::Seek> {
+pub struct IndexedReader<R: io::Read + io::Seek> {
     reader: R,
     index: collections::HashMap<Vec<u8>, IndexRecord>,
 }
 
 
-impl<R: io::Read + io::Seek> IndexedFastaReader<R> {
+impl<R: io::Read + io::Seek> IndexedReader<R> {
     pub fn new<I: io::Read>(fasta: R, fai: I) -> Self {
         let mut index = collections::HashMap::new();
         let mut fai_reader = csv::Reader::from_reader(fai).delimiter(b'\t').has_headers(false);
@@ -87,7 +87,7 @@ impl<R: io::Read + io::Seek> IndexedFastaReader<R> {
             index.insert(name.into_bytes(), record);
         }
         println!("{:?}", index);
-        IndexedFastaReader { reader: fasta, index: index }
+        IndexedReader { reader: fasta, index: index }
     }
 
     pub fn read_all(&mut self, seqname: &[u8], seq: &mut Vec<u8>) -> io::Result<()> {
@@ -152,15 +152,15 @@ struct IndexRecord {
 
 
 /// A Fasta writer.
-pub struct FastaWriter<W: io::Write> {
+pub struct Writer<W: io::Write> {
     writer: io::BufWriter<W>,
 }
 
 
-impl<W: io::Write> FastaWriter<W> {
+impl<W: io::Write> Writer<W> {
     /// Create a new Fasta writer.
     pub fn new(writer: W) -> Self {
-        FastaWriter { writer: io::BufWriter::new(writer) }
+        Writer { writer: io::BufWriter::new(writer) }
     }
 
     /// Directly write a Fasta record.
@@ -249,7 +249,7 @@ impl Record {
 
 /// An iterator over the records of a Fasta file.
 pub struct Records<R: io::Read> {
-    reader: FastaReader<R>,
+    reader: Reader<R>,
 }
 
 
@@ -280,7 +280,7 @@ ACCGTAGGCTGA
 
     #[test]
     fn test_reader() {
-        let reader = FastaReader::new(FASTA_FILE);
+        let reader = Reader::new(FASTA_FILE);
         let records: Vec<io::Result<Record>> = reader.records().collect();
         assert!(records.len() == 1);
         for res in records {
@@ -294,7 +294,7 @@ ACCGTAGGCTGA
 
     #[test]
     fn test_indexed_reader() {
-        let mut reader = IndexedFastaReader::new(io::Cursor::new(FASTA_FILE), FAI_FILE);
+        let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE), FAI_FILE);
         let mut seq = Vec::new();
         reader.read(b"id", 1, 5, &mut seq).ok().expect("Error reading sequence.");
         assert_eq!(seq, b"CCGT");
@@ -302,7 +302,7 @@ ACCGTAGGCTGA
 
     #[test]
     fn test_writer() {
-        let mut writer = FastaWriter::new(Vec::new());
+        let mut writer = Writer::new(Vec::new());
         writer.write("id", &["desc"], b"ACCGTAGGCTGA").ok().expect("Expected successful write");
         writer.flush().ok().expect("Expected successful write");
         assert_eq!(writer.writer.get_ref(), &FASTA_FILE);
