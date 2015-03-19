@@ -3,6 +3,31 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/// A classical, flexible, q-gram index implementation.
+///
+/// # Example
+///
+/// ```
+/// use bio::data_structures::qgram_index;
+/// use bio::alphabets;
+///
+/// let text = b"ACGGCTGAGATGAT";
+/// let alphabet = alphabets::dna::alphabet();
+/// let q = 3;
+/// let qgram_index = qgram_index::QGramIndex::new(q, text, &alphabet);
+///
+/// let pattern = b"GCTG";
+/// let matches = qgram_index.matches(pattern, 1);
+/// assert_eq!(matches, [
+///     qgram_index::Match {
+///         pattern: qgram_index::Interval { start: 0, stop: 4 },
+///         text: qgram_index::Interval { start: 3, stop: 7 },
+///         count: 2
+///     }
+/// ]);
+/// ```
+
+
 use std::num::Int;
 use std::collections;
 use std;
@@ -79,7 +104,6 @@ impl QGramIndex {
             for &p in self.qgram_matches(qgram) {
                 let diagonal = p - i;
                 if !diagonals.contains_key(&diagonal) {
-                    //diagonals.insert(diagonal, 1);
                     diagonals.insert(diagonal, Match {
                         pattern: Interval { start: i, stop: i + q },
                         text: Interval { start: p, stop: p + q },
@@ -102,60 +126,49 @@ impl QGramIndex {
     /// Return exact matches of the given pattern.
     pub fn exact_matches(&self, pattern: &[u8]) -> Vec<ExactMatch> {
         let q = self.q as usize;
-        let mut diagonals: collections::HashMap<usize, ExactMatch> = collections::HashMap::new();
-        let mut intervals = Vec::new();
+        let mut diagonals = collections::HashMap::new();
+        let mut matches = Vec::new();
+
         for (i, qgram) in self.ranks.qgrams(self.q, pattern).enumerate() {
             for &p in self.qgram_matches(qgram) {
                 let diagonal = p - i;
                 if !diagonals.contains_key(&diagonal) {
-                    // nothing yet, start new match
                     diagonals.insert(diagonal, ExactMatch {
-                            pattern: Interval{ start: i, stop: i + q  },
-                            text: Interval { start: p, stop: p + q },
+                        pattern: Interval { start: i, stop: i + q },
+                        text: Interval { start: p, stop: p + q },
                     });
                 }
                 else {
-                    let interval = diagonals.get_mut(&diagonal).unwrap();
-                    if interval.pattern.stop - q + 1 == i {
-                        // extend exact match
-                        interval.pattern.stop = i + q;
-                        interval.text.stop = p + q;
+                    let m = diagonals.get_mut(&diagonal).unwrap();
+                    if m.pattern.stop - q + 1 != i {
+                        // discontinue match
+                        matches.push(*m);
+                        // start new match
+                        m.pattern.start = i;
+                        m.pattern.stop = i + q;
+                        m.text.start = p;
+                        m.text.stop = p + q;
                     }
                     else {
-                        // report previous match
-                        intervals.push(interval.clone());
-                        // mismatch or indel, start new match
-                        interval.pattern.start = i;
-                        interval.pattern.stop = i + q;
-                        interval.text.start = p;
-                        interval.text.stop = p + q;
+                        m.pattern.stop = i + q;
+                        m.text.stop = p + q;
                     }
-
                 }
             }
         }
-        // report remaining intervals
-        for (_, interval) in diagonals.into_iter() {
-            intervals.push(interval);
+        for (_, m) in diagonals.into_iter() {
+            matches.push(m);
         }
-        intervals
+
+        matches
     }
 }
 
 
-#[derive(PartialEq)]
-#[derive(Debug)]
-pub struct Match {
-    pub pattern: Interval,
-    pub text: Interval,
-    pub count: usize,
-}
-
-
 /// An interval, consisting of start and stop position (the latter exclusive).
-#[derive(Clone)]
 #[derive(PartialEq)]
 #[derive(Debug)]
+#[derive(Copy)]
 pub struct Interval {
     pub start: usize,
     pub stop: usize
@@ -169,9 +182,19 @@ impl Interval {
 }
 
 
-#[derive(Clone)]
 #[derive(PartialEq)]
 #[derive(Debug)]
+#[derive(Copy)]
+pub struct Match {
+    pub pattern: Interval,
+    pub text: Interval,
+    pub count: usize,
+}
+
+
+#[derive(PartialEq)]
+#[derive(Debug)]
+#[derive(Copy)]
 pub struct ExactMatch {
     pub pattern: Interval,
     pub text: Interval,
