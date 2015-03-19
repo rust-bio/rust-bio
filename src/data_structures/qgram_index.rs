@@ -3,111 +3,43 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use std::num::{Int, UnsignedInt, NumCast, cast, Float};
+use std::num::Int;
 use std::collections;
-use std::slice;
 use std;
 
 use alphabets::{Alphabet, RankTransform};
 use utils;
 
 
-/// Iterator over the q-grams of a given text. Q-grams are encoded as integers.
-/// The number of bits for encoding a single symbol is chosen as log2(A) with A being the alphabet
-/// size.
-///
-/// The type Q has to be chosen such that the q-gram fits into it.
-pub struct QGrams<'a, Q: UnsignedInt + NumCast> {
-    text: &'a [u8],
-    bits: usize,
-    mask: Q,
+/// A classical, flexible, q-gram index implementation.
+pub struct QGramIndex {
+    q: u32,
+    address: Vec<usize>,
+    pos: Vec<usize>,
     ranks: RankTransform,
 }
 
 
-impl<'a, Q: UnsignedInt + NumCast> QGrams<'a, Q> {
-    /// Create new instance.
-    ///
-    /// # Arguments
-    ///
-    /// * `q` - the length of the q-gram
-    /// * `text` - the text
-    /// * `alphabet` - the alphabet to use
-    pub fn new(q: usize, text: &'a [u8], alphabet: &Alphabet) -> Self {
-        let ranks = RankTransform::new(alphabet);
-        let bits = (alphabet.len() as f32).log2().ceil() as usize;
-        assert!(bits * q <= Q::
-        QGrams {
-            text: text,
-            ranks: ranks,
-            bits: bits,
-            mask: cast((1 << q * bits) - 1).unwrap(),
-        }
-    }
-
-    pub fn iter(&self) -> QGramIter {
-        let mut iter = QGramIter { qgrams: self, text: text.iter(), qgram: cast(0).unwrap() };
-        for _ in 0..q-1 {
-            iter.next();
-        }
-
-        iter
-    }
-}
-
-
-pub struct QGramIter<'a, Q: UnsignedInt + NumCast> {
-    qgrams: &'a QGrams,
-    text: slice::Iter<'a, u8>,
-    qgram: Q,
-}
-
-
-impl<'a, Q: UnsignedInt + NumCast> QGramIter<'a, Q> {
-    fn qgram_push(&mut self, a: u8) {
-        self.qgram = self.qgram << self.qgrams.bits;
-        self.qgram = (self.qgram | cast(a).unwrap()) & self.qgrams.mask;
-    }
-}
-
-
-impl<'a, Q: UnsignedInt + NumCast> Iterator for QGramIter<'a, Q> {
-    type Item = Q;
-
-    fn next(&mut self) -> Option<Q> {
-        match self.text.next() {
-            Some(a) => {
-                let b = self.qgrams.ranks.get(*a);
-                self.qgram_push(b);
-                Some(self.qgram)
-            },
-            None    => None
-        }
-    }
-}
-
-
-pub struct QGramIndex<'a> {
-    q: usize,
-    alphabet: &'a Alphabet,
-    address: Vec<usize>,
-    pos: Vec<usize>,
-}
-
-
-impl<'a> QGramIndex<'a> {
-    pub fn new(q: usize, text: &[u8], alphabet: &'a Alphabet) -> Self {
+impl QGramIndex {
+    /// Create a new q-gram index.
+    /// The q has to be smaller than b / log2(|A|) with |A| being the alphabet size and b the number
+    /// bits with the `usize` data type.
+    pub fn new(q: u32, text: &[u8], alphabet: &Alphabet) -> Self {
         QGramIndex::with_max_count(q, text, alphabet, std::usize::MAX)
     }
 
-    pub fn with_max_count(q: usize, text: &[u8], alphabet: &'a Alphabet, max_count: usize) -> Self {
+    /// Create a new q-gram index, only considering q-grams that occur at most `max_count` times.
+    /// The q has to be smaller than b / log2(|A|) with |A| being the alphabet size and b the number
+    /// bits with the `usize` data type.
+    pub fn with_max_count(q: u32, text: &[u8], alphabet: &Alphabet, max_count: usize) -> Self {
+        let ranks = RankTransform::new(alphabet);
+
         let qgram_count = alphabet.len().pow(q as u32);
         let mut address = vec![0; qgram_count + 1];
         let mut pos = vec![0; text.len()];
 
-        for qgram in QGrams::<u32>::new(q, text, alphabet) {
-            address[qgram as usize] += 1;
+        for qgram in ranks.qgrams(q, text) {
+            address[qgram] += 1;
         }
 
         for g in 1..address.len() {
@@ -121,7 +53,7 @@ impl<'a> QGramIndex<'a> {
 
         {
             let mut offset = vec![0; qgram_count];
-            for (i, qgram) in QGrams::<u32>::new(q, text, alphabet).enumerate() {
+            for (i, qgram) in ranks.qgrams(q, text).enumerate() {
                 let a = address[qgram as usize];
                 if address[qgram as usize + 1] - a != 0 {
                     // if not masked, insert positions
@@ -131,57 +63,72 @@ impl<'a> QGramIndex<'a> {
             }
         }
 
-        QGramIndex { q: q, alphabet: alphabet, address: address, pos: pos }
+        QGramIndex { q: q, address: address, pos: pos, ranks: ranks }
     }
 
-    pub fn matches(&self, qgram: u32) -> &[usize] {
-        &self.pos[self.address[qgram as usize]..self.address[qgram as usize + 1]]
+    /// Return text positions with matching q-gram.
+    pub fn qgram_matches(&self, qgram: usize) -> &[usize] {
+        &self.pos[self.address[qgram]..self.address[qgram + 1]]
     }
 
-    pub fn diagonals(&self, pattern: &[u8]) -> Vec<Diagonal> {
+    /// Return matches of the given pattern.
+    pub fn matches(&self, pattern: &[u8], min_count: usize) -> Vec<Match> {
+        let q = self.q as usize;
         let mut diagonals = collections::HashMap::new();
-        for (i, qgram) in QGrams::<u32>::new(self.q, pattern, self.alphabet).enumerate() {
-            for p in self.matches(qgram) {
+        for (i, qgram) in self.ranks.qgrams(self.q, pattern).enumerate() {
+            for &p in self.qgram_matches(qgram) {
                 let diagonal = p - i;
                 if !diagonals.contains_key(&diagonal) {
-                    diagonals.insert(diagonal, 1);
+                    //diagonals.insert(diagonal, 1);
+                    diagonals.insert(diagonal, Match {
+                        pattern: Interval { start: i, stop: i + q },
+                        text: Interval { start: p, stop: p + q },
+                        count: 1,
+                    });
                 }
                 else {
-                    *diagonals.get_mut(&diagonal).unwrap() += 1;
+                    let m = diagonals.get_mut(&diagonal).unwrap();
+                    m.pattern.stop = i + q;
+                    m.text.stop = p + q;
+                    m.count += 1;
                 }
             }
         }
-        diagonals.into_iter().map(|(diagonal, count)| Diagonal { pos: diagonal, count: count }).collect()
+        diagonals.into_iter().filter_map(
+            |(_, m)| if m.count >= min_count { Some(m) } else { None }
+        ).collect()
     }
 
+    /// Return exact matches of the given pattern.
     pub fn exact_matches(&self, pattern: &[u8]) -> Vec<ExactMatch> {
+        let q = self.q as usize;
         let mut diagonals: collections::HashMap<usize, ExactMatch> = collections::HashMap::new();
         let mut intervals = Vec::new();
-        for (i, qgram) in QGrams::<u32>::new(self.q, pattern, self.alphabet).enumerate() {
-            for &p in self.matches(qgram) {
+        for (i, qgram) in self.ranks.qgrams(self.q, pattern).enumerate() {
+            for &p in self.qgram_matches(qgram) {
                 let diagonal = p - i;
                 if !diagonals.contains_key(&diagonal) {
                     // nothing yet, start new match
                     diagonals.insert(diagonal, ExactMatch {
-                            pattern: Interval{ start: i, stop: i + self.q},
-                            text: Interval { start: p, stop: p + self.q },
+                            pattern: Interval{ start: i, stop: i + q  },
+                            text: Interval { start: p, stop: p + q },
                     });
                 }
                 else {
                     let interval = diagonals.get_mut(&diagonal).unwrap();
-                    if interval.pattern.stop - self.q + 1 == i {
+                    if interval.pattern.stop - q + 1 == i {
                         // extend exact match
-                        interval.pattern.stop = i + self.q;
-                        interval.text.stop = p + self.q;
+                        interval.pattern.stop = i + q;
+                        interval.text.stop = p + q;
                     }
                     else {
                         // report previous match
                         intervals.push(interval.clone());
                         // mismatch or indel, start new match
                         interval.pattern.start = i;
-                        interval.pattern.stop = i + self.q;
+                        interval.pattern.stop = i + q;
                         interval.text.start = p;
-                        interval.text.stop = p + self.q;
+                        interval.text.stop = p + q;
                     }
 
                 }
@@ -198,8 +145,9 @@ impl<'a> QGramIndex<'a> {
 
 #[derive(PartialEq)]
 #[derive(Debug)]
-pub struct Diagonal {
-    pub pos: usize,
+pub struct Match {
+    pub pattern: Interval,
+    pub text: Interval,
     pub count: usize,
 }
 
@@ -243,26 +191,34 @@ mod tests {
     }
 
     #[test]
+    fn test_qgram_matches() {
+        let (text, alphabet) = setup();
+        let q = 3;
+        let qgram_index = QGramIndex::new(q, text, &alphabet);
+
+        let ranks = alphabets::RankTransform::new(&alphabet);
+
+        let qgram = ranks.qgrams(q, b"TGA").next().unwrap();
+
+        let matches = qgram_index.qgram_matches(qgram);
+        assert_eq!(matches, [5, 10]);
+    }
+
+    #[test]
     fn test_matches() {
         let (text, alphabet) = setup();
         let q = 3;
         let qgram_index = QGramIndex::new(q, text, &alphabet);
 
-        let qgram = QGrams::new(q, b"TGA", &alphabet).next().unwrap();
-
-        let matches = qgram_index.matches(qgram);
-        assert_eq!(matches, [5, 10]);
-    }
-
-    #[test]
-    fn test_diagonals() {
-        let (text, alphabet) = setup();
-        let q = 3;
-        let qgram_index = QGramIndex::new(q, text, &alphabet);
-
         let pattern = b"GCTG";
-        let diagonals = qgram_index.diagonals(pattern);
-        assert_eq!(diagonals, [Diagonal { pos: 3, count: 2 }]);
+        let matches = qgram_index.matches(pattern, 1);
+        assert_eq!(matches, [
+            Match {
+                pattern: Interval { start: 0, stop: 4 },
+                text: Interval { start: 3, stop: 7 },
+                count: 2
+            }
+        ]);
     }
 
     #[test]

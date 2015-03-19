@@ -16,6 +16,9 @@
 
 
 use std::collections::{BitSet, VecMap};
+use std::slice;
+use std::num::Float;
+use std::usize;
 
 
 pub mod dna;
@@ -31,6 +34,7 @@ pub struct Alphabet {
 
 
 impl Alphabet {
+    /// Create new alphabet from given symbols.
     pub fn new(symbols: &[u8]) -> Self {
         Alphabet::from_iter(symbols.iter())
     }
@@ -42,30 +46,36 @@ impl Alphabet {
         Alphabet { symbols: s }
     }
 
+    /// Insert symbol into alphabet.
     pub fn insert(&mut self, a: u8) {
         self.symbols.insert(a as usize);
     }
 
+    /// Check if given text is a word over the alphabet.
     pub fn is_word(&self, text: &[u8]) -> bool {
         text.iter().all(|&c| self.symbols.contains(&(c as usize)))
     }
 
+    /// Return lexicographically maximal symbol.
     pub fn max_symbol(&self) -> Option<u8> {
         self.symbols.iter().max().map(|a| a as u8)
     }
 
+    /// Return size of the alphabet.
     pub fn len(&self) -> usize {
         self.symbols.len()
     }
 }
 
 
+/// Tools based on transforming the alphabet symbols to their lexicographical ranks.
 pub struct RankTransform {
     pub ranks: SymbolRanks
 }
 
 
 impl RankTransform {
+    /// Construct a new `RankTransform`.
     pub fn new(alphabet: &Alphabet) -> Self {
         let mut ranks = VecMap::new();
         for (r, c) in alphabet.symbols.iter().enumerate() {
@@ -75,19 +85,80 @@ impl RankTransform {
         RankTransform { ranks: ranks }
     }
 
+    /// Get the rank of symbol `a`.
     pub fn get(&self, a: u8) -> u8 {
         *self.ranks.get(&(a as usize)).expect("Unexpected character.")
     }
 
+    /// Transform a given `text`.
     pub fn transform(&self, text: &[u8]) -> Vec<u8> {
         text.iter()
             .map(|&c| *self.ranks.get(&(c as usize)).expect("Unexpected character in text."))
             .collect()
     }
 
+    /// Iterate over q-grams (substrings of length q) of given `text`. The q-grams are encoded
+    /// as `usize` by storing the symbol ranks in log2(|A|) bits (with |A| being the alphabet size).
+    ///
+    /// If q is larger than usize::BITS / log2(|A|), this method fails with an assertion.
+    pub fn qgrams<'a>(&'a self, q: u32, text: &'a [u8]) -> QGrams {
+        let bits = (self.ranks.len() as f32).log2().ceil() as u32;
+        assert!(bits * q <= usize::BITS, "Expecting q to be smaller than 64 / log2(|A|)");
+
+        let mut qgrams = QGrams {
+            text: text.iter(),
+            ranks: self,
+            bits: bits,
+            mask: (1 << q * bits) - 1,
+            qgram: 0,
+        };
+
+        for _ in 0..q-1 {
+            qgrams.next();
+        }
+
+        qgrams
+    }
+
+    /// Restore alphabet from transform.
     pub fn alphabet<'a>(&self) -> Alphabet {
         let mut symbols = BitSet::with_capacity(self.ranks.len());
         symbols.extend(self.ranks.keys());
         Alphabet { symbols: symbols }
+    }
+}
+
+
+/// Iterator over q-grams.
+pub struct QGrams<'a> {
+    text: slice::Iter<'a, u8>,
+    ranks: &'a RankTransform,
+    bits: u32,
+    mask: usize,
+    qgram: usize,
+}
+
+
+impl<'a> QGrams<'a> {
+    fn qgram_push(&mut self, a: u8) {
+        self.qgram <<= self.bits;
+        self.qgram |= a as usize;
+        self.qgram &= self.mask;
+    }
+}
+
+
+impl<'a> Iterator for QGrams<'a> {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<usize> {
+        match self.text.next() {
+            Some(a) => {
+                let b = self.ranks.get(*a);
+                self.qgram_push(b);
+                Some(self.qgram)
+            },
+            None    => None
+        }
     }
 }
