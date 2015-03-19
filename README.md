@@ -14,6 +14,7 @@ Currently, rust-bio provides
 * suffix arrays,
 * BWT and FM-Index,
 * FMD-Index for finding supermaximal exact matches,
+* a q-gram index,
 * a rank/select data structure,
 * FastQ and Fasta readers and writers.
 
