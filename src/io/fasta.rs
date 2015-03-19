@@ -3,7 +3,16 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 //! Fasta reading and writing.
+//!
+//! # Example
+//!
+//! ```
+//! use std::io;
+//! use bio::io::fasta;
+//! let reader = fasta::FastaReader::new(io::stdin());
+//! ```
 
 
 use std::io;

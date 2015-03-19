@@ -4,6 +4,14 @@
 // except according to those terms.
 
 //! FastQ reading and writing.
+//!
+//! # Example
+//!
+//! ```
+//! use std::io;
+//! use bio::io::fastq;
+//! let reader = fastq::FastqReader::new(io::stdin());
+//! ```
 
 use std::io;
 use std::io::prelude::*;
