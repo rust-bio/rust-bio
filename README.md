@@ -22,7 +22,7 @@ For reading and writing BAM files, have a look at https://github.com/christopher
 ## Resources
 
 * Homepage: https://github.com/johanneskoester/rust-bio
-* API documentation: https://johanneskoester.github.io/rust-bio/doc/bio/index.html
+* API documentation: https://johanneskoester.github.io/rust-bio
 * Continuous integration tests: https://travis-ci.org/johanneskoester/rust-bio
 * Roadmap: https://github.com/johanneskoester/rust-bio/issues/3
 
