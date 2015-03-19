@@ -80,11 +80,13 @@ pub struct IndexedFastaReader<R: io::Read + io::Seek> {
 impl<R: io::Read + io::Seek> IndexedFastaReader<R> {
     pub fn new<I: io::Read>(fasta: R, fai: I) -> Self {
         let mut index = collections::HashMap::new();
-        let mut fai_reader = csv::Reader::from_reader(fai);
+        let mut fai_reader = csv::Reader::from_reader(fai).delimiter(b'\t').has_headers(false);
         for row in fai_reader.decode() {
-            let (name, record): (Vec<u8>, IndexRecord) = row.unwrap();
-            index.insert(name, record);
+            let (name, record): (String, IndexRecord) = row.unwrap();
+            println!("{:?}", record);
+            index.insert(name.into_bytes(), record);
         }
+        println!("{:?}", index);
         IndexedFastaReader { reader: fasta, index: index }
     }
 
@@ -111,7 +113,7 @@ impl<R: io::Read + io::Seek> IndexedFastaReader<R> {
                 let line_offset = start % idx.line_bases;
                 let offset = idx.offset + line + line_offset;
                 let lines = stop / idx.line_bases * idx.line_bytes - line;
-                let line_stop = stop % idx.line_bases;
+                let line_stop = stop % idx.line_bases - if lines == 0 { line_offset } else { 0 };
 
                 try!(self.reader.seek(io::SeekFrom::Start(offset)));
                 let mut buf = vec![0u8; idx.line_bases as usize];
@@ -121,8 +123,9 @@ impl<R: io::Read + io::Seek> IndexedFastaReader<R> {
                     seq.push_all(&buf);
                 }
                 // read last line
+                println!("linestop {}", line_stop);
                 try!(self.reader.read(&mut buf[..line_stop as usize]));
-                seq.push_all(&buf);
+                seq.push_all(&buf[..line_stop as usize]);
                 Ok(())
             },
             None      => Err(
@@ -139,6 +142,7 @@ impl<R: io::Read + io::Seek> IndexedFastaReader<R> {
 
 #[derive(RustcDecodable)]
 #[derive(Copy)]
+#[derive(Debug)]
 struct IndexRecord {
     len: u64,
     offset: u64,
@@ -271,6 +275,8 @@ mod tests {
     const FASTA_FILE: &'static [u8] = b">id desc
 ACCGTAGGCTGA
 ";
+    const FAI_FILE: &'static [u8] = b"id\t12\t9\t60\t61
+";
 
     #[test]
     fn test_reader() {
@@ -284,6 +290,14 @@ ACCGTAGGCTGA
             assert_eq!(record.desc(), ["desc"]);
             assert_eq!(record.seq(), b"ACCGTAGGCTGA");
         }
+    }
+
+    #[test]
+    fn test_indexed_reader() {
+        let mut reader = IndexedFastaReader::new(io::Cursor::new(FASTA_FILE), FAI_FILE);
+        let mut seq = Vec::new();
+        reader.read(b"id", 1, 5, &mut seq).ok().expect("Error reading sequence.");
+        assert_eq!(seq, b"CCGT");
     }
 
     #[test]
