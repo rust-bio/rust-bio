@@ -78,16 +78,14 @@ pub struct IndexedReader<R: io::Read + io::Seek> {
 
 
 impl<R: io::Read + io::Seek> IndexedReader<R> {
-    pub fn new<I: io::Read>(fasta: R, fai: I) -> Self {
+    pub fn new<I: io::Read>(fasta: R, fai: I) -> csv::Result<Self> {
         let mut index = collections::HashMap::new();
         let mut fai_reader = csv::Reader::from_reader(fai).delimiter(b'\t').has_headers(false);
         for row in fai_reader.decode() {
-            let (name, record): (String, IndexRecord) = row.unwrap();
-            println!("{:?}", record);
+            let (name, record): (String, IndexRecord) = try!(row);
             index.insert(name.into_bytes(), record);
         }
-        println!("{:?}", index);
-        IndexedReader { reader: fasta, index: index }
+        Ok(IndexedReader { reader: fasta, index: index })
     }
 
     pub fn read_all(&mut self, seqname: &[u8], seq: &mut Vec<u8>) -> io::Result<()> {
@@ -294,7 +292,7 @@ ACCGTAGGCTGA
 
     #[test]
     fn test_indexed_reader() {
-        let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE), FAI_FILE);
+        let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE), FAI_FILE).ok().expect("Error reading index");
         let mut seq = Vec::new();
         reader.read(b"id", 1, 5, &mut seq).ok().expect("Error reading sequence.");
         assert_eq!(seq, b"CCGT");

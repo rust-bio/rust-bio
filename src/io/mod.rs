@@ -3,3 +3,4 @@
 
 pub mod fastq;
 pub mod fasta;
+pub mod bed;
