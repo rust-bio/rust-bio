@@ -49,7 +49,7 @@ let bndm = BNDM::new(pattern);
 let matches = bndm.find_all(text);
 ```
 
-For more information, please read the API documentation: https://johanneskoester.github.io/rust-bio/doc/bio/index.html
+For more information, please read the API documentation: https://johanneskoester.github.io/rust-bio
 
 ## Authors 
 
