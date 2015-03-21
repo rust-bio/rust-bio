@@ -56,29 +56,25 @@ impl<W: io::Write> Writer<W> {
 /// A BED record as defined by UCSC (https://genome.ucsc.edu/FAQ/FAQformat.html#format1)
 #[derive(RustcEncodable)]
 #[derive(Debug)]
-pub struct Record {
-    chrom: String,
-    start: u64,
-    end: u64,
-    fields: Vec<String>,
+pub struct Record<'a> {
+    pub chrom: &str,
+    pub start: u64,
+    pub end: u64,
+    fields: Vec<&'a str>
 }
 
 
 impl Record {
     pub fn new() -> Self {
-        Record { chrom: String::new(), start: 0, end: 0, fields: vec![] }
+        Record { chrom: "", start: 0, end: 0, fields: vec![] }
     }
 
-    pub fn chrom(&self) -> &[u8] {
-        &self.chrom.as_bytes()
+    pub fn is_empty() -> bool {
+        self.chrom.len() == 0
     }
 
-    pub fn start(&self) -> u64 {
-        self.start
-    }
-
-    pub fn end(&self) -> u64 {
-        self.end
+    pub fn clear() {
+        self.chrom = "";
     }
 
     pub fn name(&self) -> Option<&str> {
@@ -106,41 +102,29 @@ impl Record {
         }
     }
 
-    pub fn set_chrom(&mut self, chrom: &[u8]) {
-        self.chrom = str::from_utf8(chrom).ok().expect("Error during string conversion.").to_string();
-    }
-
-    pub fn set_start(&mut self, start: u64) {
-        self.start = start;
-    }
-
-    pub fn set_end(&mut self, end: u64) {
-        self.end = end;
-    }
-
     pub fn set_name(&mut self, name: &str) {
         if self.fields.len() < 1 {
-            self.fields.push(name.to_string());
+            self.fields.push(name);
         }
         else {
-            self.fields[0] = name.to_string();
+            self.fields[0] = name;
         }
     }
 
     pub fn set_score(&mut self, score: &str) {
         if self.fields.len() < 1 {
-            self.fields.push("".to_string());
+            self.fields.push(b"");
         }
         if self.fields.len() < 2 {
-            self.fields.push(score.to_string());
+            self.fields.push(score);
         }
         else {
-            self.fields[1] = score.to_string();
+            self.fields[1] = score;
         }
     }
 
     pub fn push_field(&mut self, field: &str) {
-        self.fields.push(field.to_string());
+        self.fields.push(field);
     }
 }
 
