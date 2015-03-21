@@ -235,7 +235,7 @@ impl SAIS {
         i: usize,
         j: usize
     ) -> bool {
-        for k in count(0, 1) {
+        for k in (0..) {
             let lmsi = pos_types.is_lms_pos(i + k);
             let lmsj = pos_types.is_lms_pos(j + k);
             if text[i + k] != text[j + k] {
