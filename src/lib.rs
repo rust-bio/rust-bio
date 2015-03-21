@@ -3,6 +3,7 @@
 #![feature(test)]
 #![feature(io)]
 #![feature(str_words)]
+#![feature(step_by)]
 
 // Copyright 2014 Johannes Köster.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
