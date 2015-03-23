@@ -21,6 +21,7 @@ use std::io;
 use csv;
 
 
+/// A BED reader.
 pub struct Reader<R: io::Read> {
     inner: csv::Reader<R>,
 }
@@ -56,6 +57,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
 }
 
 
+/// A BED writer.
 pub struct Writer<W: io::Write> {
     inner: csv::Writer<W>,
 }
@@ -207,7 +209,7 @@ mod tests {
         let mut reader = Reader::new(BED_FILE);
         let mut writer = Writer::new(vec![]);
         for r in reader.records() {
-            writer.write(r.ok().expect("Error reading record"));
+            writer.write(r.ok().expect("Error reading record")).ok().expect("Error writing record");
         }
         assert_eq!(writer.inner.as_bytes(), BED_FILE);
     }
