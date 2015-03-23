@@ -9,7 +9,7 @@
 
 use std::collections::{BitVec, VecMap};
 use std::iter::{count, repeat};
-use std::num::{UnsignedInt, NumCast, cast};
+use std::num::{Int, NumCast, cast};
 use std::num::wrapping::WrappingOps;
 use std;
 
@@ -160,7 +160,7 @@ lexicographically smallest at the end of the text.");
 }
 
 
-fn transform_text<T: UnsignedInt + NumCast>(text: &[u8], alphabet: &Alphabet, sentinel_count: usize) -> Vec<T> {
+fn transform_text<T: Int + NumCast>(text: &[u8], alphabet: &Alphabet, sentinel_count: usize) -> Vec<T> {
     let sentinel = sentinel(text);
     let offset = sentinel_count - 1;
     let transform = RankTransform::new(alphabet);
@@ -201,7 +201,7 @@ impl SAIS {
         }
     }
 
-    fn init_bucket_start<T: UnsignedInt + NumCast>(&mut self, text: &[T]) {
+    fn init_bucket_start<T: Int + NumCast>(&mut self, text: &[T]) {
         self.bucket_sizes.clear();
         self.bucket_start.clear();
 
@@ -220,7 +220,7 @@ impl SAIS {
     }
 
     /// initialize pointers to the last element of the buckets
-    fn init_bucket_end<T: UnsignedInt + NumCast>(&mut self, text: &[T]) {
+    fn init_bucket_end<T: Int + NumCast>(&mut self, text: &[T]) {
         self.bucket_end.clear();
         for &r in self.bucket_start[1..].iter() {
             self.bucket_end.push(r - 1);
@@ -228,14 +228,14 @@ impl SAIS {
         self.bucket_end.push(text.len() - 1);
     }
 
-    fn lms_substring_eq<T: UnsignedInt + NumCast>(
+    fn lms_substring_eq<T: Int + NumCast>(
         &self,
         text: &[T],
         pos_types: &PosTypes,
         i: usize,
         j: usize
     ) -> bool {
-        for k in count(0, 1) {
+        for k in (0..) {
             let lmsi = pos_types.is_lms_pos(i + k);
             let lmsj = pos_types.is_lms_pos(j + k);
             if text[i + k] != text[j + k] {
@@ -254,7 +254,7 @@ impl SAIS {
         false
     }
 
-    fn sort_lms_suffixes<T: UnsignedInt + NumCast, S: UnsignedInt + NumCast>(&mut self, text: &[T], pos_types: &PosTypes) {
+    fn sort_lms_suffixes<T: Int + NumCast, S: Int + NumCast>(&mut self, text: &[T], pos_types: &PosTypes) {
         let lms_substring_count = self.lms_pos.len() - 1;
 
         // if less than 2 LMS substrings are present, no further sorting is needed
@@ -291,14 +291,14 @@ impl SAIS {
         }
     }
 
-    fn construct<T: UnsignedInt + NumCast>(&mut self, text: &[T]) {
+    fn construct<T: Int + NumCast>(&mut self, text: &[T]) {
         let pos_types = PosTypes::new(text);
         self.calc_lms_pos(text, &pos_types);
         self.calc_pos(text, &pos_types);
     }
 
     /// Step 1 of the SAIS algorithm.
-    fn calc_lms_pos<T: UnsignedInt + NumCast>(&mut self, text: &[T], pos_types: &PosTypes) {
+    fn calc_lms_pos<T: Int + NumCast>(&mut self, text: &[T], pos_types: &PosTypes) {
         let n = text.len();
 
         // collect LMS positions
@@ -328,7 +328,7 @@ impl SAIS {
     }
 
     /// Step 2 of the SAIS algorithm.
-    fn calc_pos<T: UnsignedInt + NumCast>(&mut self, text: &[T], pos_types: &PosTypes) {
+    fn calc_pos<T: Int + NumCast>(&mut self, text: &[T], pos_types: &PosTypes) {
         let n = text.len();
         self.pos.clear();
 
@@ -399,7 +399,7 @@ impl PosTypes {
     /// # Arguments
     ///
     /// * `text` - the text, ending with a sentinel.
-    fn new<T: UnsignedInt + NumCast>(text: &[T]) -> Self {
+    fn new<T: Int + NumCast>(text: &[T]) -> Self {
         let n = text.len();
         let mut pos_types = BitVec::from_elem(n, false);
         pos_types.set(n-1, true);

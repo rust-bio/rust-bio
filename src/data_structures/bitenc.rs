@@ -18,9 +18,6 @@
 //! ```
 
 
-use std::iter::range_step;
-
-
 pub struct BitEnc {
     storage: Vec<u32>,
     width: usize,
@@ -59,7 +56,7 @@ impl BitEnc {
             // fill the last block
             let (block, bit) = self.addr(self.len);
             if bit > 0 {
-                for bit in range_step(bit, 32, self.width) {
+                for bit in (bit..32).step_by(self.width) {
                     self.set_by_addr(block, bit, value);
                     n -= 1;
                 }

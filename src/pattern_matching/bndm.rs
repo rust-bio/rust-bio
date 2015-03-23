@@ -20,7 +20,6 @@
 
 
 use pattern_matching::shift_and::masks;
-use std::slice::SliceExt;
 
 
 #[derive(Copy)]
