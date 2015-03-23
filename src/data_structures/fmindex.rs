@@ -318,7 +318,9 @@ mod tests {
     fn test_smems() {
         let revcomp = dna::RevComp::new();
         let orig_text = b"GCCTTAACAT";
-        let text = [orig_text, b"$", revcomp.get(orig_text).as_slice(), b"$"].concat();
+        let revcomp_text = revcomp.get(orig_text);
+        let text_builder: Vec<&[u8]> = vec![orig_text, b"$", revcomp_text.as_slice(), b"$"];
+        let text = text_builder.concat();
         let pos = suffix_array(&text);
         println!("pos {:?}", pos);
         println!("text {:?}", text);
