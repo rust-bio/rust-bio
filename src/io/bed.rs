@@ -16,7 +16,7 @@
 
 
 use std::io;
-use std::str;
+
 
 use csv;
 
@@ -31,8 +31,27 @@ impl<R: io::Read> Reader<R> {
         Reader { inner: csv::Reader::from_reader(reader).delimiter(b'\t').has_headers(false) }
     }
 
-    pub fn records(&mut self) -> csv::DecodedRecords<R, Record> {
-        self.inner.decode()
+    pub fn records(&mut self) -> Records<R> {
+        Records { inner: self.inner.decode() }
+    }
+}
+
+
+pub struct Records<'a, R: 'a +io::Read> {
+    inner: csv::DecodedRecords<'a, R, (String, u64, u64, Vec<String>)>
+}
+
+
+impl<'a, R: io::Read> Iterator for Records<'a, R> {
+    type Item = csv::Result<Record>;
+
+    fn next(&mut self) -> Option<csv::Result<Record>> {
+        self.inner.next().map(|res| match res {
+            Ok((chrom, start, end, aux)) => Ok(Record {
+                chrom: chrom, start: start, end: end, aux: aux
+            }),
+            Err(e) => Err(e)
+        })
     }
 }
 
@@ -48,84 +67,111 @@ impl<W: io::Write> Writer<W> {
     }
 
     pub fn write(&mut self, record: Record) -> csv::Result<()> {
-        self.inner.encode(record)
+        if record.aux.len() == 0 {
+            self.inner.encode((record.chrom, record.start, record.end))
+        }
+        else {
+            self.inner.encode(record)
+        }
     }
 }
 
 
-/// A BED record as defined by UCSC (https://genome.ucsc.edu/FAQ/FAQformat.html#format1)
+/// A BED record as defined by BEDtools (http://bedtools.readthedocs.org/en/latest/content/general-usage.html)
 #[derive(RustcEncodable)]
-#[derive(Debug)]
-pub struct Record<'a> {
-    pub chrom: &str,
-    pub start: u64,
-    pub end: u64,
-    fields: Vec<&'a str>
+pub struct Record {
+    chrom: String,
+    start: u64,
+    end: u64,
+    aux: Vec<String>
 }
 
 
 impl Record {
     pub fn new() -> Self {
-        Record { chrom: "", start: 0, end: 0, fields: vec![] }
+        Record { chrom: "".to_string(), start: 0, end: 0, aux: vec![] }
     }
 
-    pub fn is_empty() -> bool {
-        self.chrom.len() == 0
+    pub fn chrom(&self) -> &str {
+        &self.chrom
     }
 
-    pub fn clear() {
-        self.chrom = "";
+    pub fn start(&self) -> u64 {
+        self.start
+    }
+
+    pub fn end(&self) -> u64 {
+        self.end
     }
 
     pub fn name(&self) -> Option<&str> {
-        self.field(3)
+        self.aux(3)
     }
 
     pub fn score(&self) -> Option<&str> {
-        self.field(4)
+        self.aux(4)
     }
 
-    pub fn is_forward_strand(&self) -> Option<bool> {
-        match self.field(5) {
-            Some(v) => if v == "+" { Some(true) } else if v == "-" { Some(false) } else { None },
-            None    => None
+    pub fn strand(&self) -> Option<Strand> {
+        match self.aux(5) {
+            Some("+") => Some(Strand::Forward),
+            Some("-") => Some(Strand::Reverse),
+            _         => None
         }
     }
 
-    pub fn field(&self, i: usize) -> Option<&str> {
+    pub fn aux(&self, i: usize) -> Option<&str> {
         let j = i - 3;
-        if self.fields.len() > j {
-            Some(&self.fields[j])
+        if j < self.aux.len() {
+            Some(&self.aux[j])
         }
         else {
             None
         }
     }
 
+    pub fn set_chrom(&mut self, chrom: &str) {
+        self.chrom = chrom.to_string();
+    }
+
+    pub fn set_start(&mut self, start: u64) {
+        self.start = start;
+    }
+
+    pub fn set_end(&mut self, end: u64) {
+        self.end = end;
+    }
+
     pub fn set_name(&mut self, name: &str) {
-        if self.fields.len() < 1 {
-            self.fields.push(name);
+        if self.aux.len() < 1 {
+            self.aux.push(name.to_string());
         }
         else {
-            self.fields[0] = name;
+            self.aux[0] = name.to_string();
         }
     }
 
     pub fn set_score(&mut self, score: &str) {
-        if self.fields.len() < 1 {
-            self.fields.push(b"");
+        if self.aux.len() < 1 {
+            self.aux.push("".to_string());
         }
-        if self.fields.len() < 2 {
-            self.fields.push(score);
+        if self.aux.len() < 2 {
+            self.aux.push(score.to_string());
         }
         else {
-            self.fields[1] = score;
+            self.aux[1] = score.to_string();
         }
     }
 
-    pub fn push_field(&mut self, field: &str) {
-        self.fields.push(field);
+    pub fn push_aux(&mut self, field: &str) {
+        self.aux.push(field.to_string());
     }
+}
+
+
+pub enum Strand {
+    Forward,
+    Reverse,
 }
 
 
@@ -133,26 +179,36 @@ impl Record {
 mod tests {
     use super::*;
 
-    const BED_FILE: &'static [u8] = b"chr1\t5\t500";
-//2\t3\t5005\tname2\tup";
+    const BED_FILE: &'static [u8] = b"1\t5\t5000\tname1\tup
+2\t3\t5005\tname2\tup
+";
 
     #[test]
     fn test_reader() {
-        let chroms = [b"1", b"2"];
-        let starts = [5, 2];
+        let chroms = ["1", "2"];
+        let starts = [5, 3];
         let ends = [5000, 5005];
         let names = ["name1", "name2"];
         let scores = ["up", "up"];
 
         let mut reader = Reader::new(BED_FILE);
         for (i, r) in reader.records().enumerate() {
-            println!("{:?}", r);
             let record = r.ok().expect("Error reading record");
             assert_eq!(record.chrom(), chroms[i]);
             assert_eq!(record.start(), starts[i]);
             assert_eq!(record.end(), ends[i]);
-            assert_eq!(record.name().unwrap(), names[i]);
-            assert_eq!(record.score().unwrap(), scores[i]);
+            assert_eq!(record.name().expect("Error reading name"), names[i]);
+            assert_eq!(record.score().expect("Error reading score"), scores[i]);
         }
+    }
+
+    #[test]
+    fn test_writer() {
+        let mut reader = Reader::new(BED_FILE);
+        let mut writer = Writer::new(vec![]);
+        for r in reader.records() {
+            writer.write(r.ok().expect("Error reading record"));
+        }
+        assert_eq!(writer.inner.as_bytes(), BED_FILE);
     }
 }
