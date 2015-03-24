@@ -16,6 +16,8 @@
 use std::io;
 use std::io::prelude::*;
 use std::ascii::AsciiExt;
+use std::fs;
+use std::path;
 
 
 /// A FastQ reader.
@@ -29,6 +31,10 @@ impl<R: io::Read> Reader<R> {
     /// Create a new FastQ reader.
     pub fn new(reader: R) -> Self {
         Reader { reader: io::BufReader::new(reader), sep_line: String::new() }
+    }
+
+    pub fn from_file<P: path::AsPath>(path: P) -> io::Result<Reader<fs::File>> {
+        fs::File::open(path).map(|f| Reader::new(f))
     }
 
     /// Read into a given record.
@@ -166,6 +172,10 @@ impl<W: io::Write> Writer<W> {
     /// Create a new FastQ writer.
     pub fn new(writer: W) -> Self {
         Writer { writer: io::BufWriter::new(writer) }
+    }
+
+    pub fn from_file<P: path::AsPath>(path: P) -> io::Result<Writer<fs::File>> {
+        fs::File::create(path).map(|f| Writer::new(f))
     }
 
     /// Directly write a FastQ record.

@@ -11,11 +11,20 @@
 //! ```
 //! use std::io;
 //! use bio::io::bed;
-//! let reader = bed::Reader::new(io::stdin());
+//! let example = b"1\t5\t5000\tname1\t0.5".as_slice();
+//! let mut reader = bed::Reader::new(example);
+//! let mut writer = bed::Writer::new(vec![]);
+//! for record in reader.records() {
+//!     let rec = record.ok().expect("Error reading record.");
+//!     println!("{}", rec.chrom());
+//!     writer.write(rec);
+//! }
 //! ```
 
 
 use std::io;
+use std::path;
+use std::fs;
 
 
 use csv;
@@ -30,6 +39,10 @@ pub struct Reader<R: io::Read> {
 impl<R: io::Read> Reader<R> {
     pub fn new(reader: R) -> Self {
         Reader { inner: csv::Reader::from_reader(reader).delimiter(b'\t').has_headers(false) }
+    }
+
+    pub fn from_file<P: path::AsPath>(path: P) -> io::Result<Reader<fs::File>> {
+        fs::File::open(path).map(|f| Reader::new(f))
     }
 
     pub fn records(&mut self) -> Records<R> {
@@ -68,6 +81,10 @@ impl<W: io::Write> Writer<W> {
         Writer { inner: csv::Writer::from_writer(writer).delimiter(b'\t').flexible(true) }
     }
 
+    pub fn from_file<P: path::AsPath>(path: P) -> io::Result<Writer<fs::File>> {
+        fs::File::create(path).map(|f| Writer::new(f))
+    }
+
     pub fn write(&mut self, record: Record) -> csv::Result<()> {
         if record.aux.len() == 0 {
             self.inner.encode((record.chrom, record.start, record.end))
@@ -98,10 +115,12 @@ impl Record {
         &self.chrom
     }
 
+    /// Start position of feature (0-based).
     pub fn start(&self) -> u64 {
         self.start
     }
 
+    /// End position of feature (0-based, not included).
     pub fn end(&self) -> u64 {
         self.end
     }

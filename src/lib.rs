@@ -4,6 +4,7 @@
 #![feature(io)]
 #![feature(str_words)]
 #![feature(step_by)]
+#![feature(std_misc)]
 
 // Copyright 2014 Johannes Köster.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
