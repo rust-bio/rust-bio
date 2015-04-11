@@ -20,7 +20,8 @@ use std::io::prelude::*;
 use std::ascii::AsciiExt;
 use std::collections;
 use std::fs;
-use std::path;
+use std::path::Path;
+use std::convert::AsRef;
 
 use csv;
 
@@ -37,7 +38,7 @@ impl<R: io::Read> Reader<R> {
         Reader { reader: io::BufReader::new(reader), line: String::new() }
     }
 
-    pub fn from_file<P: path::AsPath>(path: P) -> io::Result<Reader<fs::File>> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Reader<fs::File>> {
         fs::File::open(path).map(|f| Reader::new(f))
     }
 
@@ -53,8 +54,7 @@ impl<R: io::Read> Reader<R> {
         if !self.line.starts_with(">") {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
-                "Expected > at record start.",
-                None,
+                "Expected > at record start."
             ));
         }
         record.header.push_str(&self.line);
@@ -100,8 +100,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
             None      => Err(
                 io::Error::new(
                     io::ErrorKind::Other,
-                    "Unknown sequence name.",
-                    None,
+                    "Unknown sequence name."
                 )
             )
         }
@@ -135,8 +134,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
             None      => Err(
                 io::Error::new(
                     io::ErrorKind::Other,
-                    "Unknown sequence name.",
-                    None,
+                    "Unknown sequence name."
                 )
             )
         }
@@ -144,9 +142,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 }
 
 
-#[derive(RustcDecodable)]
-#[derive(Copy)]
-#[derive(Debug)]
+#[derive(RustcDecodable, Debug, Copy, Clone)]
 struct IndexRecord {
     len: u64,
     offset: u64,
@@ -167,7 +163,7 @@ impl<W: io::Write> Writer<W> {
         Writer { writer: io::BufWriter::new(writer) }
     }
 
-    pub fn from_file<P: path::AsPath>(path: P) -> io::Result<Writer<fs::File>> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Writer<fs::File>> {
         fs::File::create(path).map(|f| Writer::new(f))
     }
 

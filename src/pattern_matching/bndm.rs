@@ -22,7 +22,6 @@
 use pattern_matching::shift_and::masks;
 
 
-#[derive(Copy)]
 pub struct BNDM {
     m: usize,
     masks: [u64; 256],

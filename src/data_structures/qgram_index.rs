@@ -28,7 +28,6 @@
 /// ```
 
 
-use std::num::Int;
 use std::collections;
 use std;
 
@@ -166,9 +165,7 @@ impl QGramIndex {
 
 
 /// An interval, consisting of start and stop position (the latter exclusive).
-#[derive(PartialEq)]
-#[derive(Debug)]
-#[derive(Copy)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub struct Interval {
     pub start: usize,
     pub stop: usize
@@ -182,9 +179,7 @@ impl Interval {
 }
 
 
-#[derive(PartialEq)]
-#[derive(Debug)]
-#[derive(Copy)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub struct Match {
     pub pattern: Interval,
     pub text: Interval,
@@ -192,9 +187,7 @@ pub struct Match {
 }
 
 
-#[derive(PartialEq)]
-#[derive(Debug)]
-#[derive(Copy)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub struct ExactMatch {
     pub pattern: Interval,
     pub text: Interval,

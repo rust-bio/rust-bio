@@ -8,9 +8,7 @@
 pub mod pairwise;
 
 
-#[derive(Debug)]
-#[derive(PartialEq)]
-#[derive(Copy)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub enum AlignmentOperation {
     Match,
     Subst,
@@ -32,12 +30,12 @@ pub struct Alignment {
 impl Alignment {
     pub fn cigar(&self, hard_clip: bool) -> String {
         let add_op = |op, k, cigar: &mut String| {
-            cigar.push_str(format!("{}{}", k, match op {
+            cigar.push_str(&format!("{}{}", k, match op {
                 AlignmentOperation::Match => "=",
                 AlignmentOperation::Subst => "X",
                 AlignmentOperation::Del => "D",
                 AlignmentOperation::Ins => "I",
-            }).as_slice());
+            }));
         };
 
         let op_len = |op: AlignmentOperation| {
@@ -50,7 +48,7 @@ impl Alignment {
 
         if !self.operations.is_empty() {
             if self.xstart > 0 {
-                cigar.push_str(format!("{}{}", self.xstart, clip_str).as_slice());
+                cigar.push_str(&format!("{}{}", self.xstart, clip_str));
             }
 
             let mut last = self.operations[0];
@@ -70,11 +68,11 @@ impl Alignment {
 
             let clip = self.xlen - alen;
             if clip > 0 {
-                cigar.push_str(format!("{}{}", clip, clip_str).as_slice());
+                cigar.push_str(&format!("{}{}", clip, clip_str));
             }
         }
         else {
-            cigar.push_str(format!("{}{}", self.xlen, clip_str).as_slice());
+            cigar.push_str(&format!("{}{}", self.xlen, clip_str));
         }
 
         cigar

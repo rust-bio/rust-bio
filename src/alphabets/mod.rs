@@ -17,8 +17,7 @@
 
 use std::collections::{BitSet, VecMap};
 use std::slice;
-use std::num::Float;
-use std::usize;
+use std::mem;
 
 
 pub mod dna;
@@ -103,7 +102,7 @@ impl RankTransform {
     /// If q is larger than usize::BITS / log2(|A|), this method fails with an assertion.
     pub fn qgrams<'a>(&'a self, q: u32, text: &'a [u8]) -> QGrams {
         let bits = (self.ranks.len() as f32).log2().ceil() as u32;
-        assert!(bits * q <= usize::BITS, "Expecting q to be smaller than 64 / log2(|A|)");
+        assert!((bits * q) as usize <= mem::size_of::<usize>() * 8, "Expecting q to be smaller than usize / log2(|A|)");
 
         let mut qgrams = QGrams {
             text: text.iter(),

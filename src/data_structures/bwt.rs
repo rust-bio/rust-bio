@@ -8,7 +8,6 @@
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
 use std::iter::repeat;
-use std::iter::{AdditiveIterator};
 
 use data_structures::suffix_array::SuffixArray;
 use utils::prescan;
@@ -111,7 +110,7 @@ impl Occ {
     pub fn get(&self, bwt: &BWT, r: usize, a: u8) -> usize {
         let i = r / self.k;
         self.occ[i][a as usize] +
-        bwt[(i * self.k) + 1 .. r + 1].iter().map(|&c| (c == a) as usize).sum()
+        bwt[(i * self.k) + 1 .. r + 1].iter().map(|&c| (c == a) as usize).sum::<usize>()
     }
 }
 

@@ -9,6 +9,7 @@
 //! Example
 //!
 //! ```
+//! #![feature(collections)]
 //! use bio::data_structures::rank_select::RankSelect;
 //! use std::collections::BitVec;
 //! let mut bits = BitVec::from_elem(64, false);
@@ -28,14 +29,6 @@
 
 
 use std::collections::BitVec;
-use std::intrinsics::ctpop8;
-
-
-fn ctpop(v: u8) -> u8 {
-    let p: u8;
-    unsafe { p = ctpop8(v); }
-    p
-}
 
 
 pub struct RankSelect {
@@ -82,10 +75,10 @@ impl RankSelect {
             // take the superblock rank
             let mut rank = self.superblocks[s];
             // add the rank within the block
-            rank += ctpop(self.bits[b] >> 7 - i % 8) as u32;
+            rank += (self.bits[b] >> 7 - i % 8).count_ones();
             // add the popcounts of blocks in between
             rank += self.bits[s * 32 / 8..b].iter()
-                .map(|&a| ctpop(a) as u32)
+                .map(|&a| a.count_ones())
                 .fold(0, |a, b| a + b);
 
             Some(rank)
@@ -110,7 +103,7 @@ impl RankSelect {
 
         let first_block = superblock * self.s / 8;
         for (block, &b) in self.bits[first_block..].iter().enumerate() {
-            let p = ctpop(b) as u32;
+            let p = b.count_ones();
             if rank + p >= j {
                 let mut bit = 0b10000000;
                 for i in 0..8usize {
@@ -137,7 +130,7 @@ fn superblocks(n: usize, s: usize, raw_bits: &Vec<u8>) -> Vec<u32> {
         if i % s == 0 {
             superblocks.push(rank);
         }
-        rank += ctpop(b) as u32;
+        rank += b.count_ones();
         i += 8;
     }
 

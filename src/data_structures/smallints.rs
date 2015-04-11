@@ -21,20 +21,21 @@
 //! assert_eq!(values, [50000, 4, 255, 305093]);
 //! ```
 
-use std::num::{Int, NumCast, FromPrimitive, cast};
 use std::iter::{Enumerate, repeat};
 use std::mem::size_of;
 use std::collections::BTreeMap;
 use std::slice;
 
+use num::{NumCast, Bounded, Integer, Num};
+use num::traits::cast;
 
-pub struct SmallInts<S: Int + NumCast + FromPrimitive, B: Int + NumCast> {
+pub struct SmallInts<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> {
     smallints: Vec<S>,
     bigints: BTreeMap<usize, B>
 }
 
 
-impl<S: Int + NumCast + FromPrimitive, B: Int + NumCast> SmallInts<S, B> {
+impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallInts<S, B> {
     pub fn new() -> Self {
         assert!(size_of::<S>() < size_of::<B>(), "S has to be smaller than B");
         SmallInts { smallints: Vec::new(), bigints: BTreeMap::new() }
@@ -48,7 +49,7 @@ impl<S: Int + NumCast + FromPrimitive, B: Int + NumCast> SmallInts<S, B> {
     pub fn from_elem(v: S, n: usize) -> Self {
         assert!(size_of::<S>() < size_of::<B>(), "S has to be smaller than B");
         if v > cast(0).unwrap() {
-            assert!(v < Int::max_value(), "v has to be smaller than maximum value");
+            assert!(v < S::max_value(), "v has to be smaller than maximum value");
         }
         
         SmallInts { smallints: repeat(v).take(n).collect(), bigints: BTreeMap::new() }
@@ -64,7 +65,7 @@ impl<S: Int + NumCast + FromPrimitive, B: Int + NumCast> SmallInts<S, B> {
     }
 
     pub fn push(&mut self, v: B) {
-        let maxv: S = Int::max_value();
+        let maxv: S = S::max_value();
         match cast(v) {
             Some(v) if v < maxv => self.smallints.push(v),
             _                   => {
@@ -76,7 +77,7 @@ impl<S: Int + NumCast + FromPrimitive, B: Int + NumCast> SmallInts<S, B> {
     }
 
     pub fn set(&mut self, i: usize, v: B) {
-        let maxv: S = Int::max_value();
+        let maxv: S = S::max_value();
         match cast(v) {
             Some(v) if v < maxv => self.smallints[i] = v,
             _                   => {
@@ -99,7 +100,7 @@ impl<S: Int + NumCast + FromPrimitive, B: Int + NumCast> SmallInts<S, B> {
     }
 
     fn real_value(&self, i: usize, v: S) -> Option<B> {
-        if v < Int::max_value() {
+        if v < S::max_value() {
             cast(v)
         }
         else {
@@ -109,13 +110,23 @@ impl<S: Int + NumCast + FromPrimitive, B: Int + NumCast> SmallInts<S, B> {
 }
 
 
-pub struct Iter<'a, S: 'a + Int + NumCast + FromPrimitive, B: 'a + Int + NumCast> {
+pub struct Iter<'a, S, B> where 
+    S: 'a + Integer + Bounded + NumCast + Copy,
+    B: 'a + Integer + NumCast + Copy,
+    <S as Num>::FromStrRadixErr: 'a,
+    <B as Num>::FromStrRadixErr: 'a,
+{
     smallints: &'a SmallInts<S, B>,
     items: Enumerate<slice::Iter<'a, S>>
 }
 
 
-impl<'a, S: 'a + Int + NumCast + FromPrimitive, B: 'a + Int + NumCast> Iterator for Iter<'a, S, B> {
+impl<'a, S, B> Iterator for Iter<'a, S, B> where
+    S: 'a + Integer + Bounded + NumCast + Copy,
+    B: 'a + Integer + NumCast + Copy,
+    <S as Num>::FromStrRadixErr: 'a,
+    <B as Num>::FromStrRadixErr: 'a,
+{
     type Item = B;
 
     fn next(&mut self) -> Option<B> {

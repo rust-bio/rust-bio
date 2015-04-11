@@ -20,7 +20,7 @@
 
 use std::iter::Enumerate;
 
-#[derive(Copy)]
+
 pub struct ShiftAnd {
     m: usize,
     masks: [u64; 256],

@@ -1,10 +1,9 @@
 #![feature(core)]
 #![feature(collections)]
 #![feature(test)]
-#![feature(io)]
 #![feature(str_words)]
 #![feature(step_by)]
-#![feature(std_misc)]
+#![feature(convert)]
 
 // Copyright 2014 Johannes Köster.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
@@ -30,8 +29,9 @@
 
 
 extern crate test;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate csv;
+extern crate num;
 
 pub mod utils;
 pub mod alphabets;

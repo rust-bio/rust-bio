@@ -22,7 +22,6 @@ pub fn iupac_alphabet() -> Alphabet {
 }
 
 
-#[derive(Copy)]
 pub struct RevComp {
     comp: [u8; 256]
 }
@@ -52,12 +51,13 @@ impl RevComp {
     /// # Example
     ///
     /// ```
+    /// #![feature(convert)]
     /// use bio::alphabets::dna::RevComp;
     /// let revcomp = RevComp::new();
     /// let text = b"AAACCTT";
     /// let revcomp_text = revcomp.get(text);
-    /// assert_eq!(revcomp_text, b"AAGGTTT");
-    /// assert_eq!(text, revcomp.get(revcomp_text.as_slice()));
+    /// assert_eq!(revcomp_text, &b"AAGGTTT"[..]);
+    /// assert_eq!(revcomp.get(revcomp_text.as_slice()), &text[..]);
     /// ```
     pub fn get(&self, text: &[u8]) -> Vec<u8> {
         text.iter().rev().map(|&a| self.comp(a)).collect()

@@ -9,10 +9,9 @@
 //! # Example
 //!
 //! ```
-//! use std::io;
 //! use bio::io::bed;
-//! let example = b"1\t5\t5000\tname1\t0.5".as_slice();
-//! let mut reader = bed::Reader::new(example);
+//! let example = b"1\t5\t5000\tname1\t0.5";
+//! let mut reader = bed::Reader::new(&example[..]);
 //! let mut writer = bed::Writer::new(vec![]);
 //! for record in reader.records() {
 //!     let rec = record.ok().expect("Error reading record.");
@@ -23,8 +22,9 @@
 
 
 use std::io;
-use std::path;
 use std::fs;
+use std::path::Path;
+use std::convert::AsRef;
 
 
 use csv;
@@ -41,7 +41,7 @@ impl<R: io::Read> Reader<R> {
         Reader { inner: csv::Reader::from_reader(reader).delimiter(b'\t').has_headers(false) }
     }
 
-    pub fn from_file<P: path::AsPath>(path: P) -> io::Result<Reader<fs::File>> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Reader<fs::File>> {
         fs::File::open(path).map(|f| Reader::new(f))
     }
 
@@ -81,7 +81,7 @@ impl<W: io::Write> Writer<W> {
         Writer { inner: csv::Writer::from_writer(writer).delimiter(b'\t').flexible(true) }
     }
 
-    pub fn from_file<P: path::AsPath>(path: P) -> io::Result<Writer<fs::File>> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Writer<fs::File>> {
         fs::File::create(path).map(|f| Writer::new(f))
     }
 

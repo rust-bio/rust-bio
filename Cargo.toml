@@ -11,3 +11,4 @@ license = "MIT"
 [dependencies]
 csv = "*"
 rustc-serialize = "*"
+num = "*"

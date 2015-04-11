@@ -13,7 +13,7 @@ use alphabets::{Alphabet, dna};
 use std::mem::swap;
 
 
-#[derive(Copy)]
+#[derive(Debug, Copy, Clone)]
 pub struct Interval {
     lower: usize,
     upper: usize
@@ -98,8 +98,7 @@ impl<'a> FMIndex<'a> {
 }
 
 
-#[derive(Copy)]
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct BiInterval {
     lower: usize,
     lower_rev: usize,
