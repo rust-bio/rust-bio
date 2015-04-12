@@ -18,7 +18,7 @@ Currently, rust-bio provides
 * a rank/select data structure,
 * FastQ and Fasta readers and writers.
 
-For reading and writing BAM files, have a look at https://github.com/christopher-schroeder/rust-htslib.
+For reading and writing BAM and BCF files, have a look at https://github.com/christopher-schroeder/rust-htslib.
 
 ## Resources
 
