@@ -35,7 +35,7 @@ pub fn prescan<T: Copy, F: Fn(T, T) -> T>(a: &mut [T], neutral: T, op: F) {
 
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::{scan, prescan};
 
     #[test]

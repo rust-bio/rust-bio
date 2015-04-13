@@ -39,3 +39,4 @@ pub mod pattern_matching;
 pub mod data_structures;
 pub mod alignment;
 pub mod io;
+pub mod stats;
