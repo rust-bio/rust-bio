@@ -103,6 +103,14 @@ impl Index {
         }
     }
 
+    pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> csv::Result<Self> {
+        let mut ext = fasta_path.as_ref().extension().unwrap_or("".as_os_str()).to_str().unwrap().to_string();
+        ext.push_str(".fai");
+        let fai_path = fasta_path.as_ref().with_extension(ext);
+
+        Self::from_file(&fai_path)
+    }
+
     pub fn sequences(&self) -> Vec<Sequence> {
         self.inner.iter().map(|(name, record)| Sequence { name: name.clone(), len: record.len }).collect_vec()
     }
@@ -126,11 +134,8 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 
     pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<IndexedReader<fs::File>> {
-        let mut ext = path.as_ref().extension().unwrap_or("".as_os_str()).to_str().unwrap().to_string();
-        ext.push_str(".fai");
-        let fai_path = path.as_ref().with_extension(ext);
+        let index = try!(Index::with_fasta_file(path));
 
-        let index = try!(Index::from_file(&fai_path));
         match fs::File::open(path) {
             Ok(fasta) => Ok(IndexedReader::with_index(fasta, index)),
             Err(e)    => Err(csv::Error::Io(e))
