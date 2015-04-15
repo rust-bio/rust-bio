@@ -4,6 +4,7 @@
 #![feature(str_words)]
 #![feature(step_by)]
 #![feature(convert)]
+#![feature(std_misc)]
 
 // Copyright 2014 Johannes Köster.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
@@ -24,6 +25,9 @@
 //! * suffix arrays,
 //! * BWT and FM-Index,
 //! * rank/select data structures.
+//! * FMD-Index for finding supermaximal exact matches,
+//! * a q-gram index,
+//! * FastQ, Fasta and BED readers and writers.
 //!
 //! Find out more at https://github.com/johanneskoester/rust-bio.
 

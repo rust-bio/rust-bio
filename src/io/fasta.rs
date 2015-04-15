@@ -22,6 +22,7 @@ use std::collections;
 use std::fs;
 use std::path::Path;
 use std::convert::AsRef;
+use std::ffi::AsOsStr;
 
 use itertools::Itertools;
 
@@ -79,29 +80,65 @@ impl<R: io::Read> Reader<R> {
 }
 
 
+pub struct Index {
+    inner: collections::BTreeMap<Vec<u8>, IndexRecord>,
+}
+
+
+impl Index {
+    pub fn new<R: io::Read>(fai: R) -> csv::Result<Self> {
+        let mut inner = collections::BTreeMap::new();
+        let mut fai_reader = csv::Reader::from_reader(fai).delimiter(b'\t').has_headers(false);
+        for row in fai_reader.decode() {
+            let (name, record): (String, IndexRecord) = try!(row);
+            inner.insert(name.into_bytes(), record);
+        }
+        Ok(Index { inner: inner })
+    }
+
+    pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
+        match fs::File::open(path) {
+            Ok(fai) => Self::new(fai),
+            Err(e)  => Err(csv::Error::Io(e))
+        }
+    }
+
+    pub fn sequences(&self) -> Vec<Sequence> {
+        self.inner.iter().map(|(name, record)| Sequence { name: name.clone(), len: record.len }).collect_vec()
+    }
+}
+
+
 pub struct IndexedReader<R: io::Read + io::Seek> {
-    reader: R,
-    index: collections::BTreeMap<Vec<u8>, IndexRecord>,
+    reader: io::BufReader<R>,
+    pub index: Index,
 }
 
 
 impl<R: io::Read + io::Seek> IndexedReader<R> {
     pub fn new<I: io::Read>(fasta: R, fai: I) -> csv::Result<Self> {
-        let mut index = collections::BTreeMap::new();
-        let mut fai_reader = csv::Reader::from_reader(fai).delimiter(b'\t').has_headers(false);
-        for row in fai_reader.decode() {
-            let (name, record): (String, IndexRecord) = try!(row);
-            index.insert(name.into_bytes(), record);
-        }
-        Ok(IndexedReader { reader: fasta, index: index })
+        let index = try!(Index::new(fai));
+        Ok(IndexedReader { reader: io::BufReader::new(fasta), index: index })
     }
 
-    pub fn sequences(&self) -> Vec<Sequence> {
-        self.index.iter().map(|(name, record)| Sequence { name: name.clone(), len: record.len }).collect_vec()
+    pub fn with_index(fasta: R, index: Index) -> Self {
+        IndexedReader { reader: io::BufReader::new(fasta), index: index }
+    }
+
+    pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<IndexedReader<fs::File>> {
+        let mut ext = path.as_ref().extension().unwrap_or("".as_os_str()).to_str().unwrap().to_string();
+        ext.push_str(".fai");
+        let fai_path = path.as_ref().with_extension(ext);
+
+        let index = try!(Index::from_file(&fai_path));
+        match fs::File::open(path) {
+            Ok(fasta) => Ok(IndexedReader::with_index(fasta, index)),
+            Err(e)    => Err(csv::Error::Io(e))
+        }
     }
 
     pub fn read_all(&mut self, seqname: &[u8], seq: &mut Vec<u8>) -> io::Result<()> {
-        match self.index.get(seqname) {
+        match self.index.inner.get(seqname) {
             Some(&idx) => self.read(seqname, 0, idx.len, seq),
             None      => Err(
                 io::Error::new(
@@ -113,7 +150,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 
     pub fn read(&mut self, seqname: &[u8], start: u64, stop: u64, seq: &mut Vec<u8>) -> io::Result<()> {
-        match self.index.get(seqname) {
+        match self.index.inner.get(seqname) {
             Some(idx) => {
                 seq.clear();
                 // derived from
