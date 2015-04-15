@@ -32,6 +32,7 @@ extern crate test;
 extern crate rustc_serialize;
 extern crate csv;
 extern crate num;
+extern crate itertools;
 
 pub mod utils;
 pub mod alphabets;

@@ -23,6 +23,8 @@ use std::fs;
 use std::path::Path;
 use std::convert::AsRef;
 
+use itertools::Itertools;
+
 use csv;
 
 
@@ -79,19 +81,23 @@ impl<R: io::Read> Reader<R> {
 
 pub struct IndexedReader<R: io::Read + io::Seek> {
     reader: R,
-    index: collections::HashMap<Vec<u8>, IndexRecord>,
+    index: collections::BTreeMap<Vec<u8>, IndexRecord>,
 }
 
 
 impl<R: io::Read + io::Seek> IndexedReader<R> {
     pub fn new<I: io::Read>(fasta: R, fai: I) -> csv::Result<Self> {
-        let mut index = collections::HashMap::new();
+        let mut index = collections::BTreeMap::new();
         let mut fai_reader = csv::Reader::from_reader(fai).delimiter(b'\t').has_headers(false);
         for row in fai_reader.decode() {
             let (name, record): (String, IndexRecord) = try!(row);
             index.insert(name.into_bytes(), record);
         }
         Ok(IndexedReader { reader: fasta, index: index })
+    }
+
+    pub fn sequences(&self) -> Vec<Sequence> {
+        self.index.iter().map(|(name, record)| Sequence { name: name.clone(), len: record.len }).collect_vec()
     }
 
     pub fn read_all(&mut self, seqname: &[u8], seq: &mut Vec<u8>) -> io::Result<()> {
@@ -148,6 +154,12 @@ struct IndexRecord {
     offset: u64,
     line_bases: u64,
     line_bytes: u64,
+}
+
+
+pub struct Sequence {
+    pub name: Vec<u8>,
+    pub len: u64,
 }
 
 
