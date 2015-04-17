@@ -20,6 +20,7 @@ pub mod bom;
 pub mod horspool;
 pub mod bndm;
 pub mod ukkonen;
+pub mod myers;
 
 
 #[cfg(test)]
