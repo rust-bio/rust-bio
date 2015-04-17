@@ -30,6 +30,7 @@
 
 use std::collections;
 use std;
+use std::cmp;
 
 use alphabets::{Alphabet, RankTransform};
 use utils;
@@ -88,6 +89,10 @@ impl QGramIndex {
         }
 
         QGramIndex { q: q, address: address, pos: pos, ranks: ranks }
+    }
+
+    pub fn q(&self) -> u32 {
+        self.q
     }
 
     /// Return text positions with matching q-gram.
@@ -165,7 +170,7 @@ impl QGramIndex {
 
 
 /// An interval, consisting of start and stop position (the latter exclusive).
-#[derive(PartialEq, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub struct Interval {
     pub start: usize,
     pub stop: usize
@@ -179,11 +184,25 @@ impl Interval {
 }
 
 
-#[derive(PartialEq, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub struct Match {
     pub pattern: Interval,
     pub text: Interval,
     pub count: usize,
+}
+
+
+impl cmp::Ord for Match {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.count.cmp(&other.count)
+    }
+}
+
+
+impl cmp::PartialOrd for Match {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 
