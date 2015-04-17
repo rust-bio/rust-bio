@@ -13,7 +13,7 @@ use std::iter;
 
 
 pub struct Myers {
-    peq: Vec<u64>,
+    peq: [u64; 256],
     bound: u64,
     m: u8,
 }
@@ -23,7 +23,7 @@ impl Myers {
     pub fn new(pattern: &[u8]) -> Self {
         assert!(pattern.len() <= 64 && pattern.len() > 0);
 
-        let mut peq = vec![0; 256];
+        let mut peq = [0; 256];
         for (i, &a) in pattern.iter().enumerate() {
             peq[a as usize] |= 1 << i;
         }
