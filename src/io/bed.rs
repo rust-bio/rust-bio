@@ -36,13 +36,16 @@ pub struct Reader<R: io::Read> {
 }
 
 
+impl Reader<fs::File> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        fs::File::open(path).map(|f| Reader::new(f))
+    }
+}
+
+
 impl<R: io::Read> Reader<R> {
     pub fn new(reader: R) -> Self {
         Reader { inner: csv::Reader::from_reader(reader).delimiter(b'\t').has_headers(false) }
-    }
-
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Reader<fs::File>> {
-        fs::File::open(path).map(|f| Reader::new(f))
     }
 
     pub fn records(&mut self) -> Records<R> {
@@ -76,13 +79,16 @@ pub struct Writer<W: io::Write> {
 }
 
 
+impl Writer<fs::File> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        fs::File::create(path).map(|f| Writer::new(f))
+    }
+}
+
+
 impl<W: io::Write> Writer<W> {
     pub fn new(writer: W) -> Self {
         Writer { inner: csv::Writer::from_writer(writer).delimiter(b'\t').flexible(true) }
-    }
-
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Writer<fs::File>> {
-        fs::File::create(path).map(|f| Writer::new(f))
     }
 
     pub fn write(&mut self, record: Record) -> csv::Result<()> {

@@ -35,14 +35,17 @@ pub struct Reader<R: io::Read> {
 }
 
 
+impl Reader<fs::File> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        fs::File::open(path).map(|f| Reader::new(f))
+    }
+}
+
+
 impl<R: io::Read> Reader<R> {
     /// Create a new FastQ reader.
     pub fn new(reader: R) -> Self {
         Reader { reader: io::BufReader::new(reader), line: String::new() }
-    }
-
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Reader<fs::File>> {
-        fs::File::open(path).map(|f| Reader::new(f))
     }
 
     pub fn read(&mut self, record: &mut Record) -> io::Result<()> {
@@ -123,6 +126,18 @@ pub struct IndexedReader<R: io::Read + io::Seek> {
 }
 
 
+impl IndexedReader<fs::File> {
+    pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
+        let index = try!(Index::with_fasta_file(path));
+
+        match fs::File::open(path) {
+            Ok(fasta) => Ok(IndexedReader::with_index(fasta, index)),
+            Err(e)    => Err(csv::Error::Io(e))
+        }
+    }
+}
+
+
 impl<R: io::Read + io::Seek> IndexedReader<R> {
     pub fn new<I: io::Read>(fasta: R, fai: I) -> csv::Result<Self> {
         let index = try!(Index::new(fai));
@@ -131,15 +146,6 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
     pub fn with_index(fasta: R, index: Index) -> Self {
         IndexedReader { reader: io::BufReader::new(fasta), index: index }
-    }
-
-    pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<IndexedReader<fs::File>> {
-        let index = try!(Index::with_fasta_file(path));
-
-        match fs::File::open(path) {
-            Ok(fasta) => Ok(IndexedReader::with_index(fasta, index)),
-            Err(e)    => Err(csv::Error::Io(e))
-        }
     }
 
     pub fn read_all(&mut self, seqname: &[u8], seq: &mut Vec<u8>) -> io::Result<()> {
@@ -211,14 +217,17 @@ pub struct Writer<W: io::Write> {
 }
 
 
+impl Writer<fs::File> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        fs::File::create(path).map(|f| Writer::new(f))
+    }
+}
+
+
 impl<W: io::Write> Writer<W> {
     /// Create a new Fasta writer.
     pub fn new(writer: W) -> Self {
         Writer { writer: io::BufWriter::new(writer) }
-    }
-
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Writer<fs::File>> {
-        fs::File::create(path).map(|f| Writer::new(f))
     }
 
     /// Directly write a Fasta record.
