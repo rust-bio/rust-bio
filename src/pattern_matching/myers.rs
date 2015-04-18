@@ -10,6 +10,7 @@
 
 
 use std::iter;
+use std::u64;
 
 
 pub struct Myers {
@@ -33,6 +34,14 @@ impl Myers {
             bound: 1 << (pattern.len() -1),
             m: pattern.len() as u8,
         }
+    }
+
+    pub fn with_wildcard(pattern: &[u8], wildcard: u8) -> Self {
+        let mut myers = Self::new(pattern);
+        // wildcard matches all symbols of the pattern.
+        myers.peq[wildcard as usize] = u64::MAX;
+
+        myers
     }
 
     fn step(&self, state: &mut State, a: u8) {
@@ -120,5 +129,17 @@ mod tests {
         let myers = Myers::new(pattern);
         let occ = myers.find_all_end(text.iter(), 1).collect_vec();
         assert_eq!(occ, [(13, 1), (14, 1)]);
+    }
+
+    #[test]
+    fn test_distance() {
+        let text = b"TGAGCNT";
+        let pattern = b"TGAGCGT";
+
+        let myers = Myers::new(pattern);
+        assert_eq!(myers.distance(text), 1);
+
+        let myers_wildcard = Myers::with_wildcard(pattern, b'N');
+        assert_eq!(myers_wildcard.distance(text), 0);
     }
 }
