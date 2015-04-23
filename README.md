@@ -16,7 +16,7 @@ Currently, rust-bio provides
 * FMD-Index for finding supermaximal exact matches,
 * a q-gram index,
 * a rank/select data structure,
-* FastQ and Fasta readers and writers.
+* FASTQ and FASTA and BED readers and writers.
 
 For reading and writing BAM and BCF files, have a look at https://github.com/christopher-schroeder/rust-htslib.
 
