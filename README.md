@@ -10,6 +10,7 @@ integration.
 Currently, rust-bio provides
 
 * most major pattern matching algorithms,
+* a convenient alphabet implementation,
 * pairwise alignment,
 * suffix arrays,
 * BWT and FM-Index,
