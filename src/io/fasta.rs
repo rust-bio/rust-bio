@@ -22,7 +22,6 @@ use std::collections;
 use std::fs;
 use std::path::Path;
 use std::convert::AsRef;
-use std::ffi::AsOsStr;
 
 use itertools::Itertools;
 
@@ -107,7 +106,7 @@ impl Index {
     }
 
     pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> csv::Result<Self> {
-        let mut ext = fasta_path.as_ref().extension().unwrap_or("".as_os_str()).to_str().unwrap().to_string();
+        let mut ext = fasta_path.as_ref().extension().unwrap().to_str().unwrap().to_string();
         ext.push_str(".fai");
         let fai_path = fasta_path.as_ref().with_extension(ext);
 
@@ -294,12 +293,12 @@ impl Record {
 
     /// Return the id of the record.
     pub fn id(&self) -> Option<&str> {
-        self.header[1..].words().next()
+        self.header[1..].split_whitespace().next()
     }
 
     /// Return descriptions if present.
     pub fn desc(&self) -> Vec<&str> {
-        self.header[1..].words().skip(1).collect()
+        self.header[1..].split_whitespace().skip(1).collect()
     }
 
     /// Return the sequence of the record.

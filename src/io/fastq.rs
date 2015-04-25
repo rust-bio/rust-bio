@@ -118,12 +118,12 @@ impl Record {
 
     /// Return the id of the record.
     pub fn id(&self) -> Option<&str> {
-        self.header[1..].words().next()
+        self.header[1..].split_whitespace().next()
     }
 
     /// Return descriptions if present.
     pub fn desc(&self) -> Vec<&str> {
-        self.header[1..].words().skip(1).collect()
+        self.header[1..].split_whitespace().skip(1).collect()
     }
 
     /// Return the sequence of the record.
