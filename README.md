@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/johanneskoester/rust-bio.svg?branch=master)](https://travis-ci.org/johanneskoester/rust-bio)
+[![](http://meritbadge.herokuapp.com/bio)](https://crates.io/crates/bio)
 
 # Rust-Bio, a bioinformatics library for Rust.
 
