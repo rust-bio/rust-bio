@@ -23,8 +23,6 @@ use std::fs;
 use std::path::Path;
 use std::convert::AsRef;
 
-use itertools::Itertools;
-
 use csv;
 
 
@@ -83,19 +81,22 @@ impl<R: io::Read> Reader<R> {
 
 
 pub struct Index {
-    inner: collections::BTreeMap<Vec<u8>, IndexRecord>,
+    inner: collections::HashMap<Vec<u8>, IndexRecord>,
+    seqs: Vec<Vec<u8>>,
 }
 
 
 impl Index {
     pub fn new<R: io::Read>(fai: R) -> csv::Result<Self> {
-        let mut inner = collections::BTreeMap::new();
+        let mut inner = collections::HashMap::new();
+        let mut seqs = vec![];
         let mut fai_reader = csv::Reader::from_reader(fai).delimiter(b'\t').has_headers(false);
         for row in fai_reader.decode() {
             let (name, record): (String, IndexRecord) = try!(row);
+            seqs.push(name.clone().into_bytes());
             inner.insert(name.into_bytes(), record);
         }
-        Ok(Index { inner: inner })
+        Ok(Index { inner: inner, seqs: seqs })
     }
 
     pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
@@ -114,7 +115,7 @@ impl Index {
     }
 
     pub fn sequences(&self) -> Vec<Sequence> {
-        self.inner.iter().map(|(name, record)| Sequence { name: name.clone(), len: record.len }).collect_vec()
+        self.seqs.iter().map(|name| Sequence { name: name.clone(), len: self.inner.get(name).unwrap().len }).collect()
     }
 }
 
