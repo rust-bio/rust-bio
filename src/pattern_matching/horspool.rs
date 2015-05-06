@@ -96,7 +96,7 @@ impl<'a> Iterator for HorspoolMatches<'a> {
             }
 
             // putative start position
-            let i = self.last - self.horspool.m + 1;
+            let i = self.last + 1 - self.horspool.m;
             let j = self.last;
 
             // shift again (after both match and mismatch, this makes sense)
