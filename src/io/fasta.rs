@@ -232,7 +232,7 @@ impl<W: io::Write> Writer<W> {
 
     /// Directly write a Fasta record.
     pub fn write_record(&mut self, record: Record) -> io::Result<()> {
-        self.write(record.id().unwrap_or(""), &record.desc(), record.seq())
+        self.write(record.id().unwrap_or(""), record.desc(), record.seq())
     }
 
     /// Write a Fasta record with given values.
@@ -242,14 +242,12 @@ impl<W: io::Write> Writer<W> {
     /// * `id` - the record id
     /// * `desc` - the optional descriptions
     /// * `seq` - the sequence
-    pub fn write(&mut self, id: &str, desc: &[&str], seq: &[u8]) -> io::Result<()> {
+    pub fn write(&mut self, id: &str, desc: Option<&str>, seq: &[u8]) -> io::Result<()> {
         try!(self.writer.write(b">"));
         try!(self.writer.write(id.as_bytes()));
-        if !desc.is_empty() {
-            for d in desc {
-                try!(self.writer.write(b" "));
-                try!(self.writer.write(d.as_bytes()));
-            }
+        if desc.is_some() {
+            try!(self.writer.write(b" "));
+            try!(self.writer.write(desc.unwrap().as_bytes()));
         }
         try!(self.writer.write(b"\n"));
         try!(self.writer.write(seq));
@@ -294,12 +292,12 @@ impl Record {
 
     /// Return the id of the record.
     pub fn id(&self) -> Option<&str> {
-        self.header[1..].split_whitespace().next()
+        self.header[1..].trim_right().splitn(2, " ").next()
     }
 
     /// Return descriptions if present.
-    pub fn desc(&self) -> Vec<&str> {
-        self.header[1..].split_whitespace().skip(1).collect()
+    pub fn desc(&self) -> Option<&str> {
+        self.header[1..].trim_right().splitn(2, " ").skip(1).next()
     }
 
     /// Return the sequence of the record.
@@ -354,7 +352,7 @@ ACCGTAGGCTGA
             let record = res.ok().unwrap();
             assert_eq!(record.check(), Ok(()));
             assert_eq!(record.id(), Some("id"));
-            assert_eq!(record.desc(), ["desc"]);
+            assert_eq!(record.desc(), Some("desc"));
             assert_eq!(record.seq(), b"ACCGTAGGCTGA");
         }
     }
@@ -370,7 +368,7 @@ ACCGTAGGCTGA
     #[test]
     fn test_writer() {
         let mut writer = Writer::new(Vec::new());
-        writer.write("id", &["desc"], b"ACCGTAGGCTGA").ok().expect("Expected successful write");
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").ok().expect("Expected successful write");
         writer.flush().ok().expect("Expected successful write");
         assert_eq!(writer.writer.get_ref(), &FASTA_FILE);
     }
