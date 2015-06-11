@@ -55,7 +55,7 @@ For more information, please read the API documentation: https://johanneskoester
 
 ## Author
 
-Johannes Köster (<johannes.koester@tu-dortmund.de>)
+Johannes Köster (<koester@jimmy.harvard.edu>)
 
 ## Contributors
 
