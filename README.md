@@ -53,9 +53,12 @@ let matches = bndm.find_all(text);
 
 For more information, please read the API documentation: https://johanneskoester.github.io/rust-bio
 
-## Authors 
+## Author
 
-* Johannes Köster (<johannes.koester@tu-dortmund.de>)
+Johannes Köster (<johannes.koester@tu-dortmund.de>)
+
+## Contributors
+
 * Christopher Schröder (<christopher.schroeder@uni-due.de>)
 * Peer Aramillo Irizar
 
