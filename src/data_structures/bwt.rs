@@ -78,6 +78,7 @@ pub struct Occ {
 }
 
 
+/// An occurence array implementation.
 impl Occ {
     /// Calculate occ array with sampling from BWT of length n.
     /// Time complexity: O(n).
@@ -115,6 +116,7 @@ impl Occ {
 }
 
 
+/// Calculate the less array for a given BWT. Complexity O(n).
 pub fn less(bwt: &BWT, alphabet: &Alphabet) -> Less {
     let m = alphabet.max_symbol().expect("Expecting non-empty alphabet.") as usize + 2;
     let mut less: Less = repeat(0)
@@ -129,7 +131,7 @@ pub fn less(bwt: &BWT, alphabet: &Alphabet) -> Less {
 }
 
 
-/// Calculate the bwtfind array needed for inverting the BWT.
+/// Calculate the bwtfind array needed for inverting the BWT. Complexity O(n).
 pub fn bwtfind(bwt: &BWT, alphabet: &Alphabet) -> BWTFind {
     let n = bwt.len();
     let mut less = less(bwt, alphabet);

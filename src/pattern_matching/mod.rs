@@ -11,7 +11,7 @@
 //! * Shift And algorithm: fast for patterns with less than 64 symbols and very small alphabets.
 //! * BNDM algorithm: fast for patterns with less than 64 symbols.
 //! * BOM algorithm: fast for long patterns and small alphabet.
-//! * KMP algorithm: the classic.
+//! * KMP algorithm: the classical ancestor.
 
 
 pub mod shift_and;

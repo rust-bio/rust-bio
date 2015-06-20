@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The Ferragina-Mancini Index for finding suffix array intervals matching a given pattern.
+//! FM-Index and FMD-Index for finding suffix array intervals matching a given pattern in linear time.
 
 use std::iter::DoubleEndedIterator;
 
@@ -13,6 +13,7 @@ use alphabets::{Alphabet, dna};
 use std::mem::swap;
 
 
+/// A suffix array interval.
 #[derive(Debug, Copy, Clone)]
 pub struct Interval {
     lower: usize,
@@ -28,6 +29,8 @@ impl Interval {
 }
 
 
+/// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
+/// intervals matching a given pattern.
 pub struct FMIndex<'a> {
     bwt: &'a BWT,
     less: Less,
@@ -98,6 +101,7 @@ impl<'a> FMIndex<'a> {
 }
 
 
+/// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
 #[derive(Debug, Copy, Clone)]
 pub struct BiInterval {
     lower: usize,
@@ -133,6 +137,8 @@ impl BiInterval {
 }
 
 
+/// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
+/// strand of DNA texts (Li, 2012).
 pub struct FMDIndex<'a> {
     fmindex: FMIndex<'a>,
     revcomp: dna::RevComp,
@@ -167,7 +173,8 @@ impl<'a> FMDIndex<'a> {
         }
     }
 
-    /// Find supermaximal exact matches of given pattern overlapping position i.
+    /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
+    /// Complexity O(m) with pattern of length m.
     ///
     /// # Example
     ///

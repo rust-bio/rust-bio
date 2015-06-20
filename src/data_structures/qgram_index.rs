@@ -95,12 +95,13 @@ impl QGramIndex {
         self.q
     }
 
-    /// Return text positions with matching q-gram.
+    /// Return text positions with matching q-gram. Complexity O(1).
     pub fn qgram_matches(&self, qgram: usize) -> &[usize] {
         &self.pos[self.address[qgram]..self.address[qgram + 1]]
     }
 
     /// Return matches of the given pattern.
+    /// Complexity O(m + k) for pattern of length m and k being the number of matching q-grams.
     pub fn matches(&self, pattern: &[u8], min_count: usize) -> Vec<Match> {
         let q = self.q as usize;
         let mut diagonals = collections::HashMap::new();
@@ -127,7 +128,8 @@ impl QGramIndex {
         ).collect()
     }
 
-    /// Return exact matches of the given pattern.
+    /// Return exact matches (substrings) of the given pattern.
+    /// Complexity O(m + k) for pattern of length m and k being the number of matching q-grams.
     pub fn exact_matches(&self, pattern: &[u8]) -> Vec<ExactMatch> {
         let q = self.q as usize;
         let mut diagonals = collections::HashMap::new();
@@ -184,6 +186,7 @@ impl Interval {
 }
 
 
+/// A match between the pattern and the text.
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub struct Match {
     pub pattern: Interval,
@@ -206,6 +209,7 @@ impl cmp::PartialOrd for Match {
 }
 
 
+/// An exact match between the pattern and the text.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct ExactMatch {
     pub pattern: Interval,
