@@ -42,13 +42,31 @@ and import the crate from your source code:
 
 ```rust
 extern crate bio;
-// use e.g. a pattern matching algorithm
-use bio::pattern_matching::bndm::BNDM;
 
-let pattern = b"GAAAA";
-let text = b"ACGGCTAGAAAAGGCTAGAAAA";
-let bndm = BNDM::new(pattern);
-let matches = bndm.find_all(text);
+// Import some modules
+use bio::alphabets;
+use bio::data_structures::suffix_array::suffix_array;
+use bio::data_structures::bwt::bwt;
+use bio::data_structures::fmindex::FMIndex;
+use bio::io::fastq;
+
+// Create an FM-Index for a given text.
+let alphabet = alphabets::dna::iupac_alphabet();
+let pos = suffix_array(text);
+let bwt = bwt(text, &pos);
+let fmindex = FMIndex::new(&bwt, 3, &alphabet);
+
+
+// Iterate over a FASTQ file, use the alphabet to validate read
+// sequences and search for exact matches in the FM-Index.
+let reader = fastq::Reader::from_file("reads.fastq");
+for record in reader.records() {
+    let seq = record.seq();
+    if alphabet.is_word(seq) {
+        let interval = fmindex.backward_search(seq.iter());
+	let positions = interval.occ(&pos);
+    }
+}
 ```
 
 For more information, please read the API documentation: https://johanneskoester.github.io/rust-bio
