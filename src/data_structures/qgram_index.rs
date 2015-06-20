@@ -3,29 +3,29 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// A classical, flexible, q-gram index implementation.
-///
-/// # Example
-///
-/// ```
-/// use bio::data_structures::qgram_index;
-/// use bio::alphabets;
-///
-/// let text = b"ACGGCTGAGATGAT";
-/// let alphabet = alphabets::dna::alphabet();
-/// let q = 3;
-/// let qgram_index = qgram_index::QGramIndex::new(q, text, &alphabet);
-///
-/// let pattern = b"GCTG";
-/// let matches = qgram_index.matches(pattern, 1);
-/// assert_eq!(matches, [
-///     qgram_index::Match {
-///         pattern: qgram_index::Interval { start: 0, stop: 4 },
-///         text: qgram_index::Interval { start: 3, stop: 7 },
-///         count: 2
-///     }
-/// ]);
-/// ```
+//! A classical, flexible, q-gram index implementation.
+//!
+//! # Example
+//!
+//! ```
+//! use bio::data_structures::qgram_index;
+//! use bio::alphabets;
+//!
+//! let text = b"ACGGCTGAGATGAT";
+//! let alphabet = alphabets::dna::alphabet();
+//! let q = 3;
+//! let qgram_index = qgram_index::QGramIndex::new(q, text, &alphabet);
+//!
+//! let pattern = b"GCTG";
+//! let matches = qgram_index.matches(pattern, 1);
+//! assert_eq!(matches, [
+//!     qgram_index::Match {
+//!         pattern: qgram_index::Interval { start: 0, stop: 4 },
+//!         text: qgram_index::Interval { start: 3, stop: 7 },
+//!         count: 2
+//!     }
+//! ]);
+//! ```
 
 
 use std::collections;
