@@ -1,8 +1,11 @@
-#![feature(core)]
-#![feature(collections)]
 #![feature(test)]
 #![feature(step_by)]
 #![feature(convert)]
+#![feature(iter_arith)]
+#![feature(bitvec)]
+#![feature(vec_push_all)]
+#![feature(vecmap)]
+#![feature(bitset)]
 
 // Copyright 2014 Johannes Köster.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)

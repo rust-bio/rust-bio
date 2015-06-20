@@ -9,7 +9,7 @@
 //! Example
 //!
 //! ```
-//! #![feature(collections)]
+//! #![feature(bitvec)]
 //! use bio::data_structures::rank_select::RankSelect;
 //! use std::collections::BitVec;
 //! let mut bits = BitVec::from_elem(64, false);
@@ -117,7 +117,7 @@ impl RankSelect {
             rank += p;
         }
 
-        None 
+        None
     }
 }
 
