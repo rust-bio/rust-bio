@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Mathematical and statistical tools.
+//! Combinations with and without replacement
 
 
 use std::cmp;
@@ -12,7 +12,7 @@ use std::cmp;
 /// Calculate the number of combinations when choosing
 /// k elements from n elements without replacement.
 /// This is also known as n over k, or the binomial coefficient.
-pub fn comb(n: u64, k: u64) -> f64 {
+pub fn combinations(n: u64, k: u64) -> f64 {
     if k > n {
         0.0
     }
@@ -29,8 +29,8 @@ pub fn comb(n: u64, k: u64) -> f64 {
 
 /// Calculate the number of combinations when choosing
 /// k elements from n elements with replacement.
-pub fn comb_with_repl(n: u64, k: u64) -> f64 {
-    comb(n + k - 1, k)
+pub fn combinations_with_repl(n: u64, k: u64) -> f64 {
+    combinations(n + k - 1, k)
 }
 
 
@@ -40,8 +40,8 @@ mod tests {
 
     #[test]
     fn test_comb() {
-        assert_eq!(comb(10, 3), 120.0);
-        assert_eq!(comb_with_repl(10, 3), 220.0);
-        assert_eq!(comb(200, 10), 22451004309013280.0);
+        assert_eq!(combinations(10, 3), 120.0);
+        assert_eq!(combinations_with_repl(10, 3), 220.0);
+        assert_eq!(combinations(200, 10), 22451004309013280.0);
     }
 }
