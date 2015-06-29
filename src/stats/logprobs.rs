@@ -19,7 +19,7 @@ pub const PHRED_TO_LOG_FACTOR: f64 = -0.23025850929940456; // 1 / (-10 * log10(e
 
 /// Calculate log(1 - p) with p given in log space without loss of precision as described in
 /// http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
-pub fn log1mexp(p: LogProb) -> LogProb {
+pub fn ln_1m_exp(p: LogProb) -> LogProb {
     if p < -0.693 {
         (-p.exp()).ln_1p()
     }
