@@ -65,7 +65,7 @@ for record in reader.records() {
     let seq = record.seq();
     if alphabet.is_word(seq) {
         let interval = fmindex.backward_search(seq.iter());
-	let positions = interval.occ(&pos);
+        let positions = interval.occ(&pos);
     }
 }
 ```
