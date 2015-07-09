@@ -43,19 +43,24 @@ pub fn phred_to_log(p: f64) -> LogProb {
 
 /// Calculate the sum of the given probabilities in a numerically stable way (Durbin 1998).
 pub fn log_prob_sum(probs: &[LogProb]) -> LogProb {
-    let mut pmax = probs[0];
-    let mut imax = 0;
-    for (i, &p) in probs.iter().enumerate().skip(1) {
-        if p > pmax {
-            pmax = p;
-            imax = i;
-        }
-    }
-    if pmax == f64::NEG_INFINITY {
+    if probs.is_empty() {
         f64::NEG_INFINITY
     }
     else {
-        pmax + (probs.iter().enumerate().filter_map(|(i, p)| if i != imax { Some((p - pmax).exp()) } else { None }).sum::<Prob>()).ln_1p()
+        let mut pmax = probs[0];
+        let mut imax = 0;
+        for (i, &p) in probs.iter().enumerate().skip(1) {
+            if p > pmax {
+                pmax = p;
+                imax = i;
+            }
+        }
+        if pmax == f64::NEG_INFINITY {
+            f64::NEG_INFINITY
+        }
+        else {
+            pmax + (probs.iter().enumerate().filter_map(|(i, p)| if i != imax { Some((p - pmax).exp()) } else { None }).sum::<Prob>()).ln_1p()
+        }
     }
 }
 
@@ -92,5 +97,10 @@ mod tests {
     fn test_log_prob_sum() {
         let probs = [f64::NEG_INFINITY, 0.0, f64::NEG_INFINITY];
         assert_eq!(log_prob_sum(&probs), 0.0);
+    }
+
+    #[test]
+    fn test_empty_log_prob_sum() {
+        assert_eq!(log_prob_sum(&[]), f64::NEG_INFINITY);
     }
 }
