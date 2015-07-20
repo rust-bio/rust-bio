@@ -64,10 +64,10 @@ impl<R: io::Read> Reader<R> {
         loop {
             self.line.clear();
             try!(self.reader.read_line(&mut self.line));
-            record.seq.push_str(&self.line.trim_right());
             if self.line.is_empty() || self.line.starts_with(">") {
                 break;
             }
+            record.seq.push_str(&self.line.trim_right());
         }
 
         Ok(())
@@ -339,6 +339,8 @@ mod tests {
 
     const FASTA_FILE: &'static [u8] = b">id desc
 ACCGTAGGCTGA
+>id2
+ATTGTTGTTTTA
 ";
     const FAI_FILE: &'static [u8] = b"id\t12\t9\t60\t61
 ";
@@ -346,15 +348,20 @@ ACCGTAGGCTGA
     #[test]
     fn test_reader() {
         let reader = Reader::new(FASTA_FILE);
-        let records: Vec<io::Result<Record>> = reader.records().collect();
-        assert!(records.len() == 1);
-        for res in records {
-            let record = res.ok().unwrap();
-            assert_eq!(record.check(), Ok(()));
-            assert_eq!(record.id(), Some("id"));
-            assert_eq!(record.desc(), Some("desc"));
-            assert_eq!(record.seq(), b"ACCGTAGGCTGA");
+        let ids = [Some("id"), Some("id2")];
+        let descs = [Some("desc"), None];
+        let seqs : [&[u8]; 2] = [b"ACCGTAGGCTGA", b"ATTGTTGTTTTA"];
+
+        for (i, r) in reader.records().enumerate() {
+          let record = r.ok().expect("Error reading record");
+          assert_eq!(record.check(), Ok(()));
+          assert_eq!(record.id(), ids[i]);
+          assert_eq!(record.desc(), descs[i]);
+          assert_eq!(record.seq(), seqs[i]);
         }
+
+
+        // let record = records.ok().nth(1).unwrap();
     }
 
     #[test]
@@ -369,6 +376,7 @@ ACCGTAGGCTGA
     fn test_writer() {
         let mut writer = Writer::new(Vec::new());
         writer.write("id", Some("desc"), b"ACCGTAGGCTGA").ok().expect("Expected successful write");
+        writer.write("id2", None, b"ATTGTTGTTTTA").ok().expect("Expected successful write");
         writer.flush().ok().expect("Expected successful write");
         assert_eq!(writer.writer.get_ref(), &FASTA_FILE);
     }
