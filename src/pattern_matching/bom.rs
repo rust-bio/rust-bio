@@ -19,8 +19,9 @@
 //! ```
 
 
-use std::collections::VecMap;
 use std::iter::repeat;
+
+use vec_map::VecMap;
 
 
 pub struct BOM {
@@ -65,7 +66,7 @@ impl BOM {
                 }
             }
 
-            // the longest suffix is either 0 or the state 
+            // the longest suffix is either 0 or the state
             // reached by the edge labelled with a
             suff[i] = Some(match k {
                 Some(k) => *table[k].get(&a).unwrap(),

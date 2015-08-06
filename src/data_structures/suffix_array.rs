@@ -7,13 +7,15 @@
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
-use std::collections::{BitVec, VecMap};
 use std::iter;
 use std;
 use std::fmt::Debug;
 
 use num::{Integer, Unsigned, NumCast};
 use num::traits::cast;
+
+use bit_vec::BitVec;
+use vec_map::VecMap;
 
 use alphabets::{Alphabet, RankTransform};
 use data_structures::smallints::SmallInts;
@@ -448,7 +450,7 @@ mod tests {
 
     use super::*;
     use super::{PosTypes,SAIS,transform_text};
-    use std::collections::BitVec;
+    use bit_vec::BitVec;
     use alphabets::Alphabet;
 
 

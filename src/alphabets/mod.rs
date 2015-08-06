@@ -15,10 +15,11 @@
 //! ```
 
 
-use std::collections::{BitSet, VecMap};
 use std::slice;
 use std::mem;
 
+use bit_set::BitSet;
+use vec_map::VecMap;
 
 pub mod dna;
 pub mod protein;

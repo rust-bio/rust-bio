@@ -9,9 +9,12 @@
 //! Example
 //!
 //! ```
-//! #![feature(bitvec)]
+//! extern crate bit_vec;
+//! # extern crate bio;
+//! # fn main() {
 //! use bio::data_structures::rank_select::RankSelect;
-//! use std::collections::BitVec;
+//! use bit_vec::BitVec;
+//!
 //! let mut bits = BitVec::from_elem(64, false);
 //! bits.set(5, true);
 //! bits.set(32, true);
@@ -25,10 +28,11 @@
 //!
 //! assert!(rs.select(0).unwrap() == 0);
 //! assert!(rs.select(1).unwrap() == 5);
+//! # }
 //! ```
 
 
-use std::collections::BitVec;
+use bit_vec::BitVec;
 
 
 pub struct RankSelect {

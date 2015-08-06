@@ -2,10 +2,7 @@
 #![feature(step_by)]
 #![feature(convert)]
 #![feature(iter_arith)]
-#![feature(bitvec)]
 #![feature(vec_push_all)]
-#![feature(vecmap)]
-#![feature(bitset)]
 
 // Copyright 2014 Johannes Köster.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
@@ -38,6 +35,9 @@ extern crate rustc_serialize;
 extern crate csv;
 extern crate num;
 extern crate itertools;
+extern crate bit_vec;
+extern crate vec_map;
+extern crate bit_set;
 
 pub mod utils;
 pub mod alphabets;
