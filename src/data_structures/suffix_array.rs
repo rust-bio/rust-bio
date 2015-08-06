@@ -10,6 +10,7 @@
 use std::collections::{BitVec, VecMap};
 use std::iter;
 use std;
+use std::fmt::Debug;
 
 use num::{Integer, Unsigned, NumCast};
 use num::traits::cast;
@@ -23,14 +24,14 @@ pub type LCPArray = SmallInts<i8, isize>;
 
 /// Construct suffix array for given text of length n.
 /// Complexity: O(n).
-/// This is an implementation of the induced sorting as presented by 
+/// This is an implementation of the induced sorting as presented by
 /// Ge Nong, Sen Zhang und Wai Hong Chan (2009), also known as SAIS.
 /// The implementation is based on the following lecture notes:
 /// http://ls11-www.cs.tu-dortmund.de/people/rahmann/algoseq.pdf
 ///
 /// The idea is to first mark positions as L or S, with L being a position
 /// the suffix of which is lexicographically larger than that of the next position.
-/// Then, LMS-positions (leftmost S) are S-positions right to an L-positions.
+/// Then, LMS-positions (leftmost S) are S-positions right to an L-position.
 /// An LMS substring is the substring from one LMS position to the next (inclusive).
 /// The algorithm works as follows:
 ///
@@ -185,6 +186,7 @@ fn transform_text<T: Integer + Unsigned + NumCast + Copy>(text: &[u8], alphabet:
 struct SAIS {
     pos: Vec<usize>,
     lms_pos: Vec<usize>,
+    reduced_text_pos: Vec<usize>,
     bucket_sizes: VecMap<usize>,
     bucket_start: Vec<usize>,
     bucket_end: Vec<usize>
@@ -196,6 +198,7 @@ impl SAIS {
         SAIS {
             pos: Vec::with_capacity(n),
             lms_pos: Vec::with_capacity(n),
+            reduced_text_pos: vec![0; n],
             bucket_sizes: VecMap::new(),
             bucket_start: Vec::with_capacity(n),
             bucket_end: Vec::with_capacity(n)
@@ -255,25 +258,26 @@ impl SAIS {
         false
     }
 
-    fn sort_lms_suffixes<T: Integer + Unsigned + NumCast + Copy, S: Integer + Unsigned + NumCast + Copy>(&mut self, text: &[T], pos_types: &PosTypes) {
-        let lms_substring_count = self.lms_pos.len() - 1;
+    fn sort_lms_suffixes<T: Integer + Unsigned + NumCast + Copy + Debug, S: Integer + Unsigned + NumCast + Copy + Debug>(&mut self, text: &[T], pos_types: &PosTypes, lms_substring_count: usize) {
 
         // if less than 2 LMS substrings are present, no further sorting is needed
         if lms_substring_count > 1 {
             // sort LMS suffixes by recursively building SA on reduced text
-            let mut reduced_text: Vec<S> = Vec::with_capacity(self.lms_pos.len());
+            let mut reduced_text: Vec<S> = vec![cast(0).unwrap(); lms_substring_count];
             let mut label = 0;
-            reduced_text.push(cast(label).unwrap());
-            let mut prev = self.lms_pos[0];
-            for &p in self.lms_pos[1..].iter() {
-                // choose same label if substrings are equal
-                if !self.lms_substring_eq(
-                    text, pos_types, prev, p
-                ) {
-                    label += 1;
+            reduced_text[self.reduced_text_pos[self.pos[0]]] = cast(label).unwrap();
+            let mut prev = self.pos[0];
+            for &p in self.pos[1..].iter() {
+                if pos_types.is_lms_pos(p) {
+                    // choose same label if substrings are equal
+                    if !self.lms_substring_eq(
+                        text, pos_types, prev, p
+                    ) {
+                        label += 1;
+                    }
+                    reduced_text[self.reduced_text_pos[p]] = cast(label).unwrap();
+                    prev = p;
                 }
-                reduced_text.push(cast(label).unwrap());
-                prev = p;
             }
 
             // if we have less labels than substrings, we have to sort by recursion
@@ -292,40 +296,44 @@ impl SAIS {
         }
     }
 
-    fn construct<T: Integer + Unsigned + NumCast + Copy>(&mut self, text: &[T]) {
+    fn construct<T: Integer + Unsigned + NumCast + Copy + Debug>(&mut self, text: &[T]) {
         let pos_types = PosTypes::new(text);
         self.calc_lms_pos(text, &pos_types);
         self.calc_pos(text, &pos_types);
     }
 
     /// Step 1 of the SAIS algorithm.
-    fn calc_lms_pos<T: Integer + Unsigned + NumCast + Copy>(&mut self, text: &[T], pos_types: &PosTypes) {
+    fn calc_lms_pos<T: Integer + Unsigned + NumCast + Copy + Debug>(&mut self, text: &[T], pos_types: &PosTypes) {
         let n = text.len();
 
         // collect LMS positions
         self.lms_pos.clear();
+        let mut i = 0;
         for r in (0..n) {
             if pos_types.is_lms_pos(r) {
                 self.lms_pos.push(r);
+                self.reduced_text_pos[r] = i;
+                i += 1;
             }
         }
 
         // sort LMS substrings by applying step 2 with unsorted LMS positions
         self.calc_pos(text, pos_types);
 
-        // obtain pre-sorted LMS positions from sorted LMS substrings
-        self.lms_pos.clear();
-        for &p in self.pos.iter() {
-            if pos_types.is_lms_pos(p) {
-                self.lms_pos.push(p);
-            }
+        let lms_substring_count = self.lms_pos.len();
+
+        if lms_substring_count <= std::u8::MAX as usize {
+            self.sort_lms_suffixes::<T, u8>(text, pos_types, lms_substring_count);
         }
-        match self.lms_pos.len() - 1 {
-            a if a <= std::u8::MAX as usize  => self.sort_lms_suffixes::<T, u8>(text, pos_types),
-            a if a <= std::u16::MAX as usize => self.sort_lms_suffixes::<T, u16>(text, pos_types),
-            a if a <= std::u32::MAX as usize => self.sort_lms_suffixes::<T, u32>(text, pos_types),
-            _ => self.sort_lms_suffixes::<T, u64>(text, pos_types),
-        };
+        else if lms_substring_count <= std::u16::MAX as usize {
+            self.sort_lms_suffixes::<T, u16>(text, pos_types, lms_substring_count);
+        }
+        else if lms_substring_count <= std::u32::MAX as usize {
+            self.sort_lms_suffixes::<T, u32>(text, pos_types, lms_substring_count);
+        }
+        else {
+            self.sort_lms_suffixes::<T, u64>(text, pos_types, lms_substring_count);
+        }
     }
 
     /// Step 2 of the SAIS algorithm.
@@ -416,7 +424,7 @@ impl PosTypes {
                 pos_types.set(p, text[p] < text[p + 1]);
             }
         }
-        
+
         PosTypes { pos_types: pos_types }
     }
 
@@ -503,6 +511,22 @@ mod tests {
         let mut sais = SAIS::new(n);
         let pos_types = PosTypes::new(&text);
         sais.calc_lms_pos(&text, &pos_types);
+    }
+
+
+    #[test]
+    fn test_issue10_1() {
+        let text = b"TGTGTGTGTG$";
+        let pos = suffix_array(text);
+        assert_eq!(pos, [10, 9, 7, 5, 3, 1, 8, 6, 4, 2, 0]);
+    }
+
+
+    #[test]
+    fn test_issue10_2() {
+        let text = b"TGTGTGTG$";
+        let pos = suffix_array(text);
+        assert_eq!(pos, [8, 7, 5, 3, 1, 6, 4, 2, 0]);
     }
 
 
