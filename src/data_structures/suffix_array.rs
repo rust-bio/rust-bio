@@ -530,7 +530,7 @@ mod tests {
         let pos = suffix_array(text);
         assert_eq!(pos, [8, 7, 5, 3, 1, 6, 4, 2, 0]);
     }
-
+    
 
     #[bench]
     fn bench_suffix_array(b: &mut Bencher) {
