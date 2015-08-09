@@ -32,7 +32,7 @@ For reading and writing BAM and BCF files, have a look at https://github.com/chr
 
 ## Usage
 
-To use rust-bio in your Rust project, add the following to your `Cargo.toml`
+To use Rust-Bio in your Rust project, add the following to your `Cargo.toml`
 
 ```toml
 [dependencies]
@@ -43,7 +43,10 @@ and import the crate from your source code:
 
 ```rust
 extern crate bio;
+```
 
+An example usage of Rust-Bio is presented in the following:
+```rust
 // Import some modules
 use bio::alphabets;
 use bio::data_structures::suffix_array::suffix_array;
