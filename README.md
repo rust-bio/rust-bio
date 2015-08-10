@@ -26,7 +26,7 @@ For reading and writing BAM and BCF files, have a look at https://github.com/chr
 ## Resources
 
 * Homepage: https://github.com/johanneskoester/rust-bio
-* API documentation: https://johanneskoester.github.io/rust-bio
+* Documentation: https://johanneskoester.github.io/rust-bio
 * Continuous integration tests: https://travis-ci.org/johanneskoester/rust-bio
 * Roadmap: https://github.com/johanneskoester/rust-bio/issues/3
 
@@ -113,7 +113,7 @@ for record in reader.records() {
 }
 ```
 
-For more information, please read the API documentation: https://johanneskoester.github.io/rust-bio
+For more information and additional examples, please read the documentation: https://johanneskoester.github.io/rust-bio
 
 ## Author
 
