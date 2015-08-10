@@ -22,6 +22,7 @@
 use pattern_matching::shift_and::masks;
 
 
+/// BNDM algorithm.
 pub struct BNDM {
     m: usize,
     masks: [u64; 256],
@@ -30,6 +31,7 @@ pub struct BNDM {
 
 
 impl BNDM {
+    /// Create a new instance for a given pattern.
     pub fn new(pattern: &[u8]) -> Self {
         let m = pattern.len();
         assert!(m <= 64, "Expecting a pattern of at most 64 symbols.");
@@ -43,20 +45,22 @@ impl BNDM {
         BNDM { m: m, masks: masks, accept: accept }
     }
 
-    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> BNDMMatches {
-        BNDMMatches { bndm: self, window: self.m, text: text }
+    /// Find all matches of pattern with a given text. Matches are returned as iterator over start positions.
+    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> Matches {
+        Matches { bndm: self, window: self.m, text: text }
     }
 }
 
 
-pub struct BNDMMatches<'a> {
+/// Iterator over matches.
+pub struct Matches<'a> {
     bndm: &'a BNDM,
     window: usize,
     text: &'a [u8]
 }
 
 
-impl<'a> Iterator for BNDMMatches<'a> {
+impl<'a> Iterator for Matches<'a> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {
@@ -81,7 +85,7 @@ impl<'a> Iterator for BNDMMatches<'a> {
                         // hence, a suffix of the reverse pattern
                         // i.e. a prefix of the pattern of
                         // length j matches
-                        // in case of a mismatch, we can shift 
+                        // in case of a mismatch, we can shift
                         // to this prefix
                         lastsuffix = j;
                     }

@@ -20,7 +20,7 @@
 //! 1. test phase: compare the last symbol of the window.
 //!    If it matches, compare the whole pattern.
 //!    If it does not match, continue with the shift phase.
-//! 2. shift phase: let l[a] be the rightmost position of a in 
+//! 2. shift phase: let l[a] be the rightmost position of a in
 //!    the pattern without the last symbol. If it does not occur
 //!    let l[a] be -1. Shift the window by m - 1 - l[a]. I.e.
 //!    we shift the window such that the rightmost a matches
@@ -39,6 +39,7 @@
 //! ```
 
 
+/// Algorithm of Horspool.
 pub struct Horspool<'a> {
     shift: Vec<usize>,
     m: usize,
@@ -47,6 +48,7 @@ pub struct Horspool<'a> {
 
 
 impl<'a> Horspool<'a> {
+    /// Create a new instance for a given pattern.
     pub fn new(pattern: &'a [u8]) -> Self {
         let m = pattern.len();
         let mut shift = vec![m; 256];
@@ -61,8 +63,9 @@ impl<'a> Horspool<'a> {
         }
     }
 
-    pub fn find_all<'b>(&'b self, text: &'b [u8]) -> HorspoolMatches {
-        HorspoolMatches {
+    /// Find all matches with a given text. Matches are returned as an iterator over start positions.
+    pub fn find_all<'b>(&'b self, text: &'b [u8]) -> Matches {
+        Matches {
             horspool: self, text: text, n: text.len(),
             last: self.m - 1,
             pattern_last: self.pattern[self.m - 1]
@@ -71,7 +74,8 @@ impl<'a> Horspool<'a> {
 }
 
 
-pub struct HorspoolMatches<'a> {
+/// Iterator over matches.
+pub struct Matches<'a> {
     horspool: &'a Horspool<'a>,
     text: &'a [u8],
     n: usize,
@@ -80,7 +84,7 @@ pub struct HorspoolMatches<'a> {
 }
 
 
-impl<'a> Iterator for HorspoolMatches<'a> {
+impl<'a> Iterator for Matches<'a> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {

@@ -7,12 +7,32 @@
 //! Finds all matches up to a given edit distance. The pattern has to fit into a bitvector,
 //! and is here limited to 64 symbols.
 //! Complexity: O(n)
+//!
+//! # Example
+//!
+//! ```
+//! # extern crate itertools;
+//! # extern crate bio;
+//! use bio::pattern_matching::myers::Myers;
+//! use itertools::Itertools;
+//!
+//! # fn main() {
+//! let text = b"ACCGTGGATGAGCGCCATAG";
+//! let pattern = b"TGAGCGT";
+//!
+//! let myers = Myers::new(pattern);
+//! let occ = myers.find_all_end(text.iter(), 1).collect_vec();
+//!
+//! assert_eq!(occ, [(13, 1), (14, 1)]);
+//! # }
+//! ```
 
 
 use std::iter;
 use std::u64;
 
 
+/// Myers algorithm.
 pub struct Myers {
     peq: [u64; 256],
     bound: u64,
@@ -21,6 +41,7 @@ pub struct Myers {
 
 
 impl Myers {
+    /// Create a new instance of Myers algorithm for a given pattern.
     pub fn new(pattern: &[u8]) -> Self {
         assert!(pattern.len() <= 64 && pattern.len() > 0);
 
@@ -36,6 +57,8 @@ impl Myers {
         }
     }
 
+    /// Create a new instance of Myers algorithm for a given pattern and a wildcard character
+    /// that shall match any character.
     pub fn with_wildcard(pattern: &[u8], wildcard: u8) -> Self {
         let mut myers = Self::new(pattern);
         // wildcard matches all symbols of the pattern.
@@ -65,6 +88,7 @@ impl Myers {
         state.mv = ph & xv;
     }
 
+    /// Calculate the global distance of the pattern to the given text.
     pub fn distance(&self, text: &[u8]) -> u8 {
         let mut state = State::new(self.m);
         for &a in text {
@@ -73,13 +97,15 @@ impl Myers {
         state.dist
     }
 
-    // Find all occurences of pattern in the given text.
+    /// Find all matches of pattern in the given text up to a given maximum distance.
+    /// Matches are returned as an iterator over pairs of end position and distance.
     pub fn find_all_end<'a, I: Iterator<Item=&'a u8>>(&'a self, text: I, max_dist: u8) -> Matches<I> {
         Matches { myers: self, state: State::new(self.m), text: text.enumerate(), max_dist: max_dist }
     }
 }
 
 
+/// The current algorithm state.
 struct State {
     pv: u64,
     mv: u64,
@@ -88,12 +114,14 @@ struct State {
 
 
 impl State {
+    /// Create new state.
     pub fn new(m: u8) -> Self {
         State { pv: (1 << m) - 1, mv: 0, dist: m }
     }
 }
 
 
+/// An iterator over the matches.
 pub struct Matches<'a, I: Iterator<Item=&'a u8>> {
     myers: &'a Myers,
     state: State,
@@ -120,16 +148,6 @@ impl<'a, I: Iterator<Item=&'a u8>> Iterator for Matches<'a, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use itertools::Itertools;
-
-    #[test]
-    fn test_find_all_end() {
-        let text = b"ACCGTGGATGAGCGCCATAG";
-        let pattern = b"TGAGCGT";
-        let myers = Myers::new(pattern);
-        let occ = myers.find_all_end(text.iter(), 1).collect_vec();
-        assert_eq!(occ, [(13, 1), (14, 1)]);
-    }
 
     #[test]
     fn test_distance() {

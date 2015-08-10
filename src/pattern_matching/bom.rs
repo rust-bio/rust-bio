@@ -24,6 +24,7 @@ use std::iter::repeat;
 use vec_map::VecMap;
 
 
+/// Backward oracle matching algorithm.
 pub struct BOM {
     m: usize,
     table: Vec<VecMap<usize>>
@@ -31,6 +32,7 @@ pub struct BOM {
 
 
 impl BOM {
+    /// Create a new instance for a given pattern.
     pub fn new(pattern: &[u8]) -> Self {
         let m = pattern.len();
         let maxsym = *pattern.iter().max().expect("Expecting non-empty pattern.") as usize;
@@ -43,8 +45,6 @@ impl BOM {
         for (j, &b) in pattern.iter().rev().enumerate() {
             let i = j + 1;
             let a = b as usize;
-        //for i in 1..m+1 {
-            //let a = pattern[i - 1] as usize;
             let mut delta = VecMap::with_capacity(maxsym);
             // reading symbol a leads into state i (this is an inner edge)
             delta.insert(a, i);
@@ -91,25 +91,22 @@ impl BOM {
         }
     }
 
-    /// Find all exact occurrences of the pattern in the given text.
-    ///
-    /// # Arguments
-    ///
-    /// * `text` - the given text
-    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> BOMMatches {
-        BOMMatches { bom: self, text: text, window: self.m }
+    /// Find all matches of the pattern in the given text. Matches are returned as an iterator over start positions.
+    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> Matches {
+        Matches { bom: self, text: text, window: self.m }
     }
 }
 
 
-pub struct BOMMatches<'a> {
+/// Iterator over matches.
+pub struct Matches<'a> {
     bom: &'a BOM,
     text: &'a [u8],
     window: usize
 }
 
 
-impl<'a> Iterator for BOMMatches<'a> {
+impl<'a> Iterator for Matches<'a> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {

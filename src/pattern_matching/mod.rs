@@ -12,6 +12,8 @@
 //! * BNDM algorithm: fast for patterns with less than 64 symbols.
 //! * BOM algorithm: fast for long patterns and small alphabet.
 //! * KMP algorithm: the classical ancestor.
+//! * Ukkonens algorithm: approximate pattern matching with dynamic programming.
+//! * Myers algorithm: linear-time approximate pattern matching with edit distance for small patterns
 
 
 pub mod shift_and;

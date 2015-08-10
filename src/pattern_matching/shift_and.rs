@@ -21,6 +21,7 @@
 use std::iter::Enumerate;
 
 
+/// ShiftAnd algorithm.
 pub struct ShiftAnd {
     m: usize,
     masks: [u64; 256],
@@ -29,7 +30,7 @@ pub struct ShiftAnd {
 
 
 impl ShiftAnd {
-    /// Create new ShiftAnd instance.
+    /// Create new ShiftAnd instance from a given pattern.
     pub fn new(pattern: &[u8]) -> ShiftAnd {
         assert!(pattern.len() <= 64, "Expecting a pattern of at most 64 symbols.");
         let (masks, accept) = masks(pattern);
@@ -38,13 +39,16 @@ impl ShiftAnd {
 
     }
 
-    /// Find all occurences of pattern in the given text.
-    pub fn find_all<'a, I: Iterator<Item=&'a u8>>(&'a self, text: I) -> ShiftAndMatches<I> {
-        ShiftAndMatches { shiftand: self, active: 0, text: text.enumerate() }
+    /// Find all matches of pattern in the given text. Matches are returned as an iterator
+    /// over start positions.
+    pub fn find_all<'a, I: Iterator<Item=&'a u8>>(&'a self, text: I) -> Matches<I> {
+        Matches { shiftand: self, active: 0, text: text.enumerate() }
     }
 }
 
 
+/// Calculate ShiftAnd masks. This function is called automatically when instantiating
+/// a new ShiftAnd for a given pattern.
 pub fn masks(pattern: &[u8]) -> ([u64; 256], u64) {
     let mut masks = [0; 256];
 
@@ -58,14 +62,15 @@ pub fn masks(pattern: &[u8]) -> ([u64; 256], u64) {
 }
 
 
-pub struct ShiftAndMatches<'a, I: Iterator<Item=&'a u8>> {
+/// Iterator over matches.
+pub struct Matches<'a, I: Iterator<Item=&'a u8>> {
     shiftand: &'a ShiftAnd,
     active: u64,
     text: Enumerate<I>,
 }
 
 
-impl<'a, I: Iterator<Item=&'a u8>> Iterator for ShiftAndMatches<'a, I> {
+impl<'a, I: Iterator<Item=&'a u8>> Iterator for Matches<'a, I> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {

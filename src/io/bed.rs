@@ -37,6 +37,7 @@ pub struct Reader<R: io::Read> {
 
 
 impl Reader<fs::File> {
+    /// Read from a given file path.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::open(path).map(|f| Reader::new(f))
     }
@@ -44,16 +45,19 @@ impl Reader<fs::File> {
 
 
 impl<R: io::Read> Reader<R> {
+    /// Read from a given reader.
     pub fn new(reader: R) -> Self {
         Reader { inner: csv::Reader::from_reader(reader).delimiter(b'\t').has_headers(false) }
     }
 
+    /// Iterate over all records.
     pub fn records(&mut self) -> Records<R> {
         Records { inner: self.inner.decode() }
     }
 }
 
 
+/// A BED record.
 pub struct Records<'a, R: 'a +io::Read> {
     inner: csv::DecodedRecords<'a, R, (String, u64, u64, Vec<String>)>
 }
@@ -80,6 +84,7 @@ pub struct Writer<W: io::Write> {
 
 
 impl Writer<fs::File> {
+    /// Write to a given file path.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::create(path).map(|f| Writer::new(f))
     }
@@ -87,10 +92,12 @@ impl Writer<fs::File> {
 
 
 impl<W: io::Write> Writer<W> {
+    /// Write to a given writer.
     pub fn new(writer: W) -> Self {
         Writer { inner: csv::Writer::from_writer(writer).delimiter(b'\t').flexible(true) }
     }
 
+    /// Write a given BED record.
     pub fn write(&mut self, record: Record) -> csv::Result<()> {
         if record.aux.len() == 0 {
             self.inner.encode((record.chrom, record.start, record.end))
@@ -113,10 +120,12 @@ pub struct Record {
 
 
 impl Record {
+    /// Create a new BED record.
     pub fn new() -> Self {
         Record { chrom: "".to_string(), start: 0, end: 0, aux: vec![] }
     }
 
+    /// Chromosome of the feature.
     pub fn chrom(&self) -> &str {
         &self.chrom
     }
@@ -131,14 +140,17 @@ impl Record {
         self.end
     }
 
+    /// Name of the feature.
     pub fn name(&self) -> Option<&str> {
         self.aux(3)
     }
 
+    /// Score of the feature.
     pub fn score(&self) -> Option<&str> {
         self.aux(4)
     }
 
+    /// Strand of the feature.
     pub fn strand(&self) -> Option<Strand> {
         match self.aux(5) {
             Some("+") => Some(Strand::Forward),
@@ -147,6 +159,7 @@ impl Record {
         }
     }
 
+    /// Access auxilliary fields after the strand field by index (counting first field (chromosome) as 0).
     pub fn aux(&self, i: usize) -> Option<&str> {
         let j = i - 3;
         if j < self.aux.len() {
@@ -157,18 +170,22 @@ impl Record {
         }
     }
 
+    /// Set chromosome.
     pub fn set_chrom(&mut self, chrom: &str) {
         self.chrom = chrom.to_string();
     }
 
+    /// Set start of feature.
     pub fn set_start(&mut self, start: u64) {
         self.start = start;
     }
 
+    /// Set end of feature.
     pub fn set_end(&mut self, end: u64) {
         self.end = end;
     }
 
+    /// Set name.
     pub fn set_name(&mut self, name: &str) {
         if self.aux.len() < 1 {
             self.aux.push(name.to_string());
@@ -178,6 +195,7 @@ impl Record {
         }
     }
 
+    /// Set score.
     pub fn set_score(&mut self, score: &str) {
         if self.aux.len() < 1 {
             self.aux.push("".to_string());
@@ -190,12 +208,14 @@ impl Record {
         }
     }
 
+    /// Add auxilliary field. This has to happen after name and score have been set.
     pub fn push_aux(&mut self, field: &str) {
         self.aux.push(field.to_string());
     }
 }
 
 
+/// Strand information.
 pub enum Strand {
     Forward,
     Reverse,

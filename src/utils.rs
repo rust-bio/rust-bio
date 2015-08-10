@@ -6,6 +6,7 @@
 //! Common utilities.
 
 
+/// Remove a trailing newline from the given string in place.
 pub fn trim_newline(s: &mut String) {
     if s.ends_with("\n") {
         s.pop();
@@ -13,7 +14,7 @@ pub fn trim_newline(s: &mut String) {
 }
 
 
-/// Inplace implementation of scan over a slice.
+/// In place implementation of scan over a slice.
 pub fn scan<T: Copy, F: Fn(T, T) -> T>(a: &mut [T], op: F) {
     let mut s = a[0];
     for v in a.iter_mut().skip(1) {

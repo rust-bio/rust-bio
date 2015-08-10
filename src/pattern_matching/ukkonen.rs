@@ -11,17 +11,30 @@
 //! parts of the matrix for which the error exceeds k. To achieve this, a value `lastk` is
 //! maintained that provides the lower feasible boundary of the matrix.
 //! Initially, lastk = min(k, m). In each iteration (over a column), lastk can increase by at most 1.
-
+//!
+//! # Example
+//!
+//! ```
+//! use bio::pattern_matching::ukkonen::{Ukkonen, unit_cost};
+//!
+//! let mut ukkonen = Ukkonen::with_capacity(10, unit_cost);
+//! let text = b"ACCGTGGATGAGCGCCATAG";
+//! let pattern = b"TGAGCGA";
+//! let occ: Vec<(usize, usize)> = ukkonen.find_all_end(pattern, text, 1).collect();
+//! assert_eq!(occ, [(13, 1), (14, 1)]);
+//! ```
 
 use std::cmp::min;
 use std::iter::repeat;
 
 
+/// Default cost function (unit costs).
 pub fn unit_cost(a: u8, b: u8) -> u32 {
     (a != b) as u32
 }
 
 
+/// Ukkonens algorithm.
 #[allow(non_snake_case)]
 pub struct Ukkonen<F> where F: Fn(u8, u8) -> u32 {
     D: [Vec<usize>; 2],
@@ -30,23 +43,14 @@ pub struct Ukkonen<F> where F: Fn(u8, u8) -> u32 {
 
 
 impl<F> Ukkonen<F> where F: Fn(u8, u8) -> u32 {
+    /// Initialize algorithm with given capacity and cost function.
     pub fn with_capacity(m: usize, cost: F) -> Self {
         let get_vec = || Vec::with_capacity(m + 1);
         Ukkonen { D: [get_vec(), get_vec()], cost: cost }
     }
 
     /// Find all matches between pattern and text with up to k errors.
-    /// Matches are returned as pairs of end position and errors.
-    ///
-    /// ```
-    /// use bio::pattern_matching::ukkonen::{Ukkonen, unit_cost};
-    /// 
-    /// let mut ukkonen = Ukkonen::with_capacity(10, unit_cost);
-    /// let text = b"ACCGTGGATGAGCGCCATAG";
-    /// let pattern = b"TGAGCGA";
-    /// let occ: Vec<(usize, usize)> = ukkonen.find_all_end(pattern, text, 1).collect();
-    /// assert_eq!(occ, [(13, 1), (14, 1)]);
-    /// ```
+    /// Matches are returned as an iterator over pairs of end position and errors.
     pub fn find_all_end<'a>(&'a mut self, pattern: &'a [u8], text: &'a [u8], k: usize) -> Matches<F> {
         let m = pattern.len();
         self.D[0].clear();
@@ -58,6 +62,7 @@ impl<F> Ukkonen<F> where F: Fn(u8, u8) -> u32 {
 }
 
 
+/// Iterator over Matches.
 pub struct Matches<'a, F> where F: 'a + Fn(u8, u8) -> u32 {
     ukkonen: &'a mut Ukkonen<F>,
     pattern: &'a [u8],

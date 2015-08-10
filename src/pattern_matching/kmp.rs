@@ -29,6 +29,7 @@ use std::iter::{repeat, Enumerate};
 type LPS = Vec<usize>;
 
 
+/// KMP algorithm.
 pub struct KMP<'a> {
     m: usize,
     lps: LPS,
@@ -37,6 +38,7 @@ pub struct KMP<'a> {
 
 
 impl<'a> KMP<'a> {
+    /// Create a new instance for a given pattern.
     pub fn new(pattern: &'a [u8]) -> Self {
         let m = pattern.len();
         let lps = lps(pattern);
@@ -55,8 +57,9 @@ impl<'a> KMP<'a> {
         q
     }
 
-    pub fn find_all<'b, I: Iterator<Item=&'b u8>>(&'b self, text: I) -> KMPMatches<I> {
-        KMPMatches { kmp: self, q: 0, text: text.enumerate() }
+    /// Find all matches of pattern in a given text. Matches are returned as iterator over start positions.
+    pub fn find_all<'b, I: Iterator<Item=&'b u8>>(&'b self, text: I) -> Matches<I> {
+        Matches { kmp: self, q: 0, text: text.enumerate() }
     }
 }
 
@@ -78,14 +81,15 @@ fn lps(pattern: &[u8]) -> LPS {
 }
 
 
-pub struct KMPMatches<'a, I: Iterator<Item=&'a u8>> {
+/// Iterator over matches.
+pub struct Matches<'a, I: Iterator<Item=&'a u8>> {
     kmp: &'a KMP<'a>,
     q: usize,
     text: Enumerate<I>,
 }
 
 
-impl<'a, I: Iterator<Item=&'a u8>> Iterator for KMPMatches<'a, I> {
+impl<'a, I: Iterator<Item=&'a u8>> Iterator for Matches<'a, I> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {

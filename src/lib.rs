@@ -9,25 +9,28 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! # Rust-bio, a rusty bioinformatics library.
-//!
+//! # Rust-bio, a bioinformatics library for Rust.
 //! This library provides implementations of many algorithms and data structures
 //! that are useful for bioinformatics.
 //! All provided implementations are rigorously tested via continuous
 //! integration (https://travis-ci.org/johanneskoester/rust-bio).
+//! For installation instructions and a general overview, visit
+//! https://github.com/johanneskoester/rust-bio.
 //!
 //! Currently, rust-bio provides
 //!
-//! * pattern matching,
+//! * most major pattern matching algorithms,
+//! * a convenient alphabet implementation,
 //! * pairwise alignment,
 //! * suffix arrays,
 //! * BWT and FM-Index,
-//! * rank/select data structures.
 //! * FMD-Index for finding supermaximal exact matches,
 //! * a q-gram index,
-//! * FastQ, Fasta and BED readers and writers.
+//! * a rank/select data structure,
+//! * FASTQ and FASTA and BED readers and writers,
+//! * helper functions for combinatorics and dealing with log probabilities.
 //!
-//! Find out more at https://github.com/johanneskoester/rust-bio.
+//! Documentation and examples for each module can be found in the module descriptions below.
 
 
 extern crate test;
