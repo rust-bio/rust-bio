@@ -36,13 +36,37 @@ We explain how to use Rust-Bio step-by-step. Users who already have experience w
 
 ### Step 1: Setting up Rust
 
-Currently, Rust-Bio needs the development version (nightly) of Rust to compile properly, since it depends on features that are not in the stable branch yet. To install Rust-nightly, go to the Rust [download page](https://www.rust-lang.org/install.html) and follow the instructions for "Nightly".
+Currently, Rust-Bio needs the development version (nightly) of Rust to compile properly, since it depends on features that are not in the stable branch yet. 
+Rust nightly can be installed or updated by executing
+
+```bash
+curl -sSf https://static.rust-lang.org/rustup.sh | sh -s -- --channel=nightly
+```
+in your terminal.
+For details or alternative ways of installation, have a look at the "Nightly" section of the Rust [download page](https://www.rust-lang.org/install.html).
 
 ### Step 2: Setting up a new Rust project
 
 Since Rust-Bio is a library, you need to setup your own new Rust project to use Rust-Bio.
 With Rust, projects and their dependencies are managed with the builtin package manager [Cargo](https://crates.io/).
-To setup a new Rust project with Cargo, follow [these instructions](http://doc.rust-lang.org/nightly/book/hello-cargo.html#a-new-project) in the Rust docs.
+To create a new Rust project, issue
+
+```bash
+cargo new hello_world --bin
+cd hello_world
+```
+in your terminal. The flag `--bin` tells Cargo to create an executable project instead of a library.
+In [this section](http://doc.rust-lang.org/nightly/book/hello-cargo.html#a-new-project) of the Rust docs, you find details about what Cargo just created for you.
+
+Your new project can be compiled with
+```bash
+cargo build
+```
+and executed with
+```bash
+cargo run
+```
+If you are new to Rust, we suggest to proceed with [learning Rust](http://doc.rust-lang.org/nightly/book/learn-rust.html) via the Rust docs.
 
 ### Step 3: Use Rust-Bio from your project
 
