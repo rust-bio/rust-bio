@@ -32,6 +32,20 @@ For reading and writing BAM and BCF files, have a look at https://github.com/chr
 
 ## Usage
 
+We explain how to use Rust-Bio step-by-step. Users who already have experience with Rust can skip the first two steps.
+
+### Step 1: Setting up Rust
+
+Currently, Rust-Bio needs the development version (nightly) of Rust to compile properly, since it depends on features that are not in the stable branch yet. To install Rust-nightly, go to the Rust [download page](https://www.rust-lang.org/install.html) and follow the instructions for "Nightly".
+
+### Step 2: Setting up a new Rust project
+
+Since Rust-Bio is a library, you need to setup your own new Rust project to use Rust-Bio.
+With Rust, projects and their dependencies are managed with the builtin package manager [Cargo](https://crates.io/).
+To setup a new Rust project with Cargo, follow [these instructions](http://doc.rust-lang.org/nightly/book/hello-cargo.html#a-new-project) in the Rust docs.
+
+### Step 3: Use Rust-Bio from your project
+
 To use Rust-Bio in your Rust project, add the following to your `Cargo.toml`
 
 ```toml
@@ -44,6 +58,8 @@ and import the crate from your source code:
 ```rust
 extern crate bio;
 ```
+
+### Example
 
 An example usage of Rust-Bio is presented in the following:
 ```rust
