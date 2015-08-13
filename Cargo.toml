@@ -16,3 +16,6 @@ itertools = "*"
 bit-vec = "*"
 vec_map = "*"
 bit-set = "*"
+
+[dev-dependencies]
+simple_parallel = "*"

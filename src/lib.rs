@@ -30,7 +30,28 @@
 //! * FASTQ and FASTA and BED readers and writers,
 //! * helper functions for combinatorics and dealing with log probabilities.
 //!
-//! Documentation and examples for each module can be found in the module descriptions below.
+//! # Example
+//!
+//! ```rust
+//! use bio::alphabets;
+//! use bio::data_structures::suffix_array::suffix_array;
+//! use bio::data_structures::bwt::bwt;
+//! use bio::data_structures::fmindex::FMIndex;
+//!
+//! let text = b"ACGGATGCTGGATCGGATCGCGCTAGCTA";
+//! let pattern = b"ACCG";
+//!
+//! // Create an FM-Index for a given text.
+//! let alphabet = alphabets::dna::iupac_alphabet();
+//! let pos = suffix_array(text);
+//! let bwt = bwt(text, &pos);
+//! let fmindex = FMIndex::new(&bwt, 3, &alphabet);
+//!
+//! let interval = fmindex.backward_search(pattern.iter());
+//! let positions = interval.occ(&pos);
+//! ```
+//!
+//! Documentation and further examples for each module can be found in the module descriptions below.
 
 
 extern crate test;

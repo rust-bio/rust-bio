@@ -36,7 +36,7 @@ We explain how to use Rust-Bio step-by-step. Users who already have experience w
 
 ### Step 1: Setting up Rust
 
-Currently, Rust-Bio needs the development version (nightly) of Rust to compile properly, since it depends on features that are not in the stable branch yet. 
+Currently, Rust-Bio needs the development version (nightly) of Rust to compile properly, since it depends on features that are not in the stable branch yet.
 Rust nightly can be installed or updated by executing
 
 ```bash
@@ -112,7 +112,7 @@ for record in reader.records() {
     }
 }
 ```
-For more information and additional examples, please read the documentation: https://johanneskoester.github.io/rust-bio
+For more information and additional examples, please read the documentation: https://rust-bio.github.io/rust-bio
 
 ## Benchmarks
 
