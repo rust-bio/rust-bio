@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Combinations with and without replacement
+//! Combinations with and without replacement.
 
 
 use std::cmp;

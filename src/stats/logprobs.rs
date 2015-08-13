@@ -3,22 +3,30 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Handling log-probabilities
+//! Handling log-probabilities.
 
 use std::mem;
 use std::f64;
 
 
+/// An alias for `f64` to indicate a probability.
 pub type Prob = f64;
+
+
+/// An alias for `f64` to indicate a log-probability.
 pub type LogProb = f64;
 
 
-pub const LOG_TO_PHRED_FACTOR: f64 = -4.3429448190325175; // -10 * 1 / ln(10)
-pub const PHRED_TO_LOG_FACTOR: f64 = -0.23025850929940456; // 1 / (-10 * log10(e))
+/// A factor to convert log-probabilities to PHRED-scale (phred = p * LOG_TO_PHRED_FACTOR).
+const LOG_TO_PHRED_FACTOR: f64 = -4.3429448190325175; // -10 * 1 / ln(10)
+
+
+/// A factor to convert PHRED-scale to log-probabilities (p = phred * PHRED_TO_LOG_FACTOR).
+const PHRED_TO_LOG_FACTOR: f64 = -0.23025850929940456; // 1 / (-10 * log10(e))
 
 
 /// Calculate log(1 - p) with p given in log space without loss of precision as described in
-/// http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
+/// http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf.
 pub fn ln_1m_exp(p: LogProb) -> LogProb {
     if p < -0.693 {
         (-p.exp()).ln_1p()
@@ -35,7 +43,7 @@ pub fn log_to_phred(p: LogProb) -> f64 {
 }
 
 
-/// Convert PHRED scale probability to log scale
+/// Convert PHRED scale probability to log scale.
 pub fn phred_to_log(p: f64) -> LogProb {
     p * PHRED_TO_LOG_FACTOR
 }
