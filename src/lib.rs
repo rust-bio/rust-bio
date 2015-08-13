@@ -13,7 +13,7 @@
 //! This library provides implementations of many algorithms and data structures
 //! that are useful for bioinformatics.
 //! All provided implementations are rigorously tested via continuous
-//! integration (https://travis-ci.org/johanneskoester/rust-bio).
+//! integration (https://travis-ci.org/rust-bio/rust-bio).
 //! For installation instructions and a general overview, visit
 //! https://github.com/rust-bio/rust-bio.
 //!
