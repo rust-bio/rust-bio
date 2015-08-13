@@ -15,7 +15,7 @@
 //! All provided implementations are rigorously tested via continuous
 //! integration (https://travis-ci.org/johanneskoester/rust-bio).
 //! For installation instructions and a general overview, visit
-//! https://github.com/johanneskoester/rust-bio.
+//! https://github.com/rust-bio/rust-bio.
 //!
 //! Currently, rust-bio provides
 //!
