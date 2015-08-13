@@ -119,7 +119,7 @@ For more information and additional examples, please read the documentation: htt
 Since Rust-Bio is based on a compiled language, similar performance to C/C++ based libraries can be expected. Indeed, we find the pattern matching algorithms of Rust-Bio to perform in the range of the C++ library Seqan:
 
 | Algorithm | Rust-Bio | Seqan   |
-| --------- | -------- | ------- |
+| --------- | -------: | ------: |
 | BNDM      | 77ms     | 82ms    |
 | Horspool  | 122ms    | 127ms   |
 | BOM       | 103ms    | 109ms   |
