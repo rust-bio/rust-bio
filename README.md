@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/johanneskoester/rust-bio.svg?branch=master)](https://travis-ci.org/johanneskoester/rust-bio)
+[![Build Status](https://travis-ci.org/rust-bio/rust-bio.svg?branch=master)](https://travis-ci.org/rust-bio/rust-bio)
 [![](http://meritbadge.herokuapp.com/bio)](https://crates.io/crates/bio)
 
 # Rust-Bio, a bioinformatics library for Rust.
@@ -27,7 +27,7 @@ For reading and writing BAM and BCF files, have a look at https://github.com/chr
 
 * Homepage: https://github.com/rust-bio/rust-bio
 * Documentation: https://rust-bio.github.io/rust-bio
-* Continuous integration tests: https://travis-ci.org/johanneskoester/rust-bio
+* Continuous integration tests: https://travis-ci.org/rust-bio/rust-bio
 * Roadmap: https://github.com/rust-bio/rust-bio/issues/3
 
 ## Usage
