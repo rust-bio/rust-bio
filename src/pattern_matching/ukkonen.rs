@@ -50,7 +50,7 @@ impl<F> Ukkonen<F> where F: Fn(u8, u8) -> u32 {
     }
 
     /// Find all matches between pattern and text with up to k errors.
-    /// Matches are returned as an iterator over pairs of end position and errors.
+    /// Matches are returned as an iterator over pairs of end position and distance.
     pub fn find_all_end<'a>(&'a mut self, pattern: &'a [u8], text: &'a [u8], k: usize) -> Matches<F> {
         let m = pattern.len();
         self.D[0].clear();
@@ -62,7 +62,7 @@ impl<F> Ukkonen<F> where F: Fn(u8, u8) -> u32 {
 }
 
 
-/// Iterator over Matches.
+/// Iterator over pairs of end positions and distance of matches.
 pub struct Matches<'a, F> where F: 'a + Fn(u8, u8) -> u32 {
     ukkonen: &'a mut Ukkonen<F>,
     pattern: &'a [u8],

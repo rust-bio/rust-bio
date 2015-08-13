@@ -29,6 +29,7 @@ pub struct Reader<R: io::Read> {
 
 
 impl Reader<fs::File> {
+    /// Read from a given file.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::open(path).map(|f| Reader::new(f))
     }
@@ -36,7 +37,7 @@ impl Reader<fs::File> {
 
 
 impl<R: io::Read> Reader<R> {
-    /// Create a new FastQ reader.
+    /// Read from a given `io::Read`.
     pub fn new(reader: R) -> Self {
         Reader { reader: io::BufReader::new(reader), sep_line: String::new() }
     }
@@ -94,6 +95,7 @@ impl Record {
         }
     }
 
+    /// Check if record is empty.
     pub fn is_empty(&self) -> bool {
         self.header.is_empty() && self.seq.is_empty() && self.qual.is_empty()
     }
@@ -136,6 +138,7 @@ impl Record {
         self.qual.trim_right().as_bytes()
     }
 
+    /// Clear the record.
     fn clear(&mut self) {
         self.header.clear();
         self.seq.clear();
@@ -171,14 +174,15 @@ pub struct Writer<W: io::Write> {
 
 
 impl Writer<fs::File> {
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+    /// Write to a given file path.
+    pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::create(path).map(|f| Writer::new(f))
     }
 }
 
 
 impl<W: io::Write> Writer<W> {
-    /// Create a new FastQ writer.
+    /// Write to a given `io::Write`.
     pub fn new(writer: W) -> Self {
         Writer { writer: io::BufWriter::new(writer) }
     }
@@ -188,14 +192,7 @@ impl<W: io::Write> Writer<W> {
         self.write(record.id().unwrap_or(""), record.desc(), record.seq(), record.qual())
     }
 
-    /// Write a FastQ record with given values.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - the record id
-    /// * `desc` - the optional descriptions
-    /// * `seq` - the sequence
-    /// * `qual` - the qualities
+    /// Write a FastQ record with given id, optional description, sequence and qualities.
     pub fn write(&mut self, id: &str, desc: Option<&str>, seq: &[u8], qual: &[u8]) -> io::Result<()> {
         try!(self.writer.write(b"@"));
         try!(self.writer.write(id.as_bytes()));

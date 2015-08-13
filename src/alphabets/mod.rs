@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Handling different alphabets.
+//! Implementation of alphabets and useful utilities.
 //!
 //! # Example
 //!
@@ -39,6 +39,7 @@ impl Alphabet {
         Alphabet::from_iter(symbols.iter())
     }
 
+    /// Create a new alphabet from the given iterator.
     pub fn from_iter<'a, I: Iterator<Item=&'a u8>>(symbols: I) -> Self {
         let mut s = BitSet::new();
         s.extend(symbols.map(|&c| c as usize));

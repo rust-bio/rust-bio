@@ -30,6 +30,7 @@ use alignment::{Alignment, AlignmentOperation};
 use data_structures::bitenc::BitEnc;
 
 
+/// Current internal state of alignment.
 struct AlignmentState {
     m: usize,
     n: usize,
@@ -120,6 +121,7 @@ macro_rules! align {
 }
 
 
+/// A generalized Smith-Waterman aligner.
 #[allow(non_snake_case)]
 pub struct Aligner<F> where F: Fn(u8, u8) -> i32 {
     S: [Vec<i32>; 2],
@@ -247,6 +249,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
 }
 
 
+/// Internal traceback.
 struct Traceback {
     matrix: Vec<BitEnc>
 }

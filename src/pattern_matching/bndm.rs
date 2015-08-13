@@ -52,7 +52,7 @@ impl BNDM {
 }
 
 
-/// Iterator over matches.
+/// Iterator over start positions of matches.
 pub struct Matches<'a> {
     bndm: &'a BNDM,
     window: usize,

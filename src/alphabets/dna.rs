@@ -1,33 +1,53 @@
 
+// Copyright 2014-2015 Johannes Köster, Peer Aramillo Irizar.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! Implementation of the DNA alphabet.
+//!
+//! # Example
+//!
+//! ```
+//! use bio::alphabets;
+//! let alphabet = alphabets::dna::alphabet();
+//! assert!(alphabet.is_word(b"GATTACA"));
+//! assert!(alphabet.is_word(b"gattaca"));
+//! assert!(!alphabet.is_word(b"ACGU"));
+//! ```
+
 use alphabets::Alphabet;
 
 
 static SYMBOLS: &'static [u8] = b"ACGT";
 
 
-/// Obtain the DNA alphabet.
+/// The DNA alphabet (uppercase and lowercase).
 pub fn alphabet() -> Alphabet {
     Alphabet::new(b"ACGTacgt")
 }
 
 
+/// The DNA alphabet including N (uppercase and lowercase).
 pub fn n_alphabet() -> Alphabet {
     Alphabet::new(b"ACGTNacgtn")
 }
 
 
-/// Obtain the IUPAC DNA alphabet
+/// The IUPAC DNA alphabet (uppercase and lowercase).
 pub fn iupac_alphabet() -> Alphabet {
     Alphabet::new(b"ACGTURYSWKMBDHVNacgturyswkmbdhvn")
 }
 
 
+/// Implementation of transformation into reverse complement.
 pub struct RevComp {
     comp: [u8; 256]
 }
 
 
 impl RevComp {
+    /// Create a new instance of reverse complement algorithm.
     pub fn new() -> Self {
         let mut comp = [0u8; 256];
         for a in 0..256 {

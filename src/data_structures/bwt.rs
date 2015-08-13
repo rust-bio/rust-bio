@@ -72,13 +72,13 @@ pub fn invert_bwt(bwt: &BWT) -> Vec<u8> {
 }
 
 
+/// An occurence array implementation.
 pub struct Occ {
     occ: Vec<Vec<usize>>,
     k: usize
 }
 
 
-/// An occurence array implementation.
 impl Occ {
     /// Calculate occ array with sampling from BWT of length n.
     /// Time complexity: O(n).

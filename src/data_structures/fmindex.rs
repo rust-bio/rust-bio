@@ -229,7 +229,7 @@ impl<'a> FMDIndex<'a> {
             curr.clear();
             // size of the last confirmed interval
             let mut last_size = -1;
-            
+
             // iterate over forward extensions in reverse, as they are sorted by size
             // and we prefer longer matches
             for &interval in prev.iter().rev() {

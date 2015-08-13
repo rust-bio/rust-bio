@@ -81,7 +81,7 @@ fn lps(pattern: &[u8]) -> LPS {
 }
 
 
-/// Iterator over matches.
+/// Iterator over start positions of matches.
 pub struct Matches<'a, I: Iterator<Item=&'a u8>> {
     kmp: &'a KMP<'a>,
     q: usize,

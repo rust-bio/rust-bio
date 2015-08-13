@@ -4,7 +4,7 @@
 // except according to those terms.
 
 
-//! BED reading and writing.
+//! BED format reading and writing.
 //!
 //! # Example
 //!
@@ -85,7 +85,7 @@ pub struct Writer<W: io::Write> {
 
 impl Writer<fs::File> {
     /// Write to a given file path.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+    pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::create(path).map(|f| Writer::new(f))
     }
 }

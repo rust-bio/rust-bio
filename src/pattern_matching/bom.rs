@@ -98,7 +98,7 @@ impl BOM {
 }
 
 
-/// Iterator over matches.
+/// Iterator over start positions of matches.
 pub struct Matches<'a> {
     bom: &'a BOM,
     text: &'a [u8],

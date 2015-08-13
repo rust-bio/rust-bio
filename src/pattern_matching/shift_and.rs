@@ -62,7 +62,7 @@ pub fn masks(pattern: &[u8]) -> ([u64; 256], u64) {
 }
 
 
-/// Iterator over matches.
+/// Iterator over start positions of matches.
 pub struct Matches<'a, I: Iterator<Item=&'a u8>> {
     shiftand: &'a ShiftAnd,
     active: u64,

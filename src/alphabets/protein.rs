@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Handling the protein alphabet.
+//! Implementation of the protein alphabet.
 //!
 //! # Example
 //!

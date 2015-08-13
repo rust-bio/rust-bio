@@ -3,11 +3,12 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Alignment algorithms.
+//! Various alignment algorithms.
 
 pub mod pairwise;
 
 
+/// Alignment operations (Match, Subst, Del and Ins).
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum AlignmentOperation {
     Match,
@@ -17,6 +18,8 @@ pub enum AlignmentOperation {
 }
 
 
+/// An alignment, consisting of a score, a start in sequence y, a start in sequence x, a length
+/// and its edit operations (see alignment::pairwise for meaning of x and y).
 #[derive(Debug)]
 pub struct Alignment {
     pub score: i32,
@@ -28,6 +31,7 @@ pub struct Alignment {
 
 
 impl Alignment {
+    /// Calculate the cigar string.
     pub fn cigar(&self, hard_clip: bool) -> String {
         let add_op = |op, k, cigar: &mut String| {
             cigar.push_str(&format!("{}{}", k, match op {

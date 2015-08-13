@@ -5,6 +5,8 @@
 
 //! A data structure for a sequence of small integers with a few big integers.
 //! Small ints are stored in type S (e.g. a byte), big ints are stored separately (in type B) in a BTree.
+//! The implementation provides vector-like operations on the data structure (e.g. retrieve a position,
+//! add an integer, etc.).
 //!
 //! # Example
 //!
@@ -29,6 +31,9 @@ use std::slice;
 use num::{NumCast, Bounded, Integer, Num};
 use num::traits::cast;
 
+
+/// Data structure for storing a sequence of small integers with few big ones space efficiently
+/// while supporting classical vector operations.
 pub struct SmallInts<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> {
     smallints: Vec<S>,
     bigints: BTreeMap<usize, B>
@@ -36,25 +41,29 @@ pub struct SmallInts<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast
 
 
 impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallInts<S, B> {
+    /// Create a new instance.
     pub fn new() -> Self {
         assert!(size_of::<S>() < size_of::<B>(), "S has to be smaller than B");
         SmallInts { smallints: Vec::new(), bigints: BTreeMap::new() }
     }
 
+    /// Create a new instance with a given capacity.
     pub fn with_capacity(n: usize) -> Self {
         assert!(size_of::<S>() < size_of::<B>(), "S has to be smaller than B");
         SmallInts { smallints: Vec::with_capacity(n), bigints: BTreeMap::new() }
     }
 
+    /// Create a new instance containing `n` times the integer `v` (and `v` is expected to be small).
     pub fn from_elem(v: S, n: usize) -> Self {
         assert!(size_of::<S>() < size_of::<B>(), "S has to be smaller than B");
         if v > cast(0).unwrap() {
             assert!(v < S::max_value(), "v has to be smaller than maximum value");
         }
-        
+
         SmallInts { smallints: repeat(v).take(n).collect(), bigints: BTreeMap::new() }
     }
 
+    /// Return the integer at position `i`.
     pub fn get(&self, i: usize) -> Option<B> {
         if i < self.smallints.len() {
             self.real_value(i, self.smallints[i])
@@ -64,6 +73,7 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
         }
     }
 
+    /// Append `v` to the sequence. This will determine whether `v` is big or small and store it accordingly.
     pub fn push(&mut self, v: B) {
         let maxv: S = S::max_value();
         match cast(v) {
@@ -76,6 +86,7 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
         }
     }
 
+    /// Set value of position `i` to `v`. This will determine whether `v` is big or small and store it accordingly.
     pub fn set(&mut self, i: usize, v: B) {
         let maxv: S = S::max_value();
         match cast(v) {
@@ -87,14 +98,17 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
         }
     }
 
+    /// Iterate over sequence. Values will be returned in the big integer type (`B`).
     pub fn iter<'a>(&'a self) -> Iter<S, B> {
         Iter { smallints: &self, items: self.smallints.iter().enumerate() }
     }
 
+    /// Decompress into a normal vector of big integers (type `B`).
     pub fn decompress(&self) -> Vec<B> {
         self.iter().collect()
     }
 
+    /// Length of the sequence.
     pub fn len(&self) -> usize {
         self.smallints.len()
     }
@@ -110,7 +124,8 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
 }
 
 
-pub struct Iter<'a, S, B> where 
+/// Iterator over the elements of a SmallInts sequence.
+pub struct Iter<'a, S, B> where
     S: 'a + Integer + Bounded + NumCast + Copy,
     B: 'a + Integer + NumCast + Copy,
     <S as Num>::FromStrRadixErr: 'a,

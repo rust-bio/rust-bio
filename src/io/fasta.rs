@@ -4,7 +4,7 @@
 // except according to those terms.
 
 
-//! Fasta reading and writing.
+//! FASTA format reading and writing.
 //!
 //! # Example
 //!
@@ -26,6 +26,7 @@ use std::convert::AsRef;
 use csv;
 
 
+/// A FASTA reader.
 pub struct Reader<R: io::Read> {
     reader: io::BufReader<R>,
     line: String
@@ -33,6 +34,7 @@ pub struct Reader<R: io::Read> {
 
 
 impl Reader<fs::File> {
+    /// Read FASTA from given file path.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::open(path).map(|f| Reader::new(f))
     }
@@ -40,11 +42,12 @@ impl Reader<fs::File> {
 
 
 impl<R: io::Read> Reader<R> {
-    /// Create a new FastQ reader.
+    /// Create a new Fasta reader given an instance of `io::Read`.
     pub fn new(reader: R) -> Self {
         Reader { reader: io::BufReader::new(reader), line: String::new() }
     }
 
+    /// Read next FASTA record into the given `Record`.
     pub fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
         if self.line.is_empty() {
@@ -80,6 +83,7 @@ impl<R: io::Read> Reader<R> {
 }
 
 
+/// A FASTA index as created by SAMtools (.fai).
 pub struct Index {
     inner: collections::HashMap<Vec<u8>, IndexRecord>,
     seqs: Vec<Vec<u8>>,
@@ -87,6 +91,7 @@ pub struct Index {
 
 
 impl Index {
+    /// Open a FASTA index from a given `io::Read` instance.
     pub fn new<R: io::Read>(fai: R) -> csv::Result<Self> {
         let mut inner = collections::HashMap::new();
         let mut seqs = vec![];
@@ -99,6 +104,7 @@ impl Index {
         Ok(Index { inner: inner, seqs: seqs })
     }
 
+    /// Open a FASTA index from a given file path.
     pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
         match fs::File::open(path) {
             Ok(fai) => Self::new(fai),
@@ -106,6 +112,7 @@ impl Index {
         }
     }
 
+    /// Open a FASTA index given the corresponding FASTA file path (e.g. for ref.fasta we expect ref.fasta.fai).
     pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> csv::Result<Self> {
         let mut ext = fasta_path.as_ref().extension().unwrap().to_str().unwrap().to_string();
         ext.push_str(".fai");
@@ -114,12 +121,14 @@ impl Index {
         Self::from_file(&fai_path)
     }
 
+    /// Return a vector of sequences described in the index.
     pub fn sequences(&self) -> Vec<Sequence> {
         self.seqs.iter().map(|name| Sequence { name: name.clone(), len: self.inner.get(name).unwrap().len }).collect()
     }
 }
 
 
+/// A FASTA reader with an index as created by SAMtools (.fai).
 pub struct IndexedReader<R: io::Read + io::Seek> {
     reader: io::BufReader<R>,
     pub index: Index,
@@ -127,6 +136,7 @@ pub struct IndexedReader<R: io::Read + io::Seek> {
 
 
 impl IndexedReader<fs::File> {
+    /// Read from a given file path. This assumes the index ref.fasta.fai to be present for FASTA ref.fasta.
     pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
         let index = try!(Index::with_fasta_file(path));
 
@@ -139,15 +149,18 @@ impl IndexedReader<fs::File> {
 
 
 impl<R: io::Read + io::Seek> IndexedReader<R> {
+    /// Read from a FASTA and its index, both given as `io::Read`. FASTA has to be `io::Seek` in addition.
     pub fn new<I: io::Read>(fasta: R, fai: I) -> csv::Result<Self> {
         let index = try!(Index::new(fai));
         Ok(IndexedReader { reader: io::BufReader::new(fasta), index: index })
     }
 
+    /// Read from a FASTA and its index, the first given as `io::Read`, the second given as index object.
     pub fn with_index(fasta: R, index: Index) -> Self {
         IndexedReader { reader: io::BufReader::new(fasta), index: index }
     }
 
+    /// For a given seqname, read the whole sequence into the given vector.
     pub fn read_all(&mut self, seqname: &[u8], seq: &mut Vec<u8>) -> io::Result<()> {
         match self.index.inner.get(seqname) {
             Some(&idx) => self.read(seqname, 0, idx.len, seq),
@@ -160,6 +173,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         }
     }
 
+    /// Read the given interval of the given seqname into the given vector (stop position is exclusive).
     pub fn read(&mut self, seqname: &[u8], start: u64, stop: u64, seq: &mut Vec<u8>) -> io::Result<()> {
         match self.index.inner.get(seqname) {
             Some(idx) => {
@@ -196,6 +210,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 }
 
 
+/// Record of a FASTA index.
 #[derive(RustcDecodable, Debug, Copy, Clone)]
 struct IndexRecord {
     len: u64,
@@ -205,6 +220,7 @@ struct IndexRecord {
 }
 
 
+/// A sequence record returned by the FASTA index.
 pub struct Sequence {
     pub name: Vec<u8>,
     pub len: u64,
@@ -218,7 +234,8 @@ pub struct Writer<W: io::Write> {
 
 
 impl Writer<fs::File> {
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+    /// Write to the given file path.
+    pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::create(path).map(|f| Writer::new(f))
     }
 }
@@ -235,13 +252,7 @@ impl<W: io::Write> Writer<W> {
         self.write(record.id().unwrap_or(""), record.desc(), record.seq())
     }
 
-    /// Write a Fasta record with given values.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - the record id
-    /// * `desc` - the optional descriptions
-    /// * `seq` - the sequence
+    /// Write a Fasta record with given id, optional description and sequence.
     pub fn write(&mut self, id: &str, desc: Option<&str>, seq: &[u8]) -> io::Result<()> {
         try!(self.writer.write(b">"));
         try!(self.writer.write(id.as_bytes()));
@@ -263,6 +274,7 @@ impl<W: io::Write> Writer<W> {
 }
 
 
+/// A FASTA record.
 pub struct Record {
     header: String,
     seq: String,
@@ -270,10 +282,12 @@ pub struct Record {
 
 
 impl Record {
+    /// Create a new instance.
     pub fn new() -> Self {
         Record { header: String::new(), seq: String::new() }
     }
 
+    /// Check if record is empty.
     pub fn is_empty(&self) -> bool {
         self.header.is_empty() && self.seq.is_empty()
     }
@@ -305,6 +319,7 @@ impl Record {
         self.seq.as_bytes()
     }
 
+    /// Clear the record.
     fn clear(&mut self) {
         self.header.clear();
         self.seq.clear();

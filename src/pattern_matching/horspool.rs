@@ -74,7 +74,7 @@ impl<'a> Horspool<'a> {
 }
 
 
-/// Iterator over matches.
+/// Iterator over start positions of matches.
 pub struct Matches<'a> {
     horspool: &'a Horspool<'a>,
     text: &'a [u8],

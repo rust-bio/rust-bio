@@ -35,6 +35,7 @@
 use bit_vec::BitVec;
 
 
+/// A rank/select data structure.
 pub struct RankSelect {
     n: usize,
     bits: Vec<u8>,
@@ -126,6 +127,7 @@ impl RankSelect {
 }
 
 
+/// Create `n` superblocks of size `s` from a given bitvector.
 fn superblocks(n: usize, s: usize, raw_bits: &Vec<u8>) -> Vec<u32> {
     let mut superblocks = Vec::with_capacity(n / s + 1);
     let mut rank: u32 = 0;

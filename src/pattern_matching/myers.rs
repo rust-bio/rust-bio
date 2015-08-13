@@ -121,7 +121,7 @@ impl State {
 }
 
 
-/// An iterator over the matches.
+/// Iterator over pairs of end positions and distance of matches.
 pub struct Matches<'a, I: Iterator<Item=&'a u8>> {
     myers: &'a Myers,
     state: State,

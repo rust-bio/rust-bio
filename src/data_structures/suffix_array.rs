@@ -150,11 +150,13 @@ pub fn lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
 }
 
 
+/// Return last character of the text (expected to be the sentinel).
 fn sentinel(text: &[u8]) -> u8 {
     text[text.len() - 1]
 }
 
 
+/// Count the sentinels occuring in the text given that the last character is the sentinel.
 fn sentinel_count(text: &[u8]) -> usize {
     let sentinel = sentinel(text);
     assert!(text.iter().all(|&a| a >= sentinel), "Expecting extra sentinel symbol being \
@@ -164,6 +166,7 @@ lexicographically smallest at the end of the text.");
 }
 
 
+/// Transform the given text into integers for usage in `SAIS`.
 fn transform_text<T: Integer + Unsigned + NumCast + Copy>(text: &[u8], alphabet: &Alphabet, sentinel_count: usize) -> Vec<T> {
     let sentinel = sentinel(text);
     let offset = sentinel_count - 1;
@@ -185,6 +188,7 @@ fn transform_text<T: Integer + Unsigned + NumCast + Copy>(text: &[u8], alphabet:
 }
 
 
+/// SAIS implementation (see function `suffix_array` for description).
 struct SAIS {
     pos: Vec<usize>,
     lms_pos: Vec<usize>,
@@ -196,6 +200,7 @@ struct SAIS {
 
 
 impl SAIS {
+    /// Create a new instance.
     fn new(n: usize) -> Self {
         SAIS {
             pos: Vec::with_capacity(n),
@@ -207,6 +212,7 @@ impl SAIS {
         }
     }
 
+    /// Init buckets.
     fn init_bucket_start<T: Integer + Unsigned + NumCast + Copy>(&mut self, text: &[T]) {
         self.bucket_sizes.clear();
         self.bucket_start.clear();
@@ -225,7 +231,7 @@ impl SAIS {
         }
     }
 
-    /// initialize pointers to the last element of the buckets
+    /// Initialize pointers to the last element of the buckets.
     fn init_bucket_end<T: Integer + Unsigned + NumCast + Copy>(&mut self, text: &[T]) {
         self.bucket_end.clear();
         for &r in self.bucket_start[1..].iter() {
@@ -234,6 +240,7 @@ impl SAIS {
         self.bucket_end.push(text.len() - 1);
     }
 
+    /// Check if two LMS substrings are equal.
     fn lms_substring_eq<T: Integer + Unsigned + NumCast + Copy>(
         &self,
         text: &[T],
@@ -260,6 +267,7 @@ impl SAIS {
         false
     }
 
+    /// Sort LMS suffixes.
     fn sort_lms_suffixes<T: Integer + Unsigned + NumCast + Copy + Debug, S: Integer + Unsigned + NumCast + Copy + Debug>(&mut self, text: &[T], pos_types: &PosTypes, lms_substring_count: usize) {
 
         // if less than 2 LMS substrings are present, no further sorting is needed
@@ -298,6 +306,7 @@ impl SAIS {
         }
     }
 
+    /// Construct the suffix array.
     fn construct<T: Integer + Unsigned + NumCast + Copy + Debug>(&mut self, text: &[T]) {
         let pos_types = PosTypes::new(text);
         self.calc_lms_pos(text, &pos_types);
@@ -395,6 +404,7 @@ impl SAIS {
 }
 
 
+/// Position types (L or S).
 struct PosTypes {
     pos_types: BitVec,
 }
@@ -430,14 +440,17 @@ impl PosTypes {
         PosTypes { pos_types: pos_types }
     }
 
+    /// Check if p is S-position.
     fn is_s_pos(&self, p: usize) -> bool {
         self.pos_types.get(p).unwrap()
     }
 
+    /// Check if p is L-position.
     fn is_l_pos(&self, p: usize) -> bool {
         !self.pos_types.get(p).unwrap()
     }
 
+    /// Check if p is LMS-position.
     fn is_lms_pos(&self, p: usize) -> bool {
         !(p == 0) && self.is_s_pos(p) && self.is_l_pos(p-1)
     }
@@ -530,7 +543,7 @@ mod tests {
         let pos = suffix_array(text);
         assert_eq!(pos, [8, 7, 5, 3, 1, 6, 4, 2, 0]);
     }
-    
+
 
     #[bench]
     fn bench_suffix_array(b: &mut Bencher) {

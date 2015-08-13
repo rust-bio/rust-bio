@@ -91,6 +91,7 @@ impl QGramIndex {
         QGramIndex { q: q, address: address, pos: pos, ranks: ranks }
     }
 
+    /// The used q.
     pub fn q(&self) -> u32 {
         self.q
     }
@@ -180,6 +181,7 @@ pub struct Interval {
 
 
 impl Interval {
+    /// Get the text within the given interval.
     pub fn get<'a>(&self, text: &'a [u8]) -> &'a [u8] {
         &text[self.start..self.stop]
     }
