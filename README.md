@@ -27,7 +27,7 @@ For reading and writing BAM and BCF files, have a look at https://github.com/chr
 
 * Homepage: https://github.com/rust-bio/rust-bio
 * Documentation: https://rust-bio.github.io/rust-bio
-* Continuous integration tests: https://travis-ci.org/rust-bio/rust-bio
+* Continuous integration tests: https://travis-ci.org/johanneskoester/rust-bio
 * Roadmap: https://github.com/rust-bio/rust-bio/issues/3
 
 ## Usage
