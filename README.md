@@ -127,6 +127,7 @@ Since Rust-Bio is based on a compiled language, similar performance to C/C++ bas
 
 We measured 10000 iterations of searching pattern `GCGCGTACACACCGCCCG` in the sequence of the gh38 MT chromosome.
 Initialization time of each algorithm for the given pattern was included in each iteration. Benchmarks were conducted with Cargo for Rust-Bio and Python timeit for Seqan on an Intel Core i5-3427U CPU.
+Note that this benchmark only compares the two libraries to exemplify that Rust-Bio has comparable speed to C++ libraries. All used algorithms have their advantages for specific text and pattern structures and lengths (see [the Pattern Matching section in the documentation](http://johanneskoester.github.io/rust-bio/bio/pattern_matching/index.html).
 
 ## Author
 
