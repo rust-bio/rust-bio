@@ -8,6 +8,8 @@ that are useful for bioinformatics.
 All provided implementations are rigorously tested via continuous
 integration.
 
+**Please see the [homepage](https://rust-bio.github.io) for examples and documentation.**
+
 Currently, rust-bio provides
 
 * most major pattern matching algorithms,
@@ -22,8 +24,6 @@ Currently, rust-bio provides
 * helper functions for combinatorics and dealing with log probabilities.
 
 For reading and writing BAM and BCF files, have a look at https://github.com/christopher-schroeder/rust-htslib.
-
-Please see the [homepage](https://rust-bio.github.io) for examples and documentation.
 
 ## Author
 
