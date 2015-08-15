@@ -386,4 +386,41 @@ mod tests {
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
     }
+
+    #[test]
+    fn test_macro_semiglobal() {
+        // align_semiglobal!
+        assert_eq!(false)
+    }
+
+    #[test]
+    fn test_macro_local() {
+        // align_local!
+        assert_eq!(false)
+    }
+
+    #[test]
+    fn test_macro_global() {
+        // align_global!
+        assert_eq!(false)
+    }
+
+    #[test]
+    fn test_pretty_alignment()) {
+        // println!(alignment.pretty(x, y))
+        // println!(pretty_alignment!(x, y))
+        assert_eq!(false)
+    }
+
+    #[test]
+    fn test_hamming_dist_wo_traceback() {
+        // hamm_dist!()
+        assert_eq!(false)
+    }
+
+    #[test]
+    fn test_levenshtein_dist_wo_traceback() {
+        // lev_dist!()
+        assert_eq!(false)
+    }
 }
