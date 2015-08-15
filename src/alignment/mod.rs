@@ -81,6 +81,50 @@ impl Alignment {
 
         cigar
     }
+
+    /// Return the pretty formatted alignment as a string.
+    pub fn pretty(&self, x: &[u8], y: &[u8]) -> String {
+        let mut x_pretty = String::new();
+        let mut y_pretty = String::new();
+        let mut inb_pretty = String::new();
+
+        if !self.operations.is_empty() {
+            let mut x_add = &[u8];
+            let mut y_add = String::new();
+            let mut inb_add = String::new();
+
+            for i in 1..self.operations.len() {
+                match self.operations[i] {
+                    AlignmentOperation::Match => {
+                        x_add = &x[i];
+                        inb_add = "|";
+                        y_add = y[i];
+                    },
+                    AlignmentOperation::Subst => {
+                        x_add = x[i];
+                        inb_add = " ";
+                        y_add = y[i];
+                    },
+                    AlignmentOperation::Del => {
+                        x_add = "-";
+                        inb_add = " ";
+                        y_add = y[i];
+                    },
+                    AlignmentOperation::Ins => {
+                        x_add = x[i];
+                        inb_add = " ";
+                        y_add = "-";
+                    },
+                }
+
+                x_pretty.push_str(x_add);
+                inb_pretty.push_str(inb_add);
+                y_pretty.push_str(y_add);
+            }
+        }
+
+        format!("{}\n{}\n{}", x_pretty, inb_pretty, y_pretty)
+    }
 }
 
 
