@@ -6,6 +6,7 @@
 //! Various alignment algorithms.
 
 pub mod pairwise;
+pub mod distance;
 
 
 /// Alignment operations (Match, Subst, Del and Ins).
