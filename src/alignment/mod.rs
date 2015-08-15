@@ -92,31 +92,32 @@ impl Alignment {
             let mut x_i : usize = self.xstart;
             let mut y_i : usize = self.ystart;
 
+            // Add '-' before aligned subsequences and un-aligned 5' substrings of sequences.
             if x_i > y_i {
                 let diff = x_i - y_i;
                 x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[0..x_i])));
                 for _ in 0..diff {
                     y_pretty.push('-');
                 }
-                y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[diff..y_i])));
+                y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[0..y_i])));
             } else if x_i < y_i {
                 let diff = y_i - x_i;
                 for _ in 0..diff {
                     x_pretty.push('-');
                 }
-                // x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[diff..x_i])));
-                // y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[0..y_i])));
+                x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[0..x_i])));
+                y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&y[0..y_i])));
             } else {
                 for i in 0..x_i {
                     x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[i]])));
                     y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[i]])));
                 }
             }
-
             for _ in 0..x_pretty.len() {
                 inb_pretty.push(' ');
             }
 
+            // Process the alignment.
             for i in 0..self.operations.len() {
                 match self.operations[i] {
                     AlignmentOperation::Match => {
@@ -156,12 +157,15 @@ impl Alignment {
                 }
             }
 
+            // Add un-aligned 3' substrings of sequences.
             for i in x_i..x.len() {
                 x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[i]])));
             }
             for i in y_i..y.len() {
                 y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[i]])));
             }
+
+            // Add trailing '-'.
             if x_pretty.len() > y_pretty.len() {
                 for _ in y_pretty.len()..x_pretty.len() {
                     y_pretty.push('-');
