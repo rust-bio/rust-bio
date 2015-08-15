@@ -344,6 +344,9 @@ impl Traceback {
             };
 
             ops.push(op);
+
+            // if
+
             i = ii;
             j = jj;
         }
@@ -430,30 +433,6 @@ mod tests {
         // assert_eq!(alignment.ystart, 0);
         // assert_eq!(alignment.xstart, 0);
         // assert_eq!(alignment.operations, [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
-
-        assert!(true)
-    }
-
-    #[test]
-    fn test_hamming_dist_wo_traceback() {
-        // let x = b"GACTATATCG";
-        // let y = b"TTTAGCTAGC";
-        // // GTCTGCATGC
-        // //  |  ||  ||
-        // // TTTAGCTAGC
-        // assert_eq!(hamm_dist!(x, y), 5)
-
-        assert!(true)
-    }
-
-    #[test]
-    fn test_levenshtein_dist_wo_traceback() {
-        // let x = b"ACCGTGGAT";
-        // let y = b"AAAAACCGTTGAT";
-        // // ----ACCGTGGAT
-        // //     ||||| |||
-        // // AAAAACCGTTGAT
-        // assert_eq!(lev_dist!(x, y), align_global!(x, y, -1, 1, |a: u8, b: u8| if a == b {1i32} else {-1i32}))
 
         assert!(true)
     }
