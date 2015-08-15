@@ -82,44 +82,94 @@ impl Alignment {
         cigar
     }
 
-    /// Return the pretty formatted alignment as a string.
+    /// Return the pretty formatted alignment as a String.
     pub fn pretty(&self, x: &[u8], y: &[u8]) -> String {
         let mut x_pretty = String::new();
         let mut y_pretty = String::new();
         let mut inb_pretty = String::new();
 
         if !self.operations.is_empty() {
-            let mut x_add = &[u8];
-            let mut y_add = String::new();
-            let mut inb_add = String::new();
+            let mut x_i : usize = self.xstart;
+            let mut y_i : usize = self.ystart;
 
-            for i in 1..self.operations.len() {
+            if x_i > y_i {
+                let diff = x_i - y_i;
+                x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[0..x_i])));
+                for _ in 0..diff {
+                    y_pretty.push('-');
+                }
+                y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[diff..y_i])));
+            } else if x_i < y_i {
+                let diff = y_i - x_i;
+                for _ in 0..diff {
+                    x_pretty.push('-');
+                }
+                // x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[diff..x_i])));
+                // y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[0..y_i])));
+            } else {
+                for i in 0..x_i {
+                    x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[i]])));
+                    y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[i]])));
+                }
+            }
+
+            for _ in 0..x_pretty.len() {
+                inb_pretty.push(' ');
+            }
+
+            for i in 0..self.operations.len() {
                 match self.operations[i] {
                     AlignmentOperation::Match => {
-                        x_add = &x[i];
-                        inb_add = "|";
-                        y_add = y[i];
+                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[x_i]])));
+                        x_i += 1;
+
+                        inb_pretty.push_str("|");
+
+                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[y_i]])));
+                        y_i += 1;
                     },
                     AlignmentOperation::Subst => {
-                        x_add = x[i];
-                        inb_add = " ";
-                        y_add = y[i];
+                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[x_i]])));
+                        x_i += 1;
+
+                        inb_pretty.push(' ');
+
+                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[y_i]])));
+                        y_i += 1;
                     },
                     AlignmentOperation::Del => {
-                        x_add = "-";
-                        inb_add = " ";
-                        y_add = y[i];
+                        x_pretty.push('-');
+
+                        inb_pretty.push(' ');
+
+                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[y_i]])));
+                        y_i += 1;
                     },
                     AlignmentOperation::Ins => {
-                        x_add = x[i];
-                        inb_add = " ";
-                        y_add = "-";
+                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[x_i]])));
+                        x_i += 1;
+
+                        inb_pretty.push(' ');
+
+                        y_pretty.push('-');
                     },
                 }
+            }
 
-                x_pretty.push_str(x_add);
-                inb_pretty.push_str(inb_add);
-                y_pretty.push_str(y_add);
+            for i in x_i..x.len() {
+                x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[i]])));
+            }
+            for i in y_i..y.len() {
+                y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[i]])));
+            }
+            if x_pretty.len() > y_pretty.len() {
+                for _ in y_pretty.len()..x_pretty.len() {
+                    y_pretty.push('-');
+                }
+            } else {
+                for _ in x_pretty.len()..y_pretty.len() {
+                    x_pretty.push('-');
+                }
             }
         }
 
