@@ -6,13 +6,14 @@
 //! Calculate alignments with a generalized variant of the Smith Waterman algorithm.
 //! Complexity: O(n * m) for strings of length m and n.
 //!
-//! For quick computation of alignments and alignment scores there are 6 macro rules.
+//! For quick computation of alignments and alignment scores there are 6 simple functions.
 //!
 //! # Example
 //!
 //! ```
-//! use bio::alignment::pairwise::Aligner;
+//! use bio::alignment::pairwise::*;
 //! use bio::alignment::AlignmentOperation::{Match, Subst, Ins, Del};
+//!
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
 //! let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
@@ -22,14 +23,17 @@
 //! assert_eq!(alignment.xstart, 0);
 //! assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
 //!
-//! // Macro rules example
+//! // Easy-to-use functions for alignment.
 //! // Global alignment:
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
-//! let alignment = align_global!(x, y, -5, 1, |a: u8, b: u8| if a == b {1i32} else {-1i32});
+//! let alignment = align_global(x, y, -5, 1, |a: u8, b: u8| if a == b {1i32} else {-1i32});
+//! assert_eq!(alignment.ystart, 4);
+//! assert_eq!(alignment.xstart, 0);
 //!
 //! // Score of the local alignment:
-//! let score = score_local!(x, y, -5, 1, |a: u8, b: u8| if a == b {1i32} else {-1i32});
+//! let score = score_local(x, y, -5, 1, |a: u8, b: u8| if a == b {1i32} else {-1i32});
+//! assert_eq!(score, 5);
 //! ```
 
 
@@ -129,60 +133,6 @@ macro_rules! align {
             $ret
         }
     );
-}
-
-#[macro_export]
-macro_rules! align_global {
-    ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
-    ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).global($x, $y) } );
-}
-
-#[macro_export]
-macro_rules! align_semiglobal {
-    ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
-    ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).semiglobal($x, $y) } );
-}
-
-#[macro_export]
-macro_rules! align_local {
-    ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
-    ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).local($x, $y) } );
-}
-
-#[macro_export]
-macro_rules! score_global {
-    ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
-    ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).global($x, $y).score } );
-}
-
-#[macro_export]
-macro_rules! score_semiglobal {
-    ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
-    ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).semiglobal($x, $y).score } );
-}
-
-#[macro_export]
-macro_rules! score_local {
-    ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
-    ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).local($x, $y).score } );
-}
-
-#[macro_export]
-macro_rules! pretty_global {
-    ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
-    ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).global($x, $y).pretty($x, $y) } );
-}
-
-#[macro_export]
-macro_rules! pretty_semiglobal {
-    ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
-    ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).semiglobal($x, $y).pretty($x, $y) } );
-}
-
-#[macro_export]
-macro_rules! pretty_local {
-    ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
-    ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).local($x, $y).pretty($x, $y) } );
 }
 
 
@@ -413,9 +363,64 @@ impl Traceback {
     }
 }
 
+
+pub fn align_global<F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: F) -> Alignment
+    where F : Fn(u8, u8) -> i32 {
+    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).global(x, y)
+}
+
+
+pub fn align_semiglobal<F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: F) -> Alignment
+    where F : Fn(u8, u8) -> i32 {
+    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).semiglobal(x, y)
+}
+
+
+pub fn align_local<F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: F) -> Alignment
+    where F : Fn(u8, u8) -> i32 {
+    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).local(x, y)
+}
+
+
+pub fn score_global<F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: F) -> i32
+    where F : Fn(u8, u8) -> i32 {
+    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).global(x, y).score
+}
+
+
+pub fn score_semiglobal<F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: F) -> i32
+    where F : Fn(u8, u8) -> i32 {
+    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).semiglobal(x, y).score
+}
+
+
+pub fn score_local<F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: F) -> i32
+    where F : Fn(u8, u8) -> i32 {
+    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).local(x, y).score
+}
+
+
+pub fn pretty_global<F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: F) -> String
+    where F : Fn(u8, u8) -> i32 {
+    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).global(x, y).pretty(x, y)
+}
+
+
+pub fn pretty_semiglobal<F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: F) -> String
+    where F : Fn(u8, u8) -> i32 {
+    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).semiglobal(x, y).pretty(x, y)
+}
+
+
+pub fn pretty_local<F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: F) -> String
+    where F : Fn(u8, u8) -> i32 {
+    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).local(x, y).pretty(x, y)
+}
+
+
 #[cfg(test)]
 mod tests {
-    use super::Aligner;
+    use super::*;
     use alignment::AlignmentOperation::{Match, Subst, Del};
 
     #[test]
@@ -456,62 +461,62 @@ mod tests {
     }
 
     #[test]
-    fn test_macro_semiglobal() {
+    fn test_fn_semiglobal() {
         // let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let alignment = align_semiglobal!(b"ACCGTGGAT", y, -5, -1, score);
+        let alignment = align_semiglobal(b"ACCGTGGAT", y, -5, -1, score);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
     }
 
     #[test]
-    fn test_macro_local() {
+    fn test_fn_local() {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let alignment = align_local!(x, y, -5, -1, score);
+        let alignment = align_local(x, y, -5, -1, score);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
     }
 
     #[test]
-    fn test_macro_global() {
+    fn test_fn_global() {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let alignment = align_global!(x, y, -5, -1, score);
+        let alignment = align_global(x, y, -5, -1, score);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
     }
 
     #[test]
-    fn test_macro_semiglobal_score() {
+    fn test_fn_semiglobal_score() {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
         let score2 = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        assert_eq!(score_semiglobal!(x, y, -5, -1, score), align_semiglobal!(x, y, -5, -1, score2).score);
+        assert_eq!(score_semiglobal(x, y, -5, -1, score), align_semiglobal(x, y, -5, -1, score2).score);
     }
 
     #[test]
-    fn test_macro_local_score() {
+    fn test_fn_local_score() {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
         let score2 = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        assert_eq!(score_local!(x, y, -5, -1, score), align_local!(x, y, -5, -1, score2).score);
+        assert_eq!(score_local(x, y, -5, -1, score), align_local(x, y, -5, -1, score2).score);
     }
 
     #[test]
-    fn test_macro_global_score() {
+    fn test_fn_global_score() {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
         let score2 = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        assert_eq!(score_global!(x, y, -5, -1, score), align_global!(x, y, -5, -1, score2).score);
+        assert_eq!(score_global(x, y, -5, -1, score), align_global(x, y, -5, -1, score2).score);
     }
 }
