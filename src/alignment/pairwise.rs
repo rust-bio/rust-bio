@@ -12,7 +12,7 @@
 //!
 //! ```
 //! use bio::alignment::pairwise::*;
-//! use bio::alignment::AlignmentOperation::{Match, Subst, Ins, Del};
+//! use bio::alignment::AlignmentOperation::{Match, Subst};
 //!
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
@@ -27,12 +27,12 @@
 //! // Global alignment:
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
-//! let alignment = align_global(x, y, -5, 1, |a: u8, b: u8| if a == b {1i32} else {-1i32});
+//! let alignment = align_global(x, y, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32});
 //! assert_eq!(alignment.ystart, 4);
 //! assert_eq!(alignment.xstart, 0);
 //!
 //! // Score of the local alignment:
-//! let score = score_local(x, y, -5, 1, |a: u8, b: u8| if a == b {1i32} else {-1i32});
+//! let score = score_local(x, y, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32});
 //! assert_eq!(score, 5);
 //! ```
 
@@ -462,10 +462,10 @@ mod tests {
 
     #[test]
     fn test_fn_semiglobal() {
-        // let x = b"ACCGTGGAT";
+        let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let alignment = align_semiglobal(b"ACCGTGGAT", y, -5, -1, score);
+        let alignment = align_semiglobal(x, y, -5, -1, score);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);

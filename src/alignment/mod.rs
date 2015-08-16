@@ -214,7 +214,6 @@ impl Alignment {
 mod tests {
     use super::*;
     use super::AlignmentOperation::*;
-    use super::pairwise::*;
 
     #[test]
     fn test_cigar() {
