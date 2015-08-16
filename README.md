@@ -34,6 +34,7 @@ Johannes Köster (<koester@jimmy.harvard.edu>)
 * Christopher Schröder (<christopher.schroeder@uni-due.de>)
 * Peer Aramillo Irizar
 * Fedor Gusev
+* Vadim Nazarov (<vdn@mailbox.org>)
 
 The next name in this list could be you! If you are interested in joining the effort to build a general purpose Rust bioinformatics library, just introduce yourself [here](https://github.com/rust-bio/rust-bio/issues/3), or issue a pull request with your first contribution.
 
