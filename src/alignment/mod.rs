@@ -18,8 +18,8 @@ pub enum AlignmentOperation {
 }
 
 
-/// An alignment, consisting of a score, a start in sequence y, a start in sequence x, a length
-/// and its edit operations (see alignment::pairwise for meaning of x and y).
+/// An alignment, consisting of a score, a start in sequence y, a start in sequence x, the length
+/// of sequence x and its edit operations (see alignment::pairwise for meaning of x and y).
 #[derive(Debug)]
 pub struct Alignment {
     pub score: i32,

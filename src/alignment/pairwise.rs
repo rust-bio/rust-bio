@@ -14,7 +14,7 @@
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
 //! let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-//! let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+//! let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
 //! let alignment = aligner.semiglobal(x, y);
 //! assert_eq!(alignment.ystart, 4);
 //! assert_eq!(alignment.xstart, 0);
@@ -28,6 +28,13 @@ use std::cmp::max;
 
 use alignment::{Alignment, AlignmentOperation};
 use data_structures::bitenc::BitEnc;
+
+
+enum AlignmentType {
+    Local,
+    Semiglobal,
+    Global
+}
 
 
 /// Current internal state of alignment.
@@ -123,18 +130,18 @@ macro_rules! align {
 
 /// A generalized Smith-Waterman aligner.
 #[allow(non_snake_case)]
-pub struct Aligner<F> where F: Fn(u8, u8) -> i32 {
+pub struct Aligner<'a, F> where F: 'a + Fn(u8, u8) -> i32 {
     S: [Vec<i32>; 2],
     I: [Vec<i32>; 2],
     D: [Vec<i32>; 2],
     traceback: Traceback,
     gap_open: i32,
     gap_extend: i32,
-    score: F,
+    score: &'a F,
 }
 
 
-impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
+impl<'a, F> Aligner<'a, F> where F: Fn(u8, u8) -> i32 {
     /// Create new aligner instance. The size hints help to
     /// avoid unnecessary memory allocations.
     ///
@@ -146,7 +153,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
     /// * `gap_extend` - the score for extending a gap (should be negative)
     /// * `score` - function that returns the score for substitutions
     ///
-    pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, score: F) -> Self {
+    pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, score: &'a F) -> Self {
         let get_vec = || Vec::with_capacity(m + 1);
         Aligner {
             S: [get_vec(), get_vec()],
@@ -159,7 +166,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         }
     }
 
-    fn init(&mut self, m: usize, global: bool) {
+    fn init(&mut self, m: usize, alignment_type: AlignmentType) {
         // set minimum score to -inf, and allow to add gap_extend
         // without overflow
         let min_score = i32::MIN - self.gap_extend;
@@ -169,25 +176,27 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
             self.D[k].clear();
             self.I[k].extend(repeat(min_score).take(m + 1));
             self.D[k].extend(repeat(min_score).take(m + 1));
-            if global {
-                let ref mut s = self.S[k];
-                let mut score = self.gap_open;
-                for _ in 0..m+1 {
-                    s.push(score);
-                    score += self.gap_extend;
+            match alignment_type {
+                AlignmentType::Global | AlignmentType::Semiglobal => {
+                    let ref mut s = self.S[k];
+                    let mut score = self.gap_open;
+                    for _ in 0..m+1 {
+                        s.push(score);
+                        score += self.gap_extend;
+                    }
+                },
+                AlignmentType::Local => {
+                    self.S[k].extend(repeat(0).take(m + 1))
                 }
-            }
-            else {
-                self.S[k].extend(repeat(0).take(m + 1))
             }
         }
     }
 
-    /// Calculate global alignment.
+    /// Calculate global alignment of x against y.
     pub fn global(&mut self, x: &[u8], y: &[u8]) -> Alignment {
         let (m, n) = (x.len(), y.len());
-        self.init(m, true);
-        self.traceback.init(m, n, true);
+        self.init(m, AlignmentType::Global);
+        self.traceback.init(m, n, AlignmentType::Global);
 
         align!(
             self, x, y, state,
@@ -201,18 +210,22 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         )
     }
 
-    /// Calculate semiglobal alignment.
+    /// Calculate semiglobal alignment of x against y (x is global, y is local).
     pub fn semiglobal(&mut self, x: &[u8], y: &[u8]) -> Alignment {
         let (m, n) = (x.len(), y.len());
-        self.init(m, false);
-        self.traceback.init(m, n, false);
+        self.init(m, AlignmentType::Semiglobal);
+        self.traceback.init(m, n, AlignmentType::Semiglobal);
 
         align!(
             self, x, y, state,
-            { self.S[state.col][0] = 0; },
+            {
+                self.S[state.col][0] = 0;
+            },
             {},
             {
-                if state.score > state.best {
+                // the second condition ensures that score is overwritten if best
+                // does not reflect a full x-column (can happen in first iteration)
+                if state.score > state.best || state.best_j != state.m {
                     state.best = state.score;
                     state.best_i = state.i;
                     state.best_j = state.m;
@@ -222,11 +235,11 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         )
     }
 
-    /// Calculate local alignment.
+    /// Calculate local alignment of x against y.
     pub fn local(&mut self, x: &[u8], y: &[u8]) -> Alignment {
         let (m, n) = (x.len(), y.len());
-        self.init(m, false);
-        self.traceback.init(m, n, false);
+        self.init(m, AlignmentType::Local);
+        self.traceback.init(m, n, AlignmentType::Local);
 
         align!(
             self, x, y, state,
@@ -273,19 +286,30 @@ impl Traceback {
         }
     }
 
-    fn init(&mut self, m: usize, n: usize, global: bool) {
-        if global {
-            // set the first cell to start, the rest to deletions
-            for i in 0..n+1 {
-                self.matrix[i].clear();
-                self.matrix[i].push_values(m + 1, TBDEL);
-            }
-            self.matrix[0].set(0, TBSTART);
-        }
-        else {
-            for i in 0..n+1 {
-                self.matrix[i].clear();
-                self.matrix[i].push_values(m + 1, TBSTART);
+    fn init(&mut self, m: usize, n: usize, alignment_type: AlignmentType) {
+        match alignment_type {
+            AlignmentType::Global => {
+                // set the first cell to start, the rest to insertions
+                for i in 0..n+1 {
+                    self.matrix[i].clear();
+                    self.matrix[i].push_values(m + 1, TBINS);
+                }
+                self.matrix[0].set(0, TBSTART);
+            },
+            AlignmentType::Semiglobal => {
+                // set the first cell of each column to start, the rest to insertions
+                for i in 0..n+1 {
+                    self.matrix[i].clear();
+                    self.matrix[i].push_values(m + 1, TBINS);
+                    self.matrix[i].set(0, TBSTART);
+                }
+            },
+            AlignmentType::Local => {
+                // set every cell to start
+                for i in 0..n+1 {
+                    self.matrix[i].clear();
+                    self.matrix[i].push_values(m + 1, TBSTART);
+                }
             }
         }
     }
@@ -348,16 +372,15 @@ impl Traceback {
 #[cfg(test)]
 mod tests {
     use super::Aligner;
-    use alignment::AlignmentOperation::{Match, Subst, Del};
+    use alignment::AlignmentOperation::{Match, Subst, Del, Ins};
 
     #[test]
     fn test_semiglobal() {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
         let alignment = aligner.semiglobal(x, y);
-        println!("{:?}", alignment);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
@@ -368,7 +391,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
         let alignment = aligner.local(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
@@ -380,10 +403,47 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
+    }
+
+    #[test]
+    fn test_issue11() {
+        let y = b"TACC";//GTGGAC";
+        let x = b"AAAAACC";//GTTGACGCAA";
+        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let alignment = aligner.global(x, y);
+        assert_eq!(alignment.ystart, 0);
+        assert_eq!(alignment.xstart, 0);
+        assert_eq!(alignment.operations, [Ins, Ins, Ins, Subst, Match, Match, Match]);
+    }
+
+
+    #[test]
+    fn test_issue12_1() {
+        let x = b"CCGGCA";
+        let y = b"ACCGTTGACGC";
+        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let alignment = aligner.semiglobal(x, y);
+        assert_eq!(alignment.xstart, 0);
+        assert_eq!(alignment.ystart, 1);
+        assert_eq!(alignment.operations, [Match, Match, Match, Subst, Subst, Subst]);
+    }
+
+    #[test]
+    fn test_issue12_2() {
+        let y = b"CCGGCA";
+        let x = b"ACCGTTGACGC";
+        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let alignment = aligner.semiglobal(x, y);
+        assert_eq!(alignment.xstart, 0);
+        assert_eq!(alignment.ystart, 0);
+        assert_eq!(alignment.operations, [Ins, Ins, Match, Ins, Ins, Subst, Match, Ins, Ins, Match, Match]);
     }
 }
