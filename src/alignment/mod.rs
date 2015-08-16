@@ -86,6 +86,8 @@ impl Alignment {
 
     /// Return the pretty formatted alignment as a String.
     ///
+    /// # Example
+    ///
     /// ```
     /// use bio::alignment::Alignment;
     /// use bio::alignment::pairwise::Aligner;
@@ -259,14 +261,4 @@ mod tests {
         // println!("GLOBAL: \n{}\n", alignment.pretty(x, y));
         // assert_eq!(alignment.pretty(x, y), align_global_pretty!(x, y, -5, -1, score));
     }
-
-    // fn test_pretty_alignment() {
-    //     let x = b"TACCGTGGAC";
-    //     let y = b"AAAAACCGTTGACGCAA";
-    //     let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-    //     let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
-    //     let alignment = aligner.semiglobal(x, y);
-    //     let alignment = aligner.local(x, y);
-    //     let alignment = aligner.global(x, y);
-    // }
 }
