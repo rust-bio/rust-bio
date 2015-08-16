@@ -28,6 +28,7 @@
 //! //     ||||| |||
 //! // AAAAACCGTTGAT
 //! let l_score = lev_dist(x, y);  // Score is 5
+//! assert_eq!(l_score, 5);
 //! ```
 
 
@@ -83,6 +84,7 @@ pub fn hamm_dist(alpha: &[u8], beta: &[u8]) -> Result<u32, &'static str> {
     }
 }
 
+
 /// Compute the Levenshtein (or Edit) distance between two strings with `lev_dist`. It returns a distance between two strings,
 /// i.e. minimal number of mismatches, insertions and deletions between two strings.
 ///
@@ -116,6 +118,7 @@ pub fn lev_dist(alpha: &[u8], beta: &[u8]) -> u32 {
 
     cur_col[cur_col.len() - 1]
 }
+
 
 #[cfg(test)]
 mod tests {
