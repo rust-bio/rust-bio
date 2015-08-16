@@ -20,8 +20,8 @@ pub enum AlignmentOperation {
 }
 
 
-/// An alignment, consisting of a score, a start in sequence y, a start in sequence x, a length
-/// and its edit operations (see alignment::pairwise for meaning of x and y).
+/// An alignment, consisting of a score, a start in sequence y, a start in sequence x, the length
+/// of sequence x and its edit operations (see alignment::pairwise for meaning of x and y).
 #[derive(Debug)]
 pub struct Alignment {
     pub score: i32,
@@ -91,27 +91,28 @@ impl Alignment {
     /// ```
     /// use bio::alignment::pairwise::*;
     ///
-    /// //
-    /// //
-    /// //
     /// let x = b"CCGTCCGGCAA";
     /// let y = b"AAAAACCGTTGACGCAA";
     /// let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-    /// let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+    ///
+    /// // ------CCGTCCGGCAA
+    /// //       |  |   ||||
+    /// // AAAAACCGTTGACGCAA
+    /// let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
     /// let alignment = aligner.semiglobal(x, y);
-    /// println!("SEMIGLOBAL: \n{}\n", alignment.pretty(x, y));
+    /// println!("Semiglobal: \n{}\n", alignment.pretty(x, y));
     ///
-    /// //
-    /// //
-    /// //
+    /// // -----CCGTCCGGCAA-
+    /// //      ||||
+    /// // AAAAACCGTTGACGCAA
     /// // You can also call easy-to-use functions for perform alignment...
-    /// println!("LOCAL: \n{}\n", align_local(x, y, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32}).pretty(x, y));
+    /// println!("Local: \n{}\n", align_local(x, y, -5, -1, &score).pretty(x, y));
     ///
-    /// //
-    /// //
-    /// //
+    /// // ------CCGTCCGGCAA
+    /// //       |  |   ||||
+    /// // AAAAACCGTTGACGCAA
     /// // ... or to perform alignment and pretty formatting sequentially.
-    /// println!("GLOBAL: \n{}\n", pretty_global(x, y, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32}));
+    /// println!("Global: \n{}\n", pretty_global(x, y, -5, -1, &score));
     /// ```
     pub fn pretty(&self, x: &[u8], y: &[u8]) -> String {
         let mut x_pretty = String::new();
