@@ -11,6 +11,7 @@
 //!
 //! ```
 //! use bio::alignment::distance::*;
+//!
 //! let x = b"GTCTGCATGCG";
 //! let y = b"TTTAGCTAGCG";
 //! // GTCTGCATGCG
@@ -43,6 +44,7 @@ use std::result::Result;
 ///
 /// ```
 /// use bio::alignment::distance::*;
+///
 /// let x = b"GTCTGCATGCG";
 /// let y = b"TTTAGCTAGCG";
 /// // GTCTGCATGCG
@@ -59,6 +61,8 @@ use std::result::Result;
 /// In case of the error:
 ///
 /// ```
+/// use bio::alignment::distance::*;
+///
 /// let x = b"GACTATATCGA";
 /// let y = b"TTTAGCTC";
 /// match hamm_dist(x, y) {
@@ -85,6 +89,8 @@ pub fn hamm_dist(alpha: &[u8], beta: &[u8]) -> Result<u32, &'static str> {
 /// # Example
 ///
 /// ```
+/// use bio::alignment::distance::*;
+///
 /// let x = b"ACCGTGGAT";
 /// let y = b"AAAAACCGTTGAT";
 /// // ----ACCGTGGAT
@@ -102,11 +108,10 @@ pub fn lev_dist(alpha: &[u8], beta: &[u8]) -> u32 {
 
     for j in 0..beta.len() {
         prev_col = cur_col.clone();
-        cur_col[0] = j as u32;
+        cur_col[0] = 1 + j as u32;
         for i in 1..cur_col.len() {
             cur_col[i] = min(prev_col[i-1] + if alpha[i - 1] != beta[j] { 1 } else { 0 }, min(cur_col[i-1] + 1, prev_col[i] + 1));
         }
-        // println!("{:?}", cur_col);
     }
 
     cur_col[cur_col.len() - 1]
