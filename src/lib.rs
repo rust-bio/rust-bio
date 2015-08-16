@@ -67,7 +67,6 @@ pub mod utils;
 pub mod alphabets;
 pub mod pattern_matching;
 pub mod data_structures;
-#[macro_use]
 pub mod alignment;
 pub mod io;
 pub mod stats;
