@@ -90,28 +90,27 @@ impl Alignment {
     /// use bio::alignment::Alignment;
     /// use bio::alignment::pairwise::Aligner;
     ///
+    /// //
+    /// //
+    /// //
     /// let x = b"CCGTCCGGCAA";
     /// let y = b"AAAAACCGTTGACGCAA";
     /// let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
     /// let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
-    ///
-    /// //
-    /// //
-    /// //
     /// let alignment = aligner.semiglobal(x, y);
     /// println!("SEMIGLOBAL: \n{}\n", alignment.pretty(x, y));
     ///
     /// //
     /// //
     /// //
-    /// let alignment = aligner.local(x, y);
-    /// println!("LOCAL: \n{}\n", alignment.pretty(x, y));
+    /// // You can also use macros commands for alignments...
+    /// println!("LOCAL: \n{}\n", align_local!(x, y, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32}).pretty(x, y));
     ///
     /// //
     /// //
     /// //
-    /// let alignment = aligner.global(x, y);
-    /// println!("GLOBAL: \n{}\n", alignment.pretty(x, y));
+    /// // ... or macros commands for pretty alignment strings.
+    /// println!("GLOBAL: \n{}\n", pretty_global!(x, y, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32}).pretty(x, y));
     /// ```
     pub fn pretty(&self, x: &[u8], y: &[u8]) -> String {
         let mut x_pretty = String::new();

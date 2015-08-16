@@ -167,6 +167,24 @@ macro_rules! score_local {
     ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).local($x, $y).score } );
 }
 
+#[macro_export]
+macro_rules! pretty_global {
+    ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
+    ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).global($x, $y).pretty($x, $y) } );
+}
+
+#[macro_export]
+macro_rules! pretty_semiglobal {
+    ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
+    ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).semiglobal($x, $y).pretty($x, $y) } );
+}
+
+#[macro_export]
+macro_rules! pretty_local {
+    ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
+    ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).local($x, $y).pretty($x, $y) } );
+}
+
 
 /// A generalized Smith-Waterman aligner.
 #[allow(non_snake_case)]
