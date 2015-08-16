@@ -84,6 +84,34 @@ impl Alignment {
     }
 
     /// Return the pretty formatted alignment as a String.
+    ///
+    /// ```
+    /// use bio::alignment::Alignment;
+    /// use bio::alignment::pairwise::Aligner;
+    ///
+    /// let x = b"CCGTCCGGCAA";
+    /// let y = b"AAAAACCGTTGACGCAA";
+    /// let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
+    /// let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+    ///
+    /// //
+    /// //
+    /// //
+    /// let alignment = aligner.semiglobal(x, y);
+    /// println!("SEMIGLOBAL: \n{}\n", alignment.pretty(x, y));
+    ///
+    /// //
+    /// //
+    /// //
+    /// let alignment = aligner.local(x, y);
+    /// println!("LOCAL: \n{}\n", alignment.pretty(x, y));
+    ///
+    /// //
+    /// //
+    /// //
+    /// let alignment = aligner.global(x, y);
+    /// println!("GLOBAL: \n{}\n", alignment.pretty(x, y));
+    /// ```
     pub fn pretty(&self, x: &[u8], y: &[u8]) -> String {
         let mut x_pretty = String::new();
         let mut y_pretty = String::new();
@@ -197,7 +225,9 @@ mod tests {
 
     #[test]
     fn test_pretty_alignment() {
-        let y = b"TACCGTGGAC";
+        // let x = b"TACCGTGGAC";
+        // let y = b"AAAAACCGTTGACGCAA";
+        let y = b"CCGTCCGGCAA";
         let x = b"AAAAACCGTTGACGCAA";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
         // alignment.operations: [Match, Match, Match, Match, Match, Subst, Match, Match, Match]
