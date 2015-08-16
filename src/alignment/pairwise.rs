@@ -131,31 +131,37 @@ macro_rules! align {
     );
 }
 
+#[macro_export]
 macro_rules! align_global {
     ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
     ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).global($x, $y) } );
 }
 
+#[macro_export]
 macro_rules! align_semiglobal {
     ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
     ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).semiglobal($x, $y) } );
 }
 
+#[macro_export]
 macro_rules! align_local {
     ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
     ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).local($x, $y) } );
 }
 
+#[macro_export]
 macro_rules! score_global {
     ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
     ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).global($x, $y).score } );
 }
 
+#[macro_export]
 macro_rules! score_semiglobal {
     ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
     ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).semiglobal($x, $y).score } );
 }
 
+#[macro_export]
 macro_rules! score_local {
     ( $x:expr, $y:expr, $gap_open:expr, $gap_extend:expr, $score_fun:expr ) =>
     ( { Aligner::with_capacity($x.len(), $y.len(), $gap_open, $gap_extend, $score_fun).local($x, $y).score } );
@@ -433,7 +439,7 @@ mod tests {
 
     #[test]
     fn test_macro_semiglobal() {
-        let x = b"ACCGTGGAT";
+        // let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
         let alignment = align_semiglobal!(b"ACCGTGGAT", y, -5, -1, score);

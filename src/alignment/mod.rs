@@ -5,6 +5,7 @@
 
 //! Various alignment algorithms.
 
+#[macro_use]
 pub mod pairwise;
 pub mod distance;
 
@@ -137,10 +138,8 @@ impl Alignment {
                 x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[0..x_i])));
                 y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&y[0..y_i])));
             } else {
-                for i in 0..x_i {
-                    x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[i]])));
-                    y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[i]])));
-                }
+                x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[0..x_i])));
+                y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&y[0..y_i])));
             }
             for _ in 0..x_pretty.len() {
                 inb_pretty.push(' ');
