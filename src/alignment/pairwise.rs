@@ -544,11 +544,11 @@ mod tests {
 
     #[bench]
     fn bench_fn_local_score(b: &mut Bencher) {
-        b.iter(|| { score_semiglobal(STR_1, STR_2, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32}) });
+        b.iter(|| { score_local(STR_1, STR_2, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32}) });
     }
 
     #[bench]
     fn bench_fn_global_score(b: &mut Bencher) {
-        b.iter(|| { score_semiglobal(STR_1, STR_2, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32}) });
+        b.iter(|| { score_global(STR_1, STR_2, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32}) });
     }
 }
