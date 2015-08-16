@@ -5,7 +5,7 @@
 
 //! Various alignment algorithms.
 
-#[macro_use]
+
 pub mod pairwise;
 pub mod distance;
 
@@ -89,8 +89,7 @@ impl Alignment {
     /// # Example
     ///
     /// ```
-    /// use bio::alignment::Alignment;
-    /// use bio::alignment::pairwise::Aligner;
+    /// use bio::alignment::pairwise::*;
     ///
     /// //
     /// //
@@ -105,14 +104,14 @@ impl Alignment {
     /// //
     /// //
     /// //
-    /// // You can also use macros commands for alignments...
-    /// println!("LOCAL: \n{}\n", align_local!(x, y, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32}).pretty(x, y));
+    /// // You can also call easy-to-use functions for perform alignment...
+    /// println!("LOCAL: \n{}\n", align_local(x, y, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32}).pretty(x, y));
     ///
     /// //
     /// //
     /// //
-    /// // ... or macros commands for pretty alignment strings.
-    /// println!("GLOBAL: \n{}\n", pretty_global!(x, y, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32}).pretty(x, y));
+    /// // ... or to perform alignment and pretty formatting sequentially.
+    /// println!("GLOBAL: \n{}\n", pretty_global(x, y, -5, -1, |a: u8, b: u8| if a == b {1i32} else {-1i32}));
     /// ```
     pub fn pretty(&self, x: &[u8], y: &[u8]) -> String {
         let mut x_pretty = String::new();
@@ -221,44 +220,5 @@ mod tests {
     fn test_cigar() {
         let alignment = Alignment { score: 5, xstart: 3, ystart: 0, xlen: 10, operations: vec![Match, Match, Match, Subst, Ins, Ins, Del, Del] };
         assert_eq!(alignment.cigar(false), "3S3=1X2I2D4S");
-    }
-
-    #[test]
-    fn test_pretty_alignment() {
-        // let x = b"TACCGTGGAC";
-        // let y = b"AAAAACCGTTGACGCAA";
-        let y = b"CCGTCCGGCAA";
-        let x = b"AAAAACCGTTGACGCAA";
-        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        // alignment.operations: [Match, Match, Match, Match, Match, Subst, Match, Match, Match]
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
-        let alignment = aligner.semiglobal(x, y);
-        // let mut alignment = align_semiglobal!(x, y, -5, -1, score);
-        // assert_eq!(alignment.pretty(x, y), align_semiglobal_pretty!(x, y, -5, -1, score));
-        println!("semiglobal:\t{:?}", alignment);
-        println!("SEMIGLOBAL: \n{}\n", alignment.pretty(x, y));
-        // alignment.operations: [Match, Match, Match, Match, Match, Subst, Match, Match, Match]
-        // alignment = align_local!(x, y, -5, -1, score);
-        let alignment = aligner.local(x, y);
-        println!("local:\t{:?}", alignment);
-        println!("LOCAL: \n{}\n", alignment.pretty(x, y));
-        // assert_eq!(alignment.pretty(x, y), align_local_pretty!(x, y, -5, -1, score));
-        // alignment.operations: [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match]
-        // alignment = align_global!(x, y, -5, -1, score);
-        let alignment = aligner.global(x, y);
-        println!("global:\t{:?}", alignment);
-        println!("GLOBAL: \n{}\n", alignment.pretty(x, y));
-
-        // let x = b"AAAAAAA";
-        // let y = b"TTTTTTTTTT";
-        // let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        // let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
-        // let alignment = aligner.semiglobal(x, y);
-        // println!("SEMIGLOBAL: \n{}\n", alignment.pretty(x, y));
-        // let alignment = aligner.local(x, y);
-        // println!("LOCAL: \n{}\n", alignment.pretty(x, y));
-        // let alignment = aligner.global(x, y);
-        // println!("GLOBAL: \n{}\n", alignment.pretty(x, y));
-        // assert_eq!(alignment.pretty(x, y), align_global_pretty!(x, y, -5, -1, score));
     }
 }
