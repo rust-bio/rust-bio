@@ -14,7 +14,7 @@
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
 //! let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-//! let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+//! let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
 //! let alignment = aligner.semiglobal(x, y);
 //! assert_eq!(alignment.ystart, 4);
 //! assert_eq!(alignment.xstart, 0);
@@ -126,18 +126,18 @@ macro_rules! align {
 
 /// A generalized Smith-Waterman aligner.
 #[allow(non_snake_case)]
-pub struct Aligner<F> where F: Fn(u8, u8) -> i32 {
+pub struct Aligner<'a, F> where F: 'a + Fn(u8, u8) -> i32 {
     S: [Vec<i32>; 2],
     I: [Vec<i32>; 2],
     D: [Vec<i32>; 2],
     traceback: Traceback,
     gap_open: i32,
     gap_extend: i32,
-    score: F,
+    score: &'a F,
 }
 
 
-impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
+impl<'a, F> Aligner<'a, F> where F: Fn(u8, u8) -> i32 {
     /// Create new aligner instance. The size hints help to
     /// avoid unnecessary memory allocations.
     ///
@@ -149,7 +149,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
     /// * `gap_extend` - the score for extending a gap (should be negative)
     /// * `score` - function that returns the score for substitutions
     ///
-    pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, score: F) -> Self {
+    pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, score: &'a F) -> Self {
         let get_vec = || Vec::with_capacity(m + 1);
         Aligner {
             S: [get_vec(), get_vec()],
@@ -186,7 +186,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         }
     }
 
-    /// Calculate global alignment.
+    /// Calculate global alignment of x against y.
     pub fn global(&mut self, x: &[u8], y: &[u8]) -> Alignment {
         let (m, n) = (x.len(), y.len());
         self.init(m, true);
@@ -204,7 +204,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         )
     }
 
-    /// Calculate semiglobal alignment.
+    /// Calculate semiglobal alignment of x against y (x is global, y is local).
     pub fn semiglobal(&mut self, x: &[u8], y: &[u8]) -> Alignment {
         let (m, n) = (x.len(), y.len());
         self.init(m, false);
@@ -225,7 +225,7 @@ impl<F> Aligner<F> where F: Fn(u8, u8) -> i32 {
         )
     }
 
-    /// Calculate local alignment.
+    /// Calculate local alignment of x against y.
     pub fn local(&mut self, x: &[u8], y: &[u8]) -> Alignment {
         let (m, n) = (x.len(), y.len());
         self.init(m, false);
@@ -362,7 +362,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
         let alignment = aligner.semiglobal(x, y);
         println!("{:?}", alignment);
         assert_eq!(alignment.ystart, 4);
@@ -375,7 +375,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
         let alignment = aligner.local(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
@@ -387,7 +387,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
@@ -395,11 +395,11 @@ mod tests {
     }
 
     #[test]
-    fn test_issue_11() {
+    fn test_issue11() {
         let y = b"TACC";//GTGGAC";
         let x = b"AAAAACC";//GTTGACGCAA";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
