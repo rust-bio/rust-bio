@@ -89,13 +89,16 @@ macro_rules! align {
                     if d_score > $state.score {
                         $state.score = d_score;
                         $aligner.traceback.del($state.i, $state.j);
+                        println!("del {} {}", $state.i, $state.j);
                     }
                     else if i_score > $state.score {
                         $state.score = i_score;
                         $aligner.traceback.ins($state.i, $state.j);
+                        println!("ins {} {}", $state.i, $state.j);
                     }
                     else {
                         $aligner.traceback.subst($state.i, $state.j);
+                        println!("subst {} {}", $state.i, $state.j);
                     }
 
                     // inner code
@@ -275,10 +278,10 @@ impl Traceback {
 
     fn init(&mut self, m: usize, n: usize, global: bool) {
         if global {
-            // set the first cell to start, the rest to deletions
+            // set the first cell to start, the rest to insertions
             for i in 0..n+1 {
                 self.matrix[i].clear();
-                self.matrix[i].push_values(m + 1, TBDEL);
+                self.matrix[i].push_values(m + 1, TBINS);
             }
             self.matrix[0].set(0, TBSTART);
         }
@@ -317,17 +320,21 @@ impl Traceback {
             let (ii, jj, op) = match self.get(i, j) {
                 TBSUBST => {
                     let op = if y[i-1] == x[j-1] {
+                        println!("tbmatch {} {}", i, j);
                         AlignmentOperation::Match
                     }
                     else {
+                        println!("tbsubst {} {}", i, j);
                         AlignmentOperation::Subst
                     };
                     (i - 1, j - 1, op)
                 }
                 TBDEL => {
+                    println!("tbdel {} {}", i, j);
                     (i - 1, j, AlignmentOperation::Del)
                 }
                 TBINS => {
+                    println!("tbins {} {}", i, j);
                     (i, j - 1, AlignmentOperation::Ins)
                 }
                 _ => {
@@ -348,7 +355,7 @@ impl Traceback {
 #[cfg(test)]
 mod tests {
     use super::Aligner;
-    use alignment::AlignmentOperation::{Match, Subst, Del};
+    use alignment::AlignmentOperation::{Match, Subst, Del, Ins};
 
     #[test]
     fn test_semiglobal() {
@@ -385,5 +392,17 @@ mod tests {
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
+    }
+
+    #[test]
+    fn test_issue_11() {
+        let y = b"TACC";//GTGGAC";
+        let x = b"AAAAACC";//GTTGACGCAA";
+        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let alignment = aligner.global(x, y);
+        assert_eq!(alignment.ystart, 0);
+        assert_eq!(alignment.xstart, 0);
+        assert_eq!(alignment.operations, [Ins, Ins, Ins, Subst, Match, Match, Match]);
     }
 }
