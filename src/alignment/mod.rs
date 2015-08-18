@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Various alignment algorithms.
+//! Various alignment and distance computing algorithms.
 
 
 pub mod pairwise;
