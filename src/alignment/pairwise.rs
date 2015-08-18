@@ -385,69 +385,6 @@ impl Traceback {
 }
 
 
-/// Compute global alignment of the given sequences and return an `Alignment`.
-pub fn align_global<'a, F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: &'a F) -> Alignment
-    where F : Fn(u8, u8) -> i32 {
-    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).global(x, y)
-}
-
-
-/// Compute semiglobal alignment of the given sequences and return an `Alignment`.
-pub fn align_semiglobal<'a, F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: &'a F) -> Alignment
-    where F : Fn(u8, u8) -> i32 {
-    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).semiglobal(x, y)
-}
-
-
-/// Compute local alignment of the given sequences and return an `Alignment`.
-pub fn align_local<'a, F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: &'a F) -> Alignment
-    where F : Fn(u8, u8) -> i32 {
-    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).local(x, y)
-}
-
-
-/// Compute global alignment of the given sequences and return the alignment score.
-pub fn score_global<'a, F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: &'a F) -> i32
-    where F : Fn(u8, u8) -> i32 {
-    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).global(x, y).score
-}
-
-
-/// Compute semiglobal alignment of the given sequences and return the alignment score.
-pub fn score_semiglobal<'a, F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: &'a F) -> i32
-    where F : Fn(u8, u8) -> i32 {
-    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).semiglobal(x, y).score
-}
-
-
-/// Compute local alignment of the given sequences and return the alignment score.
-pub fn score_local<'a, F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: &'a F) -> i32
-    where F : Fn(u8, u8) -> i32 {
-    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).local(x, y).score
-}
-
-
-/// Compute global alignment of the given sequences and return the pretty-formatted alignment as a `String`.
-pub fn pretty_global<'a, F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: &'a F) -> String
-    where F : Fn(u8, u8) -> i32 {
-    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).global(x, y).pretty(x, y)
-}
-
-
-/// Compute semiglobal alignment of the given sequences and return the pretty-formatted alignment as a `String`.
-pub fn pretty_semiglobal<'a, F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: &'a F) -> String
-    where F : Fn(u8, u8) -> i32 {
-    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).semiglobal(x, y).pretty(x, y)
-}
-
-
-/// Compute local alignment of the given sequences and return the pretty-formatted alignment as a `String`.
-pub fn pretty_local<'a, F>(x: &[u8], y: &[u8], gap_open: i32, gap_extend: i32, score: &'a F) -> String
-    where F : Fn(u8, u8) -> i32 {
-    Aligner::with_capacity(x.len(), y.len(), gap_open, gap_extend, score).local(x, y).pretty(x, y)
-}
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
