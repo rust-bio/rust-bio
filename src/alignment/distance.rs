@@ -17,7 +17,7 @@
 //! // GTCTGCATGCG
 //! //  |  ||  |||
 //! // TTTAGCTAGCG
-//! match hamm_dist(x, y) {
+//! match hamming(x, y) {
 //!     Ok(s)  => println!("Score is: {}", s),  // Score is 5
 //!     Err(e) => println!("Error: {}", e),     // No error in this example
 //! }
@@ -27,7 +27,7 @@
 //! // ----ACCGTGGAT
 //! //     ||||| |||
 //! // AAAAACCGTTGAT
-//! let l_score = lev_dist(x, y);  // Score is 5
+//! let l_score = levenshtein(x, y);  // Score is 5
 //! assert_eq!(l_score, 5);
 //! ```
 
@@ -37,7 +37,7 @@ use std::cmp::min;
 use std::result::Result;
 
 
-/// Compute the Hamming distance between two strings with `hamm_dist`. If returns the `Result<u32, &str>` type
+/// Compute the Hamming distance between two strings with `hamming`. If returns the `Result<u32, &str>` type
 /// with the first element corresponding to the distance between two strings (a number of mismatches) and the second one to the error message
 /// when two strings are not of equal sizes.
 ///
@@ -51,12 +51,12 @@ use std::result::Result;
 /// // GTCTGCATGCG
 /// //  |  ||  |||
 /// // TTTAGCTAGCG
-/// match hamm_dist(x, y) {
+/// match hamming(x, y) {
 ///     Ok(s)  => println!("Score is: {}", s),  // Score is 5
 ///     Err(e) => println!("Error: {}", e),     // No error in this example
 /// }
-/// assert!(hamm_dist(x, y).is_ok());
-/// assert_eq!(hamm_dist(x, y).unwrap(), 5);
+/// assert!(hamming(x, y).is_ok());
+/// assert_eq!(hamming(x, y).unwrap(), 5);
 /// ```
 ///
 /// In case of the error:
@@ -66,13 +66,13 @@ use std::result::Result;
 ///
 /// let x = b"GACTATATCGA";
 /// let y = b"TTTAGCTC";
-/// match hamm_dist(x, y) {
+/// match hamming(x, y) {
 ///     Ok(s)  => println!("Score is: {}", s),  // No score because strings are of unequal sizes.
 ///     Err(e) => println!("Error: {}", e),     // Will print "Error: hamming distance: strings are of unequal sizes!"
 /// }
-/// assert!(hamm_dist(x, y).is_err());
+/// assert!(hamming(x, y).is_err());
 /// ```
-pub fn hamm_dist(alpha: &[u8], beta: &[u8]) -> Result<u32, &'static str> {
+pub fn hamming(alpha: &[u8], beta: &[u8]) -> Result<u32, &'static str> {
     if alpha.len() != beta.len() {
         Err("hamming distance: strings are of unequal sizes!")
     } else {
@@ -85,7 +85,7 @@ pub fn hamm_dist(alpha: &[u8], beta: &[u8]) -> Result<u32, &'static str> {
 }
 
 
-/// Compute the Levenshtein (or Edit) distance between two strings with `lev_dist`. It returns a distance between two strings,
+/// Compute the Levenshtein (or Edit) distance between two strings with `levenshtein`. It returns a distance between two strings,
 /// i.e. minimal number of mismatches, insertions and deletions between two strings.
 ///
 /// # Example
@@ -98,11 +98,11 @@ pub fn hamm_dist(alpha: &[u8], beta: &[u8]) -> Result<u32, &'static str> {
 /// // ----ACCGTGGAT
 /// //     ||||| |||
 /// // AAAAACCGTTGAT
-/// let l_score = lev_dist(x, y);  // Score is 5
+/// let l_score = levenshtein(x, y);  // Score is 5
 /// assert_eq!(l_score, 5);
 /// ```
 #[allow(unused_assignments)]
-pub fn lev_dist(alpha: &[u8], beta: &[u8]) -> u32 {
+pub fn levenshtein(alpha: &[u8], beta: &[u8]) -> u32 {
     let mut prev_col = vec!(0u32; alpha.len() + 1);
     let mut cur_col = vec!(0u32; alpha.len() + 1);
 
@@ -143,15 +143,15 @@ mod tests {
         // GTCTGCATGCG
         //  |  ||  |||
         // TTTAGCTAGCG
-        assert!(hamm_dist(x, y).is_ok());
-        assert_eq!(hamm_dist(x, y).unwrap(), 5);
+        assert!(hamming(x, y).is_ok());
+        assert_eq!(hamming(x, y).unwrap(), 5);
     }
 
     #[test]
     fn test_hamming_dist_bad() {
         let x = b"GACTATATCGA";
         let y = b"TTTAGCTC";
-        assert!(hamm_dist(x, y).is_err());
+        assert!(hamming(x, y).is_err());
     }
 
     #[test]
@@ -161,17 +161,17 @@ mod tests {
         // ----ACCGTGGAT
         //     ||||| |||
         // AAAAACCGTTGAT
-        assert_eq!(lev_dist(x, y), 5);
-        assert_eq!(lev_dist(x, y), lev_dist(y, x));
-        assert_eq!(lev_dist(b"AAA", b"TTTT"), 4);
-        assert_eq!(lev_dist(b"TTTT", b"AAA"), 4);
+        assert_eq!(levenshtein(x, y), 5);
+        assert_eq!(levenshtein(x, y), levenshtein(y, x));
+        assert_eq!(levenshtein(b"AAA", b"TTTT"), 4);
+        assert_eq!(levenshtein(b"TTTT", b"AAA"), 4);
     }
 
     #[bench]
     fn bench_hamming_dist_equal_str_1000iter(b: &mut Bencher) {
         b.iter(|| {
             for _ in 0..1000 {
-                hamm_dist(STR_1, STR_1).unwrap();
+                hamming(STR_1, STR_1).unwrap();
             }
             });
     }
@@ -180,23 +180,23 @@ mod tests {
     fn bench_hamming_dist_diverse_str_1000iter(b: &mut Bencher) {
         b.iter(|| {
             for _ in 0..1000 {
-                hamm_dist(STR_1, STR_2).unwrap();
+                hamming(STR_1, STR_2).unwrap();
             }
             });
     }
 
     #[bench]
     fn bench_levenshtein_dist_equal_str(b: &mut Bencher) {
-        b.iter(|| { lev_dist(STR_1, STR_1) });
+        b.iter(|| { levenshtein(STR_1, STR_1) });
     }
 
     #[bench]
     fn bench_levenshtein_dist_diverse_str(b: &mut Bencher) {
-        b.iter(|| { lev_dist(STR_1, STR_2) });
+        b.iter(|| { levenshtein(STR_1, STR_2) });
     }
 
     #[bench]
     fn bench_levenshtein_dist_worst_str(b: &mut Bencher) {
-        b.iter(|| { lev_dist(STR_3, STR_4) });
+        b.iter(|| { levenshtein(STR_3, STR_4) });
     }
 }
