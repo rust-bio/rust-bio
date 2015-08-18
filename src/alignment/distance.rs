@@ -103,20 +103,25 @@ pub fn hamming(alpha: &[u8], beta: &[u8]) -> Result<u32, &'static str> {
 /// ```
 #[allow(unused_assignments)]
 pub fn levenshtein(alpha: &[u8], beta: &[u8]) -> u32 {
-    let mut prev_col = vec!(0u32; alpha.len() + 1);
-    let mut cur_col = vec!(0u32; alpha.len() + 1);
+    let mut columns = [vec!(0u32; alpha.len() + 1), vec!(0u32; alpha.len() + 1)];
+    let mut i_prev = 0;
+    let mut i_cur = 1;
 
-    for i in 0..cur_col.len() { cur_col[i] = i as u32; }
+    for i in 0..columns[0].len() { columns[0][i] = i as u32; }
 
     for j in 0..beta.len() {
-        prev_col = cur_col.clone();
-        cur_col[0] = 1 + j as u32;
-        for i in 1..cur_col.len() {
-            cur_col[i] = min(prev_col[i-1] + if alpha[i - 1] != beta[j] { 1 } else { 0 }, min(cur_col[i-1] + 1, prev_col[i] + 1));
+        i_cur = i_cur % 2;
+        i_prev = 1 - i_cur;
+
+        columns[i_cur][0] = 1 + j as u32;
+        for i in 1..columns[0].len() {
+            columns[i_cur][i] = min(columns[i_prev][i-1] + if alpha[i - 1] != beta[j] { 1 } else { 0 }, min(columns[i_cur][i-1] + 1, columns[i_prev][i] + 1));
         }
+
+        i_cur += 1;
     }
 
-    cur_col[cur_col.len() - 1]
+    columns[i_cur - 1][columns[0].len() - 1]
 }
 
 
