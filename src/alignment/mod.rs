@@ -105,14 +105,14 @@ impl Alignment {
     /// // -----CCGTCCGGCAA-
     /// //      ||||
     /// // AAAAACCGTTGACGCAA
-    /// // You can also call easy-to-use functions for perform alignment...
-    /// println!("Local: \n{}\n", align_local(x, y, -5, -1, &score).pretty(x, y));
+    /// let alignment = aligner.local(x, y);
+    /// println!("Local: \n{}\n", alignment.pretty(x, y));
     ///
     /// // ------CCGTCCGGCAA
     /// //       |  |   ||||
     /// // AAAAACCGTTGACGCAA
-    /// // ... or to perform alignment and pretty formatting sequentially.
-    /// println!("Global: \n{}\n", pretty_global(x, y, -5, -1, &score));
+    /// let alignment = aligner.global(x, y);
+    /// println!("Global: \n{}\n", alignment.pretty(x, y));
     /// ```
     pub fn pretty(&self, x: &[u8], y: &[u8]) -> String {
         let mut x_pretty = String::new();

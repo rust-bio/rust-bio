@@ -23,17 +23,16 @@
 //! assert_eq!(alignment.xstart, 0);
 //! assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
 //!
-//! // Easy-to-use functions for alignment.
+//! // If you don't known sizes of future sequences, you could
+//! // use Aligner::new().
 //! // Global alignment:
+//! let mut aligner = Aligner::new(-5, -1, &score);
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
-//! let alignment = align_global(x, y, -5, -1, &score);
+//! let alignment = aligner.global(x, y);
 //! assert_eq!(alignment.ystart, 0);
 //! assert_eq!(alignment.xstart, 0);
-//!
-//! // Score of the local alignment:
-//! let score = score_local(x, y, -5, -1, &score);
-//! assert_eq!(score, 7);
+//! assert_eq!(aligner.local(x, y).score, 7);
 //! ```
 
 
@@ -156,7 +155,23 @@ pub struct Aligner<'a, F> where F: 'a + Fn(u8, u8) -> i32 {
 }
 
 
+const DEFAULT_ALIGNER_CAPACITY: usize = 200;
+
+
 impl<'a, F> Aligner<'a, F> where F: Fn(u8, u8) -> i32 {
+    /// Create new aligner instance with given gap open and gap extend penalties
+    /// and the score function.
+    ///
+    /// # Arguments
+    ///
+    /// * `gap_open` - the score for opening a gap (should be negative)
+    /// * `gap_extend` - the score for extending a gap (should be negative)
+    /// * `score` - function that returns the score for substitutions
+    ///
+    pub fn new(gap_open: i32, gap_extend: i32, score: &'a F) -> Self {
+        Aligner::with_capacity(DEFAULT_ALIGNER_CAPACITY, DEFAULT_ALIGNER_CAPACITY, gap_open, gap_extend, score)
+    }
+
     /// Create new aligner instance. The size hints help to
     /// avoid unnecessary memory allocations.
     ///
@@ -180,6 +195,14 @@ impl<'a, F> Aligner<'a, F> where F: Fn(u8, u8) -> i32 {
             score: score
         }
     }
+
+    /// Create new aligner instance with unit (equal to '-1') penalties for gap open and gap extend
+    /// and unit score function ('1' if two letters are equal, '-1' if not). This is
+    /// effectively equal to Levenshtein metric.
+    // pub fn with_unit_cost() -> Self {
+    //     let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
+    //     Aligner::new(-1, -1, *&score)
+    // }
 
     fn init(&mut self, m: usize, alignment_type: AlignmentType) {
         // set minimum score to -inf, and allow to add gap_extend
@@ -472,77 +495,63 @@ mod tests {
     }
 
     #[test]
-    fn test_fn_semiglobal() {
+    fn test_aligner_new() {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let alignment = align_semiglobal(x, y, -5, -1, &score);
+        let mut aligner = Aligner::new(-5, -1, &score);
+
+        let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
-    }
 
-    #[test]
-    fn test_fn_local() {
-        let x = b"ACCGTGGAT";
-        let y = b"AAAAACCGTTGAT";
-        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let alignment = align_local(x, y, -5, -1, &score);
+        let alignment = aligner.local(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
-    }
 
-    #[test]
-    fn test_fn_global() {
-        let x = b"ACCGTGGAT";
-        let y = b"AAAAACCGTTGAT";
-        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        let alignment = align_global(x, y, -5, -1, &score);
+        let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations, [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
     }
 
-    #[test]
-    fn test_fn_semiglobal_score() {
-        let x = b"ACCGTGGAT";
-        let y = b"AAAAACCGTTGAT";
-        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        assert_eq!(score_semiglobal(x, y, -5, -1, &score), align_semiglobal(x, y, -5, -1, &score).score);
-    }
+    // #[test]
+    // fn test_aligner_with_unit_cost() {
+    //     let x = b"ACCGTGGAT";
+    //     let y = b"AAAAACCGTTGAT";
+    //     let mut aligner = Aligner::with_unit_cost();
+    //     // ----ACCGTGGAT
+    //     //     ||||| |||
+    //     // AAAAACCGTTGAT
+    //     assert_eq!(aligner.global(x, y).score, 5);
+    //     assert_eq!(aligner.global(y, x).score, 5);
+    //
+    //     let x = b"AAA";
+    //     let y = b"TTTT";
+    //     assert_eq!(aligner.global(x, y).score, 4);
+    //     assert_eq!(aligner.global(y, x).score, 4);
+    // }
 
-    #[test]
-    fn test_fn_local_score() {
-        let x = b"ACCGTGGAT";
-        let y = b"AAAAACCGTTGAT";
+    #[bench]
+    fn bench_aligner_wc_local(b: &mut Bencher) {
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        assert_eq!(score_local(x, y, -5, -1, &score), align_local(x, y, -5, -1, &score).score);
-    }
-
-    #[test]
-    fn test_fn_global_score() {
-        let x = b"ACCGTGGAT";
-        let y = b"AAAAACCGTTGAT";
-        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        assert_eq!(score_global(x, y, -5, -1, &score), align_global(x, y, -5, -1, &score).score);
+        let mut aligner = Aligner::with_capacity(STR_1.len(), STR_2.len(), 5, -1, &score);
+        b.iter(|| { aligner.local(STR_1, STR_2) });
     }
 
     #[bench]
-    fn bench_fn_semiglobal_score(b: &mut Bencher) {
+    fn bench_aligner_wc_global(b: &mut Bencher) {
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        b.iter(|| { score_semiglobal(STR_1, STR_2, -5, -1, &score) });
+        let mut aligner = Aligner::with_capacity(STR_1.len(), STR_2.len(), 5, -1, &score);
+        b.iter(|| { aligner.global(STR_1, STR_2) });
     }
 
     #[bench]
-    fn bench_fn_local_score(b: &mut Bencher) {
+    fn bench_aligner_wc_semiglobal(b: &mut Bencher) {
         let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        b.iter(|| { score_local(STR_1, STR_2, -5, -1, &score) });
-    }
-
-    #[bench]
-    fn bench_fn_global_score(b: &mut Bencher) {
-        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-        b.iter(|| { score_global(STR_1, STR_2, -5, -1, &score) });
+        let mut aligner = Aligner::with_capacity(STR_1.len(), STR_2.len(), 5, -1, &score);
+        b.iter(|| { aligner.semiglobal(STR_1, STR_2) });
     }
 }
