@@ -1,11 +1,13 @@
-// Copyright 2014 Johannes Köster.
+// Copyright 2014-2015 Johannes Köster, Vadim Nazarov.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Various alignment algorithms.
+//! Various alignment and distance computing algorithms.
+
 
 pub mod pairwise;
+pub mod distance;
 
 
 /// Alignment operations (Match, Subst, Del and Ins).
@@ -80,6 +82,131 @@ impl Alignment {
         }
 
         cigar
+    }
+
+    /// Return the pretty formatted alignment as a String.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::alignment::pairwise::*;
+    ///
+    /// let x = b"CCGTCCGGCAA";
+    /// let y = b"AAAAACCGTTGACGCAA";
+    /// let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
+    ///
+    /// // ------CCGTCCGGCAA
+    /// //       |  |   ||||
+    /// // AAAAACCGTTGACGCAA
+    /// let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+    /// let alignment = aligner.semiglobal(x, y);
+    /// println!("Semiglobal: \n{}\n", alignment.pretty(x, y));
+    ///
+    /// // -----CCGTCCGGCAA-
+    /// //      ||||
+    /// // AAAAACCGTTGACGCAA
+    /// let alignment = aligner.local(x, y);
+    /// println!("Local: \n{}\n", alignment.pretty(x, y));
+    ///
+    /// // ------CCGTCCGGCAA
+    /// //       |  |   ||||
+    /// // AAAAACCGTTGACGCAA
+    /// let alignment = aligner.global(x, y);
+    /// println!("Global: \n{}\n", alignment.pretty(x, y));
+    /// ```
+    pub fn pretty(&self, x: &[u8], y: &[u8]) -> String {
+        let mut x_pretty = String::new();
+        let mut y_pretty = String::new();
+        let mut inb_pretty = String::new();
+
+        if !self.operations.is_empty() {
+            let mut x_i : usize = self.xstart;
+            let mut y_i : usize = self.ystart;
+
+            // Add '-' before aligned subsequences and un-aligned 5' substrings of sequences.
+            if x_i > y_i {
+                let diff = x_i - y_i;
+                x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[0..x_i])));
+                for _ in 0..diff {
+                    y_pretty.push('-');
+                }
+                y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[0..y_i])));
+            } else if x_i < y_i {
+                let diff = y_i - x_i;
+                for _ in 0..diff {
+                    x_pretty.push('-');
+                }
+                x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[0..x_i])));
+                y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&y[0..y_i])));
+            } else {
+                x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&x[0..x_i])));
+                y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&y[0..y_i])));
+            }
+            for _ in 0..x_pretty.len() {
+                inb_pretty.push(' ');
+            }
+
+            // Process the alignment.
+            for i in 0..self.operations.len() {
+                match self.operations[i] {
+                    AlignmentOperation::Match => {
+                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[x_i]])));
+                        x_i += 1;
+
+                        inb_pretty.push_str("|");
+
+                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[y_i]])));
+                        y_i += 1;
+                    },
+                    AlignmentOperation::Subst => {
+                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[x_i]])));
+                        x_i += 1;
+
+                        inb_pretty.push(' ');
+
+                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[y_i]])));
+                        y_i += 1;
+                    },
+                    AlignmentOperation::Del => {
+                        x_pretty.push('-');
+
+                        inb_pretty.push(' ');
+
+                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[y_i]])));
+                        y_i += 1;
+                    },
+                    AlignmentOperation::Ins => {
+                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[x_i]])));
+                        x_i += 1;
+
+                        inb_pretty.push(' ');
+
+                        y_pretty.push('-');
+                    },
+                }
+            }
+
+            // Add un-aligned 3' substrings of sequences.
+            for i in x_i..x.len() {
+                x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[i]])));
+            }
+            for i in y_i..y.len() {
+                y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[i]])));
+            }
+
+            // Add trailing '-'.
+            if x_pretty.len() > y_pretty.len() {
+                for _ in y_pretty.len()..x_pretty.len() {
+                    y_pretty.push('-');
+                }
+            } else {
+                for _ in x_pretty.len()..y_pretty.len() {
+                    x_pretty.push('-');
+                }
+            }
+        }
+
+        format!("{}\n{}\n{}", x_pretty, inb_pretty, y_pretty)
     }
 }
 
