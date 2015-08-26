@@ -27,14 +27,14 @@ For reading and writing BAM and BCF files, have a look at https://github.com/chr
 
 ## Author
 
-Johannes Köster (<koester@jimmy.harvard.edu>)
+[Johannes Köster](https://github.com/johanneskoester)
 
 ## Contributors
 
-* Christopher Schröder (<christopher.schroeder@uni-due.de>)
-* Peer Aramillo Irizar
-* Fedor Gusev
-* Vadim Nazarov ([@vadimnazarov](https://github.com/vadimnazarov))
+* [Christopher Schröder](https://github.com/christopher-schroeder)
+* [Peer Aramillo Irizar](https://github.com/parir)
+* [Fedor Gusev](https://github.com/gusevfe)
+* [Vadim Nazarov](https://github.com/vadimnazarov)
 
 The next name in this list could be you! If you are interested in joining the effort to build a general purpose Rust bioinformatics library, just introduce yourself [here](https://github.com/rust-bio/rust-bio/issues/3), or issue a pull request with your first contribution.
 
