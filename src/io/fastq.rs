@@ -31,7 +31,7 @@ pub struct Reader<R: io::Read> {
 impl Reader<fs::File> {
     /// Read from a given file.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::open(path).map(|f| Reader::new(f))
+        fs::File::open(path).map(Reader::new)
     }
 }
 
@@ -176,7 +176,7 @@ pub struct Writer<W: io::Write> {
 impl Writer<fs::File> {
     /// Write to a given file path.
     pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::create(path).map(|f| Writer::new(f))
+        fs::File::create(path).map(Writer::new)
     }
 }
 

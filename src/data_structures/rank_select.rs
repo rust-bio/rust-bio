@@ -80,7 +80,7 @@ impl RankSelect {
             // take the superblock rank
             let mut rank = self.superblocks[s];
             // add the rank within the block
-            rank += (self.bits[b] >> 7 - i % 8).count_ones();
+            rank += (self.bits[b] >> (7 - i % 8)).count_ones();
             // add the popcounts of blocks in between
             rank += self.bits[s * 32 / 8..b].iter()
                 .map(|&a| a.count_ones())
