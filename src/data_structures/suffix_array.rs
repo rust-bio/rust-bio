@@ -299,7 +299,7 @@ impl SAIS {
                 self.construct(&reduced_text);
                 // obtain sorted lms suffixes
                 self.lms_pos.clear();
-                for &p in self.pos.iter() {
+                for &p in &self.pos {
                     self.lms_pos.push(lms_pos[p]);
                 }
             }

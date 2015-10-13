@@ -89,7 +89,7 @@ impl<'a, F> Iterator for Matches<'a, F> where F: 'a + Fn(u8, u8) -> u32 {
             self.lastk = min(self.lastk + 1, self.m);
             // in each column, go at most one cell further than before
             // do not look at cells with too big k
-            for j in (1..self.lastk+1) {
+            for j in 1..self.lastk+1 {
                 self.ukkonen.D[col][j] = min(
                     min(self.ukkonen.D[prev][j] + 1, self.ukkonen.D[col][j - 1] + 1),
                     self.ukkonen.D[prev][j - 1] + (cost)(self.pattern[j - 1], self.text[self.i - 1]) as usize

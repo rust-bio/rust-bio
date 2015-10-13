@@ -36,7 +36,7 @@ pub struct Reader<R: io::Read> {
 impl Reader<fs::File> {
     /// Read FASTA from given file path.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::open(path).map(|f| Reader::new(f))
+        fs::File::open(path).map(Reader::new)
     }
 }
 
@@ -114,7 +114,7 @@ impl Index {
 
     /// Open a FASTA index given the corresponding FASTA file path (e.g. for ref.fasta we expect ref.fasta.fai).
     pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> csv::Result<Self> {
-        let mut ext = fasta_path.as_ref().extension().unwrap().to_str().unwrap().to_string();
+        let mut ext = fasta_path.as_ref().extension().unwrap().to_str().unwrap().to_owned();
         ext.push_str(".fai");
         let fai_path = fasta_path.as_ref().with_extension(ext);
 
@@ -236,7 +236,7 @@ pub struct Writer<W: io::Write> {
 impl Writer<fs::File> {
     /// Write to the given file path.
     pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::create(path).map(|f| Writer::new(f))
+        fs::File::create(path).map(Writer::new)
     }
 }
 

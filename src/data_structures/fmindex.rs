@@ -236,14 +236,13 @@ impl<'a> FMDIndex<'a> {
                 // backward extend interval
                 let _interval = self.backward_ext(&interval, a);
 
-                if _interval.size == 0 || k == -1 {
-                    // interval could not be extended further
-                    // if no interval has been extended this iteration,
-                    // interval is maximal and can be added to the matches
-                    if curr.is_empty() && k < j {
-                        j = k;
-                        matches.push(interval);
-                    }
+                if (_interval.size == 0 || k == -1) &&
+                        // interval could not be extended further
+                        // if no interval has been extended this iteration,
+                        // interval is maximal and can be added to the matches
+                        curr.is_empty() && k < j {
+                    j = k;
+                    matches.push(interval);
                 }
                 // add _interval to curr (will be further extended next iteration)
                 if _interval.size != 0 && _interval.size as isize != last_size {

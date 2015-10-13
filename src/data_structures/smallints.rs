@@ -99,7 +99,7 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
     }
 
     /// Iterate over sequence. Values will be returned in the big integer type (`B`).
-    pub fn iter<'a>(&'a self) -> Iter<S, B> {
+    pub fn iter(&self) -> Iter<S, B> {
         Iter { smallints: &self, items: self.smallints.iter().enumerate() }
     }
 
@@ -111,6 +111,11 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
     /// Length of the sequence.
     pub fn len(&self) -> usize {
         self.smallints.len()
+    }
+    
+    /// is the sequence empty?
+    pub fn is_empty(&self) -> bool {
+        self.smallints.is_empty()
     }
 
     fn real_value(&self, i: usize, v: S) -> Option<B> {

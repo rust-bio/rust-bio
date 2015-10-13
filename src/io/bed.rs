@@ -39,7 +39,7 @@ pub struct Reader<R: io::Read> {
 impl Reader<fs::File> {
     /// Read from a given file path.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::open(path).map(|f| Reader::new(f))
+        fs::File::open(path).map(Reader::new)
     }
 }
 
@@ -67,12 +67,8 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
     type Item = csv::Result<Record>;
 
     fn next(&mut self) -> Option<csv::Result<Record>> {
-        self.inner.next().map(|res| match res {
-            Ok((chrom, start, end, aux)) => Ok(Record {
-                chrom: chrom, start: start, end: end, aux: aux
-            }),
-            Err(e) => Err(e)
-        })
+        self.inner.next().map(|res| res.map(|(chrom, start, end, aux)| 
+            Record { chrom: chrom, start: start, end: end, aux: aux }))
     }
 }
 
@@ -86,7 +82,7 @@ pub struct Writer<W: io::Write> {
 impl Writer<fs::File> {
     /// Write to a given file path.
     pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::create(path).map(|f| Writer::new(f))
+        fs::File::create(path).map(Writer::new)
     }
 }
 
@@ -99,7 +95,7 @@ impl<W: io::Write> Writer<W> {
 
     /// Write a given BED record.
     pub fn write(&mut self, record: Record) -> csv::Result<()> {
-        if record.aux.len() == 0 {
+        if record.aux.is_empty() {
             self.inner.encode((record.chrom, record.start, record.end))
         }
         else {
@@ -122,7 +118,7 @@ pub struct Record {
 impl Record {
     /// Create a new BED record.
     pub fn new() -> Self {
-        Record { chrom: "".to_string(), start: 0, end: 0, aux: vec![] }
+        Record { chrom: "".to_owned(), start: 0, end: 0, aux: vec![] }
     }
 
     /// Chromosome of the feature.
@@ -172,7 +168,7 @@ impl Record {
 
     /// Set chromosome.
     pub fn set_chrom(&mut self, chrom: &str) {
-        self.chrom = chrom.to_string();
+        self.chrom = chrom.to_owned();
     }
 
     /// Set start of feature.
@@ -188,29 +184,29 @@ impl Record {
     /// Set name.
     pub fn set_name(&mut self, name: &str) {
         if self.aux.len() < 1 {
-            self.aux.push(name.to_string());
+            self.aux.push(name.to_owned());
         }
         else {
-            self.aux[0] = name.to_string();
+            self.aux[0] = name.to_owned();
         }
     }
 
     /// Set score.
     pub fn set_score(&mut self, score: &str) {
         if self.aux.len() < 1 {
-            self.aux.push("".to_string());
+            self.aux.push("".to_owned());
         }
         if self.aux.len() < 2 {
-            self.aux.push(score.to_string());
+            self.aux.push(score.to_owned());
         }
         else {
-            self.aux[1] = score.to_string();
+            self.aux[1] = score.to_owned();
         }
     }
 
     /// Add auxilliary field. This has to happen after name and score have been set.
     pub fn push_aux(&mut self, field: &str) {
-        self.aux.push(field.to_string());
+        self.aux.push(field.to_owned());
     }
 }
 

@@ -110,7 +110,7 @@ impl RankTransform {
             text: text.iter(),
             ranks: self,
             bits: bits,
-            mask: (1 << q * bits) - 1,
+            mask: (1 << (q * bits)) - 1,
             qgram: 0,
         };
 

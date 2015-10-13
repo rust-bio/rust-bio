@@ -216,7 +216,7 @@ impl<'a, F> Aligner<'a, F> where F: Fn(u8, u8) -> i32 {
             self.D[k].extend(repeat(min_score).take(m + 1));
             match alignment_type {
                 AlignmentType::Global | AlignmentType::Semiglobal => {
-                    let ref mut s = self.S[k];
+                    let mut s = &mut self.S[k];
                     let mut score = self.gap_open;
                     for _ in 0..m+1 {
                         s.push(score);
