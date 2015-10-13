@@ -131,7 +131,7 @@ pub fn lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
 
     let mut lcp = SmallInts::from_elem(-1, n + 1);
     let mut l = 0usize;
-    for p in (0..n-1) {
+    for p in 0..n-1 {
         let r = rank[p];
         // since the sentinel has rank 0 and is excluded above,
         // we will never have a negative index below
@@ -248,7 +248,7 @@ impl SAIS {
         i: usize,
         j: usize
     ) -> bool {
-        for k in (0..) {
+        for k in 0.. {
             let lmsi = pos_types.is_lms_pos(i + k);
             let lmsj = pos_types.is_lms_pos(j + k);
             if text[i + k] != text[j + k] {
@@ -320,7 +320,7 @@ impl SAIS {
         // collect LMS positions
         self.lms_pos.clear();
         let mut i = 0;
-        for r in (0..n) {
+        for r in 0..n {
             if pos_types.is_lms_pos(r) {
                 self.lms_pos.push(r);
                 self.reduced_text_pos[r] = i;
@@ -372,7 +372,7 @@ impl SAIS {
         self.init_bucket_end(text);
 
         // insert L-positions into buckets
-        for r in (0..n) {
+        for r in 0..n {
             let p = self.pos[r];
             // ignore undefined positions and the zero since it has no predecessor
             if p == n || p == 0 {
