@@ -88,7 +88,7 @@ impl BitEnc {
 
         if bit > 0 {
             // add the remaining values to a final block
-            self.storage.push(value_block >> 32 - bit);
+            self.storage.push(value_block >> (32 - bit));
         }
 
         self.len = i;

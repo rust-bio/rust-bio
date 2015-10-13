@@ -14,7 +14,7 @@
 //! assert!(!alphabet.is_word(b"AXYZ"));
 //! ```
 
-
+use std::iter::FromIterator;
 use std::slice;
 use std::mem;
 
@@ -39,14 +39,6 @@ impl Alphabet {
         Alphabet::from_iter(symbols.iter())
     }
 
-    /// Create a new alphabet from the given iterator.
-    pub fn from_iter<'a, I: Iterator<Item=&'a u8>>(symbols: I) -> Self {
-        let mut s = BitSet::new();
-        s.extend(symbols.map(|&c| c as usize));
-
-        Alphabet { symbols: s }
-    }
-
     /// Insert symbol into alphabet.
     pub fn insert(&mut self, a: u8) {
         self.symbols.insert(a as usize);
@@ -66,8 +58,22 @@ impl Alphabet {
     pub fn len(&self) -> usize {
         self.symbols.len()
     }
+    
+    /// Is this alphabet empty?
+    pub fn is_empty(&self) -> bool {
+        self.symbols.is_empty()
+    }
 }
 
+impl<'a> FromIterator<&'a u8> for Alphabet {
+    /// Create a new alphabet from the given iterator.
+    fn from_iter<T: IntoIterator<Item=&'a u8>>(iterator: T) -> Self {
+        let mut s = BitSet::new();
+        s.extend(iterator.into_iter().map(|&c| c as usize));
+
+        Alphabet { symbols: s }
+    }
+}
 
 /// Tools based on transforming the alphabet symbols to their lexicographical ranks.
 pub struct RankTransform {

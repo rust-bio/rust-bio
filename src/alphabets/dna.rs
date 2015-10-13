@@ -50,8 +50,8 @@ impl RevComp {
     /// Create a new instance of reverse complement algorithm.
     pub fn new() -> Self {
         let mut comp = [0u8; 256];
-        for a in 0..256 {
-            comp[a] = a as u8;
+        for (v, mut a) in comp.iter_mut().enumerate() {
+            *a = v as u8;
         }
         for (&a, &b) in SYMBOLS.iter().zip(SYMBOLS.iter().rev()) {
             comp[a as usize] = b;

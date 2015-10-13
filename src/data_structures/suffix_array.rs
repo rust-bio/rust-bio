@@ -125,8 +125,8 @@ pub fn lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
 
     // provide the lexicographical rank for each suffix
     let mut rank: Vec<usize> = iter::repeat(0).take(n).collect();
-    for r in 0..n {
-        rank[pos[r]] = r;
+    for (r, p) in pos.iter().enumerate() {
+        rank[*p] = r;
     }
 
     let mut lcp = SmallInts::from_elem(-1, n + 1);
