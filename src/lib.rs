@@ -1,4 +1,3 @@
-#![feature(test)]
 #![feature(step_by)]
 #![feature(convert)]
 #![feature(iter_arith)]
@@ -53,8 +52,6 @@
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.
 
-
-extern crate test;
 extern crate rustc_serialize;
 extern crate csv;
 extern crate num;

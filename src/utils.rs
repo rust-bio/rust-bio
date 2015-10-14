@@ -42,14 +42,14 @@ mod tests {
     #[test]
     fn test_scan() {
         let mut a = vec![1, 0, 0, 1];
-        scan(a.as_mut_slice(), |a, b| a + b);
+        scan(&mut a[..], |a, b| a + b);
         assert_eq!(a, vec![1, 1, 1, 2]);
     }
 
     #[test]
     fn test_prescan() {
         let mut a = vec![1, 0, 0, 1];
-        prescan(a.as_mut_slice(), 0, |a, b| a + b);
+        prescan(&mut a[..], 0, |a, b| a + b);
         assert_eq!(a, vec![0, 1, 1, 1]);
     }
 }
