@@ -191,12 +191,12 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
                 for _ in 0..lines {
                     // read full lines
                     try!(self.reader.read(&mut buf));
-                    seq.push_all(&buf);
+                    seq.extend(&buf);
                 }
                 // read last line
                 println!("linestop {}", line_stop);
                 try!(self.reader.read(&mut buf[..line_stop as usize]));
-                seq.push_all(&buf[..line_stop as usize]);
+                seq.extend(&buf[..line_stop as usize]);
                 Ok(())
             },
             None      => Err(
