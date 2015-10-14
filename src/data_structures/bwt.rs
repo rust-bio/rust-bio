@@ -125,7 +125,7 @@ pub fn less(bwt: &BWT, alphabet: &Alphabet) -> Less {
         less[c as usize] += 1;
     }
     // calculate +-prescan
-    prescan(less.as_mut_slice(), 0, |a, b| a + b);
+    prescan(&mut less[..], 0, |a, b| a + b);
 
     less
 }

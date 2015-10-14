@@ -1,4 +1,3 @@
-#![feature(convert)]
 #![feature(vec_push_all)]
 
 // Copyright 2014 Johannes Köster.
