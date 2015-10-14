@@ -111,7 +111,7 @@ impl Occ {
     pub fn get(&self, bwt: &BWT, r: usize, a: u8) -> usize {
         let i = r / self.k;
         self.occ[i][a as usize] +
-        bwt[(i * self.k) + 1 .. r + 1].iter().map(|&c| (c == a) as usize).sum::<usize>()
+        bwt[(i * self.k) + 1 .. r + 1].iter().map(|&c| (c == a) as usize).fold(0, |s, e| s + e)
     }
 }
 

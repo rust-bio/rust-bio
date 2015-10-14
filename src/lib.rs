@@ -1,5 +1,4 @@
 #![feature(convert)]
-#![feature(iter_arith)]
 #![feature(vec_push_all)]
 
 // Copyright 2014 Johannes Köster.
