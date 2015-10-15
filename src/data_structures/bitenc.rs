@@ -62,6 +62,7 @@ impl BitEnc {
             // fill the last block
             let (block, mut bit) = self.addr(self.len);
             if bit > 0 {
+                // TODO use step_by once it has been stabilized: for bit in (bit..32).step_by(self.width) {
                 while bit <= 32 {
                     self.set_by_addr(block, bit, value);
                     n -= 1;
@@ -142,7 +143,7 @@ impl BitEnc {
     pub fn len(&self) -> usize {
         self.len
     }
-    
+
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }

@@ -110,6 +110,7 @@ impl Occ {
     /// Complexity: O(k).
     pub fn get(&self, bwt: &BWT, r: usize, a: u8) -> usize {
         let i = r / self.k;
+        // TODO use sum() once it has been stabilized: .sum::<usize>()
         self.occ[i][a as usize] +
         bwt[(i * self.k) + 1 .. r + 1].iter().map(|&c| (c == a) as usize).fold(0, |s, e| s + e)
     }

@@ -61,13 +61,14 @@ pub fn log_prob_sum(probs: &[LogProb]) -> LogProb {
             f64::NEG_INFINITY
         }
         else {
+            // TODO use sum() once it has been stabilized: .sum::<usize>()
             pmax + (probs.iter().enumerate().filter_map(|(i, p)| if i != imax { Some((p - pmax).exp()) } else { None }).fold(0.0, |s, e| s + e)).ln_1p()
         }
     }
 }
 
 
-/// Calcualte the sum of the given probabilities in a numerically stable way (Durbin 1998).
+/// Calculate the sum of the given probabilities in a numerically stable way (Durbin 1998).
 pub fn log_prob_add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
     if p1 > p0 {
         mem::swap(&mut p0, &mut p1);
