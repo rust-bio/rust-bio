@@ -32,7 +32,7 @@
 //! use bio::data_structures::bwt::bwt;
 //! use bio::data_structures::fmindex::FMIndex;
 //!
-//! let text = b"ACGGATGCTGGATCGGATCGCGCTAGCTA";
+//! let text = b"ACGGATGCTGGATCGGATCGCGCTAGCTA$";
 //! let pattern = b"ACCG";
 //!
 //! // Create an FM-Index for a given text.
