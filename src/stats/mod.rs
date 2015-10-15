@@ -8,3 +8,11 @@
 
 pub mod combinatorics;
 pub mod logprobs;
+
+
+/// An alias for `f64` to indicate a probability.
+pub type Prob = f64;
+
+
+/// An alias for `f64` to indicate a log-probability.
+pub type LogProb = f64;

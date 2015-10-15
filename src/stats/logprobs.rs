@@ -8,13 +8,7 @@
 use std::mem;
 use std::f64;
 
-
-/// An alias for `f64` to indicate a probability.
-pub type Prob = f64;
-
-
-/// An alias for `f64` to indicate a log-probability.
-pub type LogProb = f64;
+pub use stats::{Prob, LogProb};
 
 
 /// A factor to convert log-probabilities to PHRED-scale (phred = p * LOG_TO_PHRED_FACTOR).
