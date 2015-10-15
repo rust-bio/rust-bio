@@ -71,13 +71,12 @@ impl RevComp {
     /// # Example
     ///
     /// ```
-    /// #![feature(convert)]
     /// use bio::alphabets::dna::RevComp;
     /// let revcomp = RevComp::new();
     /// let text = b"AAACCTT";
     /// let revcomp_text = revcomp.get(text);
     /// assert_eq!(revcomp_text, &b"AAGGTTT"[..]);
-    /// assert_eq!(revcomp.get(revcomp_text.as_slice()), &text[..]);
+    /// assert_eq!(revcomp.get(&revcomp_text[..]), &text[..]);
     /// ```
     pub fn get(&self, text: &[u8]) -> Vec<u8> {
         text.iter().rev().map(|&a| self.comp(a)).collect()

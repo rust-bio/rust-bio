@@ -325,7 +325,7 @@ mod tests {
         let revcomp = dna::RevComp::new();
         let orig_text = b"GCCTTAACAT";
         let revcomp_text = revcomp.get(orig_text);
-        let text_builder: Vec<&[u8]> = vec![orig_text, b"$", revcomp_text.as_slice(), b"$"];
+        let text_builder: Vec<&[u8]> = vec![orig_text, b"$", & revcomp_text[..], b"$"];
         let text = text_builder.concat();
         let pos = suffix_array(&text);
         println!("pos {:?}", pos);

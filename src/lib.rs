@@ -1,9 +1,3 @@
-#![feature(test)]
-#![feature(step_by)]
-#![feature(convert)]
-#![feature(iter_arith)]
-#![feature(vec_push_all)]
-
 // Copyright 2014 Johannes Köster.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
@@ -53,8 +47,6 @@
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.
 
-
-extern crate test;
 extern crate rustc_serialize;
 extern crate csv;
 extern crate num;

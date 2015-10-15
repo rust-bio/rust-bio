@@ -67,7 +67,7 @@ pub fn log_prob_sum(probs: &[LogProb]) -> LogProb {
             f64::NEG_INFINITY
         }
         else {
-            pmax + (probs.iter().enumerate().filter_map(|(i, p)| if i != imax { Some((p - pmax).exp()) } else { None }).sum::<Prob>()).ln_1p()
+            pmax + (probs.iter().enumerate().filter_map(|(i, p)| if i != imax { Some((p - pmax).exp()) } else { None }).fold(0.0, |s, e| s + e)).ln_1p()
         }
     }
 }
