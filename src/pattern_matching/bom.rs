@@ -53,17 +53,12 @@ impl BOM {
 
             // for this iterate over the known suffixes until
             // reaching an edge labelled with a or the start
-            loop {
-                match k {
-                    Some(k_) => {
-                        if table[k_].contains_key(&a) {
-                            break;
-                        }
-                        table[k_].insert(a, i);
-                        k = suff[k_];
-                    },
-                    None => break
+            while let Some(k_) = k {
+                if table[k_].contains_key(&a) {
+                    break;
                 }
+                table[k_].insert(a, i);
+                k = suff[k_];
             }
 
             // the longest suffix is either 0 or the state

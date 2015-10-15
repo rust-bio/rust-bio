@@ -60,11 +60,12 @@ impl BitEnc {
     pub fn push_values(&mut self, mut n: usize, value: u8) {
         {
             // fill the last block
-            let (block, bit) = self.addr(self.len);
+            let (block, mut bit) = self.addr(self.len);
             if bit > 0 {
-                for bit in (bit..32).step_by(self.width) {
+                while bit <= 32 {
                     self.set_by_addr(block, bit, value);
                     n -= 1;
+                    bit = bit + self.width
                 }
             }
         }
@@ -88,7 +89,7 @@ impl BitEnc {
 
         if bit > 0 {
             // add the remaining values to a final block
-            self.storage.push(value_block >> 32 - bit);
+            self.storage.push(value_block >> (32 - bit));
         }
 
         self.len = i;
@@ -140,6 +141,10 @@ impl BitEnc {
 
     pub fn len(&self) -> usize {
         self.len
+    }
+    
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
     }
 }
 
