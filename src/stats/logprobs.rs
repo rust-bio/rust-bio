@@ -60,6 +60,9 @@ pub fn log_prob_sum(probs: &[LogProb]) -> LogProb {
         if pmax == f64::NEG_INFINITY {
             f64::NEG_INFINITY
         }
+        else if pmax == f64::INFINITY {
+            f64::INFINITY
+        }
         else {
             // TODO use sum() once it has been stabilized: .sum::<usize>()
             pmax + (probs.iter().enumerate().filter_map(|(i, p)| if i != imax { Some((p - pmax).exp()) } else { None }).fold(0.0, |s, e| s + e)).ln_1p()
@@ -75,6 +78,9 @@ pub fn log_prob_add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
     }
     if p0 == f64::NEG_INFINITY {
         f64::NEG_INFINITY
+    }
+    else if p0 == f64::INFINITY {
+        f64::INFINITY
     }
     else {
         p0 + (p1 - p0).exp().ln_1p()
