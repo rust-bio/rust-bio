@@ -7,7 +7,6 @@
 
 
 use std::cmp;
-use std::f64;
 
 
 /// Calculate the number of combinations when choosing
