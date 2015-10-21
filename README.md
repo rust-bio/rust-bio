@@ -1,5 +1,7 @@
-[![Build Status](https://travis-ci.org/rust-bio/rust-bio.svg?branch=master)](https://travis-ci.org/rust-bio/rust-bio)
-[![](http://meritbadge.herokuapp.com/bio)](https://crates.io/crates/bio)
+[![Crates.io](https://img.shields.io/crates/d/bio.svg?style=flat-square)](https://crates.io/crates/bio)
+[![Crates.io](https://img.shields.io/crates/v/bio.svg?style=flat-square)](https://crates.io/crates/bio)
+[![Crates.io](https://img.shields.io/crates/l/bio.svg?style=flat-square)](https://crates.io/crates/bio)
+[![Travis](https://img.shields.io/travis/rust-bio/rust-bio.svg?style=flat-square)](https://travis-ci.org/rust-bio/rust-bio)
 
 # Rust-Bio, a bioinformatics library for Rust.
 
