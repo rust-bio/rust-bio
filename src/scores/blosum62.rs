@@ -58,3 +58,20 @@ pub fn blosum62(a: u8, b: u8) -> i32 {
 
 	MAT[(a, b)]
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_blosum62() {
+		let score1 = blosum62(b'A',b'A');
+		assert_eq!(score1, 4);
+		let score2 = blosum62(b'O',b'*');
+		assert_eq!(score2, -4);
+		let score3 = blosum62(b'A',b'*');
+		assert_eq!(score3, -4);
+		let score4 = blosum62(b'*',b'*');
+		assert_eq!(score4, 1);
+	}
+}
