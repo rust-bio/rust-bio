@@ -48,8 +48,11 @@ lazy_static! {
 
 #[inline]
 fn lookup(number: u8) -> usize {
-	if number!=42 { (number-65) as usize }
-	else {26 as usize}
+	if      number==b'Y' { 23 as usize }
+	else if number==b'Z' { 24 as usize }
+	else if number==b'X' { 25 as usize }
+	else if number==b'*' { 26 as usize }
+	else { (number-65) as usize }
 }
 
 pub fn blosum62(a: u8, b: u8) -> i32 {	
@@ -73,5 +76,9 @@ mod tests {
 		assert_eq!(score3, -4);
 		let score4 = blosum62(b'*',b'*');
 		assert_eq!(score4, 1);
+		let score5 = blosum62(b'X',b'X');
+		assert_eq!(score5, -1);
+		let score6 = blosum62(b'X',b'Z');
+		assert_eq!(score6, -1);
 	}
 }
