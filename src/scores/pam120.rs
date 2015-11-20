@@ -3,11 +3,6 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_use]
-extern crate lazy_static;
-
-extern crate nalgebra;
-
 use nalgebra::DMat;
 
 lazy_static! {

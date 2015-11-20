@@ -54,6 +54,9 @@ extern crate itertools;
 extern crate bit_vec;
 extern crate vec_map;
 extern crate bit_set;
+#[macro_use]
+extern crate lazy_static;
+extern crate nalgebra;
 
 pub mod utils;
 pub mod alphabets;
@@ -62,3 +65,4 @@ pub mod data_structures;
 pub mod alignment;
 pub mod io;
 pub mod stats;
+pub mod scores;

@@ -3,11 +3,6 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_use]
-extern crate lazy_static;
-
-extern crate nalgebra;
-
 use nalgebra::DMat;
 
 lazy_static! {
@@ -55,7 +50,7 @@ fn lookup(number: u8) -> usize {
 	else { (number-65) as usize }
 }
 
-pub fn blosum62(a: u8, b: u8) -> i32 {	
+pub fn blosum62(a: u8, b: u8) -> i32 {
 	let a = lookup(a);
 	let b = lookup(b);
 
