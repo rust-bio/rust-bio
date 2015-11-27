@@ -39,7 +39,7 @@ pub fn prescan<T: Copy, F: Fn(T, T) -> T>(a: &mut [T], neutral: T, op: F) {
 }
 
 
-#[derive(PartialOrd, PartialEq, Debug)]
+#[derive(PartialOrd, PartialEq, Debug, Copy, Clone)]
 pub struct NonNaNFloat<F: Float>(F);
 
 
