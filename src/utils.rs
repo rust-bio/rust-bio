@@ -6,6 +6,10 @@
 //! Common utilities.
 
 
+use std::cmp;
+use num::Float;
+
+
 /// Remove a trailing newline from the given string in place.
 pub fn trim_newline(s: &mut String) {
     if s.ends_with("\n") {
@@ -35,9 +39,40 @@ pub fn prescan<T: Copy, F: Fn(T, T) -> T>(a: &mut [T], neutral: T, op: F) {
 }
 
 
+#[derive(PartialOrd, PartialEq, Debug)]
+pub struct NonNaNFloat<F: Float>(F);
+
+
+impl<F: Float> NonNaNFloat<F> {
+    pub fn new(v: F) -> Option<Self> {
+        if v.is_nan() {
+            Some(NonNaNFloat(v))
+        }
+        else {
+            None
+        }
+    }
+
+    pub fn unwrap(&self) -> F {
+        let &NonNaNFloat(v) = self;
+        v
+    }
+}
+
+
+impl<F: Float> Eq for NonNaNFloat<F> {}
+
+
+impl<F: Float> Ord for NonNaNFloat<F> {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
-    use super::{scan, prescan};
+    use super::*;
 
     #[test]
     fn test_scan() {
@@ -51,5 +86,12 @@ mod tests {
         let mut a = vec![1, 0, 0, 1];
         prescan(&mut a[..], 0, |a, b| a + b);
         assert_eq!(a, vec![0, 1, 1, 1]);
+    }
+
+    #[test]
+    fn test_nonnanfloat() {
+        let mut v = [NonNaNFloat(5.1), NonNaNFloat(1.3)];
+        v.sort();
+        assert_eq!(v, [NonNaNFloat(1.3), NonNaNFloat(5.1)]);
     }
 }
