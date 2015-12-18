@@ -166,7 +166,7 @@ impl<'a, F> Aligner<'a, F> where F: Fn(u8, u8) -> i32 {
     ///
     /// * `gap_open` - the score for opening a gap (should be negative)
     /// * `gap_extend` - the score for extending a gap (should be negative)
-    /// * `score` - function that returns the score for substitutions
+    /// * `score` - function that returns the score for substitutions (also see bio::scores)
     ///
     pub fn new(gap_open: i32, gap_extend: i32, score: &'a F) -> Self {
         Aligner::with_capacity(DEFAULT_ALIGNER_CAPACITY, DEFAULT_ALIGNER_CAPACITY, gap_open, gap_extend, score)
@@ -181,7 +181,7 @@ impl<'a, F> Aligner<'a, F> where F: Fn(u8, u8) -> i32 {
     /// * `n` - the expected size of y
     /// * `gap_open` - the score for opening a gap (should be negative)
     /// * `gap_extend` - the score for extending a gap (should be negative)
-    /// * `score` - function that returns the score for substitutions
+    /// * `score` - function that returns the score for substitutions (also see bio::scores)
     ///
     pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, score: &'a F) -> Self {
         let get_vec = || Vec::with_capacity(m + 1);
@@ -217,8 +217,11 @@ impl<'a, F> Aligner<'a, F> where F: Fn(u8, u8) -> i32 {
             match alignment_type {
                 AlignmentType::Global | AlignmentType::Semiglobal => {
                     let mut s = &mut self.S[k];
+                    // neutral start
+                    s.push(0);
+                    // other cells are gaps
                     let mut score = self.gap_open;
-                    for _ in 0..m+1 {
+                    for _ in 1..m+1 {
                         s.push(score);
                         score += self.gap_extend;
                     }
@@ -412,6 +415,7 @@ impl Traceback {
 mod tests {
     use super::*;
     use alignment::AlignmentOperation::{Match, Subst, Ins, Del};
+    use scores::blosum62;
 
     #[test]
     fn test_semiglobal() {
@@ -450,6 +454,19 @@ mod tests {
     }
 
     #[test]
+    fn test_blosum62() {
+        let x = b"AAAA";
+        let y = b"AAAA";
+        let score = &blosum62;
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let alignment = aligner.global(x, y);
+        assert_eq!(alignment.ystart, 0);
+        assert_eq!(alignment.xstart, 0);
+        assert_eq!(alignment.score, 16);
+        assert_eq!(alignment.operations, [Match,Match,Match,Match]);
+    }
+
+    #[test]
     fn test_issue11() {
         let y = b"TACC";//GTGGAC";
         let x = b"AAAAACC";//GTTGACGCAA";
@@ -483,7 +500,7 @@ mod tests {
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.ystart, 0);
-        assert_eq!(alignment.operations, [Ins, Ins, Match, Ins, Ins, Subst, Match, Ins, Ins, Match, Match]);
+        assert_eq!(alignment.operations, [Ins, Ins, Match, Subst, Ins, Ins, Ins, Ins, Subst, Match, Match]);
     }
 
     #[test]

@@ -42,12 +42,12 @@ lazy_static! {
 }
 
 #[inline]
-fn lookup(number: u8) -> usize {
-	if      number==b'Y' { 23 as usize }
-	else if number==b'Z' { 24 as usize }
-	else if number==b'X' { 25 as usize }
-	else if number==b'*' { 26 as usize }
-	else { (number-65) as usize }
+fn lookup(a: u8) -> usize {
+	if      a==b'Y' { 23 as usize }
+	else if a==b'Z' { 24 as usize }
+	else if a==b'X' { 25 as usize }
+	else if a==b'*' { 26 as usize }
+	else { (a-65) as usize }
 }
 
 pub fn blosum62(a: u8, b: u8) -> i32 {
