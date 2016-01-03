@@ -24,7 +24,8 @@ pub struct BitEnc {
     storage: Vec<u32>,
     width: usize,
     mask: u32,
-    len: usize
+    len: usize,
+    bits: usize
 }
 
 
@@ -37,13 +38,13 @@ impl BitEnc {
     /// Create a new instance with a given encoding width (e.g. width=2 for using two bits per value).
     pub fn new(width: usize) -> Self {
         assert!(width <= 8, "Only encoding widths up to 8 supported");
-        BitEnc { storage: Vec::new(), width: width, mask: mask(width), len: 0 }
+        BitEnc { storage: Vec::new(), width: width, mask: mask(width), len: 0, bits: 32 - 32 % width }
     }
 
     /// Create a new instance with a given capacity and encoding width (e.g. width=2 for using two bits per value).
     pub fn with_capacity(width: usize, n: usize) -> Self {
         assert!(width <= 8, "Only encoding widths up to 8 supported");
-        BitEnc { storage: Vec::with_capacity(n * width / 32), width: width, mask: mask(width), len: 0 }
+        BitEnc { storage: Vec::with_capacity(n * width / 32), width: width, mask: mask(width), len: 0, bits: 32 - 32 % width }
     }
 
     /// Append a value.
@@ -137,7 +138,7 @@ impl BitEnc {
 
     fn addr(&self, i: usize) -> (usize, usize) {
         let k = i * self.width;
-        (k / 32, k % 32)
+        (k / self.bits, k % self.bits)
     }
 
     pub fn len(&self) -> usize {
@@ -190,5 +191,16 @@ mod tests {
         let mut bitenc = BitEnc::new(2);
         bitenc.push_values(32, 0);
         assert_eq!(bitenc.storage, [0,0]);
+    }
+
+    #[test]
+    fn test_issue29() {
+        for w in 2..9 {
+            let mut vec = BitEnc::with_capacity(w, 1000);
+            for i in 0..1000 {
+                println!("Push {}", i);
+                vec.push(1);
+            }
+        }
     }
 }
