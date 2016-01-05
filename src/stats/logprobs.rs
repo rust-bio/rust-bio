@@ -88,9 +88,9 @@ pub fn log_prob_add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
 }
 
 
-/// Calcualte the cumulative sum of the given probabilities in a numerically stable way (Durbin 1998).
-pub fn log_prob_cumsum(probs: &[LogProb]) -> Vec<LogProb> {
-    probs.iter().scan(f64::NEG_INFINITY, |s, p| {
+/// Calculate the cumulative sum of the given probabilities in a numerically stable way (Durbin 1998).
+pub fn log_prob_cumsum<'a, I: Iterator<Item=&'a LogProb>>(probs: I) -> Vec<LogProb> {
+    probs.scan(f64::NEG_INFINITY, |s, p| {
         *s = log_prob_add(*s, *p);
         Some(*s)
     }).collect()
