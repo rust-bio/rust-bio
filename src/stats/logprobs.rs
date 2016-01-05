@@ -44,7 +44,7 @@ pub fn phred_to_log(p: f64) -> LogProb {
 
 
 /// Calculate the sum of the given probabilities in a numerically stable way (Durbin 1998).
-pub fn log_prob_sum(probs: &[LogProb]) -> LogProb {
+pub fn sum(probs: &[LogProb]) -> LogProb {
     if probs.is_empty() {
         f64::NEG_INFINITY
     }
@@ -72,7 +72,7 @@ pub fn log_prob_sum(probs: &[LogProb]) -> LogProb {
 
 
 /// Calculate the sum of the given probabilities in a numerically stable way (Durbin 1998).
-pub fn log_prob_add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
+pub fn add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
     if p1 > p0 {
         mem::swap(&mut p0, &mut p1);
     }
@@ -89,9 +89,9 @@ pub fn log_prob_add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
 
 
 /// Calculate the cumulative sum of the given probabilities in a numerically stable way (Durbin 1998).
-pub fn log_prob_cumsum<'a, I: Iterator<Item=&'a LogProb>>(probs: I) -> Vec<LogProb> {
+pub fn cumsum<'a, I: Iterator<Item=&'a LogProb>>(probs: I) -> Vec<LogProb> {
     probs.scan(f64::NEG_INFINITY, |s, p| {
-        *s = log_prob_add(*s, *p);
+        *s = add(*s, *p);
         Some(*s)
     }).collect()
 }
@@ -103,13 +103,13 @@ mod tests {
     use std::f64;
 
     #[test]
-    fn test_log_prob_sum() {
+    fn test_sum() {
         let probs = [f64::NEG_INFINITY, 0.0, f64::NEG_INFINITY];
-        assert_eq!(log_prob_sum(&probs), 0.0);
+        assert_eq!(sum(&probs), 0.0);
     }
 
     #[test]
-    fn test_empty_log_prob_sum() {
-        assert_eq!(log_prob_sum(&[]), f64::NEG_INFINITY);
+    fn test_empty_sum() {
+        assert_eq!(sum(&[]), f64::NEG_INFINITY);
     }
 }
