@@ -89,9 +89,9 @@ pub fn add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
 
 
 /// Calculate the cumulative sum of the given probabilities in a numerically stable way (Durbin 1998).
-pub fn cumsum<'a, I: Iterator<Item=&'a LogProb>>(probs: I) -> Vec<LogProb> {
+pub fn cumsum<'a, I: Iterator<Item=LogProb>>(probs: I) -> Vec<LogProb> {
     probs.scan(f64::NEG_INFINITY, |s, p| {
-        *s = add(*s, *p);
+        *s = add(*s, p);
         Some(*s)
     }).collect()
 }
@@ -111,5 +111,11 @@ mod tests {
     #[test]
     fn test_empty_sum() {
         assert_eq!(sum(&[]), f64::NEG_INFINITY);
+    }
+
+    #[test]
+    fn test_cumsum() {
+        let probs = vec![0.0f64.ln(), 0.01f64.ln(), 0.001f64.ln()];
+        assert_eq!(cumsum(probs.into_iter()), [0.0f64.ln(), 0.01f64.ln(), 0.011f64.ln()]);
     }
 }
