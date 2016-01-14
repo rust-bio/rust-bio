@@ -38,8 +38,7 @@
 //! // Create an FM-Index for a given text.
 //! let alphabet = alphabets::dna::iupac_alphabet();
 //! let pos = suffix_array(text);
-//! let bwt = bwt(text, &pos);
-//! let fmindex = FMIndex::new(&bwt, 3, &alphabet);
+//! let fmindex = FMIndex::new(bwt(text, &pos), 3, &alphabet);
 //!
 //! let interval = fmindex.backward_search(pattern.iter());
 //! let positions = interval.occ(&pos);

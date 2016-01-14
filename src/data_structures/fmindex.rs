@@ -31,14 +31,14 @@ impl Interval {
 
 /// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
 /// intervals matching a given pattern.
-pub struct FMIndex<'a> {
-    bwt: &'a BWT,
+pub struct FMIndex {
+    bwt: BWT,
     less: Less,
     occ: Occ
 }
 
 
-impl<'a> FMIndex<'a> {
+impl FMIndex {
     /// Construct a new instance of the FM index.
     ///
     /// # Arguments
@@ -47,8 +47,10 @@ impl<'a> FMIndex<'a> {
     /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
     ///   less memory usage, but worse performance)
     /// * `alphabet` - the alphabet of the underlying text, omitting the sentinel
-    pub fn new(bwt: &'a BWT, k: usize, alphabet: &Alphabet) -> Self {
-        FMIndex { bwt: bwt, less: less(bwt, alphabet), occ: Occ::new(bwt, k, alphabet)}
+    pub fn new(bwt: BWT, k: usize, alphabet: &Alphabet) -> Self {
+        let less = less(&bwt, alphabet);
+        let occ = Occ::new(&bwt, k, alphabet);
+        FMIndex { bwt: bwt, less: less, occ: occ}
     }
 
     /// Perform backward search, yielding suffix array
@@ -70,8 +72,7 @@ impl<'a> FMIndex<'a> {
     /// let text = b"GCCTTAACATTATTACGCCTA$";
     /// let alphabet = dna::alphabet();
     /// let pos = suffix_array(text);
-    /// let bwt = bwt(text, &pos);
-    /// let fm = FMIndex::new(&bwt, 3, &alphabet);
+    /// let fm = FMIndex::new(bwt(text, &pos), 3, &alphabet);
     ///
     /// let pattern = b"TTA";
     /// let sai = fm.backward_search(pattern.iter());
@@ -92,11 +93,16 @@ impl<'a> FMIndex<'a> {
     }
 
     fn occ(&self, r: usize, a: u8) -> usize {
-        self.occ.get(self.bwt, r, a)
+        self.occ.get(&self.bwt, r, a)
     }
 
     fn less(&self, a: u8) -> usize {
         self.less[a as usize]
+    }
+
+    /// Provide a reference to the underlying BWT.
+    pub fn bwt(&self) -> &BWT {
+        &self.bwt
     }
 }
 
@@ -139,13 +145,13 @@ impl BiInterval {
 
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
-pub struct FMDIndex<'a> {
-    fmindex: FMIndex<'a>,
+pub struct FMDIndex {
+    fmindex: FMIndex,
     revcomp: dna::RevComp,
 }
 
 
-impl<'a> FMDIndex<'a> {
+impl FMDIndex {
     /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
     /// This expects a BWT that was created from a text over the DNA alphabet with N
     /// (`alphabets::dna::n_alphabet()`) consisting of the
@@ -159,11 +165,11 @@ impl<'a> FMDIndex<'a> {
     /// * `bwt` - the BWT
     /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
     ///   less memory usage, but worse performance)
-    pub fn new(bwt: &'a BWT, k: usize) -> Self {
+    pub fn new(bwt: BWT, k: usize) -> Self {
         let mut alphabet = dna::n_alphabet();
         alphabet.insert(b'$');
         assert!(
-            alphabet.is_word(bwt),
+            alphabet.is_word(&bwt),
             "Expecting BWT over the DNA alphabet (including N) with the sentinel $."
         );
 
@@ -185,8 +191,7 @@ impl<'a> FMDIndex<'a> {
     ///
     /// let text = b"ATTC$GAAT$";
     /// let pos = suffix_array(text);
-    /// let bwt = bwt(text, &pos);
-    /// let fmdindex = FMDIndex::new(&bwt, 3);
+    /// let fmdindex = FMDIndex::new(bwt(text, &pos), 3);
     ///
     /// let pattern = b"ATT";
     /// let intervals = fmdindex.smems(pattern, 2);
@@ -310,6 +315,11 @@ impl<'a> FMDIndex<'a> {
             _a
         ).swapped()
     }
+
+    /// Provide a reference to the underlying FMIndex.
+    pub fn fmindex(&self) -> &FMIndex {
+        &self.fmindex
+    }
 }
 
 
@@ -330,8 +340,7 @@ mod tests {
         let pos = suffix_array(&text);
         println!("pos {:?}", pos);
         println!("text {:?}", text);
-        let bwt = bwt(&text, &pos);
-        let fmdindex = FMDIndex::new(&bwt, 3);
+        let fmdindex = FMDIndex::new(bwt(&text, &pos), 3);
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
@@ -351,8 +360,7 @@ mod tests {
     fn test_init_interval() {
         let text = b"ACGT$TGCA$";
         let pos = suffix_array(text);
-        let bwt = bwt(text, &pos);
-        let fmdindex = FMDIndex::new(&bwt, 3);
+        let fmdindex = FMDIndex::new(bwt(text, &pos), 3);
         let pattern = b"T";
         let interval = fmdindex.init_interval(pattern, 0);
         assert_eq!(interval.occ(&pos), [3, 5]);
