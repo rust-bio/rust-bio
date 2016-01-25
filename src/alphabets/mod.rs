@@ -46,7 +46,7 @@ impl Alphabet {
 
     /// Check if given text is a word over the alphabet.
     pub fn is_word(&self, text: &[u8]) -> bool {
-        text.iter().all(|&c| self.symbols.contains(&(c as usize)))
+        text.iter().all(|&c| self.symbols.contains(c as usize))
     }
 
     /// Return lexicographically maximal symbol.
@@ -58,7 +58,7 @@ impl Alphabet {
     pub fn len(&self) -> usize {
         self.symbols.len()
     }
-    
+
     /// Is this alphabet empty?
     pub fn is_empty(&self) -> bool {
         self.symbols.is_empty()
