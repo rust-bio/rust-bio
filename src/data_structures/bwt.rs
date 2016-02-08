@@ -73,10 +73,7 @@ pub fn invert_bwt(bwt: &BWT) -> Vec<u8> {
 
 
 /// An occurence array implementation.
-pub struct Occ {
-    occ: Vec<Vec<usize>>,
-    k: usize
-}
+include!(concat!(env!("OUT_DIR"), "/bwt.rs"));
 
 
 impl Occ {

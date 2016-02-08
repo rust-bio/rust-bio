@@ -31,11 +31,7 @@ impl Interval {
 
 /// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
 /// intervals matching a given pattern.
-pub struct FMIndex {
-    bwt: BWT,
-    less: Less,
-    occ: Occ
-}
+include!(concat!(env!("OUT_DIR"), "/fmindex.rs"));
 
 
 impl FMIndex {

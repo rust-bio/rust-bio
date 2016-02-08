@@ -56,6 +56,7 @@ extern crate bit_set;
 #[macro_use]
 extern crate lazy_static;
 extern crate nalgebra;
+extern crate serde;
 
 pub mod utils;
 pub mod alphabets;

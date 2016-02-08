@@ -1,0 +1,5 @@
+#[derive(Serialize, Deserialize)]
+pub struct Occ {
+    occ: Vec<Vec<usize>>,
+    k: usize
+}

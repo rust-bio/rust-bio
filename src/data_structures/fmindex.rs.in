@@ -1,0 +1,6 @@
+#[derive(Serialize, Deserialize)]
+pub struct FMIndex {
+    bwt: BWT,
+    less: Less,
+    occ: Occ
+}
