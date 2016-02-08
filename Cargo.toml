@@ -7,11 +7,9 @@ description = "A bioinformatics library for Rust. This library provides implemen
 homepage = "https://github.com/johanneskoester/rust-bio"
 readme = "README.md"
 license = "MIT"
-build = "build.rs"
 
-[build-dependencies]
-serde_codegen = "0.6"
-syntex = "0.26"
+[features]
+nightly = ["serde_macros"]
 
 [dependencies]
 csv = "0.14.*"
@@ -24,3 +22,4 @@ bit-set = "0.3.*"
 nalgebra= "0.4.*"
 lazy_static = "0.1.*"
 serde = "0.6"
+serde_macros = { version = "0.6", optional = true }
