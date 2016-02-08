@@ -49,6 +49,9 @@
 #![cfg_attr(feature = "serde_macros", feature(const_fn, custom_derive, plugin))]
 #![cfg_attr(feature = "serde_macros", plugin(serde_macros))]
 
+#[cfg(feature = "serde_macros")]
+extern crate serde;
+
 extern crate rustc_serialize;
 extern crate csv;
 extern crate num;
@@ -59,7 +62,6 @@ extern crate bit_set;
 #[macro_use]
 extern crate lazy_static;
 extern crate nalgebra;
-extern crate serde;
 
 pub mod utils;
 pub mod alphabets;
