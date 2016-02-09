@@ -20,6 +20,7 @@
 
 
 /// A sequence of bitencoded values.
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct BitEnc {
     storage: Vec<u32>,
     width: usize,

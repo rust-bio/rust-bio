@@ -34,8 +34,9 @@ use num::traits::cast;
 
 /// Data structure for storing a sequence of small integers with few big ones space efficiently
 /// while supporting classical vector operations.
-pub struct SmallInts<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> {
-    smallints: Vec<S>,
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+pub struct SmallInts<F: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> {
+    smallints: Vec<F>,
     bigints: BTreeMap<usize, B>
 }
 
@@ -112,7 +113,7 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
     pub fn len(&self) -> usize {
         self.smallints.len()
     }
-    
+
     /// is the sequence empty?
     pub fn is_empty(&self) -> bool {
         self.smallints.is_empty()
