@@ -37,6 +37,7 @@ For reading and writing BAM and BCF files, have a look at https://github.com/chr
 * [Peer Aramillo Irizar](https://github.com/parir)
 * [Fedor Gusev](https://github.com/gusevfe)
 * [Vadim Nazarov](https://github.com/vadimnazarov)
+* [Adam Perry](https://github.com/dikaiosune)
 
 The next name in this list could be you! If you are interested in joining the effort to build a general purpose Rust bioinformatics library, just introduce yourself [here](https://github.com/rust-bio/rust-bio/issues/3), or issue a pull request with your first contribution.
 
