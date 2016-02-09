@@ -73,6 +73,7 @@ pub fn invert_bwt(bwt: &BWT) -> Vec<u8> {
 
 
 /// An occurence array implementation.
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct Occ {
     occ: Vec<Vec<usize>>,
     k: usize

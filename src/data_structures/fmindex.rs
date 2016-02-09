@@ -12,7 +12,6 @@ use data_structures::suffix_array::SuffixArray;
 use alphabets::{Alphabet, dna};
 use std::mem::swap;
 
-
 /// A suffix array interval.
 #[derive(Debug, Copy, Clone)]
 pub struct Interval {
@@ -31,6 +30,7 @@ impl Interval {
 
 /// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
 /// intervals matching a given pattern.
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct FMIndex {
     bwt: BWT,
     less: Less,
