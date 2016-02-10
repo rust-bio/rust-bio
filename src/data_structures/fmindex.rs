@@ -145,6 +145,7 @@ impl BiInterval {
 
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct FMDIndex {
     fmindex: FMIndex,
     revcomp: dna::RevComp,

@@ -36,6 +36,7 @@ use bit_vec::BitVec;
 
 
 /// A rank/select data structure.
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct RankSelect {
     n: usize,
     bits: Vec<u8>,

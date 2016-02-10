@@ -41,15 +41,17 @@ pub fn iupac_alphabet() -> Alphabet {
 
 
 /// Implementation of transformation into reverse complement.
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct RevComp {
-    comp: [u8; 256]
+    comp: Vec<u8>,
 }
 
 
 impl RevComp {
     /// Create a new instance of reverse complement algorithm.
     pub fn new() -> Self {
-        let mut comp = [0u8; 256];
+        let mut comp = Vec::new();
+        comp.resize(256, 0);
         for (v, mut a) in comp.iter_mut().enumerate() {
             *a = v as u8;
         }
