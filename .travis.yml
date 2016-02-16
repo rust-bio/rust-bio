@@ -1,11 +1,16 @@
 language: rust
-rust:
-  - stable
-  - beta
-  - nightly
 matrix:
+  include:
+    - rust: stable
+    - rust: beta
+    - rust: nightly
+    - rust: nightly
+      env: FEATURES="--features nightly"
   allow_failures:
   - rust: nightly
+script:
+  - cargo build $FEATURES
+  - cargo test $FEATURES
 after_success: |
   [ $TRAVIS_BRANCH = master ] &&
   [ $TRAVIS_PULL_REQUEST = false ] &&
