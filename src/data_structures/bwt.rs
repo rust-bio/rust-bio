@@ -185,4 +185,13 @@ mod tests {
         assert_eq!(occ.get(&bwt, 4, 2u8), 1);
         assert_eq!(occ.get(&bwt, 4, 3u8), 2);
     }
+
+    #[test]
+    #[cfg(feature = "nightly")]
+    fn test_serde() {
+        use serde::{Serialize, Deserialize};
+        fn impls_serde_traits<S: Serialize + Deserialize>() {}
+
+        impls_serde_traits::<Occ>();
+    }
 }

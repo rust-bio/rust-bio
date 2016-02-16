@@ -9,7 +9,7 @@ readme = "README.md"
 license = "MIT"
 
 [features]
-nightly = ["serde", "serde_macros"]
+nightly = ["serde", "serde_macros", "vec_map/eders"]
 
 [dependencies]
 csv = "0.14.*"
@@ -17,7 +17,7 @@ rustc-serialize = "0.3.*"
 num = "0.1.*"
 itertools = "0.4.*"
 bit-vec = "0.4.*"
-vec_map = "0.3.*"
+vec_map = "0.6.*"
 bit-set = "0.3.*"
 nalgebra= "0.4.*"
 lazy_static = "0.1.*"
