@@ -180,7 +180,7 @@ fn transform_text<T: Integer + Unsigned + NumCast + Copy>(text: &[u8], alphabet:
             s += 1;
         }
         else {
-            transformed.push(cast(*transform.ranks.get(&(a as usize)).unwrap() as usize + offset).unwrap());
+            transformed.push(cast(*(transform.ranks.get(a as usize)).unwrap() as usize + offset).unwrap());
         }
     }
 
@@ -218,10 +218,10 @@ impl SAIS {
         self.bucket_start.clear();
 
         for &c in text.iter() {
-            if !self.bucket_sizes.contains_key(&cast(c).unwrap()) {
+            if !self.bucket_sizes.contains_key(cast(c).unwrap()) {
                 self.bucket_sizes.insert(cast(c).unwrap(), 0);
             }
-            *(self.bucket_sizes.get_mut(&cast(c).unwrap()).unwrap()) += 1;
+            *(self.bucket_sizes.get_mut(cast(c).unwrap()).unwrap()) += 1;
         }
 
         let mut sum = 0;

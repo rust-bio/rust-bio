@@ -143,3 +143,15 @@ fn superblocks(n: usize, s: usize, raw_bits: &Vec<u8>) -> Vec<u32> {
 
     superblocks
 }
+
+#[cfg(tests)]
+mod tests {
+    #[test]
+    #[cfg(feature = "nightly")]
+    fn test_serde() {
+        use serde::{Serialize, Deserialize};
+        fn impls_serde_traits<S: Serialize + Deserialize>() {}
+
+        impls_serde_traits::<RankSelect>();
+    }
+}

@@ -54,7 +54,7 @@ impl BOM {
             // for this iterate over the known suffixes until
             // reaching an edge labelled with a or the start
             while let Some(k_) = k {
-                if table[k_].contains_key(&a) {
+                if table[k_].contains_key(a) {
                     break;
                 }
                 table[k_].insert(a, i);
@@ -64,7 +64,7 @@ impl BOM {
             // the longest suffix is either 0 or the state
             // reached by the edge labelled with a
             suff[i] = Some(match k {
-                Some(k) => *table[k].get(&a).unwrap(),
+                Some(k) => *table[k].get(a).unwrap(),
                 None => 0
             });
 
@@ -79,7 +79,7 @@ impl BOM {
             None
         }
         else {
-            match self.table[q].get(&(a as usize)) {
+            match self.table[q].get(a as usize) {
                 Some(&q) => Some(q),
                 None => None
             }

@@ -157,3 +157,15 @@ impl<'a, S, B> Iterator for Iter<'a, S, B> where
         }
     }
 }
+
+#[cfg(tests)]
+mod tests {
+    #[test]
+    #[cfg(feature = "nightly")]
+    fn test_serde() {
+        use serde::{Serialize, Deserialize};
+        fn impls_serde_traits<S: Serialize + Deserialize>() {}
+
+        impls_serde_traits::<SmallInts<i8, isize>>();
+    }
+}

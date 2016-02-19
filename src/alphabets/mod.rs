@@ -76,6 +76,7 @@ impl<'a> FromIterator<&'a u8> for Alphabet {
 }
 
 /// Tools based on transforming the alphabet symbols to their lexicographical ranks.
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct RankTransform {
     pub ranks: SymbolRanks
 }
@@ -94,13 +95,13 @@ impl RankTransform {
 
     /// Get the rank of symbol `a`.
     pub fn get(&self, a: u8) -> u8 {
-        *self.ranks.get(&(a as usize)).expect("Unexpected character.")
+        *self.ranks.get(a as usize).expect("Unexpected character.")
     }
 
     /// Transform a given `text`.
     pub fn transform(&self, text: &[u8]) -> Vec<u8> {
         text.iter()
-            .map(|&c| *self.ranks.get(&(c as usize)).expect("Unexpected character in text."))
+            .map(|&c| *self.ranks.get(c as usize).expect("Unexpected character in text."))
             .collect()
     }
 
@@ -167,5 +168,17 @@ impl<'a> Iterator for QGrams<'a> {
             },
             None    => None
         }
+    }
+}
+
+#[cfg(tests)]
+mod tests {
+    #[test]
+    #[cfg(feature = "nightly")]
+    fn test_serde() {
+        use serde::{Serialize, Deserialize};
+        fn impls_serde_traits<S: Serialize + Deserialize>() {}
+
+        impls_serde_traits::<RankTransform>();
     }
 }

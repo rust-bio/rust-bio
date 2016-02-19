@@ -367,4 +367,14 @@ mod tests {
         assert_eq!(interval.occ(&pos), [3, 5]);
         assert_eq!(interval.occ_revcomp(&pos), [8, 0]);
     }
+
+    #[test]
+    #[cfg(feature = "nightly")]
+    fn test_serde() {
+        use serde::{Serialize, Deserialize};
+        fn impls_serde_traits<S: Serialize + Deserialize>() {}
+
+        impls_serde_traits::<FMIndex>();
+        impls_serde_traits::<FMDIndex>();
+    }
 }

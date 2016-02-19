@@ -37,6 +37,7 @@ use utils;
 
 
 /// A classical, flexible, q-gram index implementation.
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct QGramIndex {
     q: u32,
     address: Vec<usize>,
@@ -274,5 +275,14 @@ mod tests {
         for m in exact_matches {
             assert_eq!(m.pattern.get(pattern), m.text.get(text));
         }
+    }
+
+    #[test]
+    #[cfg(feature = "nightly")]
+    fn test_serde() {
+        use serde::{Serialize, Deserialize};
+        fn impls_serde_traits<S: Serialize + Deserialize>() {}
+
+        impls_serde_traits::<QGramIndex>();
     }
 }

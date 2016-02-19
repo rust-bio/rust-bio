@@ -22,7 +22,7 @@ Currently, rust-bio provides
 * FMD-Index for finding supermaximal exact matches,
 * a q-gram index,
 * a rank/select data structure,
-* [serde](https://github.com/serde-rs/serde) support for several data structures when built with `nightly` feature,
+* [serde](https://github.com/serde-rs/serde) support for all data structures when built with `nightly` feature,
 * FASTQ and FASTA and BED readers and writers,
 * helper functions for combinatorics and dealing with log probabilities.
 
