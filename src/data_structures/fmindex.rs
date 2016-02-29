@@ -192,22 +192,34 @@ impl FMDIndex {
         }
     }
 
-    /// Find longest prefix including at least one non-encompassing match
-    pub fn longest_prefix_match(&self, pattern: &[u8]) -> BiInterval {
+    /// Find longest non-encompassing prefix match
+    pub fn longest_prefix_match(&self, pattern: &[u8], min_overlap: usize) -> Option<BiInterval> {
         let exact_match_interval = self.fmindex.backward_search(pattern.iter());
+        let exact_match_size = exact_match_interval.upper - exact_match_interval.lower;
         let mut interval = self.init_interval(pattern, 0);
+        let mut interval_stack = vec![];
+
         for &a in pattern[1..].iter() {
             // forward extend interval
             let _interval = self.forward_ext(&interval, a);
 
             // if new interval represents only exact matches, break
-            if _interval.size <= (exact_match_interval.upper - exact_match_interval.lower) {
+            if _interval.size <= exact_match_size {
                 break;
+            } else if _interval.match_size >= min_overlap {
+                interval_stack.push(_interval);
             }
             interval = _interval;
         }
 
-        interval
+        while let Some(longest_interval) = interval_stack.pop() {
+            let prefixes = self.forward_ext(&longest_interval, b"$"[0]);
+            if prefixes.size > 0 {
+                return Some(prefixes);
+            }
+        }
+
+        None
     }
 
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
@@ -394,8 +406,9 @@ mod tests {
                         .collect::<Vec<u8>>();
         let pos = suffix_array(&text);
         let fmdindex = FMDIndex::new(bwt(&text, &pos), 3);
-        let longest_prefix_matches = fmdindex.longest_prefix_match(search_str);
-        assert_eq!(longest_prefix_matches.occ(&pos), [3, 18, 34, 52]);
+        let longest_prefix_matches = fmdindex.longest_prefix_match(search_str, 0)
+                                             .expect("Should find prefix");
+        assert_eq!(longest_prefix_matches.occ(&pos), [3]);
     }
 
     #[test]
