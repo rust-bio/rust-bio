@@ -192,16 +192,22 @@ impl FMDIndex {
         }
     }
 
+    /// Find longest prefix including at least one non-encompassing match
+    pub fn longest_prefix_match(&self, pattern: &[u8]) -> BiInterval {
+        let exact_match_interval = self.fmindex.backward_search(pattern.iter());
+        let mut interval = self.init_interval(pattern, 0);
+        for &a in pattern[1..].iter() {
+            // forward extend interval
+            let _interval = self.forward_ext(&interval, a);
 
-    /// Find longest non-encompassing prefix matches of a given pattern.
-    ///
-    /// # Example
-    ///
-    /// ...
-    /// TODO: Write Example
-    /// ...
-    pub fn longest_prefix(&self, pattern: &[u8]) -> BiInterval {
-        self.init_interval(pattern, 0)
+            // if new interval represents only exact matches, break
+            if _interval.size <= (exact_match_interval.upper - exact_match_interval.lower) {
+                break;
+            }
+            interval = _interval;
+        }
+
+        interval
     }
 
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
@@ -374,23 +380,22 @@ mod tests {
     fn test_longest_prefix() {
         let desired_prefix = b"GCCTTCGC";
         let search_str = b"TTCGCAG";
-        let false_1 = b"TTCGCAG";
-        let false_2 = b"AATTCGCAGA";
-        let false_3 = b"GAGAGACCTTT";
-        let false_4 = b"GGCTTCCC";
+        let contains = b"AATTCGCAGA";
+        let other_1 = b"GAGAGACCTTT";
+        let other_2 = b"GGCTTCCC";
         let reads: Vec<&[u8]> = vec![desired_prefix,
                                      search_str,
-                                     false_1,
-                                     false_2,
-                                     false_3,
-                                     false_4];
+                                     search_str,
+                                     contains,
+                                     other_1,
+                                     other_2];
         let text = reads.into_iter()
                         .flat_map(|read| revcomp_delimit_concat(read))
                         .collect::<Vec<u8>>();
         let pos = suffix_array(&text);
         let fmdindex = FMDIndex::new(bwt(&text, &pos), 3);
-        let longest_prefix_matches = fmdindex.longest_prefix(search_str);
-        assert_eq!(longest_prefix_matches.occ(&pos), [3]);
+        let longest_prefix_matches = fmdindex.longest_prefix_match(search_str);
+        assert_eq!(longest_prefix_matches.occ(&pos), [3, 18, 34, 52]);
     }
 
     #[test]
