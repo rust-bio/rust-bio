@@ -192,6 +192,18 @@ impl FMDIndex {
         }
     }
 
+
+    /// Find longest non-encompassing prefix matches of a given pattern.
+    ///
+    /// # Example
+    ///
+    /// ...
+    /// TODO: Write Example
+    /// ...
+    pub fn longest_prefix(&self, pattern: &[u8]) -> BiInterval {
+        unimplemented!();
+    }
+
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
     /// Complexity O(m) with pattern of length m.
     ///
@@ -376,8 +388,10 @@ mod tests {
         let text = reads.into_iter()
                         .flat_map(|read| revcomp_delimit_concat(read))
                         .collect::<Vec<u8>>();
-
-        unimplemented!();
+        let pos = suffix_array(&text);
+        let fmdindex = FMDIndex::new(bwt(&text, &pos), 3);
+        let longest_prefix_matches = fmdindex.longest_prefix(search_str);
+        assert_eq!(longest_prefix_matches.occ(&pos), [0]);
     }
 
     #[test]
