@@ -165,6 +165,7 @@ pub struct FMDIndex {
     revcomp: dna::RevComp,
 }
 
+const SENT_CHAR: u8 = b'$';
 
 impl FMDIndex {
     /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
@@ -182,7 +183,7 @@ impl FMDIndex {
     ///   less memory usage, but worse performance)
     pub fn new(bwt: BWT, k: usize) -> Self {
         let mut alphabet = dna::n_alphabet();
-        alphabet.insert(b'$');
+        alphabet.insert(SENT_CHAR);
         assert!(alphabet.is_word(&bwt),
                 "Expecting BWT over the DNA alphabet (including N) with the sentinel $.");
 
@@ -213,7 +214,7 @@ impl FMDIndex {
         }
 
         while let Some(longest_interval) = interval_stack.pop() {
-            let prefixes = self.forward_ext(&longest_interval, b"$"[0]);
+            let prefixes = self.forward_ext(&longest_interval, SENT_CHAR);
             if prefixes.size > 0 {
                 return Some(prefixes);
             }
@@ -276,7 +277,7 @@ impl FMDIndex {
 
         for k in (-1..i as isize).rev() {
             let a = if k == -1 {
-                b'$'
+                SENT_CHAR
             } else {
                 pattern[k as usize]
             };
@@ -371,20 +372,19 @@ impl FMDIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::SENT_CHAR;
     use alphabets::dna;
     use data_structures::suffix_array::suffix_array;
     use data_structures::bwt::bwt;
-
-    const DELIM: &'static [u8; 1] = b"$";
 
     fn revcomp_delimit_concat(read: &[u8]) -> Vec<u8> {
         let mut result_vec = read.to_vec();
         let len = read.len();
         let revcomp = dna::RevComp::new();
         result_vec.reserve(2 + len);
-        result_vec.append(&mut DELIM.to_vec());
+        result_vec.push(SENT_CHAR);
         result_vec.append(&mut revcomp.get(read));
-        result_vec.append(&mut DELIM.to_vec());
+        result_vec.push(SENT_CHAR);
         result_vec
     }
 
