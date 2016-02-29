@@ -372,7 +372,6 @@ mod tests {
 
     #[test]
     fn test_longest_prefix() {
-        let revcomp = dna::RevComp::new();
         let desired_prefix = b"GCCTTCGC";
         let search_str = b"TTCGCAG";
         let false_1 = b"TTCGCAG";
@@ -396,7 +395,6 @@ mod tests {
 
     #[test]
     fn test_smems() {
-        let revcomp = dna::RevComp::new();
         let orig_text = b"GCCTTAACAT";
         let text = revcomp_delimit_concat(orig_text);
         let pos = suffix_array(&text);
