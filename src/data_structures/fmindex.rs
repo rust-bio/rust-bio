@@ -201,7 +201,7 @@ impl FMDIndex {
     /// TODO: Write Example
     /// ...
     pub fn longest_prefix(&self, pattern: &[u8]) -> BiInterval {
-        unimplemented!();
+        self.init_interval(pattern, 0)
     }
 
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
@@ -390,7 +390,7 @@ mod tests {
         let pos = suffix_array(&text);
         let fmdindex = FMDIndex::new(bwt(&text, &pos), 3);
         let longest_prefix_matches = fmdindex.longest_prefix(search_str);
-        assert_eq!(longest_prefix_matches.occ(&pos), [0]);
+        assert_eq!(longest_prefix_matches.occ(&pos), [3]);
     }
 
     #[test]
