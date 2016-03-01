@@ -132,6 +132,17 @@ pub struct BiInterval {
 
 
 impl BiInterval {
+
+    /// Return the number of elements in the BiInterval
+    pub fn size(&self) -> usize {
+        self.size
+    }
+
+    /// Return the size of the match that generated the BiInterval
+    pub fn match_size(&self) -> usize {
+        self.match_size
+    }
+
     /// Return the occurrence positions of the pattern as a slice of the suffix array.
     pub fn occ<'a>(&self, pos: &'a SuffixArray) -> &'a [usize] {
         self._pos(pos, self.lower)
