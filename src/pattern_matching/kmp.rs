@@ -33,7 +33,7 @@ type LPS = Vec<usize>;
 pub struct KMP<'a> {
     m: usize,
     lps: LPS,
-    pattern: &'a [u8]
+    pattern: &'a [u8],
 }
 
 
@@ -43,12 +43,16 @@ impl<'a> KMP<'a> {
         let m = pattern.len();
         let lps = lps(pattern);
 
-        KMP { lps: lps, m: m, pattern: pattern }
+        KMP {
+            lps: lps,
+            m: m,
+            pattern: pattern,
+        }
     }
 
     fn delta(&self, mut q: usize, a: u8) -> usize {
         while q == self.m || (self.pattern[q] != a && q > 0) {
-            q = self.lps[q-1];
+            q = self.lps[q - 1];
         }
         if self.pattern[q] == a {
             q += 1;
@@ -58,8 +62,12 @@ impl<'a> KMP<'a> {
     }
 
     /// Find all matches of pattern in a given text. Matches are returned as iterator over start positions.
-    pub fn find_all<'b, I: Iterator<Item=&'b u8>>(&'b self, text: I) -> Matches<I> {
-        Matches { kmp: self, q: 0, text: text.enumerate() }
+    pub fn find_all<'b, I: Iterator<Item = &'b u8>>(&'b self, text: I) -> Matches<I> {
+        Matches {
+            kmp: self,
+            q: 0,
+            text: text.enumerate(),
+        }
     }
 }
 
@@ -82,14 +90,14 @@ fn lps(pattern: &[u8]) -> LPS {
 
 
 /// Iterator over start positions of matches.
-pub struct Matches<'a, I: Iterator<Item=&'a u8>> {
+pub struct Matches<'a, I: Iterator<Item = &'a u8>> {
     kmp: &'a KMP<'a>,
     q: usize,
     text: Enumerate<I>,
 }
 
 
-impl<'a, I: Iterator<Item=&'a u8>> Iterator for Matches<'a, I> {
+impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {

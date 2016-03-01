@@ -26,7 +26,7 @@ use pattern_matching::shift_and::masks;
 pub struct BNDM {
     m: usize,
     masks: [u64; 256],
-    accept: u64
+    accept: u64,
 }
 
 
@@ -42,12 +42,20 @@ impl BNDM {
 
         let (masks, accept) = masks(&rev);
 
-        BNDM { m: m, masks: masks, accept: accept }
+        BNDM {
+            m: m,
+            masks: masks,
+            accept: accept,
+        }
     }
 
     /// Find all matches of pattern with a given text. Matches are returned as iterator over start positions.
     pub fn find_all<'a>(&'a self, text: &'a [u8]) -> Matches {
-        Matches { bndm: self, window: self.m, text: text }
+        Matches {
+            bndm: self,
+            window: self.m,
+            text: text,
+        }
     }
 }
 
@@ -56,7 +64,7 @@ impl BNDM {
 pub struct Matches<'a> {
     bndm: &'a BNDM,
     window: usize,
-    text: &'a [u8]
+    text: &'a [u8],
 }
 
 
@@ -78,8 +86,7 @@ impl<'a> Iterator for Matches<'a> {
                     if j == self.bndm.m {
                         occ = Some(self.window - self.bndm.m);
                         break;
-                    }
-                    else {
+                    } else {
                         // we reached the accepting state
                         // but not the end of the pattern
                         // hence, a suffix of the reverse pattern

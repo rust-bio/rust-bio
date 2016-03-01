@@ -47,8 +47,7 @@ impl<F: Float> NonNaNFloat<F> {
     pub fn new(v: F) -> Option<Self> {
         if v.is_nan() {
             Some(NonNaNFloat(v))
-        }
-        else {
+        } else {
             None
         }
     }

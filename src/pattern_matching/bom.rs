@@ -27,7 +27,7 @@ use vec_map::VecMap;
 /// Backward oracle matching algorithm.
 pub struct BOM {
     m: usize,
-    table: Vec<VecMap<usize>>
+    table: Vec<VecMap<usize>>,
 }
 
 
@@ -65,30 +65,36 @@ impl BOM {
             // reached by the edge labelled with a
             suff[i] = Some(match k {
                 Some(k) => *table[k].get(a).unwrap(),
-                None => 0
+                None => 0,
             });
 
             table.push(delta);
         }
 
-        BOM { m: m, table: table }
+        BOM {
+            m: m,
+            table: table,
+        }
     }
 
     fn delta(&self, q: usize, a: u8) -> Option<usize> {
         if q >= self.table.len() {
             None
-        }
-        else {
+        } else {
             match self.table[q].get(a as usize) {
                 Some(&q) => Some(q),
-                None => None
+                None => None,
             }
         }
     }
 
     /// Find all matches of the pattern in the given text. Matches are returned as an iterator over start positions.
     pub fn find_all<'a>(&'a self, text: &'a [u8]) -> Matches {
-        Matches { bom: self, text: text, window: self.m }
+        Matches {
+            bom: self,
+            text: text,
+            window: self.m,
+        }
     }
 }
 
@@ -97,7 +103,7 @@ impl BOM {
 pub struct Matches<'a> {
     bom: &'a BOM,
     text: &'a [u8],
-    window: usize
+    window: usize,
 }
 
 
@@ -112,8 +118,8 @@ impl<'a> Iterator for Matches<'a> {
                     Some(q_) => {
                         q = self.bom.delta(q_, self.text[self.window - j]);
                         j += 1;
-                    },
-                    None => break
+                    }
+                    None => break,
                 }
             }
             // putative start position

@@ -43,7 +43,11 @@ pub fn bwt(text: &[u8], pos: &SuffixArray) -> BWT {
     let mut bwt: BWT = repeat(0).take(n).collect();
     for r in 0..n {
         let p = pos[r];
-        bwt[r] = if p > 0 {text[p-1]} else {text[n-1]};
+        bwt[r] = if p > 0 {
+            text[p - 1]
+        } else {
+            text[n - 1]
+        };
     }
 
     bwt
@@ -76,7 +80,7 @@ pub fn invert_bwt(bwt: &BWT) -> Vec<u8> {
 #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct Occ {
     occ: Vec<Vec<usize>>,
-    k: usize
+    k: usize,
 }
 
 
@@ -113,7 +117,7 @@ impl Occ {
         let i = r / self.k;
         // TODO use sum() once it has been stabilized: .sum::<usize>()
         self.occ[i][a as usize] +
-        bwt[(i * self.k) + 1 .. r + 1].iter().map(|&c| (c == a) as usize).fold(0, |s, e| s + e)
+        bwt[(i * self.k) + 1..r + 1].iter().map(|&c| (c == a) as usize).fold(0, |s, e| s + e)
     }
 }
 
@@ -122,7 +126,8 @@ impl Occ {
 pub fn less(bwt: &BWT, alphabet: &Alphabet) -> Less {
     let m = alphabet.max_symbol().expect("Expecting non-empty alphabet.") as usize + 2;
     let mut less: Less = repeat(0)
-        .take(m).collect();
+                             .take(m)
+                             .collect();
     for &c in bwt.iter() {
         less[c as usize] += 1;
     }
@@ -178,10 +183,7 @@ mod tests {
         let bwt = vec![1u8, 3u8, 3u8, 1u8, 2u8, 0u8];
         let alphabet = Alphabet::new(&[0u8, 1u8, 2u8, 3u8]);
         let occ = Occ::new(&bwt, 3, &alphabet);
-        assert_eq!(occ.occ, [
-            [0, 1, 0, 0],
-            [0, 2, 0, 2]
-        ]);
+        assert_eq!(occ.occ, [[0, 1, 0, 0], [0, 2, 0, 2]]);
         assert_eq!(occ.get(&bwt, 4, 2u8), 1);
         assert_eq!(occ.get(&bwt, 4, 3u8), 2);
     }

@@ -7,7 +7,7 @@ use nalgebra::DMat;
 
 lazy_static! {
 
-    // taken from https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h#L806
+// taken from https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h#L806
     static ref ARRAY: [i32;729]=[
          6,  -3,  -6,  -3,  -2,  -7,  -1,  -6,  -4,  -5,  -6,  -5,  -4,  -3,  -3,  -1,  -3,  -6,   0,   0,  -3,  -2, -12,  -7,  -2,  -3, -15,
         -3,   6, -11,   6,   2,  -9,  -2,  -1,  -5,  -7,  -2,  -8,  -8,   6,  -4,  -6,  -2,  -6,  -1,  -2,  -4,  -7,  -9,  -6,   1,  -4, -15,
@@ -43,11 +43,17 @@ lazy_static! {
 
 #[inline]
 fn lookup(a: u8) -> usize {
-    if      a==b'Y' { 23 as usize }
-    else if a==b'Z' { 24 as usize }
-    else if a==b'X' { 25 as usize }
-    else if a==b'*' { 26 as usize }
-    else { (a-65) as usize }
+    if a == b'Y' {
+        23 as usize
+    } else if a == b'Z' {
+        24 as usize
+    } else if a == b'X' {
+        25 as usize
+    } else if a == b'*' {
+        26 as usize
+    } else {
+        (a - 65) as usize
+    }
 }
 
 pub fn pam40(a: u8, b: u8) -> i32 {
@@ -63,17 +69,17 @@ mod tests {
 
     #[test]
     fn test_pam40() {
-        let score1 = pam40(b'A',b'A');
+        let score1 = pam40(b'A', b'A');
         assert_eq!(score1, 6);
-        let score2 = pam40(b'*',b'*');
+        let score2 = pam40(b'*', b'*');
         assert_eq!(score2, 1);
-        let score3 = pam40(b'A',b'*');
+        let score3 = pam40(b'A', b'*');
         assert_eq!(score3, -15);
-        let score4 = pam40(b'*',b'*');
+        let score4 = pam40(b'*', b'*');
         assert_eq!(score4, 1);
-        let score5 = pam40(b'X',b'X');
+        let score5 = pam40(b'X', b'X');
         assert_eq!(score5, -4);
-        let score6 = pam40(b'X',b'Z');
+        let score6 = pam40(b'X', b'Z');
         assert_eq!(score6, -4);
     }
 }
