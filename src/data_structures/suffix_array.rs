@@ -180,17 +180,17 @@ fn transform_text<T: Integer + Unsigned + NumCast + Copy>(text: &[u8],
                                                           sentinel_count: usize)
                                                           -> Vec<T> {
     let sentinel = sentinel(text);
-    let offset = sentinel_count - 1;
     let transform = RankTransform::new(alphabet);
+    let s_count = sentinel_count - 1;
 
     let mut transformed: Vec<T> = Vec::with_capacity(text.len());
-    let mut s = 0;
+    let mut s = s_count + 1;
     for &a in text.iter() {
         if a == sentinel {
+            s -= 1;
             transformed.push(cast(s).unwrap());
-            s += 1;
         } else {
-            transformed.push(cast(*(transform.ranks.get(a as usize)).unwrap() as usize + offset)
+            transformed.push(cast(*(transform.ranks.get(a as usize)).unwrap() as usize + s_count)
                                  .unwrap());
         }
     }
