@@ -181,16 +181,16 @@ fn transform_text<T: Integer + Unsigned + NumCast + Copy>(text: &[u8],
                                                           -> Vec<T> {
     let sentinel = sentinel(text);
     let transform = RankTransform::new(alphabet);
-    let s_count = sentinel_count - 1;
+    let offset = sentinel_count - 1;
 
     let mut transformed: Vec<T> = Vec::with_capacity(text.len());
-    let mut s = s_count + 1;
+    let mut s = sentinel_count;
     for &a in text.iter() {
         if a == sentinel {
             s -= 1;
             transformed.push(cast(s).unwrap());
         } else {
-            transformed.push(cast(*(transform.ranks.get(a as usize)).unwrap() as usize + s_count)
+            transformed.push(cast(*(transform.ranks.get(a as usize)).unwrap() as usize + offset)
                                  .unwrap());
         }
     }
