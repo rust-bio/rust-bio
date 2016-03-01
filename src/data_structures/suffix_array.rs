@@ -76,9 +76,15 @@ pub fn suffix_array(text: &[u8]) -> SuffixArray {
     let mut sais = SAIS::new(n);
 
     match alphabet.len() + sentinel_count {
-        a if a <= std::u8::MAX as usize  => sais.construct(&transform_text::<u8>(text, &alphabet, sentinel_count)),
-        a if a <= std::u16::MAX as usize => sais.construct(&transform_text::<u16>(text, &alphabet, sentinel_count)),
-        a if a <= std::u32::MAX as usize => sais.construct(&transform_text::<u32>(text, &alphabet, sentinel_count)),
+        a if a <= std::u8::MAX as usize => {
+            sais.construct(&transform_text::<u8>(text, &alphabet, sentinel_count))
+        }
+        a if a <= std::u16::MAX as usize => {
+            sais.construct(&transform_text::<u16>(text, &alphabet, sentinel_count))
+        }
+        a if a <= std::u32::MAX as usize => {
+            sais.construct(&transform_text::<u32>(text, &alphabet, sentinel_count))
+        }
         _ => sais.construct(&transform_text::<u64>(text, &alphabet, sentinel_count)),
     }
 
@@ -131,19 +137,20 @@ pub fn lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
 
     let mut lcp = SmallInts::from_elem(-1, n + 1);
     let mut l = 0usize;
-    for p in 0..n-1 {
+    for p in 0..n - 1 {
         let r = rank[p];
         // since the sentinel has rank 0 and is excluded above,
         // we will never have a negative index below
         let pred = pos[r - 1];
-        while
-            pred + l < n &&
-            p + l < n &&
-            text[p + l] == text[pred + l] {
+        while pred + l < n && p + l < n && text[p + l] == text[pred + l] {
             l += 1;
         }
         lcp.set(r, l as isize);
-        l = if l > 0 {l - 1} else {0};
+        l = if l > 0 {
+            l - 1
+        } else {
+            0
+        };
     }
 
     lcp
@@ -159,15 +166,19 @@ fn sentinel(text: &[u8]) -> u8 {
 /// Count the sentinels occuring in the text given that the last character is the sentinel.
 fn sentinel_count(text: &[u8]) -> usize {
     let sentinel = sentinel(text);
-    assert!(text.iter().all(|&a| a >= sentinel), "Expecting extra sentinel symbol being \
-lexicographically smallest at the end of the text.");
+    assert!(text.iter().all(|&a| a >= sentinel),
+            "Expecting extra sentinel symbol being lexicographically smallest at the end of the \
+             text.");
 
     text.iter().fold(0, |count, &a| count + (a == sentinel) as usize)
 }
 
 
 /// Transform the given text into integers for usage in `SAIS`.
-fn transform_text<T: Integer + Unsigned + NumCast + Copy>(text: &[u8], alphabet: &Alphabet, sentinel_count: usize) -> Vec<T> {
+fn transform_text<T: Integer + Unsigned + NumCast + Copy>(text: &[u8],
+                                                          alphabet: &Alphabet,
+                                                          sentinel_count: usize)
+                                                          -> Vec<T> {
     let sentinel = sentinel(text);
     let offset = sentinel_count - 1;
     let transform = RankTransform::new(alphabet);
@@ -178,9 +189,9 @@ fn transform_text<T: Integer + Unsigned + NumCast + Copy>(text: &[u8], alphabet:
         if a == sentinel {
             transformed.push(cast(s).unwrap());
             s += 1;
-        }
-        else {
-            transformed.push(cast(*(transform.ranks.get(a as usize)).unwrap() as usize + offset).unwrap());
+        } else {
+            transformed.push(cast(*(transform.ranks.get(a as usize)).unwrap() as usize + offset)
+                                 .unwrap());
         }
     }
 
@@ -195,7 +206,7 @@ struct SAIS {
     reduced_text_pos: Vec<usize>,
     bucket_sizes: VecMap<usize>,
     bucket_start: Vec<usize>,
-    bucket_end: Vec<usize>
+    bucket_end: Vec<usize>,
 }
 
 
@@ -208,7 +219,7 @@ impl SAIS {
             reduced_text_pos: vec![0; n],
             bucket_sizes: VecMap::new(),
             bucket_start: Vec::with_capacity(n),
-            bucket_end: Vec::with_capacity(n)
+            bucket_end: Vec::with_capacity(n),
         }
     }
 
@@ -241,13 +252,12 @@ impl SAIS {
     }
 
     /// Check if two LMS substrings are equal.
-    fn lms_substring_eq<T: Integer + Unsigned + NumCast + Copy>(
-        &self,
-        text: &[T],
-        pos_types: &PosTypes,
-        i: usize,
-        j: usize
-    ) -> bool {
+    fn lms_substring_eq<T: Integer + Unsigned + NumCast + Copy>(&self,
+                                                                text: &[T],
+                                                                pos_types: &PosTypes,
+                                                                i: usize,
+                                                                j: usize)
+                                                                -> bool {
         for k in 0.. {
             let lmsi = pos_types.is_lms_pos(i + k);
             let lmsj = pos_types.is_lms_pos(j + k);
@@ -268,7 +278,12 @@ impl SAIS {
     }
 
     /// Sort LMS suffixes.
-    fn sort_lms_suffixes<T: Integer + Unsigned + NumCast + Copy + Debug, S: Integer + Unsigned + NumCast + Copy + Debug>(&mut self, text: &[T], pos_types: &PosTypes, lms_substring_count: usize) {
+    fn sort_lms_suffixes<T: Integer + Unsigned + NumCast + Copy + Debug,
+                         S: Integer + Unsigned + NumCast + Copy + Debug>
+        (&mut self,
+         text: &[T],
+         pos_types: &PosTypes,
+         lms_substring_count: usize) {
 
         // if less than 2 LMS substrings are present, no further sorting is needed
         if lms_substring_count > 1 {
@@ -280,9 +295,7 @@ impl SAIS {
             for &p in self.pos[1..].iter() {
                 if pos_types.is_lms_pos(p) {
                     // choose same label if substrings are equal
-                    if !self.lms_substring_eq(
-                        text, pos_types, prev, p
-                    ) {
+                    if !self.lms_substring_eq(text, pos_types, prev, p) {
                         label += 1;
                     }
                     reduced_text[self.reduced_text_pos[p]] = cast(label).unwrap();
@@ -314,7 +327,9 @@ impl SAIS {
     }
 
     /// Step 1 of the SAIS algorithm.
-    fn calc_lms_pos<T: Integer + Unsigned + NumCast + Copy + Debug>(&mut self, text: &[T], pos_types: &PosTypes) {
+    fn calc_lms_pos<T: Integer + Unsigned + NumCast + Copy + Debug>(&mut self,
+                                                                    text: &[T],
+                                                                    pos_types: &PosTypes) {
         let n = text.len();
 
         // collect LMS positions
@@ -335,20 +350,19 @@ impl SAIS {
 
         if lms_substring_count <= std::u8::MAX as usize {
             self.sort_lms_suffixes::<T, u8>(text, pos_types, lms_substring_count);
-        }
-        else if lms_substring_count <= std::u16::MAX as usize {
+        } else if lms_substring_count <= std::u16::MAX as usize {
             self.sort_lms_suffixes::<T, u16>(text, pos_types, lms_substring_count);
-        }
-        else if lms_substring_count <= std::u32::MAX as usize {
+        } else if lms_substring_count <= std::u32::MAX as usize {
             self.sort_lms_suffixes::<T, u32>(text, pos_types, lms_substring_count);
-        }
-        else {
+        } else {
             self.sort_lms_suffixes::<T, u64>(text, pos_types, lms_substring_count);
         }
     }
 
     /// Step 2 of the SAIS algorithm.
-    fn calc_pos<T: Integer + Unsigned + NumCast + Copy>(&mut self, text: &[T], pos_types: &PosTypes) {
+    fn calc_pos<T: Integer + Unsigned + NumCast + Copy>(&mut self,
+                                                        text: &[T],
+                                                        pos_types: &PosTypes) {
         let n = text.len();
         self.pos.clear();
 
@@ -423,16 +437,15 @@ impl PosTypes {
     fn new<T: Integer + Unsigned + NumCast + Copy>(text: &[T]) -> Self {
         let n = text.len();
         let mut pos_types = BitVec::from_elem(n, false);
-        pos_types.set(n-1, true);
+        pos_types.set(n - 1, true);
 
-        for p in (0..n-1).rev() {
+        for p in (0..n - 1).rev() {
             if text[p] == text[p + 1] {
                 // if the characters are equal, the next position determines
                 // the lexicographical order
                 let v = pos_types.get(p + 1).unwrap();
                 pos_types.set(p, v);
-            }
-            else {
+            } else {
                 pos_types.set(p, text[p] < text[p + 1]);
             }
         }
@@ -452,7 +465,7 @@ impl PosTypes {
 
     /// Check if p is LMS-position.
     fn is_lms_pos(&self, p: usize) -> bool {
-        !(p == 0) && self.is_s_pos(p) && self.is_l_pos(p-1)
+        !(p == 0) && self.is_s_pos(p) && self.is_l_pos(p - 1)
     }
 }
 
@@ -460,7 +473,7 @@ impl PosTypes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::{PosTypes,SAIS,transform_text};
+    use super::{PosTypes, SAIS, transform_text};
     use bit_vec::BitVec;
     use alphabets::Alphabet;
 
@@ -473,7 +486,7 @@ mod tests {
         let n = text.len();
 
         let pos_types = PosTypes::new(&text);
-        let mut test = BitVec::from_bytes(&[0b01100110, 0b10010011,  0b01100100]);
+        let mut test = BitVec::from_bytes(&[0b01100110, 0b10010011, 0b01100100]);
         test.truncate(n);
         assert_eq!(pos_types.pos_types, test);
         let lms_pos: Vec<usize> = (0..n).filter(|&p| pos_types.is_lms_pos(p)).collect();
@@ -507,10 +520,9 @@ mod tests {
         let pos_types = PosTypes::new(&text);
         sais.lms_pos = vec![21, 5, 14, 8, 11, 17, 1];
         sais.calc_pos(&text, &pos_types);
-        assert_eq!(sais.pos, vec![
-            21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18,
-            2, 16, 0, 19, 4, 13, 10, 3, 12, 9
-        ]);
+        assert_eq!(sais.pos,
+                   vec![21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18, 2, 16, 0, 19, 4, 13, 10, 3,
+                        12, 9]);
     }
 
 
@@ -540,5 +552,11 @@ mod tests {
         let text = b"TGTGTGTG$";
         let pos = suffix_array(text);
         assert_eq!(pos, [8, 7, 5, 3, 1, 6, 4, 2, 0]);
+    }
+
+    #[test]
+    fn test_handles_sentinels_properly() {
+        let reads = b"TACTCCGCTAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTT$AAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTAGCGGAGTA$TAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTTGTCCAGTA$TACTGGACAAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTA$ACGCACCCCGGCATTCGTCGACTCTACACTTAGTGGAACATACAAATTCGCTCGCAGGAGCGCCTCATACATTCTAACGCAGTGATCTTCGGCTGAGACT$AGTCTCAGCCGAAGATCACTGCGTTAGAATGTATGAGGCGCTCCTGCGAGCGAATTTGTATGTTCCACTAAGTGTAGAGTCGACGAATGCCGGGGTGCGT$";
+        suffix_array(reads);
     }
 }
