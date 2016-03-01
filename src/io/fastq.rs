@@ -53,7 +53,7 @@ impl<R: io::Read> Reader<R> {
         try!(self.reader.read_line(&mut record.header));
 
         if !record.header.is_empty() {
-            if !record.header.starts_with("@") {
+            if !record.header.starts_with('@') {
                 return Err(io::Error::new(io::ErrorKind::Other, "Expected @ at record start."));
             }
             try!(self.reader.read_line(&mut record.seq));
@@ -119,12 +119,12 @@ impl Record {
 
     /// Return the id of the record.
     pub fn id(&self) -> Option<&str> {
-        self.header[1..].trim_right().splitn(2, " ").next()
+        self.header[1..].trim_right().splitn(2, ' ').next()
     }
 
     /// Return descriptions if present.
     pub fn desc(&self) -> Option<&str> {
-        self.header[1..].trim_right().splitn(2, " ").skip(1).next()
+        self.header[1..].trim_right().splitn(2, ' ').skip(1).next()
     }
 
     /// Return the sequence of the record.

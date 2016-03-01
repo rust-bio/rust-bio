@@ -104,8 +104,7 @@ impl RankSelect {
     /// * `j` - The rank to find the smallest bit for.
     pub fn select(&self, j: u32) -> Option<usize> {
         let mut superblock = match self.superblocks.binary_search(&j) {
-            Ok(i) => i, // superblock with same rank exists
-            Err(i) => i,
+            Ok(i) | Err(i) => i, // superblock with same rank exists
         };
         if superblock > 0 {
             superblock -= 1;
@@ -134,7 +133,7 @@ impl RankSelect {
 
 
 /// Create `n` superblocks of size `s` from a given bitvector.
-fn superblocks(n: usize, s: usize, raw_bits: &Vec<u8>) -> Vec<u32> {
+fn superblocks(n: usize, s: usize, raw_bits: &[u8]) -> Vec<u32> {
     let mut superblocks = Vec::with_capacity(n / s + 1);
     let mut rank: u32 = 0;
     let mut i = 0;

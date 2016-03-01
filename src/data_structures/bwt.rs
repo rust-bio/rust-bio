@@ -9,7 +9,6 @@
 
 use std::iter::repeat;
 
-use data_structures::suffix_array::SuffixArray;
 use utils::prescan;
 use alphabets::Alphabet;
 
@@ -37,7 +36,7 @@ pub type BWTFind = Vec<usize>;
 /// let bwt = bwt(text, &pos);
 /// assert_eq!(bwt, b"ATTATTCAGGACCC$CTTTCAA");
 /// ```
-pub fn bwt(text: &[u8], pos: &SuffixArray) -> BWT {
+pub fn bwt(text: &[u8], pos: &[usize]) -> BWT {
     assert!(text.len() == pos.len());
     let n = text.len();
     let mut bwt: BWT = repeat(0).take(n).collect();
@@ -60,7 +59,7 @@ pub fn bwt(text: &[u8], pos: &SuffixArray) -> BWT {
 /// # Arguments
 ///
 /// * `bwt` - the BWT
-pub fn invert_bwt(bwt: &BWT) -> Vec<u8> {
+pub fn invert_bwt(bwt: &[u8]) -> Vec<u8> {
     let alphabet = Alphabet::new(bwt);
     let n = bwt.len();
     let bwtfind = bwtfind(bwt, &alphabet);
@@ -96,7 +95,7 @@ impl Occ {
     ///
     /// * `bwt` - the BWT
     /// * `k` - the sampling rate: every k-th entry will be stored
-    pub fn new(bwt: &BWT, k: usize, alphabet: &Alphabet) -> Self {
+    pub fn new(bwt: &[u8], k: usize, alphabet: &Alphabet) -> Self {
         let n = bwt.len();
         let m = alphabet.max_symbol().expect("Expecting non-empty alphabet.") as usize + 1;
         let mut occ = Vec::with_capacity(n / k);
@@ -113,7 +112,7 @@ impl Occ {
 
     /// Get occurrence count of symbol a in BWT[..r+1].
     /// Complexity: O(k).
-    pub fn get(&self, bwt: &BWT, r: usize, a: u8) -> usize {
+    pub fn get(&self, bwt: &[u8], r: usize, a: u8) -> usize {
         let i = r / self.k;
         // TODO use sum() once it has been stabilized: .sum::<usize>()
         self.occ[i][a as usize] +
@@ -123,7 +122,7 @@ impl Occ {
 
 
 /// Calculate the less array for a given BWT. Complexity O(n).
-pub fn less(bwt: &BWT, alphabet: &Alphabet) -> Less {
+pub fn less(bwt: &[u8], alphabet: &Alphabet) -> Less {
     let m = alphabet.max_symbol().expect("Expecting non-empty alphabet.") as usize + 2;
     let mut less: Less = repeat(0)
                              .take(m)
@@ -139,7 +138,7 @@ pub fn less(bwt: &BWT, alphabet: &Alphabet) -> Less {
 
 
 /// Calculate the bwtfind array needed for inverting the BWT. Complexity O(n).
-pub fn bwtfind(bwt: &BWT, alphabet: &Alphabet) -> BWTFind {
+pub fn bwtfind(bwt: &[u8], alphabet: &Alphabet) -> BWTFind {
     let n = bwt.len();
     let mut less = less(bwt, alphabet);
 

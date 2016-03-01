@@ -73,16 +73,14 @@ use std::result::Result;
 /// assert!(hamming(x, y).is_err());
 /// ```
 pub fn hamming(alpha: &[u8], beta: &[u8]) -> Result<u32, &'static str> {
-    if alpha.len() != beta.len() {
-        Err("hamming distance: strings are of unequal sizes!")
-    } else {
-        let mut score: u32 = 0;
+    if alpha.len() == beta.len() {
+        let mut score : u32 = 0;
         for (a, b) in Zip::new((alpha, beta)) {
-            if a != b {
-                score += 1;
-            }
+            if a != b { score += 1; }
         }
         Ok(score)
+    } else {
+        Err("hamming distance: strings are of unequal sizes!")
     }
 }
 
@@ -120,10 +118,10 @@ pub fn levenshtein(alpha: &[u8], beta: &[u8]) -> u32 {
         columns[i_cur][0] = 1 + j as u32;
         for i in 1..columns[0].len() {
             columns[i_cur][i] = min(columns[i_prev][i - 1] +
-                                    if alpha[i - 1] != *item {
-                                        1
-                                    } else {
+                                    if alpha[i - 1] == *item {
                                         0
+                                    } else {
+                                        1
                                     },
                                     min(columns[i_cur][i - 1] + 1, columns[i_prev][i] + 1));
         }
