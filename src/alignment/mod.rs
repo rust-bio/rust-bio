@@ -16,7 +16,7 @@ pub enum AlignmentOperation {
     Match,
     Subst,
     Del,
-    Ins
+    Ins,
 }
 
 
@@ -28,7 +28,7 @@ pub struct Alignment {
     pub ystart: usize,
     pub xstart: usize,
     pub xlen: usize,
-    pub operations: Vec<AlignmentOperation>
+    pub operations: Vec<AlignmentOperation>,
 }
 
 
@@ -36,19 +36,26 @@ impl Alignment {
     /// Calculate the cigar string.
     pub fn cigar(&self, hard_clip: bool) -> String {
         let add_op = |op, k, cigar: &mut String| {
-            cigar.push_str(&format!("{}{}", k, match op {
-                AlignmentOperation::Match => "=",
-                AlignmentOperation::Subst => "X",
-                AlignmentOperation::Del => "D",
-                AlignmentOperation::Ins => "I",
-            }));
+            cigar.push_str(&format!("{}{}",
+                                    k,
+                                    match op {
+                                        AlignmentOperation::Match => "=",
+                                        AlignmentOperation::Subst => "X",
+                                        AlignmentOperation::Del => "D",
+                                        AlignmentOperation::Ins => "I",
+                                    }));
         };
 
         let op_len = |op: AlignmentOperation| {
-            (op == AlignmentOperation::Match || op == AlignmentOperation::Subst || op == AlignmentOperation::Ins) as usize
+            (op == AlignmentOperation::Match || op == AlignmentOperation::Subst ||
+             op == AlignmentOperation::Ins) as usize
         };
 
-        let clip_str = if hard_clip {"H"} else {"S"};
+        let clip_str = if hard_clip {
+            "H"
+        } else {
+            "S"
+        };
 
         let mut cigar = String::new();
 
@@ -76,8 +83,7 @@ impl Alignment {
             if clip > 0 {
                 cigar.push_str(&format!("{}{}", clip, clip_str));
             }
-        }
-        else {
+        } else {
             cigar.push_str(&format!("{}{}", self.xlen, clip_str));
         }
 
@@ -120,8 +126,8 @@ impl Alignment {
         let mut inb_pretty = String::new();
 
         if !self.operations.is_empty() {
-            let mut x_i : usize = self.xstart;
-            let mut y_i : usize = self.ystart;
+            let mut x_i: usize = self.xstart;
+            let mut y_i: usize = self.ystart;
 
             // Add '-' before aligned subsequences and un-aligned 5' substrings of sequences.
             if x_i > y_i {
@@ -157,7 +163,7 @@ impl Alignment {
 
                         y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[y_i]])));
                         y_i += 1;
-                    },
+                    }
                     AlignmentOperation::Subst => {
                         x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[x_i]])));
                         x_i += 1;
@@ -166,7 +172,7 @@ impl Alignment {
 
                         y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[y_i]])));
                         y_i += 1;
-                    },
+                    }
                     AlignmentOperation::Del => {
                         x_pretty.push('-');
 
@@ -174,7 +180,7 @@ impl Alignment {
 
                         y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[y_i]])));
                         y_i += 1;
-                    },
+                    }
                     AlignmentOperation::Ins => {
                         x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[x_i]])));
                         x_i += 1;
@@ -182,7 +188,7 @@ impl Alignment {
                         inb_pretty.push(' ');
 
                         y_pretty.push('-');
-                    },
+                    }
                 }
             }
 
@@ -218,7 +224,13 @@ mod tests {
 
     #[test]
     fn test_cigar() {
-        let alignment = Alignment { score: 5, xstart: 3, ystart: 0, xlen: 10, operations: vec![Match, Match, Match, Subst, Ins, Ins, Del, Del] };
+        let alignment = Alignment {
+            score: 5,
+            xstart: 3,
+            ystart: 0,
+            xlen: 10,
+            operations: vec![Match, Match, Match, Subst, Ins, Ins, Del, Del],
+        };
         assert_eq!(alignment.cigar(false), "3S3=1X2I2D4S");
     }
 }

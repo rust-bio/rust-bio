@@ -24,8 +24,7 @@ const PHRED_TO_LOG_FACTOR: f64 = -0.23025850929940456; // 1 / (-10 * log10(e))
 pub fn ln_1m_exp(p: LogProb) -> LogProb {
     if p < -0.693 {
         (-p.exp()).ln_1p()
-    }
-    else {
+    } else {
         (-p.exp_m1()).ln()
     }
 }
@@ -47,8 +46,7 @@ pub fn phred_to_log(p: f64) -> LogProb {
 pub fn sum(probs: &[LogProb]) -> LogProb {
     if probs.is_empty() {
         f64::NEG_INFINITY
-    }
-    else {
+    } else {
         let mut pmax = probs[0];
         let mut imax = 0;
         for (i, &p) in probs.iter().enumerate().skip(1) {
@@ -59,13 +57,22 @@ pub fn sum(probs: &[LogProb]) -> LogProb {
         }
         if pmax == f64::NEG_INFINITY {
             f64::NEG_INFINITY
-        }
-        else if pmax == f64::INFINITY {
+        } else if pmax == f64::INFINITY {
             f64::INFINITY
-        }
-        else {
+        } else {
             // TODO use sum() once it has been stabilized: .sum::<usize>()
-            pmax + (probs.iter().enumerate().filter_map(|(i, p)| if i != imax { Some((p - pmax).exp()) } else { None }).fold(0.0, |s, e| s + e)).ln_1p()
+            pmax +
+            (probs.iter()
+                  .enumerate()
+                  .filter_map(|(i, p)| {
+                      if i != imax {
+                          Some((p - pmax).exp())
+                      } else {
+                          None
+                      }
+                  })
+                  .fold(0.0, |s, e| s + e))
+                .ln_1p()
         }
     }
 }
@@ -78,22 +85,21 @@ pub fn add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
     }
     if p0 == f64::NEG_INFINITY {
         f64::NEG_INFINITY
-    }
-    else if p0 == f64::INFINITY {
+    } else if p0 == f64::INFINITY {
         f64::INFINITY
-    }
-    else {
+    } else {
         p0 + (p1 - p0).exp().ln_1p()
     }
 }
 
 
 /// Calculate the cumulative sum of the given probabilities in a numerically stable way (Durbin 1998).
-pub fn cumsum<'a, I: Iterator<Item=LogProb>>(probs: I) -> Vec<LogProb> {
+pub fn cumsum<'a, I: Iterator<Item = LogProb>>(probs: I) -> Vec<LogProb> {
     probs.scan(f64::NEG_INFINITY, |s, p| {
-        *s = add(*s, p);
-        Some(*s)
-    }).collect()
+             *s = add(*s, p);
+             Some(*s)
+         })
+         .collect()
 }
 
 
@@ -116,6 +122,7 @@ mod tests {
     #[test]
     fn test_cumsum() {
         let probs = vec![0.0f64.ln(), 0.01f64.ln(), 0.001f64.ln()];
-        assert_eq!(cumsum(probs.into_iter()), [0.0f64.ln(), 0.01f64.ln(), 0.011f64.ln()]);
+        assert_eq!(cumsum(probs.into_iter()),
+                   [0.0f64.ln(), 0.01f64.ln(), 0.011f64.ln()]);
     }
 }

@@ -16,7 +16,7 @@ use std::mem::swap;
 #[derive(Debug, Copy, Clone)]
 pub struct Interval {
     lower: usize,
-    upper: usize
+    upper: usize,
 }
 
 
@@ -34,7 +34,7 @@ impl Interval {
 pub struct FMIndex {
     bwt: BWT,
     less: Less,
-    occ: Occ
+    occ: Occ,
 }
 
 
@@ -50,7 +50,11 @@ impl FMIndex {
     pub fn new(bwt: BWT, k: usize, alphabet: &Alphabet) -> Self {
         let less = less(&bwt, alphabet);
         let occ = Occ::new(&bwt, k, alphabet);
-        FMIndex { bwt: bwt, less: less, occ: occ}
+        FMIndex {
+            bwt: bwt,
+            less: less,
+            occ: occ,
+        }
     }
 
     /// Perform backward search, yielding suffix array
@@ -81,15 +85,25 @@ impl FMIndex {
     ///
     /// assert_eq!(occ, [3, 12, 9]);
     /// ```
-    pub fn backward_search<'b, P: Iterator<Item=&'b u8> + DoubleEndedIterator>(&self, pattern: P) -> Interval {
+    pub fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator>(&self,
+                                                                                 pattern: P)
+                                                                                 -> Interval {
         let (mut l, mut r) = (0, self.bwt.len() - 1);
         for &a in pattern.rev() {
             let less = self.less(a);
-            l = less + if l > 0 { self.occ(l - 1, a) } else { 0 };
+            l = less +
+                if l > 0 {
+                self.occ(l - 1, a)
+            } else {
+                0
+            };
             r = less + self.occ(r, a) - 1;
         }
 
-        Interval { lower: l, upper: r + 1 }
+        Interval {
+            lower: l,
+            upper: r + 1,
+        }
     }
 
     fn occ(&self, r: usize, a: u8) -> usize {
@@ -137,7 +151,7 @@ impl BiInterval {
             lower: self.lower_rev,
             lower_rev: self.lower,
             size: self.size,
-            match_size: self.match_size
+            match_size: self.match_size,
         }
     }
 }
@@ -169,14 +183,12 @@ impl FMDIndex {
     pub fn new(bwt: BWT, k: usize) -> Self {
         let mut alphabet = dna::n_alphabet();
         alphabet.insert(b'$');
-        assert!(
-            alphabet.is_word(&bwt),
-            "Expecting BWT over the DNA alphabet (including N) with the sentinel $."
-        );
+        assert!(alphabet.is_word(&bwt),
+                "Expecting BWT over the DNA alphabet (including N) with the sentinel $.");
 
         FMDIndex {
             fmindex: FMIndex::new(bwt, k, &alphabet),
-            revcomp: dna::RevComp::new()
+            revcomp: dna::RevComp::new(),
         }
     }
 
@@ -210,7 +222,7 @@ impl FMDIndex {
 
         let mut interval = self.init_interval(pattern, i);
 
-        for &a in pattern[i+1..].iter() {
+        for &a in pattern[i + 1..].iter() {
             // forward extend interval
             let _interval = self.forward_ext(&interval, a);
 
@@ -226,19 +238,23 @@ impl FMDIndex {
         }
         // add the last non-zero interval
         curr.push(interval);
+        // reverse intervals such that longest comes first
+        curr.reverse();
 
         swap(curr, prev);
         let mut j = pattern.len() as isize;
 
         for k in (-1..i as isize).rev() {
-            let a = if k == -1 { b'$' } else { pattern[k as usize] };
+            let a = if k == -1 {
+                b'$'
+            } else {
+                pattern[k as usize]
+            };
             curr.clear();
             // size of the last confirmed interval
             let mut last_size = -1;
 
-            // iterate over forward extensions in reverse, as they are sorted by size
-            // and we prefer longer matches
-            for &interval in prev.iter().rev() {
+            for &interval in prev.iter() {
                 // backward extend interval
                 let _interval = self.backward_ext(&interval, a);
 
@@ -303,7 +319,7 @@ impl FMDIndex {
             lower: k,
             lower_rev: l,
             size: s,
-            match_size: interval.match_size + 1
+            match_size: interval.match_size + 1,
         }
     }
 
@@ -311,10 +327,8 @@ impl FMDIndex {
     fn forward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
         let _a = self.revcomp.comp(a);
 
-        self.backward_ext(
-            &interval.swapped(),
-            _a
-        ).swapped()
+        self.backward_ext(&interval.swapped(), _a)
+            .swapped()
     }
 
     /// Provide a reference to the underlying FMIndex.
@@ -336,7 +350,7 @@ mod tests {
         let revcomp = dna::RevComp::new();
         let orig_text = b"GCCTTAACAT";
         let revcomp_text = revcomp.get(orig_text);
-        let text_builder: Vec<&[u8]> = vec![orig_text, b"$", & revcomp_text[..], b"$"];
+        let text_builder: Vec<&[u8]> = vec![orig_text, b"$", &revcomp_text[..], b"$"];
         let text = text_builder.concat();
         let pos = suffix_array(&text);
         println!("pos {:?}", pos);
@@ -376,5 +390,74 @@ mod tests {
 
         impls_serde_traits::<FMIndex>();
         impls_serde_traits::<FMDIndex>();
+    }
+
+    #[test]
+    fn test_issue39() {
+        let reads = b"GGCGTGGTGGCTTATGCCTGTAATCCCAGCACTTTGGGAGGTCGAAGTGGGCGG$CCGC\
+                       CCACTTCGACCTCCCAAAGTGCTGGGATTACAGGCATAAGCCACCACGCC$CGAAGTGG\
+                       GCGGATCACTTGAGGTCAGGAGTTGGAGACTAGCCTGGCCAACACGATGAAACCCCGTC\
+                       TCTAATA$TATTAGAGACGGGGTTTCATCGTGTTGGCCAGGCTAGTCTCCAACTCCTGA\
+                       CCTCAAGTGATCCGCCCACTTCG$AGCTCGAAAAATGTTTGCTTATTTTGGTAAAATTA\
+                       TTCATTGACTATGCTCAGAAATCAAGCAAACTGTCCATATTTCATTTTTTG$CAAAAAA\
+                       TGAAATATGGACAGTTTGCTTGATTTCTGAGCATAGTCAATGAATAATTTTACCAAAAT\
+                       AAGCAAACATTTTTCGAGCT$AGCTCGAAAAATGTTTGCTTATTTTGGTAAAATTATTC\
+                       ATTGACTATGCTCAGAAATCAAGCAAACTGTCCATATTTCATTTTTTGAAATTACATAT\
+                       $ATATGTAATTTCAAAAAATGAAATATGGACAGTTTGCTTGATTTCTGAGCATAGTCAA\
+                       TGAATAATTTTACCAAAATAAGCAAACATTTTTCGAGCT$TAAAATTTCCTCTGACAGT\
+                       GTAAAAGAGATCTTCATACAAAAATCAGAATTTATATAGTCTCTTTCCAAAAGACCATA\
+                       AAACCAATCAGTTAATAGTTGAT$ATCAACTATTAACTGATTGGTTTTATGGTCTTTTG\
+                       GAAAGAGACTATATAAATTCTGATTTTTGTATGAAGATCTCTTTTACACTGTCAGAGGA\
+                       AATTTTA$CACCTATCTACCCTGAATCTAAGTGCTAACAGGAAAGGATGCCAGATTGCA\
+                       TGCCTGCTGATAAAGCCACAGTTTGGACTGTCACTCAATCACCATCGTTC$GAACGATG\
+                       GTGATTGAGTGACAGTCCAAACTGTGGCTTTATCAGCAGGCATGCAATCTGGCATCCTT\
+                       TCCTGTTAGCACTTAGATTCAGGGTAGATAGGTG$CATCGTTCCTCCTGTGACTCAGTA\
+                       TAACAAGATTGGGAGAATACTCTACAGTTCCTGATTCCCCCACAG$CTGTGGGGGAATC\
+                       AGGAACTGTAGAGTATTCTCCCAATCTTGTTATACTGAGTCACAGGAGGAACGATG$TG\
+                       TAAATTCTGAGAAAAATTTGCAGGTCTTTCTTCAGGAGCATGTAATCTCTTGCTCTCTT\
+                       TGTTATCTATCTATAGTACTGTAGGTTATCTGGAGTTGCT$AGCAACTCCAGATAACCT\
+                       ACAGTACTATAGATAGATAACAAAGAGAGCAAGAGATTACATGCTCCTGAAGAAAGACC\
+                       TGCAAATTTTTCTCAGAATTTACA$CACTTCTCCTTGTCTTTACAGACTGGTTTTGCAC\
+                       TGGGAAATCCTTTCACCAGTCAGCCCAGTTAGAGATTCTG$CAGAATCTCTAACTGGGC\
+                       TGACTGGTGAAAGGATTTCCCAGTGCAAAACCAGTCTGTAAAGACAAGGAGAAGTG$AA\
+                       TGGAGGTATATAAATTATCTGGCAAAGTGACATATCCTGACACATTCTCCAGGATAGAT\
+                       CAAATGTTAGGTCACAAAGAGAGTCTTAACAAAATT$AATTTTGTTAAGACTCTCTTTG\
+                       TGACCTAACATTTGATCTATCCTGGAGAATGTGTCAGGATATGTCACTTTGCCAGATAA\
+                       TTTATATACCTCCATT$TTAATTTTGTTAAGACTCTCTTTGTGACCTAACATTTGATCT\
+                       ATCCTGGAGAATGTGTCAGGATATGTCACTTTGCCAGATAATTTATATACCTCCATTTT\
+                       $AAAATGGAGGTATATAAATTATCTGGCAAAGTGACATATCCTGACACATTCTCCAGGA\
+                       TAGATCAAATGTTAGGTCACAAAGAGAGTCTTAACAAAATTAA$TTCTTCTTTGACTCA\
+                       TTGGTTGTTCAATAGTATGTTGTTTAATTTCCATATATTTGTAAATGTTTCCGTTTTCC\
+                       TTCTACTATTGAATTTTTGCTTCATC$GATGAAGCAAAAATTCAATAGTAGAAGGAAAA\
+                       CGGAAACATTTACAAATATATGGAAATTAAACAACATACTATTGAACAACCAATGAGTC\
+                       AAAGAAGAA$AGGAAAACGGAAACATTTACAAATATATGGAAATTAAACAACATACTAT\
+                       TGAACAACCAATGAGTCAAAGAAGAAATCAAAAAGAATATTAGAAAAC$GTTTTCTAAT\
+                       ATTCTTTTTGATTTCTTCTTTGACTCATTGGTTGTTCAATAGTATGTTGTTTAATTTCC\
+                       ATATATTTGTAAATGTTTCCGTTTTCCT$TTAGAAAACAAGCTGACAAAAAAATAAAAA\
+                       AACACAACATAGCAAAACTTAGAAATGCAGCAAAGGCAGTACTAAAGAGGGAAATTTAT\
+                       AGCAATAAATGC$GCATTTATTGCTATAAATTTCCCTCTTTAGTACTGCCTTTGCTGCA\
+                       TTTCTAAGTTTTGCTATGTTGTGTTTTTTTATTTTTTTGTCAGCTTGTTTTCTAA$TTT\
+                       ATTGCTATAAATTTCCCTCTTTAGTACTGCCTTTGCTGCATTTCTAAGTTTTGCTATGT\
+                       TGTGTTTTTTTATTTTTTTGTCAGCTTGTTTTCTA$TAGAAAACAAGCTGACAAAAAAA\
+                       TAAAAAAACACAACATAGCAAAACTTAGAAATGCAGCAAAGGCAGTACTAAAGAGGGAA\
+                       ATTTATAGCAATAAA$TCTTTCTTCTTTTTTAAGGTAGGCATTTATTGCTATAAATTTC\
+                       CCTCTTTAGTACTGCCTTTG$CAAAGGCAGTACTAAAGAGGGAAATTTATAGCAATAAA\
+                       TGCCTACCTTAAAAAAGAAGAAAGA$";
+        let suffix_array = suffix_array(reads);
+        let fmdindex = FMDIndex::new(bwt(reads, &suffix_array), 1);
+
+        let read = b"GGCGTGGTGGCTTATGCCTGTAATCCCAGCACTTTGGGAGGTCGAAGTGGGCGG";
+        let read_pos = 0;
+
+        for i in 0..read.len() {
+            println!("i {}", i);
+            let intervals = fmdindex.smems(read, i);
+            println!("{:?}", intervals);
+            let matches = intervals.iter()
+                                   .flat_map(|interval| interval.occ(&suffix_array).iter())
+                                   .map(|i| *i)
+                                   .collect::<Vec<usize>>();
+            assert_eq!(matches, vec![read_pos]);
+        }
     }
 }

@@ -43,7 +43,7 @@
 pub struct Horspool<'a> {
     shift: Vec<usize>,
     m: usize,
-    pattern: &'a [u8]
+    pattern: &'a [u8],
 }
 
 
@@ -54,21 +54,25 @@ impl<'a> Horspool<'a> {
         let mut shift = vec![m; 256];
         // shift is m for all not occurring characters
         // and m - 1 - j for all others
-        for (j, &a) in pattern[..m-1].iter().enumerate() {
+        for (j, &a) in pattern[..m - 1].iter().enumerate() {
             shift[a as usize] = m - 1 - j;
         }
 
         Horspool {
-            m: m, shift: shift, pattern: pattern
+            m: m,
+            shift: shift,
+            pattern: pattern,
         }
     }
 
     /// Find all matches with a given text. Matches are returned as an iterator over start positions.
     pub fn find_all<'b>(&'b self, text: &'b [u8]) -> Matches {
         Matches {
-            horspool: self, text: text, n: text.len(),
+            horspool: self,
+            text: text,
+            n: text.len(),
             last: self.m - 1,
-            pattern_last: self.pattern[self.m - 1]
+            pattern_last: self.pattern[self.m - 1],
         }
     }
 }
@@ -80,7 +84,7 @@ pub struct Matches<'a> {
     text: &'a [u8],
     n: usize,
     last: usize,
-    pattern_last: u8
+    pattern_last: u8,
 }
 
 
@@ -90,8 +94,7 @@ impl<'a> Iterator for Matches<'a> {
     fn next(&mut self) -> Option<usize> {
         loop {
             // shift until the last symbol matches
-            while self.last < self.n
-                && self.text[self.last] != self.pattern_last {
+            while self.last < self.n && self.text[self.last] != self.pattern_last {
                 self.last += self.horspool.shift[self.text[self.last] as usize];
             }
             // stop if end of text is reached
@@ -106,7 +109,7 @@ impl<'a> Iterator for Matches<'a> {
             // shift again (after both match and mismatch, this makes sense)
             self.last += self.horspool.shift[self.pattern_last as usize];
 
-            if self.text[i..j] == self.horspool.pattern[..self.horspool.m-1] {
+            if self.text[i..j] == self.horspool.pattern[..self.horspool.m - 1] {
                 return Some(i);
             }
         }

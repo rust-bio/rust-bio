@@ -58,8 +58,8 @@ impl<R: io::Read> Reader<R> {
 
 
 /// A BED record.
-pub struct Records<'a, R: 'a +io::Read> {
-    inner: csv::DecodedRecords<'a, R, (String, u64, u64, Vec<String>)>
+pub struct Records<'a, R: 'a + io::Read> {
+    inner: csv::DecodedRecords<'a, R, (String, u64, u64, Vec<String>)>,
 }
 
 
@@ -67,8 +67,16 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
     type Item = csv::Result<Record>;
 
     fn next(&mut self) -> Option<csv::Result<Record>> {
-        self.inner.next().map(|res| res.map(|(chrom, start, end, aux)| 
-            Record { chrom: chrom, start: start, end: end, aux: aux }))
+        self.inner.next().map(|res| {
+            res.map(|(chrom, start, end, aux)| {
+                Record {
+                    chrom: chrom,
+                    start: start,
+                    end: end,
+                    aux: aux,
+                }
+            })
+        })
     }
 }
 
@@ -97,8 +105,7 @@ impl<W: io::Write> Writer<W> {
     pub fn write(&mut self, record: Record) -> csv::Result<()> {
         if record.aux.is_empty() {
             self.inner.encode((record.chrom, record.start, record.end))
-        }
-        else {
+        } else {
             self.inner.encode(record)
         }
     }
@@ -111,14 +118,19 @@ pub struct Record {
     chrom: String,
     start: u64,
     end: u64,
-    aux: Vec<String>
+    aux: Vec<String>,
 }
 
 
 impl Record {
     /// Create a new BED record.
     pub fn new() -> Self {
-        Record { chrom: "".to_owned(), start: 0, end: 0, aux: vec![] }
+        Record {
+            chrom: "".to_owned(),
+            start: 0,
+            end: 0,
+            aux: vec![],
+        }
     }
 
     /// Chromosome of the feature.
@@ -151,7 +163,7 @@ impl Record {
         match self.aux(5) {
             Some("+") => Some(Strand::Forward),
             Some("-") => Some(Strand::Reverse),
-            _         => None
+            _ => None,
         }
     }
 
@@ -160,8 +172,7 @@ impl Record {
         let j = i - 3;
         if j < self.aux.len() {
             Some(&self.aux[j])
-        }
-        else {
+        } else {
             None
         }
     }
@@ -185,8 +196,7 @@ impl Record {
     pub fn set_name(&mut self, name: &str) {
         if self.aux.len() < 1 {
             self.aux.push(name.to_owned());
-        }
-        else {
+        } else {
             self.aux[0] = name.to_owned();
         }
     }
@@ -198,8 +208,7 @@ impl Record {
         }
         if self.aux.len() < 2 {
             self.aux.push(score.to_owned());
-        }
-        else {
+        } else {
             self.aux[1] = score.to_owned();
         }
     }

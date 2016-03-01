@@ -29,7 +29,7 @@ use csv;
 /// A FASTA reader.
 pub struct Reader<R: io::Read> {
     reader: io::BufReader<R>,
-    line: String
+    line: String,
 }
 
 
@@ -44,7 +44,10 @@ impl Reader<fs::File> {
 impl<R: io::Read> Reader<R> {
     /// Create a new Fasta reader given an instance of `io::Read`.
     pub fn new(reader: R) -> Self {
-        Reader { reader: io::BufReader::new(reader), line: String::new() }
+        Reader {
+            reader: io::BufReader::new(reader),
+            line: String::new(),
+        }
     }
 
     /// Read next FASTA record into the given `Record`.
@@ -58,10 +61,7 @@ impl<R: io::Read> Reader<R> {
         }
 
         if !self.line.starts_with(">") {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Expected > at record start."
-            ));
+            return Err(io::Error::new(io::ErrorKind::Other, "Expected > at record start."));
         }
         record.header.push_str(&self.line);
         loop {
@@ -101,14 +101,17 @@ impl Index {
             seqs.push(name.clone().into_bytes());
             inner.insert(name.into_bytes(), record);
         }
-        Ok(Index { inner: inner, seqs: seqs })
+        Ok(Index {
+            inner: inner,
+            seqs: seqs,
+        })
     }
 
     /// Open a FASTA index from a given file path.
     pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
         match fs::File::open(path) {
             Ok(fai) => Self::new(fai),
-            Err(e)  => Err(csv::Error::Io(e))
+            Err(e) => Err(csv::Error::Io(e)),
         }
     }
 
@@ -123,7 +126,15 @@ impl Index {
 
     /// Return a vector of sequences described in the index.
     pub fn sequences(&self) -> Vec<Sequence> {
-        self.seqs.iter().map(|name| Sequence { name: name.clone(), len: self.inner.get(name).unwrap().len }).collect()
+        self.seqs
+            .iter()
+            .map(|name| {
+                Sequence {
+                    name: name.clone(),
+                    len: self.inner.get(name).unwrap().len,
+                }
+            })
+            .collect()
     }
 }
 
@@ -142,7 +153,7 @@ impl IndexedReader<fs::File> {
 
         match fs::File::open(path) {
             Ok(fasta) => Ok(IndexedReader::with_index(fasta, index)),
-            Err(e)    => Err(csv::Error::Io(e))
+            Err(e) => Err(csv::Error::Io(e)),
         }
     }
 }
@@ -152,29 +163,35 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     /// Read from a FASTA and its index, both given as `io::Read`. FASTA has to be `io::Seek` in addition.
     pub fn new<I: io::Read>(fasta: R, fai: I) -> csv::Result<Self> {
         let index = try!(Index::new(fai));
-        Ok(IndexedReader { reader: io::BufReader::new(fasta), index: index })
+        Ok(IndexedReader {
+            reader: io::BufReader::new(fasta),
+            index: index,
+        })
     }
 
     /// Read from a FASTA and its index, the first given as `io::Read`, the second given as index object.
     pub fn with_index(fasta: R, index: Index) -> Self {
-        IndexedReader { reader: io::BufReader::new(fasta), index: index }
+        IndexedReader {
+            reader: io::BufReader::new(fasta),
+            index: index,
+        }
     }
 
     /// For a given seqname, read the whole sequence into the given vector.
     pub fn read_all(&mut self, seqname: &[u8], seq: &mut Vec<u8>) -> io::Result<()> {
         match self.index.inner.get(seqname) {
             Some(&idx) => self.read(seqname, 0, idx.len, seq),
-            None      => Err(
-                io::Error::new(
-                    io::ErrorKind::Other,
-                    "Unknown sequence name."
-                )
-            )
+            None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
         }
     }
 
     /// Read the given interval of the given seqname into the given vector (stop position is exclusive).
-    pub fn read(&mut self, seqname: &[u8], start: u64, stop: u64, seq: &mut Vec<u8>) -> io::Result<()> {
+    pub fn read(&mut self,
+                seqname: &[u8],
+                start: u64,
+                stop: u64,
+                seq: &mut Vec<u8>)
+                -> io::Result<()> {
         match self.index.inner.get(seqname) {
             Some(idx) => {
                 seq.clear();
@@ -184,7 +201,12 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
                 let line_offset = start % idx.line_bases;
                 let offset = idx.offset + line + line_offset;
                 let lines = stop / idx.line_bases * idx.line_bytes - line;
-                let line_stop = stop % idx.line_bases - if lines == 0 { line_offset } else { 0 };
+                let line_stop = stop % idx.line_bases -
+                                if lines == 0 {
+                    line_offset
+                } else {
+                    0
+                };
 
                 try!(self.reader.seek(io::SeekFrom::Start(offset)));
                 let mut buf = vec![0u8; idx.line_bases as usize];
@@ -198,13 +220,8 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
                 try!(self.reader.read(&mut buf[..line_stop as usize]));
                 seq.extend(&buf[..line_stop as usize]);
                 Ok(())
-            },
-            None      => Err(
-                io::Error::new(
-                    io::ErrorKind::Other,
-                    "Unknown sequence name."
-                )
-            )
+            }
+            None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
         }
     }
 }
@@ -284,7 +301,10 @@ pub struct Record {
 impl Record {
     /// Create a new instance.
     pub fn new() -> Self {
-        Record { header: String::new(), seq: String::new() }
+        Record {
+            header: String::new(),
+            seq: String::new(),
+        }
     }
 
     /// Check if record is empty.
@@ -340,8 +360,8 @@ impl<R: io::Read> Iterator for Records<R> {
         let mut record = Record::new();
         match self.reader.read(&mut record) {
             Ok(()) if record.is_empty() => None,
-            Ok(())   => Some(Ok(record)),
-            Err(err) => Some(Err(err))
+            Ok(()) => Some(Ok(record)),
+            Err(err) => Some(Err(err)),
         }
     }
 }
@@ -365,14 +385,14 @@ ATTGTTGTTTTA
         let reader = Reader::new(FASTA_FILE);
         let ids = [Some("id"), Some("id2")];
         let descs = [Some("desc"), None];
-        let seqs : [&[u8]; 2] = [b"ACCGTAGGCTGA", b"ATTGTTGTTTTA"];
+        let seqs: [&[u8]; 2] = [b"ACCGTAGGCTGA", b"ATTGTTGTTTTA"];
 
         for (i, r) in reader.records().enumerate() {
-          let record = r.ok().expect("Error reading record");
-          assert_eq!(record.check(), Ok(()));
-          assert_eq!(record.id(), ids[i]);
-          assert_eq!(record.desc(), descs[i]);
-          assert_eq!(record.seq(), seqs[i]);
+            let record = r.ok().expect("Error reading record");
+            assert_eq!(record.check(), Ok(()));
+            assert_eq!(record.id(), ids[i]);
+            assert_eq!(record.desc(), descs[i]);
+            assert_eq!(record.seq(), seqs[i]);
         }
 
 
@@ -381,7 +401,9 @@ ATTGTTGTTTTA
 
     #[test]
     fn test_indexed_reader() {
-        let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE), FAI_FILE).ok().expect("Error reading index");
+        let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE), FAI_FILE)
+                             .ok()
+                             .expect("Error reading index");
         let mut seq = Vec::new();
         reader.read(b"id", 1, 5, &mut seq).ok().expect("Error reading sequence.");
         assert_eq!(seq, b"CCGT");

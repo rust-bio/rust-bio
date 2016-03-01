@@ -76,9 +76,11 @@ pub fn hamming(alpha: &[u8], beta: &[u8]) -> Result<u32, &'static str> {
     if alpha.len() != beta.len() {
         Err("hamming distance: strings are of unequal sizes!")
     } else {
-        let mut score : u32 = 0;
+        let mut score: u32 = 0;
         for (a, b) in Zip::new((alpha, beta)) {
-            if a != b { score += 1; }
+            if a != b {
+                score += 1;
+            }
         }
         Ok(score)
     }
@@ -107,7 +109,9 @@ pub fn levenshtein(alpha: &[u8], beta: &[u8]) -> u32 {
     let mut i_prev = 0;
     let mut i_cur = 1;
 
-    for i in 0..columns[0].len() { columns[0][i] = i as u32; }
+    for i in 0..columns[0].len() {
+        columns[0][i] = i as u32;
+    }
 
     for (j, item) in beta.iter().enumerate() {
         i_cur = i_cur % 2;
@@ -115,7 +119,13 @@ pub fn levenshtein(alpha: &[u8], beta: &[u8]) -> u32 {
 
         columns[i_cur][0] = 1 + j as u32;
         for i in 1..columns[0].len() {
-            columns[i_cur][i] = min(columns[i_prev][i-1] + if alpha[i - 1] != *item { 1 } else { 0 }, min(columns[i_cur][i-1] + 1, columns[i_prev][i] + 1));
+            columns[i_cur][i] = min(columns[i_prev][i - 1] +
+                                    if alpha[i - 1] != *item {
+                                        1
+                                    } else {
+                                        0
+                                    },
+                                    min(columns[i_cur][i - 1] + 1, columns[i_prev][i] + 1));
         }
 
         i_cur += 1;
