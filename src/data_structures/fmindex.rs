@@ -16,7 +16,7 @@ use std::mem::swap;
 #[derive(Debug, Copy, Clone)]
 pub struct Interval {
     lower: usize,
-    upper: usize
+    upper: usize,
 }
 
 
@@ -34,7 +34,7 @@ impl Interval {
 pub struct FMIndex {
     bwt: BWT,
     less: Less,
-    occ: Occ
+    occ: Occ,
 }
 
 
@@ -50,7 +50,11 @@ impl FMIndex {
     pub fn new(bwt: BWT, k: usize, alphabet: &Alphabet) -> Self {
         let less = less(&bwt, alphabet);
         let occ = Occ::new(&bwt, k, alphabet);
-        FMIndex { bwt: bwt, less: less, occ: occ}
+        FMIndex {
+            bwt: bwt,
+            less: less,
+            occ: occ,
+        }
     }
 
     /// Perform backward search, yielding suffix array
@@ -81,15 +85,25 @@ impl FMIndex {
     ///
     /// assert_eq!(occ, [3, 12, 9]);
     /// ```
-    pub fn backward_search<'b, P: Iterator<Item=&'b u8> + DoubleEndedIterator>(&self, pattern: P) -> Interval {
+    pub fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator>(&self,
+                                                                                 pattern: P)
+                                                                                 -> Interval {
         let (mut l, mut r) = (0, self.bwt.len() - 1);
         for &a in pattern.rev() {
             let less = self.less(a);
-            l = less + if l > 0 { self.occ(l - 1, a) } else { 0 };
+            l = less +
+                if l > 0 {
+                self.occ(l - 1, a)
+            } else {
+                0
+            };
             r = less + self.occ(r, a) - 1;
         }
 
-        Interval { lower: l, upper: r + 1 }
+        Interval {
+            lower: l,
+            upper: r + 1,
+        }
     }
 
     fn occ(&self, r: usize, a: u8) -> usize {
@@ -118,6 +132,7 @@ pub struct BiInterval {
 
 
 impl BiInterval {
+
     /// Return the occurrence positions of the pattern as a slice of the suffix array.
     pub fn occ<'a>(&self, pos: &'a SuffixArray) -> &'a [usize] {
         self._pos(pos, self.lower)
@@ -137,7 +152,7 @@ impl BiInterval {
             lower: self.lower_rev,
             lower_rev: self.lower,
             size: self.size,
-            match_size: self.match_size
+            match_size: self.match_size,
         }
     }
 }
@@ -151,6 +166,7 @@ pub struct FMDIndex {
     revcomp: dna::RevComp,
 }
 
+const SENT_CHAR: u8 = b'$';
 
 impl FMDIndex {
     /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
@@ -168,16 +184,45 @@ impl FMDIndex {
     ///   less memory usage, but worse performance)
     pub fn new(bwt: BWT, k: usize) -> Self {
         let mut alphabet = dna::n_alphabet();
-        alphabet.insert(b'$');
-        assert!(
-            alphabet.is_word(&bwt),
-            "Expecting BWT over the DNA alphabet (including N) with the sentinel $."
-        );
+        alphabet.insert(SENT_CHAR);
+        assert!(alphabet.is_word(&bwt),
+                "Expecting BWT over the DNA alphabet (including N) with the sentinel $.");
 
         FMDIndex {
             fmindex: FMIndex::new(bwt, k, &alphabet),
-            revcomp: dna::RevComp::new()
+            revcomp: dna::RevComp::new(),
         }
+    }
+
+    /// Find longest suffix that overlaps (but does not encompass) the prefix of the search pattern
+    /// Returns the matching suffixes and the size of the overlap
+    pub fn longest_suffix_prefix_match(&self, pattern: &[u8], min_overlap: usize) -> Option<(usize, BiInterval)> {
+        let exact_match_interval = self.fmindex.backward_search(pattern.iter());
+        let exact_match_size = exact_match_interval.upper - exact_match_interval.lower;
+        let mut interval = self.init_interval(pattern, 0);
+        let mut interval_stack = vec![];
+
+        for &a in pattern[1..].iter() {
+            // forward extend interval
+            let _interval = self.forward_ext(&interval, a);
+
+            // if new interval represents only exact matches, break
+            if _interval.size <= exact_match_size {
+                break;
+            } else if _interval.match_size >= min_overlap {
+                interval_stack.push(_interval);
+            }
+            interval = _interval;
+        }
+
+        while let Some(longest_interval) = interval_stack.pop() {
+            let prefixes = self.forward_ext(&longest_interval, SENT_CHAR);
+            if prefixes.size > 0 {
+                return Some((longest_interval.match_size, prefixes));
+            }
+        }
+
+        None
     }
 
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
@@ -210,7 +255,7 @@ impl FMDIndex {
 
         let mut interval = self.init_interval(pattern, i);
 
-        for &a in pattern[i+1..].iter() {
+        for &a in pattern[i + 1..].iter() {
             // forward extend interval
             let _interval = self.forward_ext(&interval, a);
 
@@ -233,7 +278,11 @@ impl FMDIndex {
         let mut j = pattern.len() as isize;
 
         for k in (-1..i as isize).rev() {
-            let a = if k == -1 { b'$' } else { pattern[k as usize] };
+            let a = if k == -1 {
+                SENT_CHAR
+            } else {
+                pattern[k as usize]
+            };
             curr.clear();
             // size of the last confirmed interval
             let mut last_size = -1;
@@ -303,7 +352,7 @@ impl FMDIndex {
             lower: k,
             lower_rev: l,
             size: s,
-            match_size: interval.match_size + 1
+            match_size: interval.match_size + 1,
         }
     }
 
@@ -311,10 +360,8 @@ impl FMDIndex {
     fn forward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
         let _a = self.revcomp.comp(a);
 
-        self.backward_ext(
-            &interval.swapped(),
-            _a
-        ).swapped()
+        self.backward_ext(&interval.swapped(), _a)
+            .swapped()
     }
 
     /// Provide a reference to the underlying FMIndex.
@@ -327,17 +374,49 @@ impl FMDIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::SENT_CHAR;
     use alphabets::dna;
     use data_structures::suffix_array::suffix_array;
     use data_structures::bwt::bwt;
 
+    fn revcomp_delimit_concat(read: &[u8]) -> Vec<u8> {
+        let mut result_vec = read.to_vec();
+        let len = read.len();
+        let revcomp = dna::RevComp::new();
+        result_vec.reserve(2 + len);
+        result_vec.push(SENT_CHAR);
+        result_vec.append(&mut revcomp.get(read));
+        result_vec.push(SENT_CHAR);
+        result_vec
+    }
+
+    #[test]
+    fn test_longest_prefix() {
+        let desired_prefix = b"GCCTTCGC";
+        let search_str = b"TTCGCAG";
+        let contains = b"AATTCGCAGA";
+        let other_1 = b"GAGAGACCTTT";
+        let other_2 = b"GGCTTCCC";
+        let reads: Vec<&[u8]> = vec![desired_prefix,
+                                     search_str,
+                                     search_str,
+                                     contains,
+                                     other_1,
+                                     other_2];
+        let text = reads.into_iter()
+                        .flat_map(|read| revcomp_delimit_concat(read))
+                        .collect::<Vec<u8>>();
+        let pos = suffix_array(&text);
+        let fmdindex = FMDIndex::new(bwt(&text, &pos), 3);
+        let (_, longest_prefix_matches) = fmdindex.longest_suffix_prefix_match(search_str, 0)
+                                             .expect("Should find prefix");
+        assert_eq!(longest_prefix_matches.occ(&pos), [3]);
+    }
+
     #[test]
     fn test_smems() {
-        let revcomp = dna::RevComp::new();
         let orig_text = b"GCCTTAACAT";
-        let revcomp_text = revcomp.get(orig_text);
-        let text_builder: Vec<&[u8]> = vec![orig_text, b"$", & revcomp_text[..], b"$"];
-        let text = text_builder.concat();
+        let text = revcomp_delimit_concat(orig_text);
         let pos = suffix_array(&text);
         println!("pos {:?}", pos);
         println!("text {:?}", text);
