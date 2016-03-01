@@ -62,7 +62,12 @@ impl RankSelect {
         let raw = bits.to_bytes();
         let s = k * 32;
 
-        RankSelect { n: n, s: s, superblocks: superblocks(n, s, &raw), bits: raw }
+        RankSelect {
+            n: n,
+            s: s,
+            superblocks: superblocks(n, s, &raw),
+            bits: raw,
+        }
     }
 
     /// Get the rank of a given bit, i.e. the number of 1-bits in the bitvector up to i (inclusive).
@@ -74,8 +79,7 @@ impl RankSelect {
     pub fn rank(&self, i: usize) -> Option<u32> {
         if i >= self.n {
             None
-        }
-        else {
+        } else {
             let s = i / self.s; // the superblock
             let b = i / 8; // the block
             // take the superblock rank
@@ -83,9 +87,10 @@ impl RankSelect {
             // add the rank within the block
             rank += (self.bits[b] >> (7 - i % 8)).count_ones();
             // add the popcounts of blocks in between
-            rank += self.bits[s * 32 / 8..b].iter()
-                .map(|&a| a.count_ones())
-                .fold(0, |a, b| a + b);
+            rank += self.bits[s * 32 / 8..b]
+                        .iter()
+                        .map(|&a| a.count_ones())
+                        .fold(0, |a, b| a + b);
 
             Some(rank)
         }
@@ -99,8 +104,8 @@ impl RankSelect {
     /// * `j` - The rank to find the smallest bit for.
     pub fn select(&self, j: u32) -> Option<usize> {
         let mut superblock = match self.superblocks.binary_search(&j) {
-            Ok(i)  => i, // superblock with same rank exists
-            Err(i) => i
+            Ok(i) => i, // superblock with same rank exists
+            Err(i) => i,
         };
         if superblock > 0 {
             superblock -= 1;

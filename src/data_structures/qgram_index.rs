@@ -89,7 +89,12 @@ impl QGramIndex {
             }
         }
 
-        QGramIndex { q: q, address: address, pos: pos, ranks: ranks }
+        QGramIndex {
+            q: q,
+            address: address,
+            pos: pos,
+            ranks: ranks,
+        }
     }
 
     /// The used q.
@@ -111,13 +116,19 @@ impl QGramIndex {
             for &p in self.qgram_matches(qgram) {
                 let diagonal = p - i;
                 if !diagonals.contains_key(&diagonal) {
-                    diagonals.insert(diagonal, Match {
-                        pattern: Interval { start: i, stop: i + q },
-                        text: Interval { start: p, stop: p + q },
-                        count: 1,
-                    });
-                }
-                else {
+                    diagonals.insert(diagonal,
+                                     Match {
+                                         pattern: Interval {
+                                             start: i,
+                                             stop: i + q,
+                                         },
+                                         text: Interval {
+                                             start: p,
+                                             stop: p + q,
+                                         },
+                                         count: 1,
+                                     });
+                } else {
                     let m = diagonals.get_mut(&diagonal).unwrap();
                     m.pattern.stop = i + q;
                     m.text.stop = p + q;
@@ -125,9 +136,15 @@ impl QGramIndex {
                 }
             }
         }
-        diagonals.into_iter().filter_map(
-            |(_, m)| if m.count >= min_count { Some(m) } else { None }
-        ).collect()
+        diagonals.into_iter()
+                 .filter_map(|(_, m)| {
+                     if m.count >= min_count {
+                         Some(m)
+                     } else {
+                         None
+                     }
+                 })
+                 .collect()
     }
 
     /// Return exact matches (substrings) of the given pattern.
@@ -141,12 +158,18 @@ impl QGramIndex {
             for &p in self.qgram_matches(qgram) {
                 let diagonal = p - i;
                 if !diagonals.contains_key(&diagonal) {
-                    diagonals.insert(diagonal, ExactMatch {
-                        pattern: Interval { start: i, stop: i + q },
-                        text: Interval { start: p, stop: p + q },
-                    });
-                }
-                else {
+                    diagonals.insert(diagonal,
+                                     ExactMatch {
+                                         pattern: Interval {
+                                             start: i,
+                                             stop: i + q,
+                                         },
+                                         text: Interval {
+                                             start: p,
+                                             stop: p + q,
+                                         },
+                                     });
+                } else {
                     let m = diagonals.get_mut(&diagonal).unwrap();
                     if m.pattern.stop - q + 1 != i {
                         // discontinue match
@@ -156,8 +179,7 @@ impl QGramIndex {
                         m.pattern.stop = i + q;
                         m.text.start = p;
                         m.text.stop = p + q;
-                    }
-                    else {
+                    } else {
                         m.pattern.stop = i + q;
                         m.text.stop = p + q;
                     }
@@ -177,7 +199,7 @@ impl QGramIndex {
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub struct Interval {
     pub start: usize,
-    pub stop: usize
+    pub stop: usize,
 }
 
 
@@ -254,13 +276,18 @@ mod tests {
 
         let pattern = b"GCTG";
         let matches = qgram_index.matches(pattern, 1);
-        assert_eq!(matches, [
-            Match {
-                pattern: Interval { start: 0, stop: 4 },
-                text: Interval { start: 3, stop: 7 },
-                count: 2
-            }
-        ]);
+        assert_eq!(matches,
+                   [Match {
+                        pattern: Interval {
+                            start: 0,
+                            stop: 4,
+                        },
+                        text: Interval {
+                            start: 3,
+                            stop: 7,
+                        },
+                        count: 2,
+                    }]);
     }
 
     #[test]

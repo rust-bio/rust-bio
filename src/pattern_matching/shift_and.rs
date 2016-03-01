@@ -25,24 +25,33 @@ use std::iter::Enumerate;
 pub struct ShiftAnd {
     m: usize,
     masks: [u64; 256],
-    accept: u64
+    accept: u64,
 }
 
 
 impl ShiftAnd {
     /// Create new ShiftAnd instance from a given pattern.
     pub fn new(pattern: &[u8]) -> ShiftAnd {
-        assert!(pattern.len() <= 64, "Expecting a pattern of at most 64 symbols.");
+        assert!(pattern.len() <= 64,
+                "Expecting a pattern of at most 64 symbols.");
         let (masks, accept) = masks(pattern);
 
-        ShiftAnd { m: pattern.len(), masks: masks, accept: accept }
+        ShiftAnd {
+            m: pattern.len(),
+            masks: masks,
+            accept: accept,
+        }
 
     }
 
     /// Find all matches of pattern in the given text. Matches are returned as an iterator
     /// over start positions.
-    pub fn find_all<'a, I: Iterator<Item=&'a u8>>(&'a self, text: I) -> Matches<I> {
-        Matches { shiftand: self, active: 0, text: text.enumerate() }
+    pub fn find_all<'a, I: Iterator<Item = &'a u8>>(&'a self, text: I) -> Matches<I> {
+        Matches {
+            shiftand: self,
+            active: 0,
+            text: text.enumerate(),
+        }
     }
 }
 
@@ -63,14 +72,14 @@ pub fn masks(pattern: &[u8]) -> ([u64; 256], u64) {
 
 
 /// Iterator over start positions of matches.
-pub struct Matches<'a, I: Iterator<Item=&'a u8>> {
+pub struct Matches<'a, I: Iterator<Item = &'a u8>> {
     shiftand: &'a ShiftAnd,
     active: u64,
     text: Enumerate<I>,
 }
 
 
-impl<'a, I: Iterator<Item=&'a u8>> Iterator for Matches<'a, I> {
+impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {

@@ -26,7 +26,7 @@ pub struct BitEnc {
     width: usize,
     mask: u32,
     len: usize,
-    bits: usize
+    bits: usize,
 }
 
 
@@ -39,13 +39,25 @@ impl BitEnc {
     /// Create a new instance with a given encoding width (e.g. width=2 for using two bits per value).
     pub fn new(width: usize) -> Self {
         assert!(width <= 8, "Only encoding widths up to 8 supported");
-        BitEnc { storage: Vec::new(), width: width, mask: mask(width), len: 0, bits: 32 - 32 % width }
+        BitEnc {
+            storage: Vec::new(),
+            width: width,
+            mask: mask(width),
+            len: 0,
+            bits: 32 - 32 % width,
+        }
     }
 
     /// Create a new instance with a given capacity and encoding width (e.g. width=2 for using two bits per value).
     pub fn with_capacity(width: usize, n: usize) -> Self {
         assert!(width <= 8, "Only encoding widths up to 8 supported");
-        BitEnc { storage: Vec::with_capacity(n * width / 32), width: width, mask: mask(width), len: 0, bits: 32 - 32 % width }
+        BitEnc {
+            storage: Vec::with_capacity(n * width / 32),
+            width: width,
+            mask: mask(width),
+            len: 0,
+            bits: 32 - 32 % width,
+        }
     }
 
     /// Append a value.
@@ -77,7 +89,7 @@ impl BitEnc {
         let mut value_block = 0;
         {
             let mut v = value as u32;
-            for _ in 0..32/self.width {
+            for _ in 0..32 / self.width {
                 value_block |= v;
                 v <<= self.width;
             }
@@ -108,8 +120,7 @@ impl BitEnc {
     pub fn get(&self, i: usize) -> Option<u8> {
         if i >= self.len {
             None
-        }
-        else {
+        } else {
             let (block, bit) = self.addr(i);
             Some(self.get_by_addr(block, bit))
         }
@@ -117,7 +128,10 @@ impl BitEnc {
 
     /// Iterate over stored values (values will be unpacked into bytes).
     pub fn iter(&self) -> BitEncIter {
-        BitEncIter { bitenc: self, i: 0 }
+        BitEncIter {
+            bitenc: self,
+            i: 0,
+        }
     }
 
     /// Clear the sequence.
@@ -155,7 +169,7 @@ impl BitEnc {
 /// Iterator over values of a bitencoded sequence (values will be unpacked into bytes).
 pub struct BitEncIter<'a> {
     bitenc: &'a BitEnc,
-    i: usize
+    i: usize,
 }
 
 
@@ -191,7 +205,7 @@ mod tests {
     fn test_push_values() {
         let mut bitenc = BitEnc::new(2);
         bitenc.push_values(32, 0);
-        assert_eq!(bitenc.storage, [0,0]);
+        assert_eq!(bitenc.storage, [0, 0]);
     }
 
     #[test]

@@ -7,7 +7,7 @@ use nalgebra::DMat;
 
 lazy_static! {
 
-	// taken from https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h#L614
+// taken from https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h#L614
 	static ref ARRAY: [i32;729]=[
 		 3,  0, -3,  0,  0, -4,  1, -3, -1, -2, -2, -3, -2, -1, -1,  1, -1, -3,  1,  1, -1,  0, -7, -4, -1, -1, -8,
 		 0,  4, -6,  4,  3, -5,  0,  1, -3, -4,  0, -4, -4,  3, -1, -2,  0, -2,  0,  0, -1, -3, -6, -3,  2, -1, -8,
@@ -43,37 +43,43 @@ lazy_static! {
 
 #[inline]
 fn lookup(a: u8) -> usize {
-	if      a==b'Y' { 23 as usize }
-	else if a==b'Z' { 24 as usize }
-	else if a==b'X' { 25 as usize }
-	else if a==b'*' { 26 as usize }
-	else { (a-65) as usize }
+    if a == b'Y' {
+        23 as usize
+    } else if a == b'Z' {
+        24 as usize
+    } else if a == b'X' {
+        25 as usize
+    } else if a == b'*' {
+        26 as usize
+    } else {
+        (a - 65) as usize
+    }
 }
 
 pub fn pam120(a: u8, b: u8) -> i32 {
-	let a = lookup(a);
-	let b = lookup(b);
+    let a = lookup(a);
+    let b = lookup(b);
 
-	MAT[(a, b)]
+    MAT[(a, b)]
 }
 
 #[cfg(test)]
 mod tests {
-	use super::*;
+    use super::*;
 
-	#[test]
-	fn test_pam120() {
-		let score1 = pam120(b'A',b'A');
-		assert_eq!(score1, 3);
-		let score2 = pam120(b'*',b'*');
-		assert_eq!(score2, 1);
-		let score3 = pam120(b'A',b'*');
-		assert_eq!(score3, -8);
-		let score4 = pam120(b'*',b'*');
-		assert_eq!(score4, 1);
-		let score5 = pam120(b'X',b'X');
-		assert_eq!(score5, -2);
-		let score6 = pam120(b'X',b'Z');
-		assert_eq!(score6, -1);
-	}
+    #[test]
+    fn test_pam120() {
+        let score1 = pam120(b'A', b'A');
+        assert_eq!(score1, 3);
+        let score2 = pam120(b'*', b'*');
+        assert_eq!(score2, 1);
+        let score3 = pam120(b'A', b'*');
+        assert_eq!(score3, -8);
+        let score4 = pam120(b'*', b'*');
+        assert_eq!(score4, 1);
+        let score5 = pam120(b'X', b'X');
+        assert_eq!(score5, -2);
+        let score6 = pam120(b'X', b'Z');
+        assert_eq!(score6, -1);
+    }
 }

@@ -52,7 +52,7 @@ impl Myers {
 
         Myers {
             peq: peq,
-            bound: 1 << (pattern.len() -1),
+            bound: 1 << (pattern.len() - 1),
             m: pattern.len() as u8,
         }
     }
@@ -72,13 +72,12 @@ impl Myers {
         let xv = eq | state.mv;
         let xh = (((eq & state.pv) + state.pv) ^ state.pv) | eq;
 
-        let mut ph = state.mv | !( xh | state.pv);
+        let mut ph = state.mv | !(xh | state.pv);
         let mut mh = state.pv & xh;
 
         if ph & self.bound > 0 {
             state.dist += 1;
-        }
-        else if mh & self.bound > 0 {
+        } else if mh & self.bound > 0 {
             state.dist -= 1;
         }
 
@@ -99,8 +98,16 @@ impl Myers {
 
     /// Find all matches of pattern in the given text up to a given maximum distance.
     /// Matches are returned as an iterator over pairs of end position and distance.
-    pub fn find_all_end<'a, I: Iterator<Item=&'a u8>>(&'a self, text: I, max_dist: u8) -> Matches<I> {
-        Matches { myers: self, state: State::new(self.m), text: text.enumerate(), max_dist: max_dist }
+    pub fn find_all_end<'a, I: Iterator<Item = &'a u8>>(&'a self,
+                                                        text: I,
+                                                        max_dist: u8)
+                                                        -> Matches<I> {
+        Matches {
+            myers: self,
+            state: State::new(self.m),
+            text: text.enumerate(),
+            max_dist: max_dist,
+        }
     }
 }
 
@@ -116,13 +123,17 @@ struct State {
 impl State {
     /// Create new state.
     pub fn new(m: u8) -> Self {
-        State { pv: (1 << m) - 1, mv: 0, dist: m }
+        State {
+            pv: (1 << m) - 1,
+            mv: 0,
+            dist: m,
+        }
     }
 }
 
 
 /// Iterator over pairs of end positions and distance of matches.
-pub struct Matches<'a, I: Iterator<Item=&'a u8>> {
+pub struct Matches<'a, I: Iterator<Item = &'a u8>> {
     myers: &'a Myers,
     state: State,
     text: iter::Enumerate<I>,
@@ -130,7 +141,7 @@ pub struct Matches<'a, I: Iterator<Item=&'a u8>> {
 }
 
 
-impl<'a, I: Iterator<Item=&'a u8>> Iterator for Matches<'a, I> {
+impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
     type Item = (usize, u8);
 
     fn next(&mut self) -> Option<(usize, u8)> {

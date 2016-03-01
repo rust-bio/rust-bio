@@ -7,7 +7,7 @@ use nalgebra::DMat;
 
 lazy_static! {
 
-	// taken from https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h#L806
+// taken from https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h#L806
 	static ref ARRAY: [i32;729]=[
 		 2,  0, -2,  0,  0, -3,  1, -1, -1, -2, -1, -2, -1,  0,  0,  1,  0, -2,  1,  1,  0,  0, -6, -3,  0,  0, -8,
 		 0,  3, -4,  3,  3, -4,  0,  1, -2, -3,  1, -3, -2,  2, -1, -1,  1, -1,  0,  0, -1, -2, -5, -3,  2, -1, -8,
@@ -43,37 +43,43 @@ lazy_static! {
 
 #[inline]
 fn lookup(a: u8) -> usize {
-	if      a==b'Y' { 23 as usize }
-	else if a==b'Z' { 24 as usize }
-	else if a==b'X' { 25 as usize }
-	else if a==b'*' { 26 as usize }
-	else { (a-65) as usize }
+    if a == b'Y' {
+        23 as usize
+    } else if a == b'Z' {
+        24 as usize
+    } else if a == b'X' {
+        25 as usize
+    } else if a == b'*' {
+        26 as usize
+    } else {
+        (a - 65) as usize
+    }
 }
 
 pub fn pam250(a: u8, b: u8) -> i32 {
-	let a = lookup(a);
-	let b = lookup(b);
+    let a = lookup(a);
+    let b = lookup(b);
 
-	MAT[(a, b)]
+    MAT[(a, b)]
 }
 
 #[cfg(test)]
 mod tests {
-	use super::*;
+    use super::*;
 
-	#[test]
-	fn test_pam250() {
-		let score1 = pam250(b'A',b'A');
-		assert_eq!(score1, 2);
-		let score2 = pam250(b'*',b'*');
-		assert_eq!(score2, 1);
-		let score3 = pam250(b'A',b'*');
-		assert_eq!(score3, -8);
-		let score4 = pam250(b'*',b'*');
-		assert_eq!(score4, 1);
-		let score5 = pam250(b'X',b'X');
-		assert_eq!(score5, -1);
-		let score6 = pam250(b'X',b'Z');
-		assert_eq!(score6, -1);
-	}
+    #[test]
+    fn test_pam250() {
+        let score1 = pam250(b'A', b'A');
+        assert_eq!(score1, 2);
+        let score2 = pam250(b'*', b'*');
+        assert_eq!(score2, 1);
+        let score3 = pam250(b'A', b'*');
+        assert_eq!(score3, -8);
+        let score4 = pam250(b'*', b'*');
+        assert_eq!(score4, 1);
+        let score5 = pam250(b'X', b'X');
+        assert_eq!(score5, -1);
+        let score6 = pam250(b'X', b'Z');
+        assert_eq!(score6, -1);
+    }
 }

@@ -14,10 +14,9 @@ use std::cmp;
 pub fn scaled_combinations(n: u64, k: u64, scale: f64) -> f64 {
     if k > n {
         0.0
-    }
-    else {
+    } else {
         let mut comb = scale;
-        for j in 0..cmp::min(k, n-k) {
+        for j in 0..cmp::min(k, n - k) {
             comb /= (j + 1) as f64;
             comb *= (n - j) as f64;
         }
