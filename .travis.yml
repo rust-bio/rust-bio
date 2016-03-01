@@ -1,4 +1,7 @@
 language: rust
+sudo: false
+before_script:
+- pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
 matrix:
   include:
     - rust: stable
@@ -9,16 +12,13 @@ matrix:
   allow_failures:
   - rust: nightly
 script:
-  - cargo build $FEATURES
-  - cargo test $FEATURES
+  - travis-cargo build $FEATURES
+  - travis-cargo test $FEATURES
 after_success: |
   [ $TRAVIS_BRANCH = master ] &&
   [ $TRAVIS_PULL_REQUEST = false ] &&
-  cargo doc &&
-  echo "<meta http-equiv=refresh content=0;url=bio/index.html>" > target/doc/index.html &&
-  sudo pip install ghp-import &&
-  ghp-import -n target/doc &&
-  git push -fq https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
+  travis-cargo doc &&
+  travis-cargo --only nightly doc-upload
 env:
   global:
     secure: ujLBCE7iB7rMZaOSQQS0t7RjenxDnV/rtiMEB/aJnzbCBTo2RtJifyXkZci28YT0Sab8HeyCTsKafszgphj0BvSYUI8fwexPtRCXmgcLjouXRD0NWAr3dtEx0TPPXcwquer0BQzfeEZUmOnChKXDlcE3GSIdRSI+1Y8inbF4cRM=
