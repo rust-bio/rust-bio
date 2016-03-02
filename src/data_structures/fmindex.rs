@@ -7,8 +7,8 @@
 
 use std::iter::DoubleEndedIterator;
 
-use data_structures::bwt::{Occ, Less, less, BWT, BWTSlice};
-use data_structures::suffix_array::SuffixSlice;
+use data_structures::bwt::{Occ, Less, less, BWT};
+use data_structures::suffix_array::SuffixArraySlice;
 use alphabets::{Alphabet, dna};
 use std::mem::swap;
 
@@ -22,7 +22,7 @@ pub struct Interval {
 
 impl Interval {
     /// Return the occurrence positions of the pattern as a slice of the suffix array.
-    pub fn occ<'a>(&self, pos: &'a SuffixSlice) -> &'a [usize] {
+    pub fn occ<'a>(&self, pos: &'a SuffixArraySlice) -> &'a [usize] {
         &pos[self.lower..self.upper]
     }
 }
@@ -133,16 +133,16 @@ pub struct BiInterval {
 
 impl BiInterval {
     /// Return the occurrence positions of the pattern as a slice of the suffix array.
-    pub fn occ<'a>(&self, pos: &'a SuffixSlice) -> &'a [usize] {
+    pub fn occ<'a>(&self, pos: &'a SuffixArraySlice) -> &'a [usize] {
         self._pos(pos, self.lower)
     }
 
     /// Return the occurrence positions of the reverse complement of the pattern as a slice of the suffix array.
-    pub fn occ_revcomp<'a>(&self, pos: &'a SuffixSlice) -> &'a [usize] {
+    pub fn occ_revcomp<'a>(&self, pos: &'a SuffixArraySlice) -> &'a [usize] {
         self._pos(pos, self.lower_rev)
     }
 
-    fn _pos<'a>(&self, pos: &'a SuffixSlice, lower: usize) -> &'a [usize] {
+    fn _pos<'a>(&self, pos: &'a SuffixArraySlice, lower: usize) -> &'a [usize] {
         &pos[lower..lower + self.size]
     }
 
