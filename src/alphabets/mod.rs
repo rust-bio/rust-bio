@@ -130,7 +130,7 @@ impl RankTransform {
     }
 
     /// Restore alphabet from transform.
-    pub fn alphabet<'a>(&self) -> Alphabet {
+    pub fn alphabet(&self) -> Alphabet {
         let mut symbols = BitSet::with_capacity(self.ranks.len());
         symbols.extend(self.ranks.keys());
         Alphabet { symbols: symbols }

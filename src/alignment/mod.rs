@@ -59,7 +59,9 @@ impl Alignment {
 
         let mut cigar = String::new();
 
-        if !self.operations.is_empty() {
+        if self.operations.is_empty() {
+            cigar.push_str(&format!("{}{}", self.xlen, clip_str));
+        } else {
             if self.xstart > 0 {
                 cigar.push_str(&format!("{}{}", self.xstart, clip_str));
             }
@@ -83,8 +85,6 @@ impl Alignment {
             if clip > 0 {
                 cigar.push_str(&format!("{}{}", clip, clip_str));
             }
-        } else {
-            cigar.push_str(&format!("{}{}", self.xlen, clip_str));
         }
 
         cigar
@@ -193,11 +193,11 @@ impl Alignment {
             }
 
             // Add un-aligned 3' substrings of sequences.
-            for i in x_i..x.len() {
-                x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[i]])));
+            for &item in x.iter().skip(x_i) {
+                x_pretty.push_str(&String::from_utf8_lossy(&[item]));
             }
-            for i in y_i..y.len() {
-                y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[i]])));
+            for &item in y.iter().skip(y_i) {
+                y_pretty.push_str(&String::from_utf8_lossy(&[item]));
             }
 
             // Add trailing '-'.

@@ -7,8 +7,8 @@
 
 use std::iter::DoubleEndedIterator;
 
-use data_structures::bwt::{Occ, Less, less, BWT};
-use data_structures::suffix_array::SuffixArray;
+use data_structures::bwt::{Occ, Less, less, BWT, BWTSlice};
+use data_structures::suffix_array::SuffixSlice;
 use alphabets::{Alphabet, dna};
 use std::mem::swap;
 
@@ -22,7 +22,7 @@ pub struct Interval {
 
 impl Interval {
     /// Return the occurrence positions of the pattern as a slice of the suffix array.
-    pub fn occ<'a>(&self, pos: &'a SuffixArray) -> &'a [usize] {
+    pub fn occ<'a>(&self, pos: &'a SuffixSlice) -> &'a [usize] {
         &pos[self.lower..self.upper]
     }
 }
@@ -133,16 +133,16 @@ pub struct BiInterval {
 
 impl BiInterval {
     /// Return the occurrence positions of the pattern as a slice of the suffix array.
-    pub fn occ<'a>(&self, pos: &'a SuffixArray) -> &'a [usize] {
+    pub fn occ<'a>(&self, pos: &'a SuffixSlice) -> &'a [usize] {
         self._pos(pos, self.lower)
     }
 
     /// Return the occurrence positions of the reverse complement of the pattern as a slice of the suffix array.
-    pub fn occ_revcomp<'a>(&self, pos: &'a SuffixArray) -> &'a [usize] {
+    pub fn occ_revcomp<'a>(&self, pos: &'a SuffixSlice) -> &'a [usize] {
         self._pos(pos, self.lower_rev)
     }
 
-    fn _pos<'a>(&self, pos: &'a SuffixArray, lower: usize) -> &'a [usize] {
+    fn _pos<'a>(&self, pos: &'a SuffixSlice, lower: usize) -> &'a [usize] {
         &pos[lower..lower + self.size]
     }
 
@@ -224,17 +224,17 @@ impl FMDIndex {
 
         for &a in pattern[i + 1..].iter() {
             // forward extend interval
-            let _interval = self.forward_ext(&interval, a);
+            let forward_interval = self.forward_ext(&interval, a);
 
             // if size changed, add last interval to list
-            if interval.size != _interval.size {
+            if interval.size != forward_interval.size {
                 curr.push(interval);
             }
             // if new interval size is zero, stop, as no further forward extension is possible
-            if _interval.size == 0 {
+            if forward_interval.size == 0 {
                 break;
             }
-            interval = _interval;
+            interval = forward_interval;
         }
         // add the last non-zero interval
         curr.push(interval);
@@ -256,9 +256,9 @@ impl FMDIndex {
 
             for &interval in prev.iter() {
                 // backward extend interval
-                let _interval = self.backward_ext(&interval, a);
+                let forward_interval = self.backward_ext(&interval, a);
 
-                if (_interval.size == 0 || k == -1) &&
+                if (forward_interval.size == 0 || k == -1) &&
                         // interval could not be extended further
                         // if no interval has been extended this iteration,
                         // interval is maximal and can be added to the matches
@@ -267,9 +267,9 @@ impl FMDIndex {
                     matches.push(interval);
                 }
                 // add _interval to curr (will be further extended next iteration)
-                if _interval.size != 0 && _interval.size as isize != last_size {
-                    last_size = _interval.size as isize;
-                    curr.push(_interval);
+                if forward_interval.size != 0 && forward_interval.size as isize != last_size {
+                    last_size = forward_interval.size as isize;
+                    curr.push(forward_interval);
                 }
             }
             if curr.is_empty() {
@@ -283,12 +283,12 @@ impl FMDIndex {
 
     fn init_interval(&self, pattern: &[u8], i: usize) -> BiInterval {
         let a = pattern[i];
-        let _a = self.revcomp.comp(a);
+        let comp_a = self.revcomp.comp(a);
         let lower = self.fmindex.less(a);
 
         BiInterval {
             lower: lower,
-            lower_rev: self.fmindex.less(_a),
+            lower_rev: self.fmindex.less(comp_a),
             size: self.fmindex.less(a + 1) - lower,
             match_size: 1,
         }
@@ -319,15 +319,15 @@ impl FMDIndex {
             lower: k,
             lower_rev: l,
             size: s,
-            match_size: interval.match_size + 1,
+            match_size: interval.match_size + 1
         }
     }
 
 
     fn forward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
-        let _a = self.revcomp.comp(a);
+        let comp_a = self.revcomp.comp(a);
 
-        self.backward_ext(&interval.swapped(), _a)
+        self.backward_ext(&interval.swapped(), comp_a)
             .swapped()
     }
 

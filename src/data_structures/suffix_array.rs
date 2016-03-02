@@ -22,6 +22,7 @@ use data_structures::smallints::SmallInts;
 
 
 pub type SuffixArray = Vec<usize>;
+pub type SuffixSlice = [usize];
 pub type LCPArray = SmallInts<i8, isize>;
 
 /// Construct suffix array for given text of length n.
@@ -125,7 +126,7 @@ pub fn suffix_array(text: &[u8]) -> SuffixArray {
 ///     ]
 /// )
 /// ```
-pub fn lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
+pub fn lcp(text: &[u8], pos: &SuffixSlice) -> LCPArray {
     assert!(text.len() == pos.len());
     let n = text.len();
 
@@ -137,8 +138,7 @@ pub fn lcp(text: &[u8], pos: &SuffixArray) -> LCPArray {
 
     let mut lcp = SmallInts::from_elem(-1, n + 1);
     let mut l = 0usize;
-    for p in 0..n - 1 {
-        let r = rank[p];
+    for (p, &r) in rank.iter().enumerate().take(n-1) {
         // since the sentinel has rank 0 and is excluded above,
         // we will never have a negative index below
         let pred = pos[r - 1];

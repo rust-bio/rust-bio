@@ -65,10 +65,10 @@ pub fn sum(probs: &[LogProb]) -> LogProb {
             (probs.iter()
                   .enumerate()
                   .filter_map(|(i, p)| {
-                      if i != imax {
-                          Some((p - pmax).exp())
-                      } else {
+                      if i == imax {
                           None
+                      } else {
+                          Some((p - pmax).exp())
                       }
                   })
                   .fold(0.0, |s, e| s + e))
@@ -94,7 +94,7 @@ pub fn add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
 
 
 /// Calculate the cumulative sum of the given probabilities in a numerically stable way (Durbin 1998).
-pub fn cumsum<'a, I: Iterator<Item = LogProb>>(probs: I) -> Vec<LogProb> {
+pub fn cumsum<I: Iterator<Item = LogProb>>(probs: I) -> Vec<LogProb> {
     probs.scan(f64::NEG_INFINITY, |s, p| {
              *s = add(*s, p);
              Some(*s)

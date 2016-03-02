@@ -29,6 +29,7 @@
 
 
 use std::collections;
+use std::collections::hash_map::Entry;
 use std;
 use std::cmp;
 
@@ -68,10 +69,10 @@ impl QGramIndex {
             address[qgram] += 1;
         }
 
-        for g in 1..address.len() {
-            if address[g] > max_count {
+        for mut a in address.iter_mut().skip(1) {
+            if *a > max_count {
                 // mask qgram
-                address[g] = 0;
+                *a = 0;
             }
         }
 
@@ -115,24 +116,18 @@ impl QGramIndex {
         for (i, qgram) in self.ranks.qgrams(self.q, pattern).enumerate() {
             for &p in self.qgram_matches(qgram) {
                 let diagonal = p - i;
-                if !diagonals.contains_key(&diagonal) {
-                    diagonals.insert(diagonal,
-                                     Match {
-                                         pattern: Interval {
-                                             start: i,
-                                             stop: i + q,
-                                         },
-                                         text: Interval {
-                                             start: p,
-                                             stop: p + q,
-                                         },
-                                         count: 1,
-                                     });
-                } else {
-                    let m = diagonals.get_mut(&diagonal).unwrap();
-                    m.pattern.stop = i + q;
-                    m.text.stop = p + q;
-                    m.count += 1;
+                match diagonals.entry(diagonal) {
+                    Entry::Vacant(v) => { v.insert(Match {
+                        pattern: Interval { start: i, stop: i + q },
+                        text: Interval { start: p, stop: p + q },
+                        count: 1,
+                    }); },
+                    Entry::Occupied(mut o) => {
+                        let m = o.get_mut();
+                        m.pattern.stop = i + q;
+                        m.text.stop = p + q;
+                        m.count += 1;
+                    }
                 }
             }
         }
@@ -157,31 +152,25 @@ impl QGramIndex {
         for (i, qgram) in self.ranks.qgrams(self.q, pattern).enumerate() {
             for &p in self.qgram_matches(qgram) {
                 let diagonal = p - i;
-                if !diagonals.contains_key(&diagonal) {
-                    diagonals.insert(diagonal,
-                                     ExactMatch {
-                                         pattern: Interval {
-                                             start: i,
-                                             stop: i + q,
-                                         },
-                                         text: Interval {
-                                             start: p,
-                                             stop: p + q,
-                                         },
-                                     });
-                } else {
-                    let m = diagonals.get_mut(&diagonal).unwrap();
-                    if m.pattern.stop - q + 1 != i {
-                        // discontinue match
-                        matches.push(*m);
-                        // start new match
-                        m.pattern.start = i;
-                        m.pattern.stop = i + q;
-                        m.text.start = p;
-                        m.text.stop = p + q;
-                    } else {
-                        m.pattern.stop = i + q;
-                        m.text.stop = p + q;
+                match diagonals.entry(diagonal) {
+                    Entry::Vacant(v) => { v.insert(ExactMatch {
+                        pattern: Interval { start: i, stop: i + q },
+                        text: Interval { start: p, stop: p + q },
+                    }); },
+                    Entry::Occupied(mut o) => {
+                        let m = o.get_mut();
+                        if m.pattern.stop - q + 1 == i {
+                            m.pattern.stop = i + q;
+                            m.text.stop = p + q;
+                        } else {
+                            // discontinue match
+                            matches.push(*m);
+                            // start new match
+                            m.pattern.start = i;
+                            m.pattern.stop = i + q;
+                            m.text.start = p;
+                            m.text.stop = p + q;
+                        }
                     }
                 }
             }
