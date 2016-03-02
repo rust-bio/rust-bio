@@ -106,11 +106,11 @@ impl FMIndex {
         }
     }
 
-    fn occ(&self, r: usize, a: u8) -> usize {
+    pub fn occ(&self, r: usize, a: u8) -> usize {
         self.occ.get(&self.bwt, r, a)
     }
 
-    fn less(&self, a: u8) -> usize {
+    pub fn less(&self, a: u8) -> usize {
         self.less[a as usize]
     }
 
