@@ -22,6 +22,7 @@ use data_structures::smallints::SmallInts;
 
 
 pub type SuffixArray = Vec<usize>;
+pub type SuffixSlice = [usize];
 pub type LCPArray = SmallInts<i8, isize>;
 
 /// Construct suffix array for given text of length n.
@@ -125,7 +126,7 @@ pub fn suffix_array(text: &[u8]) -> SuffixArray {
 ///     ]
 /// )
 /// ```
-pub fn lcp(text: &[u8], pos: &[usize]) -> LCPArray {
+pub fn lcp(text: &[u8], pos: &SuffixSlice) -> LCPArray {
     assert!(text.len() == pos.len());
     let n = text.len();
 
