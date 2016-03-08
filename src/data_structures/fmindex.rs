@@ -196,7 +196,7 @@ impl FMDIndex {
 
     /// Find longest suffix that overlaps (but does not encompass) the prefix of the search pattern
     /// Returns the matching suffixes and the size of the overlap
-    pub fn longest_suffix_prefix_match(&self, pattern: &[u8], min_overlap: usize) -> Option<BiInterval> {
+    pub fn longest_suffix_prefix_match(&self, pattern: &[u8], min_overlap: usize) -> Option<(usize, BiInterval)> {
         let exact_match_interval = self.fmindex.backward_search(pattern.iter());
         let exact_match_size = exact_match_interval.upper - exact_match_interval.lower;
         let mut interval = self.init_interval(pattern, 0);
@@ -218,7 +218,7 @@ impl FMDIndex {
         while let Some(longest_interval) = interval_stack.pop() {
             let prefixes = self.forward_ext(&longest_interval, SENT_CHAR);
             if prefixes.size > 0 {
-                return Some(prefixes);
+                return Some((longest_interval.match_size, prefixes));
             }
         }
 
