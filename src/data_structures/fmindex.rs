@@ -213,7 +213,9 @@ impl FMDIndex {
                 break;
             }
 
-            interval_stack.push(interval);
+            if interval.match_size > min_overlap {
+                interval_stack.push(interval);
+            }
         }
 
         while let Some(longest_interval) = interval_stack.pop() {
