@@ -206,6 +206,8 @@ impl FMDIndex {
             // forward extend interval
             interval = self.forward_ext(&interval, a);
 
+            println!("Interval size: {}", interval.size);
+
             // if new interval represents only exact matches, break
             if interval.size <= exact_match_size {
                 break;
@@ -215,9 +217,13 @@ impl FMDIndex {
         }
 
         while let Some(longest_interval) = interval_stack.pop() {
+            let match_size_before = longest_interval.match_size;
+            println!("Interval size before sent: {}, match size: {}", longest_interval.size, match_size_before);
             let prefixes = self.forward_ext(&longest_interval, SENT_CHAR);
-            if prefixes.size > 0 {
-                return Some((longest_interval.match_size, prefixes));
+            let match_size_after = prefixes.match_size;
+            println!("Interval size after sent: {}, match size: {}", prefixes.size, match_size_after);
+            if prefixes.size > 0 && match_size_before != match_size_after {
+                return Some((prefixes.match_size, prefixes));
             }
         }
 
@@ -412,25 +418,28 @@ mod tests {
         assert_eq!(longest_prefix_matches.occ(&pos), [3]);
     }
 
+    fn u8_slice_to_char_vec(slice: &[u8]) -> Vec<char> {
+        slice.into_iter().map(|i| *i as char).collect::<Vec<char>>()
+    }
+
     #[test]
-    fn test_longest_prefix_funky() {
+    fn test_longest_prefix_doesnt_find_middle_match() {
         let reads = vec![
             b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA",
             b"AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA",
             b"GGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATAATGAGGG",
         ];
+        let search_pattern = dna::RevComp::new().get(reads[1]);
+
         let text = reads.clone().into_iter()
                         .flat_map(|read| revcomp_delimit_concat(read))
                         .collect::<Vec<u8>>();
         let pos = suffix_array(&text);
         let fmdindex = FMDIndex::new(bwt(&text, &pos), 3);
-        let (overlap_size, longest_prefix_matches) =
-                fmdindex.longest_suffix_prefix_match(
-                    &*dna::RevComp::new().get(reads[1]), 25).expect("Should find prefix");
-        for pos in longest_prefix_matches.occ(&pos) {
-            assert!(text[pos + overlap_size] == b'$');
+        let (overlap_size, match_interval) = fmdindex.longest_suffix_prefix_match(&*search_pattern, 25).expect("Should find prefix");
+        for overlap_pos in match_interval.occ(&pos) {
+            assert!(text[overlap_pos + overlap_size] == b'$', "Matches should end with sentinel");
         }
-        println!("Match size: {:?}\nMatch interval: {:?}", overlap_size, longest_prefix_matches);
     }
 
     #[test]
