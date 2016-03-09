@@ -199,20 +199,19 @@ impl FMDIndex {
     pub fn longest_suffix_prefix_match(&self, pattern: &[u8], min_overlap: usize) -> Option<(usize, BiInterval)> {
         let exact_match_interval = self.fmindex.backward_search(pattern.iter());
         let exact_match_size = exact_match_interval.upper - exact_match_interval.lower;
-        let mut interval = self.init_interval(pattern, 0);
+        let mut interval = self.init_interval(pattern, min_overlap);
         let mut interval_stack = vec![];
 
-        for &a in pattern[1..].iter() {
+        for &a in pattern[min_overlap + 1..].iter() {
             // forward extend interval
-            let _interval = self.forward_ext(&interval, a);
+            interval = self.forward_ext(&interval, a);
 
             // if new interval represents only exact matches, break
-            if _interval.size <= exact_match_size {
+            if interval.size <= exact_match_size {
                 break;
-            } else if _interval.match_size >= min_overlap {
-                interval_stack.push(_interval);
             }
-            interval = _interval;
+            
+            interval_stack.push(interval);
         }
 
         while let Some(longest_interval) = interval_stack.pop() {
