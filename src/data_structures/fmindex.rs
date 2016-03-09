@@ -210,7 +210,7 @@ impl FMDIndex {
             if interval.size <= exact_match_size {
                 break;
             }
-            
+
             interval_stack.push(interval);
         }
 
@@ -410,6 +410,27 @@ mod tests {
         let (_, longest_prefix_matches) = fmdindex.longest_suffix_prefix_match(search_str, 0)
                                              .expect("Should find prefix");
         assert_eq!(longest_prefix_matches.occ(&pos), [3]);
+    }
+
+    #[test]
+    fn test_longest_prefix_funky() {
+        let reads = vec![
+            b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA",
+            b"AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA",
+            b"GGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATAATGAGGG",
+        ];
+        let text = reads.clone().into_iter()
+                        .flat_map(|read| revcomp_delimit_concat(read))
+                        .collect::<Vec<u8>>();
+        let pos = suffix_array(&text);
+        let fmdindex = FMDIndex::new(bwt(&text, &pos), 3);
+        let (overlap_size, longest_prefix_matches) =
+                fmdindex.longest_suffix_prefix_match(
+                    &*dna::RevComp::new().get(reads[1]), 25).expect("Should find prefix");
+        for pos in longest_prefix_matches.occ(&pos) {
+            assert!(text[pos + overlap_size] == b'$');
+        }
+        println!("Match size: {:?}\nMatch interval: {:?}", overlap_size, longest_prefix_matches);
     }
 
     #[test]
