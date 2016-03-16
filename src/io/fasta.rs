@@ -60,14 +60,14 @@ impl<R: io::Read> Reader<R> {
             }
         }
 
-        if !self.line.starts_with(">") {
+        if !self.line.starts_with('>') {
             return Err(io::Error::new(io::ErrorKind::Other, "Expected > at record start."));
         }
         record.header.push_str(&self.line);
         loop {
             self.line.clear();
             try!(self.reader.read_line(&mut self.line));
-            if self.line.is_empty() || self.line.starts_with(">") {
+            if self.line.is_empty() || self.line.starts_with('>') {
                 break;
             }
             record.seq.push_str(&self.line.trim_right());
@@ -213,12 +213,12 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
                 for _ in 0..lines {
                     // read full lines
                     try!(self.reader.read(&mut buf));
-                    seq.extend(&buf);
+                    seq.extend_from_slice(&buf);
                 }
                 // read last line
                 println!("linestop {}", line_stop);
                 try!(self.reader.read(&mut buf[..line_stop as usize]));
-                seq.extend(&buf[..line_stop as usize]);
+                seq.extend_from_slice(&buf[..line_stop as usize]);
                 Ok(())
             }
             None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
@@ -326,12 +326,12 @@ impl Record {
 
     /// Return the id of the record.
     pub fn id(&self) -> Option<&str> {
-        self.header[1..].trim_right().splitn(2, " ").next()
+        self.header[1..].trim_right().splitn(2, ' ').next()
     }
 
     /// Return descriptions if present.
     pub fn desc(&self) -> Option<&str> {
-        self.header[1..].trim_right().splitn(2, " ").skip(1).next()
+        self.header[1..].trim_right().splitn(2, ' ').skip(1).next()
     }
 
     /// Return the sequence of the record.
