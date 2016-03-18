@@ -180,15 +180,15 @@ fn transform_text<T: Integer + Unsigned + NumCast + Copy>(text: &[u8],
                                                           sentinel_count: usize)
                                                           -> Vec<T> {
     let sentinel = sentinel(text);
-    let offset = sentinel_count - 1;
     let transform = RankTransform::new(alphabet);
+    let offset = sentinel_count - 1;
 
     let mut transformed: Vec<T> = Vec::with_capacity(text.len());
-    let mut s = 0;
+    let mut s = sentinel_count;
     for &a in text.iter() {
         if a == sentinel {
+            s -= 1;
             transformed.push(cast(s).unwrap());
-            s += 1;
         } else {
             transformed.push(cast(*(transform.ranks.get(a as usize)).unwrap() as usize + offset)
                                  .unwrap());
@@ -552,5 +552,11 @@ mod tests {
         let text = b"TGTGTGTG$";
         let pos = suffix_array(text);
         assert_eq!(pos, [8, 7, 5, 3, 1, 6, 4, 2, 0]);
+    }
+
+    #[test]
+    fn test_handles_sentinels_properly() {
+        let reads = b"TACTCCGCTAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTT$AAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTAGCGGAGTA$TAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTTGTCCAGTA$TACTGGACAAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTA$ACGCACCCCGGCATTCGTCGACTCTACACTTAGTGGAACATACAAATTCGCTCGCAGGAGCGCCTCATACATTCTAACGCAGTGATCTTCGGCTGAGACT$AGTCTCAGCCGAAGATCACTGCGTTAGAATGTATGAGGCGCTCCTGCGAGCGAATTTGTATGTTCCACTAAGTGTAGAGTCGACGAATGCCGGGGTGCGT$";
+        suffix_array(reads);
     }
 }
