@@ -476,7 +476,7 @@ mod tests {
     use super::{PosTypes, SAIS, transform_text};
     use bit_vec::BitVec;
     use alphabets::Alphabet;
-
+    use std::str;
 
     #[test]
     fn test_pos_types() {
@@ -560,29 +560,30 @@ mod tests {
         suffix_array(reads);
     }
 
+    fn str_from_pos(sa: &Vec<usize>, text: &[u8], index: usize) -> String {
+        String::from(str::from_utf8(&text[sa[index]..]).unwrap().split("$").next().unwrap_or("")) + "$"
+    }
+
     #[test]
     fn test_sorts_lexically() {
         let tests = [(&b"A$C$G$T$"[..], "simple"),
                      (&b"A$A$T$T$"[..], "duplicates"),
-                     (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter")];
+                     (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
+                     (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
+                        AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
+                        GGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATAATGAGGG$"[..],
+                        "complex"
+                        ),
+                     ];
         for &(text, test_name) in tests.into_iter() {
             let pos = suffix_array(text);
             for i in 0..(pos.len() - 2) {
-                // Check that every element in the suffix array is lexically greater than the next
-                let mut cur_i = pos[i];
-                let mut next_i = pos[i + 1];
+                // Check that every element in the suffix array is lexically <= the next elem
+                let cur = str_from_pos(&pos, &text, i);
+                let next = str_from_pos(&pos, &text, i + 1);
 
-                while cur_i < text.len() && next_i < text.len() {
-                    if text[cur_i] > text[next_i] {
-                        // cur text is definitely greater than next text
-                        return;
-                    }
-                    assert!(text[cur_i] == text[next_i], test_name);
-
-                    // The two were equal -- move on to the next character
-                    cur_i += 1;
-                    next_i += 1;
-                }
+                assert!(cur <= next, format!("Failed:\n{}\n{}\nat positions {} and {} are out of order in test: {}",
+                    cur, next, pos[i], pos[i + 1], test_name));
             }
         }
     }
