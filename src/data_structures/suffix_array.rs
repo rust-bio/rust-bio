@@ -574,7 +574,7 @@ mod tests {
 
                 while cur_i < text.len() && next_i < text.len() {
                     if text[cur_i] > text[next_i] {
-                        // cur text is definitely less than next text
+                        // cur text is definitely greater than next text
                         return;
                     }
                     assert!(text[cur_i] == text[next_i], test_name);
