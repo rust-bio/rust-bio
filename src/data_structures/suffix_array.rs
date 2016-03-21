@@ -138,7 +138,7 @@ pub fn lcp(text: &[u8], pos: &SuffixArraySlice) -> LCPArray {
 
     let mut lcp = SmallInts::from_elem(-1, n + 1);
     let mut l = 0usize;
-    for (p, &r) in rank.iter().enumerate().take(n-1) {
+    for (p, &r) in rank.iter().enumerate().take(n - 1) {
         // since the sentinel has rank 0 and is excluded above,
         // we will never have a negative index below
         let pred = pos[r - 1];
@@ -558,5 +558,32 @@ mod tests {
     fn test_handles_sentinels_properly() {
         let reads = b"TACTCCGCTAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTT$AAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTAGCGGAGTA$TAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTTGTCCAGTA$TACTGGACAAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTA$ACGCACCCCGGCATTCGTCGACTCTACACTTAGTGGAACATACAAATTCGCTCGCAGGAGCGCCTCATACATTCTAACGCAGTGATCTTCGGCTGAGACT$AGTCTCAGCCGAAGATCACTGCGTTAGAATGTATGAGGCGCTCCTGCGAGCGAATTTGTATGTTCCACTAAGTGTAGAGTCGACGAATGCCGGGGTGCGT$";
         suffix_array(reads);
+    }
+
+    #[test]
+    fn test_sorts_lexically() {
+        let tests = [(&b"A$C$G$T$"[..], "simple"),
+                     (&b"A$A$T$T$"[..], "duplicates"),
+                     (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter")];
+        for &(text, test_name) in tests.into_iter() {
+            let pos = suffix_array(text);
+            for i in 0..(pos.len() - 2) {
+                // Check that every element in the suffix array is lexically greater than the next
+                let mut cur_i = pos[i];
+                let mut next_i = pos[i + 1];
+
+                while cur_i < text.len() && next_i < text.len() {
+                    if text[cur_i] > text[next_i] {
+                        // cur text is definitely less than next text
+                        return;
+                    }
+                    assert!(text[cur_i] == text[next_i], test_name);
+
+                    // The two were equal -- move on to the next character
+                    cur_i += 1;
+                    next_i += 1;
+                }
+            }
+        }
     }
 }
