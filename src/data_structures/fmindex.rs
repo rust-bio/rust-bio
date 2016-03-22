@@ -227,15 +227,15 @@ impl SampledFMIndex {
     }
 
     fn sa_pos_to_text_pos(&self, mut pos: usize) -> usize {
-        let mut offset = 0;
+        let mut offset: usize = 0;
         loop {
             if pos % self.sa_sample.s == 0 {
-                return self.sa_sample.sample[pos / self.sa_sample.s] + offset;
+                return self.sa_sample.sample[pos / self.sa_sample.s] - offset;
             }
 
             let c = self.bwt[pos];
             pos = self.less[c as usize] + self.occ(pos - 1, c);
-            offset -= 1;
+            offset += 1;
         }
     }
 }
@@ -486,17 +486,7 @@ mod tests {
     use data_structures::suffix_array::suffix_array;
     use data_structures::bwt::bwt;
 
-    #[test]
-    fn test_smems() {
-        let revcomp = dna::RevComp::new();
-        let orig_text = b"GCCTTAACAT";
-        let revcomp_text = revcomp.get(orig_text);
-        let text_builder: Vec<&[u8]> = vec![orig_text, b"$", &revcomp_text[..], b"$"];
-        let text = text_builder.concat();
-        let pos = suffix_array(&text);
-        println!("pos {:?}", pos);
-        let fmindex = SAReliantFMIndex::new(bwt(&text, &pos), 3, &dna::n_alphabet());
-        let fmdindex = fmindex.with(&pos).as_fmdindex();
+    fn test_smems<FM: FMIndex>(fmdindex: FMDIndex<FM>) {
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
@@ -511,6 +501,35 @@ mod tests {
             assert_eq!(intervals[0].match_size, 5)
         }
     }
+
+    #[test]
+    fn test_smems_reliant() {
+        let revcomp = dna::RevComp::new();
+        let orig_text = b"GCCTTAACAT";
+        let revcomp_text = revcomp.get(orig_text);
+        let text_builder: Vec<&[u8]> = vec![orig_text, b"$", &revcomp_text[..], b"$"];
+        let text = text_builder.concat();
+        let pos = suffix_array(&text);
+        println!("pos {:?}", pos);
+        let fmindex = SAReliantFMIndex::new(bwt(&text, &pos), 3, &dna::n_alphabet());
+        let fmdindex = fmindex.with(&pos).as_fmdindex();
+        test_smems(fmdindex);
+    }
+
+    #[test]
+    fn test_smems_sampled() {
+        let revcomp = dna::RevComp::new();
+        let orig_text = b"GCCTTAACAT";
+        let revcomp_text = revcomp.get(orig_text);
+        let text_builder: Vec<&[u8]> = vec![orig_text, b"$", &revcomp_text[..], b"$"];
+        let text = text_builder.concat();
+        let pos = suffix_array(&text);
+        println!("pos {:?}", pos);
+        let fmindex = SampledFMIndex::new(&pos, 3, bwt(&text, &pos), 3, &dna::n_alphabet());
+        let fmdindex = fmindex.as_fmdindex();
+        test_smems(fmdindex);
+    }
+
 
     #[test]
     fn test_init_interval() {
