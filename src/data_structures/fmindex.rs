@@ -19,14 +19,13 @@ pub struct Interval {
     upper: usize,
 }
 
-pub trait FMIndex { // 'sa refers to the lifetime of the suffix array or sampling thereof
+pub trait FMIndex: Sized { // 'sa refers to the lifetime of the suffix array or sampling thereof
     /// Get occurrence count of symbol a in BWT[..r+1].
     fn occ(&self, r: usize, a: u8) -> usize;
     /// Also known as
     fn less(&self, a: u8) -> usize;
     fn bwt(&self) -> &BWT;
     fn positions_from_interval(&self, interval: Interval) -> Vec<usize>;
-
 
     /// Perform backward search, yielding suffix array
     /// interval denoting exact occurences of the given pattern of length m in the text.
@@ -75,6 +74,26 @@ pub trait FMIndex { // 'sa refers to the lifetime of the suffix array or samplin
             lower: l,
             upper: r + 1,
         })
+    }
+
+    /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
+    /// This expects a BWT that was created from a text over the DNA alphabet with N
+    /// (`alphabets::dna::n_alphabet()`) consisting of the
+    /// concatenation with its reverse complement, separated by the sentinel symbol `$`.
+    /// I.e., let T be the original text and R be its reverse complement.
+    /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
+    /// T1$R1$T2$R2$T3$R3$.
+    ///
+    fn as_fmdindex(self) -> FMDIndex<Self> {
+        let mut alphabet = dna::n_alphabet();
+        alphabet.insert(b'$');
+        assert!(alphabet.is_word(self.bwt()),
+                "Expecting BWT over the DNA alphabet (including N) with the sentinel $.");
+
+        FMDIndex {
+            fmindex: self,
+            revcomp: dna::RevComp::new(),
+        }
     }
 }
 
@@ -220,7 +239,6 @@ impl FMIndex for SampledFMIndex {
     }
 }
 
-/*
 /// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
 #[derive(Debug, Copy, Clone)]
 pub struct BiInterval {
@@ -259,33 +277,13 @@ impl BiInterval {
 
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
-trait FMDIndex<'a>: FMIndex<'a> {}
+pub struct FMDIndex<FMT: FMIndex> {
+    fmindex: FMT,
+    revcomp: dna::RevComp,
+}
 
-impl<'a> FMDIndex<'a> {
-    /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
-    /// This expects a BWT that was created from a text over the DNA alphabet with N
-    /// (`alphabets::dna::n_alphabet()`) consisting of the
-    /// concatenation with its reverse complement, separated by the sentinel symbol `$`.
-    /// I.e., let T be the original text and R be its reverse complement.
-    /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
-    /// T1$R1$T2$R2$T3$R3$.
-    ///
-    /// # Arguments
-    ///
-    /// * `bwt` - the BWT
-    /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
-    ///   less memory usage, but worse performance)
-    pub fn new(bwt: BWT, k: usize) -> Self {
-        let mut alphabet = dna::n_alphabet();
-        alphabet.insert(b'$');
-        assert!(alphabet.is_word(&bwt),
-                "Expecting BWT over the DNA alphabet (including N) with the sentinel $.");
+impl<FMT: FMIndex> FMDIndex<FMT> {
 
-        FMDIndex {
-            fmindex: FMIndex::new(bwt, k, &alphabet),
-            revcomp: dna::RevComp::new(),
-        }
-    }
 
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
     /// Complexity O(m) with pattern of length m.
@@ -425,13 +423,7 @@ impl<'a> FMDIndex<'a> {
         self.backward_ext(&interval.swapped(), comp_a)
             .swapped()
     }
-
-    /// Provide a reference to the underlying FMIndex.
-    pub fn fmindex(&self) -> &FMIndex {
-        &self.fmindex
-    }
 }
-*/
 
 
 #[cfg(test)]
