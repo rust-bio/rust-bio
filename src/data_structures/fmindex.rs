@@ -296,10 +296,6 @@ impl<'fm> BiInterval<'fm> {
         }
     }
 
-    fn _pos<'a>(&self, pos: &'a SuffixArraySlice, lower: usize) -> &'a [usize] {
-        &pos[lower..lower + self.size]
-    }
-
     fn swapped(&self) -> BiInterval<'fm> {
         BiInterval {
             fmindex: self.fmindex,
