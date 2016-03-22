@@ -282,8 +282,36 @@ pub struct FMDIndex<FMT: FMIndex> {
     revcomp: dna::RevComp,
 }
 
-impl<FMT: FMIndex> FMDIndex<FMT> {
+impl<FMT: FMIndex> FMIndex for FMDIndex<FMT> {
+    fn occ(&self, r: usize, a: u8) -> usize {
+        self.fmindex.occ(r, a)
+    }
 
+    fn less(&self, a: u8) -> usize {
+        self.fmindex.less(a)
+    }
+
+    /// Provide a reference to the underlying BWT.
+    fn bwt(&self) -> &BWT {
+        self.fmindex.bwt()
+    }
+
+    fn positions_from_interval(&self, interval: Interval) -> Vec<usize> {
+        self.fmindex.positions_from_interval(interval)
+    }
+}
+
+impl<FMT: FMIndex> FMDIndex<FMT> {
+    fn fwd_pos_from_biinterval(&self, biinterval: BiInterval) -> Vec<usize> {
+        self.fmindex.positions_from_interval(Interval {
+            upper: biinterval.lower + biinterval.size,
+            lower: biinterval.lower
+        })
+    }
+
+    fn revcomp_pos_from_biinterval(&self, biinterval: BiInterval) -> Vec<usize> {
+        unimplemented!()
+    }
 
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
     /// Complexity O(m) with pattern of length m.
