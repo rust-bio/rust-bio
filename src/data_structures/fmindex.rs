@@ -10,22 +10,40 @@ use std::iter::DoubleEndedIterator;
 use data_structures::bwt::{Occ, Less, less, BWT};
 use data_structures::suffix_array::SuffixArraySlice;
 use alphabets::{Alphabet, dna};
+use std::fmt;
 use std::mem::swap;
 
 /// A suffix array interval.
-#[derive(Debug, Copy, Clone)]
-pub struct Interval {
+#[derive(Copy, Clone)]
+pub struct Interval<'fm> {
+    fmindex: &'fm FMIndex,
     lower: usize,
     upper: usize,
 }
 
-pub trait FMIndex: Sized { // 'sa refers to the lifetime of the suffix array or sampling thereof
+impl<'fm> Interval<'fm> {
+    pub fn occ(&self) -> Vec<usize> {
+        self.fmindex.positions_from_interval(self)
+    }
+}
+
+impl<'fm> fmt::Debug for Interval<'fm> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        fmt.debug_struct("Interval")
+            .field("fmindex", &"hidden")
+            .field("lower", &self.lower)
+            .field("upper", &self.upper)
+            .finish()
+    }
+}
+
+pub trait FMIndex { // 'sa refers to the lifetime of the suffix array or sampling thereof
     /// Get occurrence count of symbol a in BWT[..r+1].
     fn occ(&self, r: usize, a: u8) -> usize;
     /// Also known as
     fn less(&self, a: u8) -> usize;
     fn bwt(&self) -> &BWT;
-    fn positions_from_interval(&self, interval: Interval) -> Vec<usize>;
+    fn positions_from_interval(&self, interval: &Interval) -> Vec<usize>;
 
     /// Perform backward search, yielding suffix array
     /// interval denoting exact occurences of the given pattern of length m in the text.
@@ -57,7 +75,7 @@ pub trait FMIndex: Sized { // 'sa refers to the lifetime of the suffix array or 
     /// ```
     fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator>(&self,
                                                                                  pattern: P)
-                                                                                 -> Vec<usize> {
+                                                                                 -> Interval where Self: Sized {
         let (mut l, mut r) = (0, self.bwt().len() - 1);
         for &a in pattern.rev() {
             let less = self.less(a);
@@ -70,10 +88,11 @@ pub trait FMIndex: Sized { // 'sa refers to the lifetime of the suffix array or 
             r = less + self.occ(r, a) - 1;
         }
 
-        self.positions_from_interval(Interval {
+        Interval {
+            fmindex: self,
             lower: l,
             upper: r + 1,
-        })
+        }
     }
 
     /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
@@ -84,7 +103,7 @@ pub trait FMIndex: Sized { // 'sa refers to the lifetime of the suffix array or 
     /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
     /// T1$R1$T2$R2$T3$R3$.
     ///
-    fn as_fmdindex(self) -> FMDIndex<Self> {
+    fn as_fmdindex(self) -> FMDIndex<Self> where Self: Sized {
         let mut alphabet = dna::n_alphabet();
         alphabet.insert(b'$');
         assert!(alphabet.is_word(self.bwt()),
@@ -126,7 +145,7 @@ impl<'sa, 'fm> FMIndex for SAAndFMIndex<'sa, 'fm> {
         &self.fmindex.bwt
     }
 
-    fn positions_from_interval(&self, interval: Interval) -> Vec<usize> {
+    fn positions_from_interval(&self, interval: &Interval) -> Vec<usize> {
         self.sa[interval.lower..interval.upper].to_vec()
     }
 }
@@ -234,22 +253,48 @@ impl FMIndex for SampledFMIndex {
         &self.bwt
     }
 
-    fn positions_from_interval(&self, interval: Interval) -> Vec<usize> {
+    fn positions_from_interval(&self, interval: &Interval) -> Vec<usize> {
         (interval.lower..interval.upper).map(|pos| self.sa_pos_to_text_pos(pos)).collect()
     }
 }
 
 /// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
-#[derive(Debug, Copy, Clone)]
-pub struct BiInterval {
+#[derive(Copy, Clone)]
+pub struct BiInterval<'fm> {
+    fmindex: &'fm FMIndex,
     lower: usize,
     lower_rev: usize,
     size: usize,
     match_size: usize,
 }
 
+impl<'fm> fmt::Debug for BiInterval<'fm> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        fmt.debug_struct("BiInterval")
+            .field("fmindex", &"hidden")
+            .field("lower", &self.lower)
+            .field("lower_rev", &self.lower_rev)
+            .field("size", &self.size)
+            .field("match_size", &self.match_size)
+            .finish()
+    }
+}
 
-impl BiInterval {
+impl<'fm> BiInterval<'fm> {
+    pub fn forward(&self) -> Interval {
+        Interval {
+            fmindex: self.fmindex,
+            upper: self.lower + self.size,
+            lower: self.lower
+        }
+    }
+    pub fn reverse(&self) -> Interval {
+        Interval {
+            fmindex: self.fmindex,
+            upper: self.lower_rev + self.size,
+            lower: self.lower
+        }
+    }
     /// Return the occurrence positions of the pattern as a slice of the suffix array.
     pub fn occ<'a>(&self, pos: &'a SuffixArraySlice) -> &'a [usize] {
         self._pos(pos, self.lower)
@@ -264,8 +309,9 @@ impl BiInterval {
         &pos[lower..lower + self.size]
     }
 
-    fn swapped(&self) -> BiInterval {
+    fn swapped(&self) -> BiInterval<'fm> {
         BiInterval {
+            fmindex: self.fmindex,
             lower: self.lower_rev,
             lower_rev: self.lower,
             size: self.size,
@@ -296,22 +342,12 @@ impl<FMT: FMIndex> FMIndex for FMDIndex<FMT> {
         self.fmindex.bwt()
     }
 
-    fn positions_from_interval(&self, interval: Interval) -> Vec<usize> {
+    fn positions_from_interval(&self, interval: &Interval) -> Vec<usize> {
         self.fmindex.positions_from_interval(interval)
     }
 }
 
 impl<FMT: FMIndex> FMDIndex<FMT> {
-    fn fwd_pos_from_biinterval(&self, biinterval: BiInterval) -> Vec<usize> {
-        self.fmindex.positions_from_interval(Interval {
-            upper: biinterval.lower + biinterval.size,
-            lower: biinterval.lower
-        })
-    }
-
-    fn revcomp_pos_from_biinterval(&self, biinterval: BiInterval) -> Vec<usize> {
-        unimplemented!()
-    }
 
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
     /// Complexity O(m) with pattern of length m.
@@ -408,6 +444,7 @@ impl<FMT: FMIndex> FMDIndex<FMT> {
         let lower = self.fmindex.less(a);
 
         BiInterval {
+            fmindex: self,
             lower: lower,
             lower_rev: self.fmindex.less(comp_a),
             size: self.fmindex.less(a + 1) - lower,
@@ -415,7 +452,7 @@ impl<FMT: FMIndex> FMDIndex<FMT> {
         }
     }
 
-    fn backward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
+    fn backward_ext<'fm>(&'fm self, interval: &BiInterval, a: u8) -> BiInterval<'fm> {
         let mut s = 0;
         let mut o = 0;
         let mut l = interval.lower_rev;
@@ -437,6 +474,7 @@ impl<FMT: FMIndex> FMDIndex<FMT> {
         let k = self.fmindex.less(a) + o;
 
         BiInterval {
+            fmindex: self,
             lower: k,
             lower_rev: l,
             size: s,
@@ -445,7 +483,7 @@ impl<FMT: FMIndex> FMDIndex<FMT> {
     }
 
 
-    fn forward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
+    fn forward_ext<'fm>(&'fm self, interval: &BiInterval, a: u8) -> BiInterval<'fm> {
         let comp_a = self.revcomp.comp(a);
 
         self.backward_ext(&interval.swapped(), comp_a)
@@ -470,8 +508,8 @@ mod tests {
         let text = text_builder.concat();
         let pos = suffix_array(&text);
         println!("pos {:?}", pos);
-        println!("text {:?}", text);
-        let fmdindex = FMDIndex::new(bwt(&text, &pos), 3);
+        let fmindex = SAReliantFMIndex::new(bwt(&text, &pos), 3, &dna::n_alphabet());
+        let fmdindex = fmindex.with(&pos).as_fmdindex();
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
@@ -491,7 +529,8 @@ mod tests {
     fn test_init_interval() {
         let text = b"ACGT$TGCA$";
         let pos = suffix_array(text);
-        let fmdindex = FMDIndex::new(bwt(text, &pos), 3);
+        let fmindex = SAReliantFMIndex::new(bwt(text, &pos), 3, &dna::n_alphabet());
+        let fmdindex = fmindex.with(&pos).as_fmdindex();
         let pattern = b"T";
         let interval = fmdindex.init_interval(pattern, 0);
         assert_eq!(interval.occ(&pos), [3, 5]);
@@ -560,7 +599,8 @@ mod tests {
                        CCTCTTTAGTACTGCCTTTG$CAAAGGCAGTACTAAAGAGGGAAATTTATAGCAATAAA\
                        TGCCTACCTTAAAAAAGAAGAAAGA$";
         let suffix_array = suffix_array(reads);
-        let fmdindex = FMDIndex::new(bwt(reads, &suffix_array), 1);
+        let fmindex = SAReliantFMIndex::new(bwt(reads, &suffix_array), 1, &dna::n_alphabet());
+        let fmdindex = fmindex.with(&suffix_array).as_fmdindex();
 
         let read = b"GGCGTGGTGGCTTATGCCTGTAATCCCAGCACTTTGGGAGGTCGAAGTGGGCGG";
         let read_pos = 0;

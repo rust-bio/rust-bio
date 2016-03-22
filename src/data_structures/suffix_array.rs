@@ -561,7 +561,8 @@ mod tests {
     }
 
     fn str_from_pos(sa: &Vec<usize>, text: &[u8], index: usize) -> String {
-        String::from(str::from_utf8(&text[sa[index]..]).unwrap().split("$").next().unwrap_or("")) + "$"
+        String::from(str::from_utf8(&text[sa[index]..]).unwrap().split("$").next().unwrap_or("")) +
+        "$"
     }
 
     #[test]
@@ -585,8 +586,14 @@ mod tests {
                 let cur = str_from_pos(&pos, &text, i);
                 let next = str_from_pos(&pos, &text, i + 1);
 
-                assert!(cur <= next, format!("Failed:\n{}\n{}\nat positions {} and {} are out of order in test: {}",
-                    cur, next, pos[i], pos[i + 1], test_name));
+                assert!(cur <= next,
+                        format!("Failed:\n{}\n{}\nat positions {} and {} are out of order in \
+                                 test: {}",
+                                cur,
+                                next,
+                                pos[i],
+                                pos[i + 1],
+                                test_name));
             }
         }
     }
