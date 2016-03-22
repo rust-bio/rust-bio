@@ -19,43 +19,14 @@ pub struct Interval {
     upper: usize,
 }
 
+pub trait FMIndex { // 'sa refers to the lifetime of the suffix array or sampling thereof
+    /// Get occurrence count of symbol a in BWT[..r+1].
+    fn occ(&self, r: usize, a: u8) -> usize;
+    /// Also known as
+    fn less(&self, a: u8) -> usize;
+    fn bwt(&self) -> &BWT;
+    fn positions_from_interval(&self, interval: Interval) -> Vec<usize>;
 
-impl Interval {
-    /// Return the occurrence positions of the pattern as a slice of the suffix array.
-    pub fn occ<'a>(&self, pos: &'a SuffixArraySlice) -> &'a [usize] {
-        &pos[self.lower..self.upper]
-    }
-}
-
-
-/// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
-/// intervals matching a given pattern.
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
-pub struct FMIndex {
-    bwt: BWT,
-    less: Less,
-    occ: Occ,
-}
-
-
-impl FMIndex {
-    /// Construct a new instance of the FM index.
-    ///
-    /// # Arguments
-    ///
-    /// * `bwt` - the BWT
-    /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
-    ///   less memory usage, but worse performance)
-    /// * `alphabet` - the alphabet of the underlying text, omitting the sentinel
-    pub fn new(bwt: BWT, k: usize, alphabet: &Alphabet) -> Self {
-        let less = less(&bwt, alphabet);
-        let occ = Occ::new(&bwt, k, alphabet);
-        FMIndex {
-            bwt: bwt,
-            less: less,
-            occ: occ,
-        }
-    }
 
     /// Perform backward search, yielding suffix array
     /// interval denoting exact occurences of the given pattern of length m in the text.
@@ -85,10 +56,10 @@ impl FMIndex {
     ///
     /// assert_eq!(occ, [3, 12, 9]);
     /// ```
-    pub fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator>(&self,
+    fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator>(&self,
                                                                                  pattern: P)
-                                                                                 -> Interval {
-        let (mut l, mut r) = (0, self.bwt.len() - 1);
+                                                                                 -> Vec<usize> {
+        let (mut l, mut r) = (0, self.bwt().len() - 1);
         for &a in pattern.rev() {
             let less = self.less(a);
             l = less +
@@ -100,27 +71,156 @@ impl FMIndex {
             r = less + self.occ(r, a) - 1;
         }
 
-        Interval {
+        self.positions_from_interval(Interval {
             lower: l,
             upper: r + 1,
-        }
-    }
-
-    pub fn occ(&self, r: usize, a: u8) -> usize {
-        self.occ.get(&self.bwt, r, a)
-    }
-
-    pub fn less(&self, a: u8) -> usize {
-        self.less[a as usize]
-    }
-
-    /// Provide a reference to the underlying BWT.
-    pub fn bwt(&self) -> &BWT {
-        &self.bwt
+        })
     }
 }
 
+/// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
+/// intervals matching a given pattern.
 
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+pub struct SAReliantFMIndex {
+    bwt: BWT,
+    less: Less,
+    occ: Occ,
+}
+
+pub struct SAAndFMIndex<'sa, 'fm> {
+    sa: &'sa SuffixArraySlice,
+    fmindex: &'fm SAReliantFMIndex,
+}
+
+impl<'sa, 'fm> FMIndex for SAAndFMIndex<'sa, 'fm> {
+    fn occ(&self, r: usize, a: u8) -> usize {
+        self.fmindex.occ.get(&self.fmindex.bwt, r, a)
+    }
+
+    fn less(&self, a: u8) -> usize {
+        self.fmindex.less[a as usize]
+    }
+
+    /// Provide a reference to the underlying BWT.
+    fn bwt(&self) -> &BWT {
+        &self.fmindex.bwt
+    }
+
+    fn positions_from_interval(&self, interval: Interval) -> Vec<usize> {
+        self.sa[interval.lower..interval.upper].to_vec()
+    }
+}
+
+impl SAReliantFMIndex {
+    /// Construct a new instance of the FM index.
+    ///
+    /// # Arguments
+    ///
+    /// * `bwt` - the BWT
+    /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
+    ///   less memory usage, but worse performance)
+    /// * `alphabet` - the alphabet of the underlying text, omitting the sentinel
+    pub fn new(bwt: BWT, k: usize, alphabet: &Alphabet) -> Self {
+        let less = less(&bwt, alphabet);
+        let occ = Occ::new(&bwt, k, alphabet);
+        SAReliantFMIndex {
+            bwt: bwt,
+            less: less,
+            occ: occ,
+        }
+    }
+
+    /// Compose with a suffix array to perform position querying
+    ///
+    /// # Arguments
+    ///
+    /// * `sa` - the suffix array with which to query for positions
+    pub fn with<'sa, 'fm>(&'fm self, sa: &'sa SuffixArraySlice) -> SAAndFMIndex<'sa, 'fm> {
+        SAAndFMIndex {
+            sa: sa,
+            fmindex: self,
+        }
+    }
+}
+
+pub struct SASample {
+    sample: Vec<usize>,
+    s: usize,
+}
+
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+pub struct SampledFMIndex {
+    bwt: BWT,
+    less: Less,
+    occ: Occ,
+    sa_sample: SASample,
+}
+
+impl SampledFMIndex {
+
+    /// Construct a new instance of the FM index.
+    ///
+    /// # Arguments
+    ///
+    /// * `sa` - the suffix array
+    /// * `s` - the sampling rate of the suffix array: every s-th entry will be stored (higher s
+    ///   means less memory usage, but worse performance)
+    /// * `bwt` - the BWT
+    /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
+    ///   less memory usage, but worse performance)
+    /// * `alphabet` - the alphabet of the underlying text, omitting the sentinel
+    pub fn new(sa: &SuffixArraySlice, s: usize, bwt: BWT, k: usize, alphabet: &Alphabet) -> Self {
+        let less = less(&bwt, alphabet);
+        let occ = Occ::new(&bwt, k, alphabet);
+        let mut sample = Vec::with_capacity(sa.len() / s + 1);
+        let mut i = 0;
+        while i < sa.len() {
+            sample.push(sa[i]);
+            i += s;
+        }
+
+        SampledFMIndex {
+            bwt: bwt,
+            less: less,
+            occ: occ,
+            sa_sample: SASample {sample: sample, s: s},
+        }
+    }
+
+    fn sa_pos_to_text_pos(&self, mut pos: usize) -> usize {
+        let mut offset = 0;
+        loop {
+            if pos % self.sa_sample.s == 0 {
+                return self.sa_sample.sample[pos / self.sa_sample.s] + offset;
+            }
+
+            let c = self.bwt[pos];
+            pos = self.less[c as usize] + self.occ(pos - 1, c);
+            offset -= 1;
+        }
+    }
+}
+
+impl FMIndex for SampledFMIndex {
+    fn occ(&self, r: usize, a: u8) -> usize {
+        self.occ.get(&self.bwt, r, a)
+    }
+
+    fn less(&self, a: u8) -> usize {
+        self.less[a as usize]
+    }
+
+    fn bwt(&self) -> &BWT {
+        &self.bwt
+    }
+
+    fn positions_from_interval(&self, interval: Interval) -> Vec<usize> {
+        (interval.lower..interval.upper).map(|pos| self.sa_pos_to_text_pos(pos)).collect()
+    }
+}
+
+/*
 /// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
 #[derive(Debug, Copy, Clone)]
 pub struct BiInterval {
@@ -159,14 +259,9 @@ impl BiInterval {
 
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
-pub struct FMDIndex {
-    fmindex: FMIndex,
-    revcomp: dna::RevComp,
-}
+trait FMDIndex<'a>: FMIndex<'a> {}
 
-
-impl FMDIndex {
+impl<'a> FMDIndex<'a> {
     /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
     /// This expects a BWT that was created from a text over the DNA alphabet with N
     /// (`alphabets::dna::n_alphabet()`) consisting of the
@@ -336,6 +431,7 @@ impl FMDIndex {
         &self.fmindex
     }
 }
+*/
 
 
 #[cfg(test)]
