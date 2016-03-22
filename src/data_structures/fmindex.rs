@@ -156,7 +156,7 @@ impl<SA: Deref<Target = SuffixArray> + Copy> FMIndex<SA> {
     /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
     /// T1$R1$T2$R2$T3$R3$.
     ///
-    fn as_fmdindex(self) -> FMDIndex<SA> {
+    pub fn as_fmdindex(self) -> FMDIndex<SA> {
         let mut alphabet = dna::n_alphabet();
         alphabet.insert(b'$');
         assert!(alphabet.is_word(self.bwt()),
@@ -167,19 +167,6 @@ impl<SA: Deref<Target = SuffixArray> + Copy> FMIndex<SA> {
             revcomp: dna::RevComp::new(),
         }
     }
-}
-
-pub struct SASample {
-    sample: Vec<usize>,
-    s: usize,
-}
-
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
-pub struct SampledFMIndex {
-    bwt: BWT,
-    less: Less,
-    occ: Occ,
-    sa_sample: SASample,
 }
 
 /// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
@@ -234,6 +221,7 @@ impl<SA: Deref<Target = SuffixArray> + Copy> BiInterval<SA> {
 
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct FMDIndex<SA: Deref<Target = SuffixArray> + Copy> {
     fmindex: FMIndex<SA>,
     revcomp: dna::RevComp,
