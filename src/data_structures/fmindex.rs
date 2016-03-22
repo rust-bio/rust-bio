@@ -288,21 +288,12 @@ impl<'fm> BiInterval<'fm> {
             lower: self.lower
         }
     }
-    pub fn reverse(&self) -> Interval {
+    pub fn revcomp(&self) -> Interval {
         Interval {
             fmindex: self.fmindex,
             upper: self.lower_rev + self.size,
-            lower: self.lower
+            lower: self.lower_rev
         }
-    }
-    /// Return the occurrence positions of the pattern as a slice of the suffix array.
-    pub fn occ<'a>(&self, pos: &'a SuffixArraySlice) -> &'a [usize] {
-        self._pos(pos, self.lower)
-    }
-
-    /// Return the occurrence positions of the reverse complement of the pattern as a slice of the suffix array.
-    pub fn occ_revcomp<'a>(&self, pos: &'a SuffixArraySlice) -> &'a [usize] {
-        self._pos(pos, self.lower_rev)
     }
 
     fn _pos<'a>(&self, pos: &'a SuffixArraySlice, lower: usize) -> &'a [usize] {
@@ -513,14 +504,14 @@ mod tests {
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
-            assert_eq!(intervals[0].occ(&pos), [5, 16]);
-            assert_eq!(intervals[0].occ_revcomp(&pos), [3, 14]);
+            assert_eq!(intervals[0].forward().occ(), [5, 16]);
+            assert_eq!(intervals[0].revcomp().occ(), [3, 14]);
         }
         {
             let pattern = b"CTTAA";
             let intervals = fmdindex.smems(pattern, 1);
-            assert_eq!(intervals[0].occ(&pos), [2]);
-            assert_eq!(intervals[0].occ_revcomp(&pos), [14]);
+            assert_eq!(intervals[0].forward().occ(), [2]);
+            assert_eq!(intervals[0].revcomp().occ(), [14]);
             assert_eq!(intervals[0].match_size, 5)
         }
     }
@@ -533,8 +524,8 @@ mod tests {
         let fmdindex = fmindex.with(&pos).as_fmdindex();
         let pattern = b"T";
         let interval = fmdindex.init_interval(pattern, 0);
-        assert_eq!(interval.occ(&pos), [3, 5]);
-        assert_eq!(interval.occ_revcomp(&pos), [8, 0]);
+        assert_eq!(interval.forward().occ(), [3, 5]);
+        assert_eq!(interval.revcomp().occ(), [8, 0]);
     }
 
     #[test]
@@ -610,8 +601,7 @@ mod tests {
             let intervals = fmdindex.smems(read, i);
             println!("{:?}", intervals);
             let matches = intervals.iter()
-                                   .flat_map(|interval| interval.occ(&suffix_array).iter())
-                                   .map(|i| *i)
+                                   .flat_map(|interval| interval.forward().occ() )
                                    .collect::<Vec<usize>>();
             assert_eq!(matches, vec![read_pos]);
         }
