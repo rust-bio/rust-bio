@@ -10,6 +10,7 @@
 use std::iter;
 use std;
 use std::fmt::Debug;
+use std::ops::{Deref, Range};
 
 use num::{Integer, Unsigned, NumCast};
 use num::traits::cast;
@@ -19,11 +20,73 @@ use vec_map::VecMap;
 
 use alphabets::{Alphabet, RankTransform};
 use data_structures::smallints::SmallInts;
+use data_structures::bwt::{BWT, Less, Occ};
 
+pub trait SuffixArray {
+    fn get(&self, index: usize) -> Option<usize>;
+    fn range(&self, range: Range<usize>) -> Option<Vec<usize>>;
+    fn len(&self) -> usize;
+}
 
-pub type SuffixArray = Vec<usize>;
-pub type SuffixArraySlice = [usize];
+pub type RawSuffixArray = Vec<usize>;
+pub struct SampledSuffixArray<DBWT: Deref<Target = BWT>, DLess: Deref<Target = Less>, DOcc: Deref<Target = Occ>> {
+    bwt: DBWT,
+    less: DLess,
+    occ: DOcc,
+    sample: Vec<usize>,
+    s: usize, // Rate of sampling
+}
 pub type LCPArray = SmallInts<i8, isize>;
+
+impl SuffixArray for RawSuffixArray {
+    fn get(&self, index: usize) -> Option<usize> {
+        self.get(index)
+    }
+    fn range(&self, range: Range<usize>) -> Option<Vec<usize>> {
+        if range.start >= 0 && range.end < self.len() {
+            Some(self[range].to_vec())
+        } else {
+            None
+        }
+    }
+    fn len(&self) -> usize {
+        self.len()
+    }
+}
+
+impl<DBWT: Deref<Target = BWT>, DLess: Deref<Target = Less>, DOcc: Deref<Target = Occ>> SuffixArray for SampledSuffixArray<DBWT, DLess, DOcc> {
+    fn get(&self, index: usize) -> Option<usize> {
+        if index > 0 && index < self.len() {
+            let mut pos = index;
+            let mut offset = 0;
+            println!("pos sample: {:?}", self.sample);
+            loop {
+                println!("pos: {}, offset: {}", pos, offset);
+                if pos % self.s == 0 {
+                    println!("FOUND\n");
+                    return Some(self.sample[pos / self.s] + offset);
+                }
+
+                let c = self.bwt[pos];
+                println!("c: {}", c as char);
+                pos = self.less[c as usize] + self.occ.get(&self.bwt, pos - 1, c);
+                offset += 1;
+            }
+        } else {
+            None
+        }
+    }
+    fn range(&self, range: Range<usize>) -> Option<Vec<usize>> {
+        if range.start >= 0 && range.end < self.len() {
+            Some(range.map(|pos| self.get(pos).expect("SampledSuffixArray couldn't get element in range")).collect())
+        } else {
+            None
+        }
+    }
+    fn len(&self) -> usize {
+        self.bwt.len()
+    }
+}
 
 /// Construct suffix array for given text of length n.
 /// Complexity: O(n).
@@ -70,7 +133,7 @@ pub type LCPArray = SmallInts<i8, isize>;
 ///     2, 16, 0, 19, 4, 13, 10, 3, 12, 9
 /// ]);
 /// ```
-pub fn suffix_array(text: &[u8]) -> SuffixArray {
+pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
     let n = text.len();
     let alphabet = Alphabet::new(text);
     let sentinel_count = sentinel_count(text);
@@ -126,7 +189,7 @@ pub fn suffix_array(text: &[u8]) -> SuffixArray {
 ///     ]
 /// )
 /// ```
-pub fn lcp(text: &[u8], pos: &SuffixArraySlice) -> LCPArray {
+pub fn lcp(text: &[u8], pos: &RawSuffixArray) -> LCPArray {
     assert!(text.len() == pos.len());
     let n = text.len();
 
