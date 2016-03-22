@@ -227,13 +227,17 @@ impl SampledFMIndex {
     }
 
     fn sa_pos_to_text_pos(&self, mut pos: usize) -> usize {
-        let mut offset: usize = 0;
+        let mut offset = 0;
+        println!("pos sample: {:?}", self.sa_sample.sample);
         loop {
+            println!("pos: {}, offset: {}", pos, offset);
             if pos % self.sa_sample.s == 0 {
-                return self.sa_sample.sample[pos / self.sa_sample.s] - offset;
+                println!("FOUND\n");
+                return self.sa_sample.sample[pos / self.sa_sample.s] + offset;
             }
 
             let c = self.bwt[pos];
+            println!("c: {}", c as char);
             pos = self.less[c as usize] + self.occ(pos - 1, c);
             offset += 1;
         }
@@ -525,7 +529,7 @@ mod tests {
         let text = text_builder.concat();
         let pos = suffix_array(&text);
         println!("pos {:?}", pos);
-        let fmindex = SampledFMIndex::new(&pos, 3, bwt(&text, &pos), 3, &dna::n_alphabet());
+        let fmindex = SampledFMIndex::new(&pos, 4, bwt(&text, &pos), 3, &dna::n_alphabet());
         let fmdindex = fmindex.as_fmdindex();
         test_smems(fmdindex);
     }
