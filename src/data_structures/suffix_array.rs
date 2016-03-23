@@ -40,23 +40,28 @@ pub type LCPArray = SmallInts<i8, isize>;
 
 impl SuffixArray for RawSuffixArray {
     fn get(&self, index: usize) -> Option<usize> {
-        self.get(index)
+        // Explicitly written out because Vec::get(index) generates a recursion warning
+        if index < self.len() {
+            Some(self[index])
+        } else {
+            None
+        }
     }
     fn range(&self, range: Range<usize>) -> Option<Vec<usize>> {
-        if range.start >= 0 && range.end < self.len() {
+        if range.end < self.len() {
             Some(self[range].to_vec())
         } else {
             None
         }
     }
     fn len(&self) -> usize {
-        self.len()
+        Vec::len(self)
     }
 }
 
 impl<DBWT: Deref<Target = BWT>, DLess: Deref<Target = Less>, DOcc: Deref<Target = Occ>> SuffixArray for SampledSuffixArray<DBWT, DLess, DOcc> {
     fn get(&self, index: usize) -> Option<usize> {
-        if index > 0 && index < self.len() {
+        if index < self.len() {
             let mut pos = index;
             let mut offset = 0;
             println!("pos sample: {:?}", self.sample);
@@ -77,7 +82,7 @@ impl<DBWT: Deref<Target = BWT>, DLess: Deref<Target = Less>, DOcc: Deref<Target 
         }
     }
     fn range(&self, range: Range<usize>) -> Option<Vec<usize>> {
-        if range.start >= 0 && range.end < self.len() {
+        if range.end < self.len() {
             Some(range.map(|pos| self.get(pos).expect("SampledSuffixArray couldn't get element in range")).collect())
         } else {
             None

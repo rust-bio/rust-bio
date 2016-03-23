@@ -9,7 +9,7 @@ use std::iter::DoubleEndedIterator;
 
 use data_structures::suffix_array::SuffixArray;
 use data_structures::bwt::{Occ, Less, less, BWT};
-use alphabets::{Alphabet, dna};
+use alphabets::dna;
 use std::fmt;
 use std::mem::swap;
 use std::ops::Deref;
@@ -101,33 +101,44 @@ pub trait FMIndexAble<SA: Deref<Target = SuffixArray> + Copy> {
 /// intervals matching a given pattern.
 
 #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
-pub struct FMIndex<SA: Deref<Target = SuffixArray> + Copy> {
+pub struct FMIndex<
+        SA: Deref<Target = SuffixArray> + Copy,
+        DBWT: Deref<Target = BWT> + Copy,
+        DLess: Deref<Target = Less> + Copy,
+        DOcc: Deref<Target = Occ> + Copy> {
     sa: SA,
-    bwt: BWT,
-    less: Less,
-    occ: Occ,
+    bwt: DBWT,
+    less: DLess,
+    occ: DOcc,
 }
 
-impl<SA: Deref<Target = SuffixArray> + Copy> FMIndexAble<SA> for FMIndex<SA> {
+impl<
+    SA: Deref<Target = SuffixArray> + Copy,
+    DBWT: Deref<Target = BWT> + Copy,
+    DLess: Deref<Target = Less> + Copy,
+    DOcc: Deref<Target = Occ> + Copy> FMIndexAble<SA> for FMIndex<SA, DBWT, DLess, DOcc> {
+
     fn suffix_array(&self) -> SA {
         self.sa
     }
-
     fn occ(&self, r: usize, a: u8) -> usize {
         self.occ.get(&self.bwt, r, a)
     }
-
     fn less(&self, a: u8) -> usize {
         self.less[a as usize]
     }
-
     /// Provide a reference to the underlying BWT.
     fn bwt(&self) -> &BWT {
         &self.bwt
     }
 }
 
-impl<SA: Deref<Target = SuffixArray> + Copy> FMIndex<SA> {
+impl<
+    SA: Deref<Target = SuffixArray> + Copy,
+    DBWT: Deref<Target = BWT> + Copy,
+    DLess: Deref<Target = Less> + Copy,
+    DOcc: Deref<Target = Occ> + Copy> FMIndex<SA, DBWT, DLess, DOcc> {
+
     /// Construct a new instance of the FM index.
     ///
     /// # Arguments
@@ -137,9 +148,7 @@ impl<SA: Deref<Target = SuffixArray> + Copy> FMIndex<SA> {
     /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
     ///   less memory usage, but worse performance)
     /// * `alphabet` - the alphabet of the underlying text, omitting the sentinel
-    pub fn new(sa: SA, bwt: BWT, k: usize, alphabet: &Alphabet) -> Self {
-        let less = less(&bwt, alphabet);
-        let occ = Occ::new(&bwt, k, alphabet);
+    pub fn new(sa: SA, bwt: DBWT, less: DLess, occ: DOcc) -> Self {
         FMIndex {
             sa: sa,
             bwt: bwt,
@@ -156,7 +165,7 @@ impl<SA: Deref<Target = SuffixArray> + Copy> FMIndex<SA> {
     /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
     /// T1$R1$T2$R2$T3$R3$.
     ///
-    pub fn as_fmdindex(self) -> FMDIndex<SA> {
+    pub fn as_fmdindex(self) -> FMDIndex<SA, DBWT, DLess, DOcc> {
         let mut alphabet = dna::n_alphabet();
         alphabet.insert(b'$');
         assert!(alphabet.is_word(self.bwt()),
@@ -222,12 +231,22 @@ impl<SA: Deref<Target = SuffixArray> + Copy> BiInterval<SA> {
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
 #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
-pub struct FMDIndex<SA: Deref<Target = SuffixArray> + Copy> {
-    fmindex: FMIndex<SA>,
+pub struct FMDIndex<
+    SA: Deref<Target = SuffixArray> + Copy,
+    DBWT: Deref<Target = BWT> + Copy,
+    DLess: Deref<Target = Less> + Copy,
+    DOcc: Deref<Target = Occ> + Copy> {
+
+    fmindex: FMIndex<SA, DBWT, DLess, DOcc>,
     revcomp: dna::RevComp,
 }
 
-impl<SA: Deref<Target = SuffixArray> + Copy> FMIndexAble<SA> for FMDIndex<SA> {
+impl<
+    SA: Deref<Target = SuffixArray> + Copy,
+    DBWT: Deref<Target = BWT> + Copy,
+    DLess: Deref<Target = Less> + Copy,
+    DOcc: Deref<Target = Occ> + Copy> FMIndexAble<SA> for FMDIndex<SA, DBWT, DLess, DOcc> {
+
     fn suffix_array(&self) -> SA {
         self.fmindex.suffix_array()
     }
@@ -246,7 +265,11 @@ impl<SA: Deref<Target = SuffixArray> + Copy> FMIndexAble<SA> for FMDIndex<SA> {
     }
 }
 
-impl<SA: Deref<Target = SuffixArray> + Copy> FMDIndex<SA> {
+impl<
+    SA: Deref<Target = SuffixArray> + Copy,
+    DBWT: Deref<Target = BWT> + Copy,
+    DLess: Deref<Target = Less> + Copy,
+    DOcc: Deref<Target = Occ> + Copy>  FMDIndex<SA, DBWT, DLess, DOcc> {
 
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
     /// Complexity O(m) with pattern of length m.
@@ -398,7 +421,7 @@ mod tests {
     use data_structures::suffix_array::suffix_array;
     use data_structures::bwt::bwt;
 
-    fn test_smems<FM: FMIndex>(fmdindex: FMDIndex<FM>) {
+    fn test_smems<FM: FMIndexAble>(fmdindex: FMDIndex<FM>) {
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
