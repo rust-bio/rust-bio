@@ -389,19 +389,20 @@ mod tests {
         let less = Rc::new(less(&bwt, &alphabet));
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
-        let fmindex = FMIndex::new(sa as Rc<SuffixArray>, bwt, less, occ);
+        let fmindex = FMIndex::new(bwt, less, occ);
         let fmdindex = fmindex.as_fmdindex();
+        let sa = sa as Rc<SuffixArray>;
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
-            assert_eq!(intervals[0].forward().occ(), [5, 16]);
-            assert_eq!(intervals[0].revcomp().occ(), [3, 14]);
+            assert_eq!(intervals[0].forward().occ(sa.clone()), [5, 16]);
+            assert_eq!(intervals[0].revcomp().occ(sa.clone()), [3, 14]);
         }
         {
             let pattern = b"CTTAA";
             let intervals = fmdindex.smems(pattern, 1);
-            assert_eq!(intervals[0].forward().occ(), [2]);
-            assert_eq!(intervals[0].revcomp().occ(), [14]);
+            assert_eq!(intervals[0].forward().occ(sa.clone()), [2]);
+            assert_eq!(intervals[0].revcomp().occ(sa.clone()), [14]);
             assert_eq!(intervals[0].match_size, 5)
         }
     }
@@ -417,12 +418,15 @@ mod tests {
         let less = Rc::new(less(&bwt, &alphabet));
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
-        let fmindex = FMIndex::new(sa as Rc<SuffixArray>, bwt, less, occ);
+        let fmindex = FMIndex::new(bwt, less, occ);
         let fmdindex = fmindex.as_fmdindex();
         let pattern = b"T";
         let interval = fmdindex.init_interval(pattern, 0);
-        assert_eq!(interval.forward().occ(), [3, 5]);
-        assert_eq!(interval.revcomp().occ(), [8, 0]);
+
+
+        let sa = sa as Rc<SuffixArray>;
+        assert_eq!(interval.forward().occ(sa.clone()), [3, 5]);
+        assert_eq!(interval.revcomp().occ(sa.clone()), [8, 0]);
     }
 
     #[test]
@@ -493,18 +497,19 @@ mod tests {
         let less = Rc::new(less(&bwt, &alphabet));
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
-        let fmindex = FMIndex::new(sa as Rc<SuffixArray>, bwt, less, occ);
+        let fmindex = FMIndex::new(bwt, less, occ);
         let fmdindex = fmindex.as_fmdindex();
 
         let read = b"GGCGTGGTGGCTTATGCCTGTAATCCCAGCACTTTGGGAGGTCGAAGTGGGCGG";
         let read_pos = 0;
 
+        let sa = sa as Rc<SuffixArray>;
         for i in 0..read.len() {
             println!("i {}", i);
             let intervals = fmdindex.smems(read, i);
             println!("{:?}", intervals);
             let matches = intervals.iter()
-                                   .flat_map(|interval| interval.forward().occ() )
+                                   .flat_map(|interval| interval.forward().occ(sa.clone()) )
                                    .collect::<Vec<usize>>();
             assert_eq!(matches, vec![read_pos]);
         }
