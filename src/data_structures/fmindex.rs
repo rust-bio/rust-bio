@@ -418,7 +418,7 @@ impl<
 mod tests {
     use super::*;
     use alphabets::dna;
-    use data_structures::suffix_array::suffix_array;
+    use data_structures::suffix_array::{suffix_array, SuffixArray};
     use data_structures::bwt::{bwt, less, Occ};
     use std::rc::Rc;
 
@@ -436,7 +436,7 @@ mod tests {
         let less = Rc::new(less(&bwt, &alphabet));
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
-        let fmindex = FMIndex::new(sa, bwt, less, occ);
+        let fmindex = FMIndex::new(sa as Rc<SuffixArray>, bwt, less, occ);
         let fmdindex = fmindex.as_fmdindex();
         {
             let pattern = b"AA";
@@ -457,7 +457,6 @@ mod tests {
     #[test]
     fn test_init_interval() {
         let text = b"ACGT$TGCA$";
-        let pos = suffix_array(text);
 
         let alphabet = dna::n_alphabet();
         let sa = Rc::new(suffix_array(text));
@@ -465,7 +464,7 @@ mod tests {
         let less = Rc::new(less(&bwt, &alphabet));
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
-        let fmindex = FMIndex::new(sa, bwt, less, occ);
+        let fmindex = FMIndex::new(sa as Rc<SuffixArray>, bwt, less, occ);
         let fmdindex = fmindex.as_fmdindex();
         let pattern = b"T";
         let interval = fmdindex.init_interval(pattern, 0);
@@ -541,7 +540,7 @@ mod tests {
         let less = Rc::new(less(&bwt, &alphabet));
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
-        let fmindex = FMIndex::new(sa, bwt, less, occ);
+        let fmindex = FMIndex::new(sa as Rc<SuffixArray>, bwt, less, occ);
         let fmdindex = fmindex.as_fmdindex();
 
         let read = b"GGCGTGGTGGCTTATGCCTGTAATCCCAGCACTTTGGGAGGTCGAAGTGGGCGG";

@@ -48,7 +48,7 @@ impl SuffixArray for RawSuffixArray {
         }
     }
     fn range(&self, range: Range<usize>) -> Option<Vec<usize>> {
-        if range.end < self.len() {
+        if range.end <= self.len() {
             Some(self[range].to_vec())
         } else {
             None
@@ -82,7 +82,7 @@ impl<DBWT: Deref<Target = BWT>, DLess: Deref<Target = Less>, DOcc: Deref<Target 
         }
     }
     fn range(&self, range: Range<usize>) -> Option<Vec<usize>> {
-        if range.end < self.len() {
+        if range.end <= self.len() {
             Some(range.map(|pos| self.get(pos).expect("SampledSuffixArray couldn't get element in range")).collect())
         } else {
             None
