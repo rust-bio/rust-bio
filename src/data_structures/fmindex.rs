@@ -1,4 +1,4 @@
-// Copyright 2014 Johannes Köster.
+// Cloneright 2014 Johannes Köster.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -15,20 +15,20 @@ use std::mem::swap;
 use std::ops::Deref;
 
 /// A suffix array interval.
-#[derive(Copy, Clone)]
-pub struct Interval<SA: Deref<Target = SuffixArray> + Copy> {
+#[derive(Clone, Copy)]
+pub struct Interval<SA: Deref<Target = SuffixArray> + Clone> {
     suffix_array: SA,
     lower: usize,
     upper: usize,
 }
 
-impl<SA: Deref<Target = SuffixArray> + Copy> Interval<SA> {
+impl<SA: Deref<Target = SuffixArray> + Clone> Interval<SA> {
     pub fn occ(&self) -> Vec<usize> {
         self.suffix_array.range(self.lower..self.upper).expect("Interval should be in range of suffix array")
     }
 }
 
-impl<SA: Deref<Target = SuffixArray> + Copy> fmt::Debug for Interval<SA> {
+impl<SA: Deref<Target = SuffixArray> + Clone> fmt::Debug for Interval<SA> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         fmt.debug_struct("Interval")
             .field("fmindex", &"hidden")
@@ -38,7 +38,7 @@ impl<SA: Deref<Target = SuffixArray> + Copy> fmt::Debug for Interval<SA> {
     }
 }
 
-pub trait FMIndexAble<SA: Deref<Target = SuffixArray> + Copy> {
+pub trait FMIndexAble<SA: Deref<Target = SuffixArray> + Clone> {
     fn suffix_array(&self) -> SA;
     /// Get occurrence count of symbol a in BWT[..r+1].
     fn occ(&self, r: usize, a: u8) -> usize;
@@ -102,10 +102,10 @@ pub trait FMIndexAble<SA: Deref<Target = SuffixArray> + Copy> {
 
 #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct FMIndex<
-        SA: Deref<Target = SuffixArray> + Copy,
-        DBWT: Deref<Target = BWT> + Copy,
-        DLess: Deref<Target = Less> + Copy,
-        DOcc: Deref<Target = Occ> + Copy> {
+        SA: Deref<Target = SuffixArray> + Clone,
+        DBWT: Deref<Target = BWT> + Clone,
+        DLess: Deref<Target = Less> + Clone,
+        DOcc: Deref<Target = Occ> + Clone> {
     sa: SA,
     bwt: DBWT,
     less: DLess,
@@ -113,13 +113,13 @@ pub struct FMIndex<
 }
 
 impl<
-    SA: Deref<Target = SuffixArray> + Copy,
-    DBWT: Deref<Target = BWT> + Copy,
-    DLess: Deref<Target = Less> + Copy,
-    DOcc: Deref<Target = Occ> + Copy> FMIndexAble<SA> for FMIndex<SA, DBWT, DLess, DOcc> {
+    SA: Deref<Target = SuffixArray> + Clone,
+    DBWT: Deref<Target = BWT> + Clone,
+    DLess: Deref<Target = Less> + Clone,
+    DOcc: Deref<Target = Occ> + Clone> FMIndexAble<SA> for FMIndex<SA, DBWT, DLess, DOcc> {
 
     fn suffix_array(&self) -> SA {
-        self.sa
+        self.sa.clone()
     }
     fn occ(&self, r: usize, a: u8) -> usize {
         self.occ.get(&self.bwt, r, a)
@@ -134,10 +134,10 @@ impl<
 }
 
 impl<
-    SA: Deref<Target = SuffixArray> + Copy,
-    DBWT: Deref<Target = BWT> + Copy,
-    DLess: Deref<Target = Less> + Copy,
-    DOcc: Deref<Target = Occ> + Copy> FMIndex<SA, DBWT, DLess, DOcc> {
+    SA: Deref<Target = SuffixArray> + Clone,
+    DBWT: Deref<Target = BWT> + Clone,
+    DLess: Deref<Target = Less> + Clone,
+    DOcc: Deref<Target = Occ> + Clone> FMIndex<SA, DBWT, DLess, DOcc> {
 
     /// Construct a new instance of the FM index.
     ///
@@ -179,8 +179,8 @@ impl<
 }
 
 /// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
-#[derive(Copy, Clone)]
-pub struct BiInterval<SA: Deref<Target = SuffixArray> + Copy> {
+#[derive(Clone, Copy)]
+pub struct BiInterval<SA: Deref<Target = SuffixArray> + Clone> {
     suffix_array: SA,
     lower: usize,
     lower_rev: usize,
@@ -188,7 +188,7 @@ pub struct BiInterval<SA: Deref<Target = SuffixArray> + Copy> {
     match_size: usize,
 }
 
-impl<SA: Deref<Target = SuffixArray> + Copy> fmt::Debug for BiInterval<SA> {
+impl<SA: Deref<Target = SuffixArray> + Clone> fmt::Debug for BiInterval<SA> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         fmt.debug_struct("BiInterval")
             .field("fmindex", &"hidden")
@@ -200,17 +200,17 @@ impl<SA: Deref<Target = SuffixArray> + Copy> fmt::Debug for BiInterval<SA> {
     }
 }
 
-impl<SA: Deref<Target = SuffixArray> + Copy> BiInterval<SA> {
+impl<SA: Deref<Target = SuffixArray> + Clone> BiInterval<SA> {
     pub fn forward(&self) -> Interval<SA> {
         Interval {
-            suffix_array: self.suffix_array,
+            suffix_array: self.suffix_array.clone(),
             upper: self.lower + self.size,
             lower: self.lower
         }
     }
     pub fn revcomp(&self) -> Interval<SA> {
         Interval {
-            suffix_array: self.suffix_array,
+            suffix_array: self.suffix_array.clone(),
             upper: self.lower_rev + self.size,
             lower: self.lower_rev
         }
@@ -218,7 +218,7 @@ impl<SA: Deref<Target = SuffixArray> + Copy> BiInterval<SA> {
 
     fn swapped(&self) -> BiInterval<SA> {
         BiInterval {
-            suffix_array: self.suffix_array,
+            suffix_array: self.suffix_array.clone(),
             lower: self.lower_rev,
             lower_rev: self.lower,
             size: self.size,
@@ -232,20 +232,20 @@ impl<SA: Deref<Target = SuffixArray> + Copy> BiInterval<SA> {
 /// strand of DNA texts (Li, 2012).
 #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct FMDIndex<
-    SA: Deref<Target = SuffixArray> + Copy,
-    DBWT: Deref<Target = BWT> + Copy,
-    DLess: Deref<Target = Less> + Copy,
-    DOcc: Deref<Target = Occ> + Copy> {
+    SA: Deref<Target = SuffixArray> + Clone,
+    DBWT: Deref<Target = BWT> + Clone,
+    DLess: Deref<Target = Less> + Clone,
+    DOcc: Deref<Target = Occ> + Clone> {
 
     fmindex: FMIndex<SA, DBWT, DLess, DOcc>,
     revcomp: dna::RevComp,
 }
 
 impl<
-    SA: Deref<Target = SuffixArray> + Copy,
-    DBWT: Deref<Target = BWT> + Copy,
-    DLess: Deref<Target = Less> + Copy,
-    DOcc: Deref<Target = Occ> + Copy> FMIndexAble<SA> for FMDIndex<SA, DBWT, DLess, DOcc> {
+    SA: Deref<Target = SuffixArray> + Clone,
+    DBWT: Deref<Target = BWT> + Clone,
+    DLess: Deref<Target = Less> + Clone,
+    DOcc: Deref<Target = Occ> + Clone> FMIndexAble<SA> for FMDIndex<SA, DBWT, DLess, DOcc> {
 
     fn suffix_array(&self) -> SA {
         self.fmindex.suffix_array()
@@ -266,10 +266,10 @@ impl<
 }
 
 impl<
-    SA: Deref<Target = SuffixArray> + Copy,
-    DBWT: Deref<Target = BWT> + Copy,
-    DLess: Deref<Target = Less> + Copy,
-    DOcc: Deref<Target = Occ> + Copy>  FMDIndex<SA, DBWT, DLess, DOcc> {
+    SA: Deref<Target = SuffixArray> + Clone,
+    DBWT: Deref<Target = BWT> + Clone,
+    DLess: Deref<Target = Less> + Clone,
+    DOcc: Deref<Target = Occ> + Clone>  FMDIndex<SA, DBWT, DLess, DOcc> {
 
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
     /// Complexity O(m) with pattern of length m.
@@ -307,7 +307,7 @@ impl<
 
             // if size changed, add last interval to list
             if interval.size != forward_interval.size {
-                curr.push(interval);
+                curr.push(interval.clone());
             }
             // if new interval size is zero, stop, as no further forward extension is possible
             if forward_interval.size == 0 {
@@ -316,7 +316,7 @@ impl<
             interval = forward_interval;
         }
         // add the last non-zero interval
-        curr.push(interval);
+        curr.push(interval.clone());
         // reverse intervals such that longest comes first
         curr.reverse();
 
@@ -333,7 +333,7 @@ impl<
             // size of the last confirmed interval
             let mut last_size = -1;
 
-            for &interval in prev.iter() {
+            for interval in prev.iter() {
                 // backward extend interval
                 let forward_interval = self.backward_ext(&interval, a);
 
@@ -343,7 +343,7 @@ impl<
                         // interval is maximal and can be added to the matches
                         curr.is_empty() && k < j {
                     j = k;
-                    matches.push(interval);
+                    matches.push((*interval).clone());
                 }
                 // add _interval to curr (will be further extended next iteration)
                 if forward_interval.size != 0 && forward_interval.size as isize != last_size {
@@ -419,9 +419,25 @@ mod tests {
     use super::*;
     use alphabets::dna;
     use data_structures::suffix_array::suffix_array;
-    use data_structures::bwt::bwt;
+    use data_structures::bwt::{bwt, less, Occ};
+    use std::rc::Rc;
 
-    fn test_smems<FM: FMIndexAble>(fmdindex: FMDIndex<FM>) {
+    #[test]
+    fn test_smems() {
+        let revcomp = dna::RevComp::new();
+        let orig_text = b"GCCTTAACAT";
+        let revcomp_text = revcomp.get(orig_text);
+        let text_builder: Vec<&[u8]> = vec![orig_text, b"$", &revcomp_text[..], b"$"];
+        let text = text_builder.concat();
+
+        let alphabet = dna::n_alphabet();
+        let sa = Rc::new(suffix_array(&text));
+        let bwt = Rc::new(bwt(&text, sa.as_ref()));
+        let less = Rc::new(less(&bwt, &alphabet));
+        let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
+
+        let fmindex = FMIndex::new(sa, bwt, less, occ);
+        let fmdindex = fmindex.as_fmdindex();
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
@@ -437,41 +453,20 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_smems_reliant() {
-        let revcomp = dna::RevComp::new();
-        let orig_text = b"GCCTTAACAT";
-        let revcomp_text = revcomp.get(orig_text);
-        let text_builder: Vec<&[u8]> = vec![orig_text, b"$", &revcomp_text[..], b"$"];
-        let text = text_builder.concat();
-        let pos = suffix_array(&text);
-        println!("pos {:?}", pos);
-        let fmindex = SAReliantFMIndex::new(bwt(&text, &pos), 3, &dna::n_alphabet());
-        let fmdindex = fmindex.with(&pos).as_fmdindex();
-        test_smems(fmdindex);
-    }
-
-    #[test]
-    fn test_smems_sampled() {
-        let revcomp = dna::RevComp::new();
-        let orig_text = b"GCCTTAACAT";
-        let revcomp_text = revcomp.get(orig_text);
-        let text_builder: Vec<&[u8]> = vec![orig_text, b"$", &revcomp_text[..], b"$"];
-        let text = text_builder.concat();
-        let pos = suffix_array(&text);
-        println!("pos {:?}", pos);
-        let fmindex = SampledFMIndex::new(&pos, 4, bwt(&text, &pos), 3, &dna::n_alphabet());
-        let fmdindex = fmindex.as_fmdindex();
-        test_smems(fmdindex);
-    }
-
 
     #[test]
     fn test_init_interval() {
         let text = b"ACGT$TGCA$";
         let pos = suffix_array(text);
-        let fmindex = SAReliantFMIndex::new(bwt(text, &pos), 3, &dna::n_alphabet());
-        let fmdindex = fmindex.with(&pos).as_fmdindex();
+
+        let alphabet = dna::n_alphabet();
+        let sa = Rc::new(suffix_array(text));
+        let bwt = Rc::new(bwt(text, sa.as_ref()));
+        let less = Rc::new(less(&bwt, &alphabet));
+        let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
+
+        let fmindex = FMIndex::new(sa, bwt, less, occ);
+        let fmdindex = fmindex.as_fmdindex();
         let pattern = b"T";
         let interval = fmdindex.init_interval(pattern, 0);
         assert_eq!(interval.forward().occ(), [3, 5]);
@@ -539,9 +534,15 @@ mod tests {
                        ATTTATAGCAATAAA$TCTTTCTTCTTTTTTAAGGTAGGCATTTATTGCTATAAATTTC\
                        CCTCTTTAGTACTGCCTTTG$CAAAGGCAGTACTAAAGAGGGAAATTTATAGCAATAAA\
                        TGCCTACCTTAAAAAAGAAGAAAGA$";
-        let suffix_array = suffix_array(reads);
-        let fmindex = SAReliantFMIndex::new(bwt(reads, &suffix_array), 1, &dna::n_alphabet());
-        let fmdindex = fmindex.with(&suffix_array).as_fmdindex();
+
+        let alphabet = dna::n_alphabet();
+        let sa = Rc::new(suffix_array(reads));
+        let bwt = Rc::new(bwt(reads, sa.as_ref()));
+        let less = Rc::new(less(&bwt, &alphabet));
+        let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
+
+        let fmindex = FMIndex::new(sa, bwt, less, occ);
+        let fmdindex = fmindex.as_fmdindex();
 
         let read = b"GGCGTGGTGGCTTATGCCTGTAATCCCAGCACTTTGGGAGGTCGAAGTGGGCGG";
         let read_pos = 0;
