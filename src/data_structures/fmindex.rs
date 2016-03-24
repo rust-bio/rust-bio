@@ -7,7 +7,7 @@
 
 use std::iter::DoubleEndedIterator;
 
-use data_structures::suffix_array::SuffixArray;
+use data_structures::suffix_array::{SuffixArray, SuffixArrayRange};
 use data_structures::bwt::{Occ, Less, less, BWT};
 use alphabets::dna;
 use std::mem::swap;
@@ -21,7 +21,7 @@ pub struct Interval {
 }
 
 impl Interval {
-    pub fn occ<SA: Deref<Target = SuffixArray> + Clone>(&self, suffix_array: SA) -> Vec<usize> {
+    pub fn occ<'a>(&self, suffix_array: &'a SuffixArray) -> SuffixArrayRange<'a> {
         suffix_array.range(self.lower..self.upper).expect("Interval should be in range of suffix array")
     }
 }
@@ -372,6 +372,7 @@ mod tests {
     use super::*;
     use alphabets::dna;
     use data_structures::suffix_array::{suffix_array, SuffixArray};
+    use data_structures::suffix_array::SuffixArrayRange::VecRange;
     use data_structures::bwt::{bwt, less, Occ};
     use std::rc::Rc;
 
@@ -395,14 +396,14 @@ mod tests {
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
-            assert_eq!(intervals[0].forward().occ(sa.clone()), [5, 16]);
-            assert_eq!(intervals[0].revcomp().occ(sa.clone()), [3, 14]);
+            assert_eq!(intervals[0].forward().occ(sa.as_ref()), VecRange(vec![5, 16]));
+            assert_eq!(intervals[0].revcomp().occ(sa.as_ref()), VecRange(vec![3, 14]));
         }
         {
             let pattern = b"CTTAA";
             let intervals = fmdindex.smems(pattern, 1);
-            assert_eq!(intervals[0].forward().occ(sa.clone()), [2]);
-            assert_eq!(intervals[0].revcomp().occ(sa.clone()), [14]);
+            assert_eq!(intervals[0].forward().occ(sa.as_ref()), VecRange(vec![2]));
+            assert_eq!(intervals[0].revcomp().occ(sa.as_ref()), VecRange(vec![14]));
             assert_eq!(intervals[0].match_size, 5)
         }
     }
@@ -425,8 +426,8 @@ mod tests {
 
 
         let sa = sa as Rc<SuffixArray>;
-        assert_eq!(interval.forward().occ(sa.clone()), [3, 5]);
-        assert_eq!(interval.revcomp().occ(sa.clone()), [8, 0]);
+        assert_eq!(interval.forward().occ(sa.as_ref()), VecRange(vec![3, 5]));
+        assert_eq!(interval.revcomp().occ(sa.as_ref()), VecRange(vec![8, 0]));
     }
 
     #[test]
@@ -509,7 +510,7 @@ mod tests {
             let intervals = fmdindex.smems(read, i);
             println!("{:?}", intervals);
             let matches = intervals.iter()
-                                   .flat_map(|interval| interval.forward().occ(sa.clone()) )
+                                   .flat_map(|interval| interval.forward().occ(sa.as_ref()).into_boxed_iter() )
                                    .collect::<Vec<usize>>();
             assert_eq!(matches, vec![read_pos]);
         }

@@ -22,9 +22,61 @@ use alphabets::{Alphabet, RankTransform};
 use data_structures::smallints::SmallInts;
 use data_structures::bwt::{BWT, Less, Occ};
 
+#[derive(Clone, Debug)]
+pub enum SuffixArrayRange<'a> {
+    Slice(&'a [usize]),
+    VecRange(Vec<usize>),
+}
+use self::SuffixArrayRange::{Slice, VecRange};
+
+impl<'a> SuffixArrayRange<'a> {
+    fn vec_eq_slice(vec: &Vec<usize>, slice: &[usize]) -> bool {
+        if vec.len() == slice.len() {
+            for i in 0..vec.len() {
+                if vec[i] != slice[i] {
+                    return false;
+                }
+            }
+            true
+        } else {
+            false
+        }
+    }
+    fn eq_slice(&self, other: &[usize]) -> bool {
+        match self {
+            &Slice(slice) => slice == other,
+            &VecRange(ref vec) => Self::vec_eq_slice(vec, other)
+        }
+    }
+    fn eq_vec(&self, other: &Vec<usize>) -> bool {
+        match self {
+            &Slice(slice) => Self::vec_eq_slice(other, slice),
+            &VecRange(ref vec) => vec == other
+        }
+    }
+    pub fn into_boxed_iter(self) -> Box<Iterator<Item = usize> + 'a> {
+        // Can't impl the IntoIterator trait because the result is unsized, so must be boxed
+        // TODO: add wrapper iterator which can be returned sized, and use IntoIterator
+        // TODO: after above, make this fn private
+        match self {
+            Slice(slice) => Box::new(slice.into_iter().map(|elem| *elem)),
+            VecRange(vec) => Box::new(vec.into_iter()),
+        }
+    }
+}
+impl<'a> PartialEq for SuffixArrayRange<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            &Slice(slice) => other.eq_slice(slice),
+            &VecRange(ref vec) => other.eq_vec(vec),
+        }
+    }
+}
+impl<'a> Eq for SuffixArrayRange<'a> {}
+
 pub trait SuffixArray {
     fn get(&self, index: usize) -> Option<usize>;
-    fn range(&self, range: Range<usize>) -> Option<Vec<usize>>;
+    fn range<'a>(&'a self, range: Range<usize>) -> Option<SuffixArrayRange<'a>>;
     fn len(&self) -> usize;
 }
 
@@ -47,9 +99,9 @@ impl SuffixArray for RawSuffixArray {
             None
         }
     }
-    fn range(&self, range: Range<usize>) -> Option<Vec<usize>> {
+    fn range<'a>(&'a self, range: Range<usize>) -> Option<SuffixArrayRange<'a>> {
         if range.end <= self.len() {
-            Some(self[range].to_vec())
+            Some(Slice(&self[range]))
         } else {
             None
         }
@@ -81,9 +133,13 @@ impl<DBWT: Deref<Target = BWT>, DLess: Deref<Target = Less>, DOcc: Deref<Target 
             None
         }
     }
-    fn range(&self, range: Range<usize>) -> Option<Vec<usize>> {
+    fn range<'a>(&'a self, range: Range<usize>) -> Option<SuffixArrayRange<'a>> {
         if range.end <= self.len() {
-            Some(range.map(|pos| self.get(pos).expect("SampledSuffixArray couldn't get element in range")).collect())
+            Some(VecRange(
+                range
+                    .map(|pos|
+                        self.get(pos).expect("SampledSuffixArray couldn't get element in range"))
+                        .collect::<Vec<usize>>()))
         } else {
             None
         }
