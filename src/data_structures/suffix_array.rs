@@ -569,6 +569,9 @@ mod tests {
         let tests = [(&b"A$C$G$T$"[..], "simple"),
                      (&b"A$A$T$T$"[..], "duplicates"),
                      (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
+                     (&b"AGCCAT$\
+                        CAGCC$"[..],
+                        "substring"),
                      (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
                         AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
                         "complex"),
