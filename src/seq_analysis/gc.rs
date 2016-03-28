@@ -7,37 +7,27 @@
 
 // Maybe not the most clever way to do it, but at least runs in o(n)
 
-const LOWER_G:u8 = 103;
-const LOWER_C:u8 = 99;
-
-const G:u8 = 71;
-const C:u8 = 67;
-
-
-pub fn gc <'a>(sequence: &'a [u8]) -> f32 {
-    let mut count: f32 = 0.0;
-    let len: usize = sequence.len();
+/// Base gc content counter
+fn gcn_content<'a>(sequence: &'a[u8], step: usize) -> f32 {
+    let mut count = 0.0;
+    let len = sequence.len();
     let mut i: usize = 0;
     while i < len {
         count += match sequence[i] {
-            C|LOWER_C|G|LOWER_G => 1f32, // G or C
+            b'c'|b'g'|b'G'|b'C' => 1f32, // G or C
                               _ => 0f32,
-        } ;
-        i += 1
+        };
+        i += step
     }
     count / len as f32
 }
 
-pub fn gc3 <'a>(sequence: &'a [u8]) -> f32 {
-    let mut count: f32 = 0.0;
-    let len: usize = sequence.len();
-    let mut i: usize = 2;
-    while i < len {
-        count += match sequence[i] {
-            C|LOWER_C|G|LOWER_G => 1f32,
-                              _ => 0f32,
-        };
-        i += 3;
-    }
-    count / len as f32
+/// gc content counter for every nucleotide
+pub fn gc_content<'a>(sequence: &'a[u8]) -> f32 {
+    gcn_content(sequence, 1usize)
+}
+
+/// gc content counter for the nucleotide in 3rd position
+pub fn gc3_content<'a>(sequence: &'a[u8]) -> f32 {
+    gcn_content(sequence, 3usize)
 }
