@@ -17,7 +17,6 @@
 
 use std::io;
 use std::fs;
-use std::fmt;
 use std::path::Path;
 use std::convert::AsRef;
 
@@ -31,7 +30,7 @@ pub struct Reader<R: io::Read> {
 
 
 impl Reader<fs::File> {
-    /// Read FASTA from given file path.
+    /// Read GFF from given file path.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::open(path).map(Reader::new)
     }
@@ -39,7 +38,7 @@ impl Reader<fs::File> {
 
 
 impl<R: io::Read> Reader<R> {
-    /// Create a new Fasta reader given an instance of `io::Read`.
+    /// Create a new GFF reader given an instance of `io::Read`.
     pub fn new(reader: R) -> Self {
         Reader {
             inner: csv::Reader::from_reader(reader).delimiter(b'\t').has_headers(false)
@@ -63,11 +62,11 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
 
     fn next(&mut self) -> Option<csv::Result<Record>> {
         self.inner.next().map(|res| {
-            res.map(|(sequence, source, type_name, start, end, score, strand, frame, attributes)| {
+            res.map(|(seqname, source, feature_type, start, end, score, strand, frame, attributes)| {
                 Record {
-                    sequence: sequence,
+                    seqname: seqname,
                     source: source,
-                    type_name: type_name,
+                    feature_type: feature_type,
                     start: start,
                     end: end,
                     score: score,
@@ -111,9 +110,9 @@ impl<W: io::Write> Writer<W> {
 /// A GFF record
 #[derive(RustcEncodable)]
 pub struct Record {
-    sequence: String,
+    seqname: String,
     source: String,
-    type_name: String,
+    feature_type: String,
     start: u64,
     end: u64,
     score: String,
@@ -126,9 +125,9 @@ impl Record {
     /// Create a new GFF record.
     pub fn new() -> Self {
         Record {
-            sequence: "".to_owned(),
+            seqname: "".to_owned(),
             source: "".to_owned(),
-            type_name: "".to_owned(),
+            feature_type: "".to_owned(),
             start: 0,
             end: 0,
             score: ".".to_owned(),
@@ -138,9 +137,9 @@ impl Record {
         }
     }
 
-    /// Sequence of the feature.
-    pub fn sequence(&self) -> &str {
-        &self.sequence
+    /// Sequence name of the feature.
+    pub fn seqname(&self) -> &str {
+        &self.seqname
     }
 
     /// Source of the feature.
@@ -148,9 +147,9 @@ impl Record {
         &self.source
     }
 
-    /// Type name of the feature.
-    pub fn type_name(&self) -> &str {
-        &self.type_name
+    /// Type of the feature.
+    pub fn feature_type(&self) -> &str {
+        &self.feature_type
     }
 
     /// Start position of feature (1-based).
@@ -190,9 +189,9 @@ impl Record {
         &self.attributes
     }
     
-    /// Set sequence of feature.
-    pub fn set_sequence(&mut self, sequence: &str) {
-        self.sequence = sequence.to_owned();
+    /// Set seqname of feature.
+    pub fn set_seqname(&mut self, seqname: &str) {
+        self.seqname = seqname.to_owned();
     }
 
     /// Set source of feature.
@@ -200,9 +199,9 @@ impl Record {
         self.source = source.to_owned();
     }
 
-    /// Set type_name of feature.
-    pub fn set_type_name(&mut self, type_name: &str) {
-        self.type_name = type_name.to_owned();
+    /// Set type of feature.
+    pub fn set_feature_type(&mut self, feature_type: &str) {
+        self.feature_type = feature_type.to_owned();
     }
 
     /// Set start of feature.
@@ -243,9 +242,9 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105;Note=ATP-dependent
 
     #[test]
     fn test_reader() {
-        let sequence = ["P0A7B8", "P0A7B8"];
+        let seqname = ["P0A7B8", "P0A7B8"];
         let source = ["UniProtKB", "UniProtKB"];
-        let type_name = ["Initiator methionine", "Chain"];
+        let feature_type = ["Initiator methionine", "Chain"];
         let starts = [1, 2];
         let ends = [1, 176];
         let scores = [None, Some(50)];
@@ -256,9 +255,9 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105;Note=ATP-dependent
         let mut reader = Reader::new(GFF_FILE);
         for (i, r) in reader.records().enumerate() {
             let record = r.ok().expect("Error reading record");
-            assert_eq!(record.sequence(), sequence[i]);
+            assert_eq!(record.seqname(), seqname[i]);
             assert_eq!(record.source(), source[i]);
-            assert_eq!(record.type_name(), type_name[i]);
+            assert_eq!(record.feature_type(), feature_type[i]);
             assert_eq!(record.start(), starts[i]);
             assert_eq!(record.end(), ends[i]);
             assert_eq!(record.score(), scores[i]);
