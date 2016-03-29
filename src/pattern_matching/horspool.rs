@@ -39,17 +39,20 @@
 //! ```
 
 
+use utils::TextSlice;
+
+
 /// Algorithm of Horspool.
 pub struct Horspool<'a> {
     shift: Vec<usize>,
     m: usize,
-    pattern: &'a [u8],
+    pattern: TextSlice<'a>,
 }
 
 
 impl<'a> Horspool<'a> {
     /// Create a new instance for a given pattern.
-    pub fn new(pattern: &'a [u8]) -> Self {
+    pub fn new(pattern: TextSlice<'a>) -> Self {
         let m = pattern.len();
         let mut shift = vec![m; 256];
         // shift is m for all not occurring characters
@@ -66,7 +69,7 @@ impl<'a> Horspool<'a> {
     }
 
     /// Find all matches with a given text. Matches are returned as an iterator over start positions.
-    pub fn find_all<'b>(&'b self, text: &'b [u8]) -> Matches {
+    pub fn find_all<'b>(&'b self, text: TextSlice<'b>) -> Matches {
         Matches {
             horspool: self,
             text: text,
@@ -81,7 +84,7 @@ impl<'a> Horspool<'a> {
 /// Iterator over start positions of matches.
 pub struct Matches<'a> {
     horspool: &'a Horspool<'a>,
-    text: &'a [u8],
+    text: TextSlice<'a>,
     n: usize,
     last: usize,
     pattern_last: u8,

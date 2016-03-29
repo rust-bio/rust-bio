@@ -20,6 +20,7 @@
 
 
 use pattern_matching::shift_and::masks;
+use utils::TextSlice;
 
 
 /// BNDM algorithm.
@@ -32,7 +33,7 @@ pub struct BNDM {
 
 impl BNDM {
     /// Create a new instance for a given pattern.
-    pub fn new(pattern: &[u8]) -> Self {
+    pub fn new(pattern: TextSlice) -> Self {
         let m = pattern.len();
         assert!(m <= 64, "Expecting a pattern of at most 64 symbols.");
         // take the reverse pattern and build nondeterministic
@@ -50,7 +51,7 @@ impl BNDM {
     }
 
     /// Find all matches of pattern with a given text. Matches are returned as iterator over start positions.
-    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> Matches {
+    pub fn find_all<'a>(&'a self, text: TextSlice<'a>) -> Matches {
         Matches {
             bndm: self,
             window: self.m,
@@ -64,7 +65,7 @@ impl BNDM {
 pub struct Matches<'a> {
     bndm: &'a BNDM,
     window: usize,
-    text: &'a [u8],
+    text: TextSlice<'a>,
 }
 
 

@@ -18,12 +18,14 @@
 //! let text = b"aaaaabbabbbbbbbabbab";
 //! let pattern = b"abbab";
 //! let kmp = KMP::new(pattern);
-//! let occ: Vec<usize> = kmp.find_all(text.iter()).collect();
+//! let occ: Vec<usize> = kmp.find_all(text).collect();
 //! assert_eq!(occ, [4, 15]);
 //! ```
 
 
 use std::iter::{repeat, Enumerate};
+
+use utils::{TextSlice, IntoTextIterator, TextIterator};
 
 
 type LPS = Vec<usize>;
@@ -33,13 +35,13 @@ type LPS = Vec<usize>;
 pub struct KMP<'a> {
     m: usize,
     lps: LPS,
-    pattern: &'a [u8],
+    pattern: TextSlice<'a>,
 }
 
 
 impl<'a> KMP<'a> {
     /// Create a new instance for a given pattern.
-    pub fn new(pattern: &'a [u8]) -> Self {
+    pub fn new(pattern: TextSlice<'a>) -> Self {
         let m = pattern.len();
         let lps = lps(pattern);
 
@@ -62,11 +64,11 @@ impl<'a> KMP<'a> {
     }
 
     /// Find all matches of pattern in a given text. Matches are returned as iterator over start positions.
-    pub fn find_all<'b, I: Iterator<Item = &'b u8>>(&'b self, text: I) -> Matches<I> {
+    pub fn find_all<'b, I: IntoTextIterator<'b>>(&'b self, text: I) -> Matches<'b, I::IntoIter> {
         Matches {
             kmp: self,
             q: 0,
-            text: text.enumerate(),
+            text: text.into_iter().enumerate(),
         }
     }
 }
@@ -90,7 +92,7 @@ fn lps(pattern: &[u8]) -> LPS {
 
 
 /// Iterator over start positions of matches.
-pub struct Matches<'a, I: Iterator<Item = &'a u8>> {
+pub struct Matches<'a, I: TextIterator<'a>> {
     kmp: &'a KMP<'a>,
     q: usize,
     text: Enumerate<I>,

@@ -21,7 +21,7 @@
 //! let pattern = b"TGAGCGT";
 //!
 //! let myers = Myers::new(pattern);
-//! let occ = myers.find_all_end(text.iter(), 1).collect_vec();
+//! let occ = myers.find_all_end(text, 1).collect_vec();
 //!
 //! assert_eq!(occ, [(13, 1), (14, 1)]);
 //! # }
@@ -30,6 +30,8 @@
 
 use std::iter;
 use std::u64;
+
+use utils::{TextSlice, IntoTextIterator, TextIterator};
 
 
 /// Myers algorithm.
@@ -42,7 +44,7 @@ pub struct Myers {
 
 impl Myers {
     /// Create a new instance of Myers algorithm for a given pattern.
-    pub fn new(pattern: &[u8]) -> Self {
+    pub fn new(pattern: TextSlice) -> Self {
         assert!(pattern.len() <= 64 && pattern.len() > 0);
 
         let mut peq = [0; 256];
@@ -59,7 +61,7 @@ impl Myers {
 
     /// Create a new instance of Myers algorithm for a given pattern and a wildcard character
     /// that shall match any character.
-    pub fn with_wildcard(pattern: &[u8], wildcard: u8) -> Self {
+    pub fn with_wildcard(pattern: TextSlice, wildcard: u8) -> Self {
         let mut myers = Self::new(pattern);
         // wildcard matches all symbols of the pattern.
         myers.peq[wildcard as usize] = u64::MAX;
@@ -88,7 +90,7 @@ impl Myers {
     }
 
     /// Calculate the global distance of the pattern to the given text.
-    pub fn distance(&self, text: &[u8]) -> u8 {
+    pub fn distance<'a, I: IntoTextIterator<'a>>(&self, text: I) -> u8 {
         let mut state = State::new(self.m);
         for &a in text {
             self.step(&mut state, a);
@@ -98,14 +100,14 @@ impl Myers {
 
     /// Find all matches of pattern in the given text up to a given maximum distance.
     /// Matches are returned as an iterator over pairs of end position and distance.
-    pub fn find_all_end<'a, I: Iterator<Item = &'a u8>>(&'a self,
+    pub fn find_all_end<'a, I: IntoTextIterator<'a>>(&'a self,
                                                         text: I,
                                                         max_dist: u8)
-                                                        -> Matches<I> {
+                                                        -> Matches<I::IntoIter> {
         Matches {
             myers: self,
             state: State::new(self.m),
-            text: text.enumerate(),
+            text: text.into_iter().enumerate(),
             max_dist: max_dist,
         }
     }
@@ -133,7 +135,7 @@ impl State {
 
 
 /// Iterator over pairs of end positions and distance of matches.
-pub struct Matches<'a, I: Iterator<Item = &'a u8>> {
+pub struct Matches<'a, I: TextIterator<'a>> {
     myers: &'a Myers,
     state: State,
     text: iter::Enumerate<I>,

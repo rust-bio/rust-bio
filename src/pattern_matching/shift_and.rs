@@ -14,12 +14,13 @@
 //! let pattern = b"AAAA";
 //! let text = b"ACGGCTAGAAAAGGCTAG";
 //! let shiftand = shift_and::ShiftAnd::new(pattern);
-//! let occ = shiftand.find_all(text.iter()).next().unwrap();
+//! let occ = shiftand.find_all(text).next().unwrap();
 //! assert_eq!(occ, 8);
 //! ```
 
 use std::iter::Enumerate;
 
+use utils::{TextSlice, IntoTextIterator, TextIterator};
 
 /// ShiftAnd algorithm.
 pub struct ShiftAnd {
@@ -31,7 +32,7 @@ pub struct ShiftAnd {
 
 impl ShiftAnd {
     /// Create new ShiftAnd instance from a given pattern.
-    pub fn new(pattern: &[u8]) -> ShiftAnd {
+    pub fn new(pattern: TextSlice) -> ShiftAnd {
         assert!(pattern.len() <= 64,
                 "Expecting a pattern of at most 64 symbols.");
         let (masks, accept) = masks(pattern);
@@ -46,11 +47,11 @@ impl ShiftAnd {
 
     /// Find all matches of pattern in the given text. Matches are returned as an iterator
     /// over start positions.
-    pub fn find_all<'a, I: Iterator<Item = &'a u8>>(&'a self, text: I) -> Matches<I> {
+    pub fn find_all<'a, I: IntoTextIterator<'a>>(&'a self, text: I) -> Matches<I::IntoIter> {
         Matches {
             shiftand: self,
             active: 0,
-            text: text.enumerate(),
+            text: text.into_iter().enumerate(),
         }
     }
 }
@@ -72,7 +73,7 @@ pub fn masks(pattern: &[u8]) -> ([u64; 256], u64) {
 
 
 /// Iterator over start positions of matches.
-pub struct Matches<'a, I: Iterator<Item = &'a u8>> {
+pub struct Matches<'a, I: TextIterator<'a>> {
     shiftand: &'a ShiftAnd,
     active: u64,
     text: Enumerate<I>,
