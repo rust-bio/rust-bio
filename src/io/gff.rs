@@ -22,12 +22,12 @@ use std::convert::AsRef;
 
 use csv;
 
+use io::Strand;
 
 /// A GFF reader.
 pub struct Reader<R: io::Read> {
     inner: csv::Reader<R>,
 }
-
 
 impl Reader<fs::File> {
     /// Read GFF from given file path.
@@ -225,17 +225,11 @@ impl Record {
     }
 }
 
-/// Strand information.
-#[derive(Debug, PartialEq)]
-pub enum Strand {
-    Forward,
-    Reverse,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use io::Strand;
+    
     const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105;Note=ATP-dependent protease subunit HslV
 ";
