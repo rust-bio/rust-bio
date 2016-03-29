@@ -9,6 +9,19 @@
 use std::cmp;
 use num::Float;
 
+/// Type alias for an owned sequence.
+pub type Sequence = Vec<u8>;
+/// Type alias for a sequence slice.
+pub type SequenceSlice<'a> = &'a [u8];
+
+/// Type alias for an iterator over a sequence.
+pub trait SequenceIterator<'a>: Iterator<Item=&'a u8> {}
+impl<'a, I: Iterator<Item=&'a u8>> SequenceIterator<'a> for I {}
+
+/// Type alias for a type that can be coerced into a ``SequenceIterator``.
+pub trait IntoSequenceIterator<'a>: IntoIterator<Item=&'a u8> {}
+impl<'a, T: IntoIterator<Item=&'a u8>> IntoSequenceIterator<'a> for T {}
+
 
 /// Remove a trailing newline from the given string in place.
 pub fn trim_newline(s: &mut String) {
@@ -92,5 +105,19 @@ mod tests {
         let mut v = [NonNaNFloat(5.1), NonNaNFloat(1.3)];
         v.sort();
         assert_eq!(v, [NonNaNFloat(1.3), NonNaNFloat(5.1)]);
+    }
+
+    /// This function demonstrates the use of the IntoSequenceIterator alias, which takes both
+    /// slices and iterators.
+    fn print_sequence<'a, I: IntoSequenceIterator<'a>>(sequence: I) {
+        for c in sequence {
+            println!("{}", c);
+        }
+    }
+
+    #[test]
+    fn test_print_sequence() {
+        let s = b"ACGT";
+        print_sequence(&s);
     }
 }
