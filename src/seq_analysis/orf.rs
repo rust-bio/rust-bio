@@ -27,6 +27,7 @@
 //! But that's not so performance friendly, as the reverse complementation and the orf research
 //! could go on at the same time.
 
+const CODON_LENGTH:usize = 3;
 
 /// Finder algorithm
 pub struct NaiveFinder <'a> {
@@ -93,6 +94,11 @@ impl<'a> Matches<'a> {
     }
 }
 
+impl<'a> Matches <'a>{
+    fn codon(&mut self, offset:usize) -> [u8; 3] {
+        &self.sequence[self.state.index+offset..self.state.index+offset+CODON_LENGTH] as [u8;3]
+    }
+}
 
 impl<'a> Iterator for Matches<'a> {
     type Item = (usize, usize, &'a [u8]);
@@ -102,7 +108,7 @@ impl<'a> Iterator for Matches<'a> {
         let mut orf: Option<(usize, usize, &'a [u8])> = None;
         let mut codons: [ [u8; 3]; 3]; //
 
-        while self.state.index < self.state.length - 3 {
+        while self.state.index < self.state.length - CODON_LENGTH {
             //codons array depending on reading frame
             codons = [
                 [ self.sequence[self.state.index]  , self.sequence[self.state.index+1], self.sequence[self.state.index+2] ],
@@ -115,7 +121,7 @@ impl<'a> Iterator for Matches<'a> {
                 if self.state.in_orf[x] {
                     if self.finder.stop_codons.contains(&&codons[x]) {
                         //exiting orf
-                        self.state.end_pos[x] = self.state.index + x + 3;
+                        self.state.end_pos[x] = self.state.index + x + CODON_LENGTH;
                         self.state.in_orf[x] = false;
                         //slice the sequence to get the frame
                         let slice = &self.sequence[self.state.start_pos[x]..self.state.end_pos[x]];
@@ -142,7 +148,7 @@ impl<'a> Iterator for Matches<'a> {
                 }
 
             }
-            self.state.index += 3;
+            self.state.index += CODON_LENGTH;
             if orf.is_some() {
                 return orf;
             }
