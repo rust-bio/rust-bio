@@ -114,6 +114,7 @@ pub fn cumsum<I: Iterator<Item = LogProb>>(probs: I) -> CumsumIter<I> {
 mod tests {
     use super::*;
     use std::f64;
+    use itertools::Itertools;
 
     #[test]
     fn test_sum() {
@@ -129,7 +130,7 @@ mod tests {
     #[test]
     fn test_cumsum() {
         let probs = vec![0.0f64.ln(), 0.01f64.ln(), 0.001f64.ln()];
-        assert_eq!(cumsum(probs.into_iter()),
+        assert_eq!(cumsum(probs.into_iter()).collect_vec(),
                    [0.0f64.ln(), 0.01f64.ln(), 0.011f64.ln()]);
     }
 }
