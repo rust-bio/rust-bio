@@ -7,6 +7,7 @@
 
 use std::mem;
 use std::f64;
+use std::iter;
 
 pub use stats::{Prob, LogProb};
 
@@ -93,13 +94,19 @@ pub fn add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
 }
 
 
+fn scan_add(s: &mut LogProb, p: LogProb) -> Option<LogProb> {
+    *s = add(*s, p);
+    Some(*s)
+}
+
+
+/// Iterator returned by `cumsum`.
+pub type CumsumIter<I> = iter::Scan<I, f64, fn(&mut f64, f64) -> Option<f64>>;
+
+
 /// Calculate the cumulative sum of the given probabilities in a numerically stable way (Durbin 1998).
-pub fn cumsum<I: Iterator<Item = LogProb>>(probs: I) -> Vec<LogProb> {
-    probs.scan(f64::NEG_INFINITY, |s, p| {
-             *s = add(*s, p);
-             Some(*s)
-         })
-         .collect()
+pub fn cumsum<I: Iterator<Item = LogProb>>(probs: I) -> CumsumIter<I> {
+    probs.scan(f64::NEG_INFINITY, scan_add)
 }
 
 
