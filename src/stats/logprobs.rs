@@ -79,7 +79,7 @@ pub fn sum(probs: &[LogProb]) -> LogProb {
 }
 
 
-/// Calculate the sum of the given probabilities in a numerically stable way (Durbin 1998).
+/// Add the given probabilities in a numerically stable way (Durbin 1998).
 pub fn add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
     if p1 > p0 {
         mem::swap(&mut p0, &mut p1);
@@ -92,6 +92,24 @@ pub fn add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
         p0 + (p1 - p0).exp().ln_1p()
     }
 }
+
+
+/// Subtract the given probabilities in a numerically stable way (Durbin 1998).
+pub fn sub(p0: LogProb, p1: LogProb) -> LogProb {
+    if p1 > p0 {
+        panic!("Subtraction would lead to negative probability, which is undefined in log space.");
+    }
+    if p0 == p1 || p0 == f64::NEG_INFINITY {
+        // the first case leads to zero,
+        // in the second case p0 and p1 are -inf, which is fine
+        f64::NEG_INFINITY
+    } else if p0 == f64::INFINITY {
+        f64::INFINITY
+    } else {
+        p0 + ln_1m_exp(p1 - p0)
+    }
+}
+
 
 
 fn scan_add(s: &mut LogProb, p: LogProb) -> Option<LogProb> {
@@ -132,5 +150,11 @@ mod tests {
         let probs = vec![0.0f64.ln(), 0.01f64.ln(), 0.001f64.ln()];
         assert_eq!(cumsum(probs.into_iter()).collect_vec(),
                    [0.0f64.ln(), 0.01f64.ln(), 0.011f64.ln()]);
+    }
+
+    #[test]
+    fn test_sub() {
+        assert_eq!(sub(0.0f64.ln(), 0.0f64.ln()), f64::NEG_INFINITY);
+        assert_relative_eq!(sub(1.0f64.ln(), 0.5f64.ln()), 0.5f64.ln());
     }
 }
