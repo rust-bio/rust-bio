@@ -100,12 +100,12 @@ fn scan_add(s: &mut LogProb, p: LogProb) -> Option<LogProb> {
 }
 
 
-/// Iterator returned by `cumsum`.
-pub type CumsumIter<I> = iter::Scan<I, f64, fn(&mut f64, f64) -> Option<f64>>;
+/// Iterator returned by scans over logprobs.
+pub type ScanIter<I> = iter::Scan<I, LogProb, fn(&mut LogProb, LogProb) -> Option<LogProb>>;
 
 
 /// Calculate the cumulative sum of the given probabilities in a numerically stable way (Durbin 1998).
-pub fn cumsum<I: Iterator<Item = LogProb>>(probs: I) -> CumsumIter<I> {
+pub fn cumsum<I: Iterator<Item = LogProb>>(probs: I) -> ScanIter<I> {
     probs.scan(f64::NEG_INFINITY, scan_add)
 }
 
