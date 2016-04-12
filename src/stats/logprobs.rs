@@ -23,6 +23,7 @@ const PHRED_TO_LOG_FACTOR: f64 = -0.23025850929940456; // 1 / (-10 * log10(e))
 /// Calculate log(1 - p) with p given in log space without loss of precision as described in
 /// http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf.
 pub fn ln_1m_exp(p: LogProb) -> LogProb {
+    assert!(p <= 0.0);
     if p < -0.693 {
         (-p.exp()).ln_1p()
     } else {
@@ -156,5 +157,11 @@ mod tests {
     fn test_sub() {
         assert_eq!(sub(0.0f64.ln(), 0.0f64.ln()), f64::NEG_INFINITY);
         assert_relative_eq!(sub(1.0f64.ln(), 0.5f64.ln()), 0.5f64.ln());
+    }
+
+    #[test]
+    fn test_ln_1m_exp() {
+        assert_eq!(ln_1m_exp(f64::NEG_INFINITY), 0.0);
+        assert_eq!(ln_1m_exp(0.0001), f64::NEG_INFINITY);
     }
 }
