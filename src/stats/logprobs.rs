@@ -160,6 +160,6 @@ mod tests {
     #[test]
     fn test_ln_1m_exp() {
         assert_eq!(ln_1m_exp(f64::NEG_INFINITY), 0.0);
-        assert_eq!(ln_1m_exp(0.0001), f64::NEG_INFINITY);
+        assert_eq!(ln_1m_exp(-0.0), f64::NEG_INFINITY);
     }
 }
