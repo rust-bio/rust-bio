@@ -97,7 +97,7 @@ pub fn add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
 
 /// Subtract the given probabilities in a numerically stable way (Durbin 1998).
 pub fn sub(p0: LogProb, p1: LogProb) -> LogProb {
-    assert!(p0 >= p1, "Subtraction would lead to negative probability, which is undefined in log space.")
+    assert!(p0 >= p1, "Subtraction would lead to negative probability, which is undefined in log space.");
     if p0 == p1 || p0 == f64::NEG_INFINITY {
         // the first case leads to zero,
         // in the second case p0 and p1 are -inf, which is fine
