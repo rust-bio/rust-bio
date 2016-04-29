@@ -64,6 +64,7 @@ extern crate lazy_static;
 extern crate nalgebra;
 #[macro_use]
 extern crate approx;
+// extern crate regex;
 
 pub mod utils;
 pub mod alphabets;

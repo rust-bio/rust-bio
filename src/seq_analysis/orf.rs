@@ -4,8 +4,9 @@
 // except according to those terms.
 
 //! One-way orf finder algorithm.
-//! complexity: O(n).
-
+//!
+//! Complexity: O(n).
+//!
 //! # Example
 //!
 //! ```
@@ -13,7 +14,7 @@
 //! let start_codons = vec!(b"ATG");
 //! let stop_codons  = vec!(b"TGA", b"TAG", b"TAA");
 //! let min_len:usize = 50;
-//! let finder = NaiveFinder::new(start_codons, stop_codons, min_len);
+//! let finder = Finder::new(start_codons, stop_codons, min_len);
 //!
 //! let sequence = b"ACGGCTAGAAAAGGCTAGAAAA"
 //!
@@ -21,137 +22,149 @@
 //!    ...do something...
 //! }
 //! ```
-
+//!
 //! Right now the only way to check the reverse strand for orf is to use
 //! the alphabet::dna::RevComp struct and to check for both sequences.
 //! But that's not so performance friendly, as the reverse complementation and the orf research
 //! could go on at the same time.
 
-const CODON_LENGTH:usize = 3;
 
-/// Finder algorithm
-pub struct NaiveFinder <'a> {
-    start_codons: Vec<&'a [u8; 3]>,
-    stop_codons: Vec<&'a [u8; 3]>,
+use utils::{TextIterator, IntoTextIterator};
+use std::collections::VecDeque;
+use std::iter;
+
+/// An implementation of a naive algorithm finder
+pub struct Finder {
+    start_codons: Vec<VecDeque<u8>>,
+    stop_codons: Vec<VecDeque<u8>>,
     min_len: usize,
 }
 
-impl<'a> NaiveFinder <'a> {
-    /// Create a new instance for given genetic datas
-    pub fn new (start_codons: Vec<&'a [u8; 3]>, stop_codons: Vec<&'a [u8; 3]>, min_len: usize) -> Self {
-        NaiveFinder {
-            start_codons: start_codons,
-            stop_codons: stop_codons,
+impl Finder {
+    /// Create a new instance of a finder for the given start and stop codons and a particular length
+    pub fn new<'a>(start_codons: Vec<&'a [u8; 3]>,
+                   stop_codons: Vec<&'a [u8; 3]>,
+                   min_len: usize)
+                   -> Self {
+        Finder {
+            start_codons: start_codons.into_iter()                          // Convert start_ and
+                                      .map(|x| {                            // stop_codons from 
+                                          x.into_iter()                     // Vec<&[u8;3]> to
+                                           .map(|&x| x as u8)               // Vec<VecDeque<u8>>
+                                           .collect::<VecDeque<u8>>()       // so they can be
+                                      })                                    // easily compared
+                                      .collect(), // with codon built
+            stop_codons: stop_codons.into_iter()                            // from IntoTextIterator
+                                    .map(|x| {                              // object.
+                                        x.into_iter()
+                                         .map(|&x| x as u8)
+                                         .collect::<VecDeque<u8>>()
+                                    })
+                                    .collect(),
             min_len: min_len,
         }
     }
-    /// Find all open reading frames in given sequence. Matches are returned as iterators over vectors
-    pub fn find_all(&'a self, sequence: &'a [u8]) -> Matches {
-        Matches::new(self, sequence)
+
+    /// Find all orfs in the given sequence
+    pub fn find_all<'a, I: IntoTextIterator<'a>>(&'a self, seq: I) -> Matches<I::IntoIter> {
+        Matches {
+            finder: self,
+            state: State::new(),
+            seq: seq.into_iter().enumerate(),
+        }
     }
 }
 
-/// container struct for argument iteration
+
+/// The current algorithm state.
 struct State {
-    index: usize,
-    length: usize,
     start_pos: [usize; 3],
-    end_pos: [usize; 3],
-    in_orf: [bool; 3]
+    in_orf: [bool; 3],
+    orf: [Vec<u8>; 3],
+    codon: VecDeque<u8>,
 }
+
 
 impl State {
-    /// Create new state
-    pub fn new(length: usize) -> Self {
+    /// Create new state.
+    pub fn new() -> Self {
         State {
-            index: 0,
-            length: length,
             start_pos: [0, 0, 0],
-            end_pos: [0, 0, 0],
             in_orf: [false, false, false],
+            orf: [Vec::new(), Vec::new(), Vec::new()],
+            codon: VecDeque::new(),
         }
     }
 }
 
-/// Iterator yielding open reading frames as vector (start_pos, end_pos + 1, sequence)
-pub struct Matches<'a> {
-    finder: &'a NaiveFinder<'a>,
-    sequence: &'a [u8],
+
+/// Iterator over offset, start position, end position and sequence of matched orfs.
+pub struct Matches<'a, I: TextIterator<'a>> {
+    finder: &'a Finder,
     state: State,
+    seq: iter::Enumerate<I>,
 }
 
-impl<'a> Matches<'a> {
-    pub fn new (finder: &'a NaiveFinder, sequence: &'a [u8]) -> Self {
+impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
+    type Item = (usize, usize, usize, Vec<u8>);
 
-        //let mut v = Vec::new();
-        //v.extend_from_slice(sequence);
+    fn next(&mut self) -> Option<(usize, usize, usize, Vec<u8>)> {
 
-        Matches {
-            finder: finder,
-            sequence: sequence,
-            state: State::new(sequence.len()),
-        }
-    }
-}
+        let mut result: Option<(usize, usize, usize, Vec<u8>)> = None;
+        let mut offset: usize;
 
-impl<'a> Matches <'a>{
-    fn codon(&mut self, offset:usize) -> [u8; 3] {
-        &self.sequence[self.state.index+offset..self.state.index+offset+CODON_LENGTH] as [u8;3]
-    }
-}
+        for (index, &nuc) in self.seq.by_ref() {
 
-impl<'a> Iterator for Matches<'a> {
-    type Item = (usize, usize, &'a [u8]);
+            // update the codon
+            if self.state.codon.len() >= 3 {
+                self.state.codon.pop_front();
+            }
+            self.state.codon.push_back(nuc);
 
-    fn next(&mut self) -> Option<(usize, usize, &'a [u8])> {
+            // self.state.index = i;
+            offset = (index + 1) % 3;
 
-        let mut orf: Option<(usize, usize, &'a [u8])> = None;
-        let mut codons: [ [u8; 3]; 3]; //
+            // inside orf
+            if self.state.in_orf[offset] {
 
-        while self.state.index < self.state.length - CODON_LENGTH {
-            //codons array depending on reading frame
-            codons = [
-                [ self.sequence[self.state.index]  , self.sequence[self.state.index+1], self.sequence[self.state.index+2] ],
-                [ self.sequence[self.state.index+1], self.sequence[self.state.index+2], self.sequence[self.state.index+3] ],
-                [ self.sequence[self.state.index+2], self.sequence[self.state.index+3], self.sequence[self.state.index+4] ],
-            ];
-            //x is the shift of the reading frame
-            for x in 0..3 as usize {
+                // check if should stop
+                if self.finder.stop_codons.contains(&self.state.codon) {
 
-                if self.state.in_orf[x] {
-                    if self.finder.stop_codons.contains(&&codons[x]) {
-                        //exiting orf
-                        self.state.end_pos[x] = self.state.index + x + CODON_LENGTH;
-                        self.state.in_orf[x] = false;
-                        //slice the sequence to get the frame
-                        let slice = &self.sequence[self.state.start_pos[x]..self.state.end_pos[x]];
+                    // self.state.end_pos[offset] = index;
+                    self.state.orf[offset].extend(self.state.codon.clone().into_iter());
 
-                        // (!) still don't know if it's better to return slice or vec
-                        // if vec is better, do:
-                        //   let mut frame = Vec::new();
-                        //   frame.extend_from_slice(slice);
-                        // and return Some(.., frame) instead of Some(.., slice)
-
-                        //check if orf length is enough
-                        if slice.len() > self.finder.min_len {
-                            orf = Some( (self.state.start_pos[x], self.state.end_pos[x], slice) );
-                        }
-                        self.state.start_pos[x] = 0;
-                        self.state.end_pos[x] = 0
+                    // build results
+                    if self.state.orf[offset].len() > self.finder.min_len {
+                        result = Some((offset,
+                                       self.state.start_pos[offset] - 2,
+                                       index + 1,
+                                       self.state.orf[offset].clone()));
                     }
+
+                    // reinitialize
+                    self.state.in_orf[offset] = false;
+                    self.state.start_pos[offset] = 0;
+                    // self.state.end_pos[offset] = 0;
+                    self.state.orf[offset] = Vec::new();
+
                 } else {
-                    if self.finder.start_codons.contains(&&codons[x]) {
-                        //entering orf
-                        self.state.start_pos[x] = self.state.index + x;
-                        self.state.in_orf[x] = true;
-                    }
+                    // append codon to orf
+                    self.state.orf[offset].extend(self.state.codon.clone().into_iter());
                 }
 
+            } else {
+                // check if entering orf
+                if self.finder.start_codons.contains(&self.state.codon) {
+                    self.state.in_orf[offset] = true;
+                    self.state.start_pos[offset] = index;
+                    self.state.orf[offset].extend(self.state.codon.clone().into_iter())
+                }
             }
-            self.state.index += CODON_LENGTH;
-            if orf.is_some() {
-                return orf;
+
+            if result != None {
+                return result;
             }
+
         }
         None
     }

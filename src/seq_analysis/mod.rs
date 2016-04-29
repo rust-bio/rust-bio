@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Sequence analysis algorithms such as orf finder or GC% counter
+//! Sequence analysis algorithms.
 
 pub mod orf;
 pub mod gc;

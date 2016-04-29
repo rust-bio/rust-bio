@@ -319,7 +319,7 @@ impl FMDIndex {
             lower: k,
             lower_rev: l,
             size: s,
-            match_size: interval.match_size + 1
+            match_size: interval.match_size + 1,
         }
     }
 

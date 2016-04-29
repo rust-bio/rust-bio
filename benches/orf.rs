@@ -5,7 +5,8 @@ extern crate bio;
 
 use test::Bencher;
 
-use bio::seq_analysis::orf::*;
+use bio::seq_analysis::orf::Finder;
+use bio::seq_analysis::gc::*;
 
 
 // 5,000 random nucleotides, GC content = .55
@@ -15,6 +16,11 @@ static STR_1: &'static [u8] = b"ATCTAACTATTCCCTGTGCCTTATGGGGGCCTGCGCTATCTGCCTGTC
 fn bench_orf(b: &mut Bencher) {
     let start_codons = vec!(b"ATG");
     let stop_codons  = vec!(b"TGA", b"TAG", b"TAA");
-    let finder = NaiveFinder::new(start_codons, stop_codons, 100usize);
-    b.iter(|| { finder.find_all(STR_1).collect() });
+    let finder = Finder::new(start_codons, stop_codons, 100usize);
+    b.iter(|| { finder.find_all(STR_1) });
+}
+
+#[bench]
+fn bench_gc(b: &mut Bencher) {
+	b.iter(|| gc_content(STR_1));
 }

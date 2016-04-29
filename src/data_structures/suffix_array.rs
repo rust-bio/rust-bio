@@ -138,7 +138,7 @@ pub fn lcp(text: &[u8], pos: &SuffixArraySlice) -> LCPArray {
 
     let mut lcp = SmallInts::from_elem(-1, n + 1);
     let mut l = 0usize;
-    for (p, &r) in rank.iter().enumerate().take(n-1) {
+    for (p, &r) in rank.iter().enumerate().take(n - 1) {
         // since the sentinel has rank 0 and is excluded above,
         // we will never have a negative index below
         let pred = pos[r - 1];
