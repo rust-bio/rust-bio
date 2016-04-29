@@ -10,16 +10,16 @@
 //! # Example
 //!
 //! ```
-//! use bio::seq_analysis::orf::NaiveFinder;
+//! use bio::seq_analysis::orf::Finder;
 //! let start_codons = vec!(b"ATG");
 //! let stop_codons  = vec!(b"TGA", b"TAG", b"TAA");
 //! let min_len:usize = 50;
 //! let finder = Finder::new(start_codons, stop_codons, min_len);
 //!
-//! let sequence = b"ACGGCTAGAAAAGGCTAGAAAA"
+//! let sequence = b"ACGGCTAGAAAAGGCTAGAAAA";
 //!
 //! for orf in finder.find_all(sequence) {
-//!    ...do something...
+//!    //...do something...
 //! }
 //! ```
 //!
@@ -120,19 +120,14 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
                 self.state.codon.pop_front();
             }
             self.state.codon.push_back(nuc);
-
-            // self.state.index = i;
             offset = (index + 1) % 3;
 
             // inside orf
             if self.state.in_orf[offset] {
-
                 // check if should stop
                 if self.finder.stop_codons.contains(&self.state.codon) {
-
-                    // self.state.end_pos[offset] = index;
+                    // add last codon
                     self.state.orf[offset].extend(self.state.codon.clone().into_iter());
-
                     // build results
                     if self.state.orf[offset].len() > self.finder.min_len {
                         result = Some((offset,
@@ -140,18 +135,15 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
                                        index + 1,
                                        self.state.orf[offset].clone()));
                     }
-
                     // reinitialize
                     self.state.in_orf[offset] = false;
                     self.state.start_pos[offset] = 0;
                     // self.state.end_pos[offset] = 0;
                     self.state.orf[offset] = Vec::new();
-
                 } else {
                     // append codon to orf
                     self.state.orf[offset].extend(self.state.codon.clone().into_iter());
                 }
-
             } else {
                 // check if entering orf
                 if self.finder.start_codons.contains(&self.state.codon) {
@@ -160,11 +152,9 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
                     self.state.orf[offset].extend(self.state.codon.clone().into_iter())
                 }
             }
-
             if result != None {
                 return result;
             }
-
         }
         None
     }
