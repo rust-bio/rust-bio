@@ -78,7 +78,7 @@ impl<R: io::Read> Reader<R> {
 
 
 /// A FastQ record.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Record {
     header: String,
     seq: String,
