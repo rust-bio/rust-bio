@@ -4,7 +4,11 @@
 // except according to those terms.
 
 
-//! GFF format reading and writing.
+//! GFF3 format reading and writing.
+//!
+//! GFF2 definition : http://gmod.org/wiki/GFF2#The_GFF2_File_Format (not yet support)
+//! GTF2 definition : http://mblab.wustl.edu/GTF2.html (not yet support)
+//! GFF3 definition : http://gmod.org/wiki/GFF3#GFF3_Format
 //!
 //! # Example
 //!
@@ -13,7 +17,6 @@
 //! use bio::io::gff;
 //! let reader = gff::Reader::new(io::stdin());
 //! ```
-
 
 use std::io;
 use std::fs;
@@ -72,7 +75,11 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                     score: score,
                     strand: strand,
                     frame: frame,
-                    attributes: attributes,
+                    attributes: csv::Reader::from_string(attributes)
+                        .delimiter(b'=')
+                        .record_terminator(csv::RecordTerminator::Any(b';'))
+                        .has_headers(false)
+                        .decode().collect::<csv::Result<Vec<(String, String)>>>().unwrap(),
                 }
             })
         })
@@ -102,7 +109,22 @@ impl<W: io::Write> Writer<W> {
 
     /// Write a given GFF record.
     pub fn write(&mut self, record: Record) -> csv::Result<()> {
-        self.inner.encode(record)
+        if !record.attributes.is_empty() {
+            self.inner.encode((
+                record.seqname,
+                record.source,
+                record.feature_type,
+                record.start,
+                record.end,
+                record.score,
+                record.strand,
+                record.frame,
+                record.attributes.iter().map(|&(ref a, ref b)| format!("{}={}", a, b)).collect::<Vec<_>>().join(";"),
+                ))
+
+        } else {
+            self.inner.encode((record.seqname, record.source, record.feature_type, record.start, record.end, record.score, record.strand, record.frame))
+        }
     }
 }
 
@@ -118,7 +140,7 @@ pub struct Record {
     score: String,
     strand: String,
     frame: String,
-    attributes: String,
+    attributes: Vec<(String, String)>,
 }
 
 impl Record {
@@ -133,7 +155,7 @@ impl Record {
             score: ".".to_owned(),
             strand: ".".to_owned(),
             frame: "".to_owned(),
-            attributes: "".to_owned(),
+            attributes: Vec::<(String, String)>::new(),
         }
     }
 
@@ -185,7 +207,7 @@ impl Record {
     }
 
     /// Attribute of feature
-    pub fn attributes(&self) -> &str {
+    pub fn attributes(&self) -> &Vec<(String, String)> {
         &self.attributes
     }
     
@@ -223,6 +245,10 @@ impl Record {
     pub fn set_strand(&mut self, strand: &str) {
         self.strand = strand.to_owned();
     }
+
+    pub fn set_attributes(&mut self, attributes: &Vec<(String, String)>) {
+        &self.attributes = attributes;
+    }
 }
 
 #[cfg(test)]
@@ -230,7 +256,7 @@ mod tests {
     use super::*;
     use io::Strand;
     
-    const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed
+    const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tID=test;Note=Removed
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105;Note=ATP-dependent protease subunit HslV
 ";
 
@@ -244,7 +270,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105;Note=ATP-dependent
         let scores = [None, Some(50)];
         let strand = [None, Some(Strand::Forward)];
         let frame = [".", "."];
-        let attributes = ["Note=Removed", "ID=PRO_0000148105;Note=ATP-dependent protease subunit HslV"];
+        let attributes = [[("ID", "test"),("Note","Removed")], [("ID","PRO_0000148105"),("Note","ATP-dependent protease subunit HslV")]];
 
         let mut reader = Reader::new(GFF_FILE);
         for (i, r) in reader.records().enumerate() {
@@ -257,7 +283,10 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105;Note=ATP-dependent
             assert_eq!(record.score(), scores[i]);
             assert_eq!(record.strand(), strand[i]);
             assert_eq!(record.frame(), frame[i]);
-            assert_eq!(record.attributes(), attributes[i]);
+            for (j, tuple) in record.attributes().iter().enumerate() {
+                assert_eq!(tuple.0, attributes[i][j].0);
+                assert_eq!(tuple.1, attributes[i][j].1);
+            }
         }
     }
 
@@ -268,6 +297,6 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105;Note=ATP-dependent
         for r in reader.records() {
             writer.write(r.ok().expect("Error reading record")).ok().expect("Error writing record");
         }
-        assert_eq!(writer.inner.as_bytes(), GFF_FILE);
+        assert_eq!(writer.inner.as_string(), String::from_utf8_lossy(GFF_FILE))
     }
 }
