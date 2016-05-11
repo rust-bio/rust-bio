@@ -246,10 +246,6 @@ impl Record {
     pub fn set_strand(&mut self, strand: &str) {
         self.strand = strand.to_owned();
     }
-
-    // pub fn set_attributes(&mut self, attributes: &HashMap<String, String>) {
-    //     self.attributes = attributes;
-    // }
 }
 
 #[cfg(test)]
@@ -293,7 +289,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\t
             assert_eq!(record.score(), scores[i]);
             assert_eq!(record.strand(), strand[i]);
             assert_eq!(record.frame(), frame[i]);
-            assert_eq!(record.attributes, attributes[i]);
+            assert_eq!(record.attributes(), &attributes[i]);
         }
     }
 
