@@ -110,22 +110,13 @@ impl<W: io::Write> Writer<W> {
 
     /// Write a given GFF record.
     pub fn write(&mut self, record: Record) -> csv::Result<()> {
+        let attributes;
         if !record.attributes.is_empty() {
-            self.inner.encode((
-                record.seqname,
-                record.source,
-                record.feature_type,
-                record.start,
-                record.end,
-                record.score,
-                record.strand,
-                record.frame,
-                record.attributes.iter().map(|(a, b)| format!("{}={}", a, b)).collect::<Vec<_>>().join(";"),
-                ))
-
+            attributes = record.attributes.iter().map(|(a, b)| format!("{}={}", a, b)).collect::<Vec<_>>().join(";");
         } else {
-            self.inner.encode((record.seqname, record.source, record.feature_type, record.start, record.end, record.score, record.strand, record.frame, ""))
+            attributes = "".to_owned();
         }
+        self.inner.encode((record.seqname, record.source, record.feature_type, record.start, record.end, record.score, record.strand, record.frame, attributes))
     }
 }
 
