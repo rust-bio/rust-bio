@@ -167,13 +167,13 @@ impl Record {
     }
 
     /// Start position of feature (1-based).
-    pub fn start(&self) -> u64 {
-        self.start
+    pub fn start(&self) -> &u64 {
+        &self.start
     }
 
     /// End position of feature (1-based, not included).
-    pub fn end(&self) -> u64 {
-        self.end
+    pub fn end(&self) -> &u64 {
+        &self.end
     }
 
     /// Score of feature
@@ -203,39 +203,44 @@ impl Record {
         &self.attributes
     }
     
-    /// Set seqname of feature.
-    pub fn set_seqname(&mut self, seqname: &str) {
-        self.seqname = seqname.to_owned();
+    /// Get mutable reference on seqname of feature.
+    pub fn seqname_mut(&mut self) -> &mut str {
+        return &mut *self.seqname;
     }
 
-    /// Set source of feature.
-    pub fn set_source(&mut self, source: &str) {
-        self.source = source.to_owned();
+    /// Get mutable reference on source of feature.
+    pub fn source_mut(&mut self) -> &mut str {
+        return &mut *self.source;
     }
 
-    /// Set type of feature.
-    pub fn set_feature_type(&mut self, feature_type: &str) {
-        self.feature_type = feature_type.to_owned();
+    /// Get mutable reference on type of feature.
+    pub fn feature_type_mut(&mut self) -> &mut str {
+        return &mut *self.feature_type;
     }
 
-    /// Set start of feature.
-    pub fn set_start(&mut self, start: u64) {
-        self.start = start;
+    /// Get mutable reference on start of feature.
+    pub fn start_mut(&mut self) -> &mut u64 {
+        return &mut self.start;
     }
 
-    /// Set end of feature.
-    pub fn set_end(&mut self, end: u64) {
-        self.end = end;
+    /// Get mutable reference on end of feature.
+    pub fn end_mut(&mut self) -> &mut u64 {
+        return &mut self.end;
     }
 
-    /// Set score of feature.
-    pub fn set_score(&mut self, score: &str) {
-        self.score = score.to_owned();
+    /// Get mutable reference on score of feature.
+    pub fn score_mut(&mut self) -> &mut str {
+        return &mut self.score;
     }
 
-    /// Set strand of feature.
-    pub fn set_strand(&mut self, strand: &str) {
-        self.strand = strand.to_owned();
+    /// Get mutable reference on strand of feature.
+    pub fn strand_mut(&mut self) -> &mut str {
+        return &mut self.strand;
+    }
+
+    /// Get mutable reference on attributes of feature.
+    pub fn attributes_mut(&mut self) -> &mut HashMap<String, String> {
+        return &mut self.attributes;
     }
 }
 
