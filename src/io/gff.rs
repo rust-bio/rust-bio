@@ -280,8 +280,8 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\t
             assert_eq!(record.seqname(), seqname[i]);
             assert_eq!(record.source(), source[i]);
             assert_eq!(record.feature_type(), feature_type[i]);
-            assert_eq!(record.start(), starts[i]);
-            assert_eq!(record.end(), ends[i]);
+            assert_eq!(*record.start(), starts[i]);
+            assert_eq!(*record.end(), ends[i]);
             assert_eq!(record.score(), scores[i]);
             assert_eq!(record.strand(), strand[i]);
             assert_eq!(record.frame(), frame[i]);
