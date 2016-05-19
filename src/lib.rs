@@ -20,6 +20,7 @@
 //! * BWT and FM-Index,
 //! * FMD-Index for finding supermaximal exact matches,
 //! * a q-gram index,
+//! * an orf research algorithm,
 //! * a rank/select data structure,
 //! * FASTQ and FASTA and BED readers and writers,
 //! * helper functions for combinatorics and dealing with log probabilities.

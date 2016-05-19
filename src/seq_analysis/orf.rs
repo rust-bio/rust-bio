@@ -10,7 +10,7 @@
 //! # Example
 //!
 //! ```
-//! use bio::seq_analysis::orf::Finder;
+//! use bio::seq_analysis::orf::{Finder, Orf};
 //! let start_codons = vec!(b"ATG");
 //! let stop_codons  = vec!(b"TGA", b"TAG", b"TAA");
 //! let min_len:usize = 50;
@@ -18,7 +18,7 @@
 //!
 //! let sequence = b"ACGGCTAGAAAAGGCTAGAAAA";
 //!
-//! for (_, start,stop) in finder.find_all(sequence) {
+//! for Orf{start,stop,offset} in finder.find_all(sequence) {
 //!    let orf = &sequence[start:stop];
 //!    //...do something...
 //! }
@@ -76,6 +76,14 @@ impl Finder {
     }
 }
 
+/// An orf representation with start and end position of said orf,
+/// as well as offset of the reading frame (1,2,3) and strand location 
+// (current: +, reverse complementary: -).
+pub struct Orf {
+    pub start: usize,
+    pub end: usize,
+    pub offset: i8,
+}
 
 /// The current algorithm state.
 struct State {
@@ -105,11 +113,11 @@ pub struct Matches<'a, I: TextIterator<'a>> {
 }
 
 impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
-    type Item = (usize, usize, usize);
+    type Item = Orf;
 
-    fn next(&mut self) -> Option<(usize, usize, usize)> {
+    fn next(&mut self) -> Option<Orf> {
 
-        let mut result: Option<(usize, usize, usize)> = None;
+        let mut result: Option<Orf> = None;
         let mut offset: usize;
 
         for (index, &nuc) in self.seq.by_ref() {
@@ -128,7 +136,11 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
                     // check if length is sufficient
                     if index + 1 - self.state.start_pos[offset] > self.finder.min_len {
                         // build results
-                        result = Some((offset, self.state.start_pos[offset] - 2, index + 1));
+                        result = Some(Orf {
+                            start: self.state.start_pos[offset] - 2,
+                            end: index + 1,
+                            offset: offset as i8,
+                        });
                     }
                     // reinitialize
                     self.state.in_orf[offset] = false;
@@ -141,7 +153,7 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
                     self.state.start_pos[offset] = index;
                 }
             }
-            if result != None {
+            if result.is_some() {
                 return result;
             }
         }
