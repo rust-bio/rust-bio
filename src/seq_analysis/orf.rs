@@ -18,7 +18,8 @@
 //!
 //! let sequence = b"ACGGCTAGAAAAGGCTAGAAAA";
 //!
-//! for orf in finder.find_all(sequence) {
+//! for (_, start,stop) in finder.find_all(sequence) {
+//!    let orf = &sequence[start:stop];
 //!    //...do something...
 //! }
 //! ```
@@ -80,7 +81,6 @@ impl Finder {
 struct State {
     start_pos: [usize; 3],
     in_orf: [bool; 3],
-    orf: [Vec<u8>; 3],
     codon: VecDeque<u8>,
 }
 
@@ -91,7 +91,6 @@ impl State {
         State {
             start_pos: [0, 0, 0],
             in_orf: [false, false, false],
-            orf: [Vec::new(), Vec::new(), Vec::new()],
             codon: VecDeque::new(),
         }
     }
@@ -106,11 +105,11 @@ pub struct Matches<'a, I: TextIterator<'a>> {
 }
 
 impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
-    type Item = (usize, usize, usize, Vec<u8>);
+    type Item = (usize, usize, usize);
 
-    fn next(&mut self) -> Option<(usize, usize, usize, Vec<u8>)> {
+    fn next(&mut self) -> Option<(usize, usize, usize)> {
 
-        let mut result: Option<(usize, usize, usize, Vec<u8>)> = None;
+        let mut result: Option<(usize, usize, usize)> = None;
         let mut offset: usize;
 
         for (index, &nuc) in self.seq.by_ref() {
@@ -124,32 +123,22 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
 
             // inside orf
             if self.state.in_orf[offset] {
-                // check if should stop
+                // check if leaving orf
                 if self.finder.stop_codons.contains(&self.state.codon) {
-                    // add last codon
-                    self.state.orf[offset].extend(self.state.codon.clone().into_iter());
-                    // build results
-                    if self.state.orf[offset].len() > self.finder.min_len {
-                        result = Some((offset,
-                                       self.state.start_pos[offset] - 2,
-                                       index + 1,
-                                       self.state.orf[offset].clone()));
+                    // check if length is sufficient
+                    if index + 1 - self.state.start_pos[offset] > self.finder.min_len {
+                        // build results
+                        result = Some((offset, self.state.start_pos[offset] - 2, index + 1));
                     }
                     // reinitialize
                     self.state.in_orf[offset] = false;
                     self.state.start_pos[offset] = 0;
-                    // self.state.end_pos[offset] = 0;
-                    self.state.orf[offset] = Vec::new();
-                } else {
-                    // append codon to orf
-                    self.state.orf[offset].extend(self.state.codon.clone().into_iter());
                 }
             } else {
                 // check if entering orf
                 if self.finder.start_codons.contains(&self.state.codon) {
                     self.state.in_orf[offset] = true;
                     self.state.start_pos[offset] = index;
-                    self.state.orf[offset].extend(self.state.codon.clone().into_iter())
                 }
             }
             if result != None {

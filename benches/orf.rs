@@ -17,7 +17,11 @@ fn bench_orf(b: &mut Bencher) {
     let start_codons = vec!(b"ATG");
     let stop_codons  = vec!(b"TGA", b"TAG", b"TAA");
     let finder = Finder::new(start_codons, stop_codons, 100usize);
-    b.iter(|| { finder.find_all(STR_1) });
+    b.iter(|| { 
+		for (_, start, end) in finder.find_all(STR_1) {
+			let orf = &STR_1[start..end]; 
+			} 
+	      });
 }
 
 #[bench]
