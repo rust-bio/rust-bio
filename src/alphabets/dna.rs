@@ -19,9 +19,6 @@
 use alphabets::Alphabet;
 
 
-static SYMBOLS: &'static [u8] = b"ACGT";
-
-
 /// The DNA alphabet (uppercase and lowercase).
 pub fn alphabet() -> Alphabet {
     Alphabet::new(b"ACGTacgt")
@@ -55,7 +52,7 @@ impl RevComp {
         for (v, mut a) in comp.iter_mut().enumerate() {
             *a = v as u8;
         }
-        for (&a, &b) in SYMBOLS.iter().zip(SYMBOLS.iter().rev()) {
+        for (&a, &b) in b"AGCTYRWSKMDVHBN".iter().zip(b"TCGARYWSMKHBDVN".iter()) {
             comp[a as usize] = b;
             comp[a as usize + 32] = b + 32;  // lowercase variants
         }
@@ -75,9 +72,9 @@ impl RevComp {
     /// ```
     /// use bio::alphabets::dna::RevComp;
     /// let revcomp = RevComp::new();
-    /// let text = b"AAACCTT";
+    /// let text = b"AAACCTTW";
     /// let revcomp_text = revcomp.get(text);
-    /// assert_eq!(revcomp_text, &b"AAGGTTT"[..]);
+    /// assert_eq!(revcomp_text, &b"WAAGGTTT"[..]);
     /// assert_eq!(revcomp.get(&revcomp_text[..]), &text[..]);
     /// ```
     pub fn get(&self, text: &[u8]) -> Vec<u8> {
