@@ -204,18 +204,18 @@ impl Record {
     }
     
     /// Get mutable reference on seqname of feature.
-    pub fn seqname_mut(&mut self) -> &mut str {
-        return &mut *self.seqname;
+    pub fn seqname_mut(&mut self) -> &mut String {
+        return &mut self.seqname;
     }
 
     /// Get mutable reference on source of feature.
-    pub fn source_mut(&mut self) -> &mut str {
-        return &mut *self.source;
+    pub fn source_mut(&mut self) -> &mut String {
+        return &mut self.source;
     }
 
     /// Get mutable reference on type of feature.
-    pub fn feature_type_mut(&mut self) -> &mut str {
-        return &mut *self.feature_type;
+    pub fn feature_type_mut(&mut self) -> &mut String {
+        return &mut self.feature_type;
     }
 
     /// Get mutable reference on start of feature.
@@ -229,12 +229,12 @@ impl Record {
     }
 
     /// Get mutable reference on score of feature.
-    pub fn score_mut(&mut self) -> &mut str {
+    pub fn score_mut(&mut self) -> &mut String {
         return &mut self.score;
     }
 
     /// Get mutable reference on strand of feature.
-    pub fn strand_mut(&mut self) -> &mut str {
+    pub fn strand_mut(&mut self) -> &mut String {
         return &mut self.strand;
     }
 
