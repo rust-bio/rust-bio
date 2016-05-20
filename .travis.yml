@@ -18,7 +18,7 @@ after_success: |
   [ $TRAVIS_BRANCH = master ] &&
   [ $TRAVIS_PULL_REQUEST = false ] &&
   travis-cargo doc &&
-  travis-cargo --only nightly doc-upload
+  travis-cargo --only stable doc-upload
 env:
   global:
     secure: ujLBCE7iB7rMZaOSQQS0t7RjenxDnV/rtiMEB/aJnzbCBTo2RtJifyXkZci28YT0Sab8HeyCTsKafszgphj0BvSYUI8fwexPtRCXmgcLjouXRD0NWAr3dtEx0TPPXcwquer0BQzfeEZUmOnChKXDlcE3GSIdRSI+1Y8inbF4cRM=

@@ -7,6 +7,7 @@
 
 use std::mem;
 use std::f64;
+use std::iter;
 
 pub use stats::{Prob, LogProb};
 
@@ -22,6 +23,7 @@ const PHRED_TO_LOG_FACTOR: f64 = -0.23025850929940456; // 1 / (-10 * log10(e))
 /// Calculate log(1 - p) with p given in log space without loss of precision as described in
 /// http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf.
 pub fn ln_1m_exp(p: LogProb) -> LogProb {
+    assert!(p <= 0.0);
     if p < -0.693 {
         (-p.exp()).ln_1p()
     } else {
@@ -78,7 +80,7 @@ pub fn sum(probs: &[LogProb]) -> LogProb {
 }
 
 
-/// Calculate the sum of the given probabilities in a numerically stable way (Durbin 1998).
+/// Add the given probabilities in a numerically stable way (Durbin 1998).
 pub fn add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
     if p1 > p0 {
         mem::swap(&mut p0, &mut p1);
@@ -93,13 +95,35 @@ pub fn add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
 }
 
 
+/// Subtract the given probabilities in a numerically stable way (Durbin 1998).
+pub fn sub(p0: LogProb, p1: LogProb) -> LogProb {
+    assert!(p0 >= p1, "Subtraction would lead to negative probability, which is undefined in log space.");
+    if p0 == p1 || p0 == f64::NEG_INFINITY {
+        // the first case leads to zero,
+        // in the second case p0 and p1 are -inf, which is fine
+        f64::NEG_INFINITY
+    } else if p0 == f64::INFINITY {
+        f64::INFINITY
+    } else {
+        p0 + ln_1m_exp(p1 - p0)
+    }
+}
+
+
+
+fn scan_add(s: &mut LogProb, p: LogProb) -> Option<LogProb> {
+    *s = add(*s, p);
+    Some(*s)
+}
+
+
+/// Iterator returned by scans over logprobs.
+pub type ScanIter<I> = iter::Scan<I, LogProb, fn(&mut LogProb, LogProb) -> Option<LogProb>>;
+
+
 /// Calculate the cumulative sum of the given probabilities in a numerically stable way (Durbin 1998).
-pub fn cumsum<I: Iterator<Item = LogProb>>(probs: I) -> Vec<LogProb> {
-    probs.scan(f64::NEG_INFINITY, |s, p| {
-             *s = add(*s, p);
-             Some(*s)
-         })
-         .collect()
+pub fn cumsum<I: Iterator<Item = LogProb>>(probs: I) -> ScanIter<I> {
+    probs.scan(f64::NEG_INFINITY, scan_add)
 }
 
 
@@ -107,6 +131,7 @@ pub fn cumsum<I: Iterator<Item = LogProb>>(probs: I) -> Vec<LogProb> {
 mod tests {
     use super::*;
     use std::f64;
+    use itertools::Itertools;
 
     #[test]
     fn test_sum() {
@@ -122,7 +147,19 @@ mod tests {
     #[test]
     fn test_cumsum() {
         let probs = vec![0.0f64.ln(), 0.01f64.ln(), 0.001f64.ln()];
-        assert_eq!(cumsum(probs.into_iter()),
+        assert_eq!(cumsum(probs.into_iter()).collect_vec(),
                    [0.0f64.ln(), 0.01f64.ln(), 0.011f64.ln()]);
+    }
+
+    #[test]
+    fn test_sub() {
+        assert_eq!(sub(0.0f64.ln(), 0.0f64.ln()), f64::NEG_INFINITY);
+        assert_relative_eq!(sub(1.0f64.ln(), 0.5f64.ln()), 0.5f64.ln());
+    }
+
+    #[test]
+    fn test_ln_1m_exp() {
+        assert_eq!(ln_1m_exp(f64::NEG_INFINITY), 0.0);
+        assert_eq!(ln_1m_exp(-0.0), f64::NEG_INFINITY);
     }
 }

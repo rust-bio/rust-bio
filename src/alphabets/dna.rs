@@ -17,9 +17,7 @@
 //! ```
 
 use alphabets::Alphabet;
-
-
-static SYMBOLS: &'static [u8] = b"ACGT";
+use utils::TextSlice;
 
 
 /// The DNA alphabet (uppercase and lowercase).
@@ -40,47 +38,29 @@ pub fn iupac_alphabet() -> Alphabet {
 }
 
 
-/// Implementation of transformation into reverse complement.
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
-pub struct RevComp {
-    comp: Vec<u8>,
-}
-
-
-impl RevComp {
-    /// Create a new instance of reverse complement algorithm.
-    pub fn new() -> Self {
+lazy_static! {
+    static ref COMPLEMENT: Vec<u8> = {
         let mut comp = Vec::new();
         comp.resize(256, 0);
         for (v, mut a) in comp.iter_mut().enumerate() {
             *a = v as u8;
         }
-        for (&a, &b) in SYMBOLS.iter().zip(SYMBOLS.iter().rev()) {
+        for (&a, &b) in b"AGCTYRWSKMDVHBN".iter().zip(b"TCGARYWSMKHBDVN".iter()) {
             comp[a as usize] = b;
             comp[a as usize + 32] = b + 32;  // lowercase variants
         }
-        RevComp { comp: comp }
-    }
+        comp
+    };
+}
 
-    pub fn comp(&self, a: u8) -> u8 {
-        self.comp[a as usize]
-    }
 
-    /// Calculate the reverse complement of given text.
-    /// The text has to be in DNA alphabet containing only ACGTacgt symbols.
-    /// Other symbols won't be converted.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use bio::alphabets::dna::RevComp;
-    /// let revcomp = RevComp::new();
-    /// let text = b"AAACCTT";
-    /// let revcomp_text = revcomp.get(text);
-    /// assert_eq!(revcomp_text, &b"AAGGTTT"[..]);
-    /// assert_eq!(revcomp.get(&revcomp_text[..]), &text[..]);
-    /// ```
-    pub fn get(&self, text: &[u8]) -> Vec<u8> {
-        text.iter().rev().map(|&a| self.comp(a)).collect()
-    }
+/// Return complement of given DNA alphabet character (IUPAC alphabet supported).
+pub fn complement(a: u8) -> u8 {
+    COMPLEMENT[a as usize]
+}
+
+
+/// Calculate reverse complement of given text (IUPAC alphabet supported).
+pub fn revcomp(text: TextSlice) -> Vec<u8> {
+    text.iter().rev().map(|&a| complement(a)).collect()
 }

@@ -161,8 +161,7 @@ impl BiInterval {
 /// strand of DNA texts (Li, 2012).
 #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct FMDIndex {
-    fmindex: FMIndex,
-    revcomp: dna::RevComp,
+    fmindex: FMIndex
 }
 
 
@@ -187,8 +186,7 @@ impl FMDIndex {
                 "Expecting BWT over the DNA alphabet (including N) with the sentinel $.");
 
         FMDIndex {
-            fmindex: FMIndex::new(bwt, k, &alphabet),
-            revcomp: dna::RevComp::new(),
+            fmindex: FMIndex::new(bwt, k, &alphabet)
         }
     }
 
@@ -283,7 +281,7 @@ impl FMDIndex {
 
     fn init_interval(&self, pattern: &[u8], i: usize) -> BiInterval {
         let a = pattern[i];
-        let comp_a = self.revcomp.comp(a);
+        let comp_a = dna::complement(a);
         let lower = self.fmindex.less(a);
 
         BiInterval {
@@ -325,7 +323,7 @@ impl FMDIndex {
 
 
     fn forward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
-        let comp_a = self.revcomp.comp(a);
+        let comp_a = dna::complement(a);
 
         self.backward_ext(&interval.swapped(), comp_a)
             .swapped()
@@ -347,9 +345,8 @@ mod tests {
 
     #[test]
     fn test_smems() {
-        let revcomp = dna::RevComp::new();
         let orig_text = b"GCCTTAACAT";
-        let revcomp_text = revcomp.get(orig_text);
+        let revcomp_text = dna::revcomp(orig_text);
         let text_builder: Vec<&[u8]> = vec![orig_text, b"$", &revcomp_text[..], b"$"];
         let text = text_builder.concat();
         let pos = suffix_array(&text);
