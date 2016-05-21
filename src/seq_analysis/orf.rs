@@ -18,9 +18,9 @@
 //!
 //! let sequence = b"ACGGCTAGAAAAGGCTAGAAAA";
 //!
-//! for Orf{start,stop,offset} in finder.find_all(sequence) {
-//!    let orf = &sequence[start:stop];
-//!    //...do something...
+//! for Orf{start, end, offset} in finder.find_all(sequence) {
+//!    let orf = &sequence[start..end];
+//!    //...do something with orf sequence...
 //! }
 //! ```
 //!
@@ -33,6 +33,7 @@
 use utils::{TextIterator, IntoTextIterator};
 use std::collections::VecDeque;
 use std::iter;
+
 
 /// An implementation of a naive algorithm finder
 pub struct Finder {
