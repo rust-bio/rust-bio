@@ -26,9 +26,9 @@ use std::fs;
 use std::path::Path;
 use std::convert::AsRef;
 
-
 use csv;
 
+use io::Strand;
 
 /// A BED reader.
 pub struct Reader<R: io::Read> {
@@ -218,14 +218,6 @@ impl Record {
         self.aux.push(field.to_owned());
     }
 }
-
-
-/// Strand information.
-pub enum Strand {
-    Forward,
-    Reverse,
-}
-
 
 #[cfg(test)]
 mod tests {

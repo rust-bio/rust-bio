@@ -48,6 +48,7 @@ For reading and writing BAM and BCF files, have a look at https://github.com/chr
 * [Andre Bogus](https://github.com/llogiq)
 * [Martin Larralde](https://github.com/althonos)
 * Philipp Angerer
+* [Pierre Marijon](https://github.com/natir)
 
 The next name in this list could be you! If you are interested in joining the effort to build a general purpose Rust bioinformatics library, just introduce yourself [here](https://github.com/rust-bio/rust-bio/issues/3), or issue a pull request with your first contribution.
 
