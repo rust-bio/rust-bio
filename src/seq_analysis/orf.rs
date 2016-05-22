@@ -89,7 +89,6 @@ pub struct Orf {
 /// The current algorithm state.
 struct State {
     start_pos: [Option<usize>; 3],
-    in_orf: [bool; 3],
     codon: VecDeque<u8>,
 }
 
@@ -99,7 +98,6 @@ impl State {
     pub fn new() -> Self {
         State {
             start_pos: [None, None, None],
-            in_orf: [false, false, false],
             codon: VecDeque::new(),
         }
     }
@@ -131,7 +129,7 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
             offset = (index + 1) % 3;
 
             // inside orf
-            if self.state.in_orf[offset] {
+            if self.state.start_pos[offset].is_some() {
                 // check if leaving orf
                 if self.finder.stop_codons.contains(&self.state.codon) {
                     // check if length is sufficient
@@ -144,13 +142,11 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
                         });
                     }
                     // reinitialize
-                    self.state.in_orf[offset] = false;
                     self.state.start_pos[offset] = None;
                 }
             } else {
                 // check if entering orf
                 if self.finder.start_codons.contains(&self.state.codon) {
-                    self.state.in_orf[offset] = true;
                     self.state.start_pos[offset] = Some(index);
                 }
             }
