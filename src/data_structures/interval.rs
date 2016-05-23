@@ -17,7 +17,10 @@ pub enum IntervalError {
 
 impl fmt::Display for IntervalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        match self {
+            &IntervalError::InvalidInterval => write!(f, "InvalidInterval"),
+            &IntervalError::NoOverlap       => write!(f, "NoOverlap"),
+        }
     }
 }
 
@@ -30,12 +33,14 @@ pub struct Interval {
     pub stop: usize,
 }
 
+/// 
 impl fmt::Display for Interval {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "<Interval: {0}-{1}>", self.start, self.stop)
     }
 }
 
+/// Intervals are order by increasing position, first by Start and then by Stop
 impl cmp::Ord for Interval {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         // Primary ordering is by Start position
@@ -66,7 +71,8 @@ impl Interval {
     /// Validate that the length is non-negative on initialization
     pub fn new(start: usize, stop: usize) -> Self {
         if stop < start {
-            panic!("{0}: start ({1}) greater than stop ({2})", IntervalError::InvalidInterval, start, stop);
+            panic!("{0}: start ({1}) greater than stop ({2})", 
+                   IntervalError::InvalidInterval, start, stop);
         }
         Interval { start: start, stop: stop }
     }
@@ -97,11 +103,12 @@ impl Interval {
     }
     
     /// Test whether one interval is completely within another
-    pub fn covers(&self, other: &Self) -> Result<bool, IntervalError> {
+    #[allow(unused_variables)]
+    pub fn covers(&self, other: &Self) -> bool {
         let intersection = self.intersect(other);
         match intersection {
-            Ok(v)  => Ok(&v == other),
-            Err(e) => Err(e),
+            Ok(v)  => &v == other,  // We cover iff we intersect && we don't change
+            Err(e) => false,        // If we don't intersect, we can't cover 
         }
     }
 
@@ -116,7 +123,7 @@ impl Interval {
     }
 
     /// Return the length of this interval
-    pub fn length(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.stop - self.start
     }
 
@@ -134,5 +141,83 @@ impl Interval {
 #[cfg(test)]
 mod tests {
     use super::*;
+    
+    #[test]
+    fn test_init() {
+        let int = Interval::new(3, 7);
+        assert_eq!(3, int.start);   
+        assert_eq!(7, int.stop);   
+    }
 
+    #[test]
+    #[should_panic]
+    fn test_bounds_check() {
+        Interval::new(7, 3);
+    }
+    
+    #[test]
+    fn test_overlaps() {
+        let int1 = Interval::new(3, 7);
+        let int2 = Interval::new(6, 9);
+        let int3 = Interval::new(8, 10);
+        assert_eq!(true, int1.overlaps(&int2));   
+        assert_eq!(false, int1.overlaps(&int3));   
+    }
+    
+    #[test]
+    fn test_contains() {
+        let int = Interval::new(5, 7);
+        assert_eq!(false, int.contains(4));   
+        assert_eq!(true,  int.contains(6));   
+        assert_eq!(false, int.contains(8));   
+    }
+
+    #[test]
+    fn test_covers() {
+        let int1 = Interval::new(3, 7);
+        let int2 = Interval::new(4, 6);
+        let int3 = Interval::new(4, 10);
+        assert_eq!(true,  int1.covers(&int2));   
+        assert_eq!(false, int1.covers(&int3));   
+    }
+
+    #[test]
+    fn test_intersect1() {
+        let int1 = Interval::new(3, 7);
+        let int2 = Interval::new(5, 9);
+        let result = int1.intersect(&int2).unwrap();
+        assert_eq!(5, result.start);   
+        assert_eq!(7, result.stop);   
+    }
+    
+    #[test]
+    #[should_panic]
+    fn test_intersect2() {
+        let int1 = Interval::new(3, 5);
+        let int2 = Interval::new(7, 9);
+        int1.intersect(&int2).unwrap();
+    }
+    
+    #[test]
+    fn test_length() {
+        let int = Interval::new(3, 7);
+        assert_eq!(4, int.len());   
+    }
+
+    #[test]
+    fn test_union1() {
+        let int1 = Interval::new(3, 7);
+        let int2 = Interval::new(5, 9);
+        let result = int1.union(&int2).unwrap();
+        assert_eq!(3, result.start);   
+        assert_eq!(9, result.stop);   
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_union2() {
+        let int1 = Interval::new(3, 5);
+        let int2 = Interval::new(7, 9);
+        int1.union(&int2).unwrap();
+    }
 }
