@@ -15,9 +15,10 @@
 //! ```
 //! use std::io;
 //! use bio::io::gff;
-//! let reader = gff::Reader::new(io::stdin());
+//! let reader = gff::Reader::new(io::stdin(), gff::GffType::GFF3);
 //! ```
 
+use std::str;
 use std::io;
 use std::fs;
 use std::path::Path;
@@ -28,36 +29,83 @@ use csv;
 
 use io::Strand;
 
+/// GffType
+///
+/// We have three format in the GFF family.
+/// The change is in the last field of GFF.
+/// For each type we have key value separator and field separator
+#[derive(Clone, Copy)]
+pub enum GffType {
+    /// Attribute format is key1=value, key2=value
+    GFF3,
+    /// Attribute format is key1 value; key2 value
+    GFF2,
+    /// Same as GFF2 just possible keyword and possible value change
+    GTF2,
+    /// Any first field of tuple is key value separator, second is field separator
+    Any(u8, u8),
+}
+
+impl GffType {
+    #[inline]
+    fn get_separator(&self) -> (u8, u8) {
+        match *self {
+            GffType::GFF3 => (b'=', b','),
+            GffType::GFF2 => (b' ', b';'),
+            GffType::GTF2 => (b' ', b';'),
+            GffType::Any(x, y) => (x, y),
+        }
+    }
+}
+
+impl PartialEq<(u8, u8)> for GffType {
+    #[inline]
+    fn eq(&self, &other: &(u8, u8)) -> bool {
+        match *self {
+            GffType::GFF3 => other.0 == b'=' && other.1 == b',',
+            GffType::GFF2 => other.0 == b' ' && other.1 == b';',
+            GffType::GTF2 => other.0 == b' ' && other.1 == b';',
+            GffType::Any(x, y) => other.0 == x && other.1 == y,
+        }
+    }
+}
+
 /// A GFF reader.
 pub struct Reader<R: io::Read> {
     inner: csv::Reader<R>,
+    gff_type: GffType,
 }
 
 impl Reader<fs::File> {
     /// Read GFF from given file path.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::open(path).map(Reader::new)
+    pub fn from_file<P: AsRef<Path>>(path: P, fileformat: GffType) -> io::Result<Self> {
+        fs::File::open(path).map(|f| Reader::new(f, fileformat))
     }
 }
 
 
 impl<R: io::Read> Reader<R> {
     /// Create a new GFF reader given an instance of `io::Read`.
-    pub fn new(reader: R) -> Self {
+    pub fn new(reader: R, fileformat: GffType) -> Self {
         Reader {
-            inner: csv::Reader::from_reader(reader).delimiter(b'\t').has_headers(false)
+            inner: csv::Reader::from_reader(reader).delimiter(b'\t').has_headers(false),
+            gff_type: fileformat,
         }
     }
 
     /// Iterate over all records.
     pub fn records(&mut self) -> Records<R> {
-        Records { inner: self.inner.decode() }
+        Records {
+            inner: self.inner.decode(),
+            gff_type: self.gff_type
+        }
     }
 }
 
 /// A GFF record.
 pub struct Records<'a, R: 'a + io::Read> {
     inner: csv::DecodedRecords<'a, R, (String, String, String, u64, u64, String, String, String, String)>,
+    gff_type: GffType,
 }
 
 
@@ -65,6 +113,8 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
     type Item = csv::Result<Record>;
 
     fn next(&mut self) -> Option<csv::Result<Record>> {
+        let (delim, termi) = self.gff_type.get_separator();
+
         self.inner.next().map(|res| {
             res.map(|(seqname, source, feature_type, start, end, score, strand, frame, attributes)| {
                 Record {
@@ -77,10 +127,12 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                     strand: strand,
                     frame: frame,
                     attributes: csv::Reader::from_string(attributes)
-                        .delimiter(b'=')
-                        .record_terminator(csv::RecordTerminator::Any(b';'))
+                        .delimiter(delim)
+                        .record_terminator(csv::RecordTerminator::Any(termi))
                         .has_headers(false)
-                        .decode().collect::<csv::Result<HashMap<String, String>>>().unwrap(),
+                        .decode()
+                        .collect::<csv::Result<HashMap<String, String>>>()
+                        .unwrap(),
                 }
             })
         })
@@ -91,28 +143,39 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
 /// A GFF writer.
 pub struct Writer<W: io::Write> {
     inner: csv::Writer<W>,
+    gff_type: GffType,
 }
 
 
 impl Writer<fs::File> {
     /// Write to a given file path.
-    pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::create(path).map(Writer::new)
+    pub fn to_file<P: AsRef<Path>>(path: P, fileformat: GffType) -> io::Result<Self> {
+        fs::File::open(path).map(|f| Writer::new(f, fileformat))
     }
 }
 
 
 impl<W: io::Write> Writer<W> {
     /// Write to a given writer.
-    pub fn new(writer: W) -> Self {
-        Writer { inner: csv::Writer::from_writer(writer).delimiter(b'\t').flexible(true) }
+    pub fn new(writer: W, fileformat: GffType) -> Self {
+        Writer {
+            inner: csv::Writer::from_writer(writer).delimiter(b'\t').flexible(true),
+            gff_type: fileformat,
+        }
     }
 
     /// Write a given GFF record.
     pub fn write(&mut self, record: Record) -> csv::Result<()> {
+        let (delim, termi) = self.gff_type.get_separator();
+
+        // If you can remove this ugly code please do it
+        let termi = [termi];
+        let termi = str::from_utf8(&termi).unwrap_or(";");
+
         let attributes;
+
         if !record.attributes.is_empty() {
-            attributes = record.attributes.iter().map(|(a, b)| format!("{}={}", a, b)).collect::<Vec<_>>().join(";");
+            attributes = record.attributes.iter().map(|(a, b)| format!("{}{}{}", a, delim as char, b)).collect::<Vec<_>>().join(&termi);
         } else {
             attributes = "".to_owned();
         }
@@ -250,16 +313,25 @@ mod tests {
     use io::Strand;
     use std::collections::HashMap;
     
-    const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed;ID=test
-P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV;ID=PRO_0000148105
+    const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed,ID=test
+P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV,ID=PRO_0000148105
 ";
     //required because HashMap iter on element randomly
-    const GFF_FILE_NO_ATTRIB: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t
-P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\t
+    const GFF_FILE_ONE_ATTRIB: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed
+P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105
+";
+
+    const GTF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed;ID test
+P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote ATP-dependent;ID PRO_0000148105
+";
+
+    //required because HashMap iter on element randomly
+    const GTF_FILE_ONE_ATTRIB: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed
+P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 ";
 
     #[test]
-    fn test_reader() {
+    fn test_reader_gff3() {
         let seqname = ["P0A7B8", "P0A7B8"];
         let source = ["UniProtKB", "UniProtKB"];
         let feature_type = ["Initiator methionine", "Chain"];
@@ -274,7 +346,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\t
         attributes[1].insert("ID".to_owned(), "PRO_0000148105".to_owned());
         attributes[1].insert("Note".to_owned(), "ATP-dependent protease subunit HslV".to_owned());
 
-        let mut reader = Reader::new(GFF_FILE);
+        let mut reader = Reader::new(GFF_FILE, GffType::GFF3);
         for (i, r) in reader.records().enumerate() {
             let record = r.ok().expect("Error reading record");
             assert_eq!(record.seqname(), seqname[i]);
@@ -290,12 +362,63 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\t
     }
 
     #[test]
-    fn test_writer() {
-        let mut reader = Reader::new(GFF_FILE_NO_ATTRIB);
-        let mut writer = Writer::new(vec![]);
+    fn test_reader_gtf2() {
+        let seqname = ["P0A7B8", "P0A7B8"];
+        let source = ["UniProtKB", "UniProtKB"];
+        let feature_type = ["Initiator methionine", "Chain"];
+        let starts = [1, 2];
+        let ends = [1, 176];
+        let scores = [None, Some(50)];
+        let strand = [None, Some(Strand::Forward)];
+        let frame = [".", "."];
+        let mut attributes = [HashMap::new(), HashMap::new()];
+        attributes[0].insert("ID".to_owned(), "test".to_owned());
+        attributes[0].insert("Note".to_owned(), "Removed".to_owned());
+        attributes[1].insert("ID".to_owned(), "PRO_0000148105".to_owned());
+        attributes[1].insert("Note".to_owned(), "ATP-dependent".to_owned());
+
+        let mut reader = Reader::new(GTF_FILE, GffType::GTF2);
+        for (i, r) in reader.records().enumerate() {
+            let record = r.ok().expect("Error reading record");
+            assert_eq!(record.seqname(), seqname[i]);
+            assert_eq!(record.source(), source[i]);
+            assert_eq!(record.feature_type(), feature_type[i]);
+            assert_eq!(*record.start(), starts[i]);
+            assert_eq!(*record.end(), ends[i]);
+            assert_eq!(record.score(), scores[i]);
+            assert_eq!(record.strand(), strand[i]);
+            assert_eq!(record.frame(), frame[i]);
+            assert_eq!(record.attributes(), &attributes[i]);
+        }
+    }
+
+    #[test]
+    fn test_writer_gff3() {
+        let mut reader = Reader::new(GFF_FILE_ONE_ATTRIB, GffType::GFF3);
+        let mut writer = Writer::new(vec![], GffType::GFF3);
         for r in reader.records() {
             writer.write(r.ok().expect("Error reading record")).ok().expect("Error writing record");
         }
-        assert_eq!(writer.inner.as_string(), String::from_utf8_lossy(GFF_FILE_NO_ATTRIB))
+        assert_eq!(writer.inner.as_string(), String::from_utf8_lossy(GFF_FILE_ONE_ATTRIB))
+    }
+
+    #[test]
+    fn test_writer_gtf2() {
+        let mut reader = Reader::new(GTF_FILE_ONE_ATTRIB, GffType::GTF2);
+        let mut writer = Writer::new(vec![], GffType::GTF2);
+        for r in reader.records() {
+            writer.write(r.ok().expect("Error reading record")).ok().expect("Error writing record");
+        }
+        assert_eq!(writer.inner.as_string(), String::from_utf8_lossy(GTF_FILE_ONE_ATTRIB))
+    }
+
+    #[test]
+    fn test_convert_gtf2_to_gff3() {
+        let mut reader = Reader::new(GTF_FILE_ONE_ATTRIB, GffType::GTF2);
+        let mut writer = Writer::new(vec![], GffType::GFF3);
+        for r in reader.records() {
+            writer.write(r.ok().expect("Error reading record")).ok().expect("Error writing record");
+        }
+        assert_eq!(writer.inner.as_string(), String::from_utf8_lossy(GFF_FILE_ONE_ATTRIB))
     }
 }
