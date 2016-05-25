@@ -223,7 +223,8 @@ impl<'a, F> Aligner<'a, F>
             self.I[k].extend(repeat(min_score).take(m + 1));
             self.D[k].extend(repeat(min_score).take(m + 1));
             match alignment_type {
-                AlignmentType::Global | AlignmentType::Semiglobal => {
+                AlignmentType::Global |
+                AlignmentType::Semiglobal => {
                     let mut s = &mut self.S[k];
                     // neutral start
                     s.push(0);

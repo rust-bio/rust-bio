@@ -101,9 +101,9 @@ impl Myers {
     /// Find all matches of pattern in the given text up to a given maximum distance.
     /// Matches are returned as an iterator over pairs of end position and distance.
     pub fn find_all_end<'a, I: IntoTextIterator<'a>>(&'a self,
-                                                        text: I,
-                                                        max_dist: u8)
-                                                        -> Matches<I::IntoIter> {
+                                                     text: I,
+                                                     max_dist: u8)
+                                                     -> Matches<I::IntoIter> {
         Matches {
             myers: self,
             state: State::new(self.m),
