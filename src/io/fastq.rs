@@ -63,7 +63,8 @@ impl<R: io::Read> Reader<R> {
             if record.qual.is_empty() {
                 return Err(io::Error::new(io::ErrorKind::Other,
                                           "Incomplete record. Each FastQ record has to consist \
-                                           of 4 lines: header, sequence, separator and qualities."));
+                                           of 4 lines: header, sequence, separator and \
+                                           qualities."));
             }
         }
 

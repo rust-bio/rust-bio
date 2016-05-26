@@ -74,9 +74,11 @@ use std::result::Result;
 /// ```
 pub fn hamming(alpha: &[u8], beta: &[u8]) -> Result<u32, &'static str> {
     if alpha.len() == beta.len() {
-        let mut score : u32 = 0;
+        let mut score: u32 = 0;
         for (a, b) in Zip::new((alpha, beta)) {
-            if a != b { score += 1; }
+            if a != b {
+                score += 1;
+            }
         }
         Ok(score)
     } else {

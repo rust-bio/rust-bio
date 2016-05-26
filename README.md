@@ -21,6 +21,7 @@ Currently, rust-bio provides
 * BWT and FM-Index,
 * FMD-Index for finding supermaximal exact matches,
 * a q-gram index,
+* an orf research algorithm,
 * a rank/select data structure,
 * [serde](https://github.com/serde-rs/serde) support for all data structures when built with `nightly` feature,
 * FASTQ and FASTA and BED readers and writers,
@@ -45,6 +46,7 @@ For reading and writing BAM and BCF files, have a look at https://github.com/chr
 * [Adam Perry](https://github.com/dikaiosune)
 * [Taylor Cramer](https://github.com/cramertj)
 * [Andre Bogus](https://github.com/llogiq)
+* [Martin Larralde](https://github.com/althonos)
 * Philipp Angerer
 * [Pierre Marijon](https://github.com/natir)
 

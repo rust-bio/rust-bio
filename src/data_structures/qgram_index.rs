@@ -117,11 +117,19 @@ impl QGramIndex {
             for &p in self.qgram_matches(qgram) {
                 let diagonal = p - i;
                 match diagonals.entry(diagonal) {
-                    Entry::Vacant(v) => { v.insert(Match {
-                        pattern: Interval { start: i, stop: i + q },
-                        text: Interval { start: p, stop: p + q },
-                        count: 1,
-                    }); },
+                    Entry::Vacant(v) => {
+                        v.insert(Match {
+                            pattern: Interval {
+                                start: i,
+                                stop: i + q,
+                            },
+                            text: Interval {
+                                start: p,
+                                stop: p + q,
+                            },
+                            count: 1,
+                        });
+                    }
                     Entry::Occupied(mut o) => {
                         let m = o.get_mut();
                         m.pattern.stop = i + q;
@@ -153,10 +161,18 @@ impl QGramIndex {
             for &p in self.qgram_matches(qgram) {
                 let diagonal = p - i;
                 match diagonals.entry(diagonal) {
-                    Entry::Vacant(v) => { v.insert(ExactMatch {
-                        pattern: Interval { start: i, stop: i + q },
-                        text: Interval { start: p, stop: p + q },
-                    }); },
+                    Entry::Vacant(v) => {
+                        v.insert(ExactMatch {
+                            pattern: Interval {
+                                start: i,
+                                stop: i + q,
+                            },
+                            text: Interval {
+                                start: p,
+                                stop: p + q,
+                            },
+                        });
+                    }
                     Entry::Occupied(mut o) => {
                         let m = o.get_mut();
                         if m.pattern.stop - q + 1 == i {
