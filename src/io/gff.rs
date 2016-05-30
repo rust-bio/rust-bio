@@ -151,7 +151,7 @@ pub struct Writer<W: io::Write> {
 impl Writer<fs::File> {
     /// Write to a given file path.
     pub fn to_file<P: AsRef<Path>>(path: P, fileformat: GffType) -> io::Result<Self> {
-        fs::File::open(path).map(|f| Writer::new(f, fileformat))
+        fs::File::create(path).map(|f| Writer::new(f, fileformat))
     }
 }
 
