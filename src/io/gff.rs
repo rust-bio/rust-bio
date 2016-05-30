@@ -18,12 +18,12 @@
 //! let reader = gff::Reader::new(io::stdin(), gff::GffType::GFF3);
 //! ```
 
-use std::str;
 use std::io;
 use std::fs;
 use std::path::Path;
 use std::convert::AsRef;
 use std::collections::HashMap;
+use itertools::Itertools;
 
 use csv;
 
@@ -143,7 +143,8 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
 /// A GFF writer.
 pub struct Writer<W: io::Write> {
     inner: csv::Writer<W>,
-    gff_type: GffType,
+    delimitor: char,
+    terminator: String,
 }
 
 
@@ -158,27 +159,25 @@ impl Writer<fs::File> {
 impl<W: io::Write> Writer<W> {
     /// Write to a given writer.
     pub fn new(writer: W, fileformat: GffType) -> Self {
+        let (delim, termi) = fileformat.get_separator();
+
         Writer {
             inner: csv::Writer::from_writer(writer).delimiter(b'\t').flexible(true),
-            gff_type: fileformat,
+            delimitor: delim as char,
+            terminator: String::from_utf8(vec![termi]).unwrap(),
         }
     }
 
     /// Write a given GFF record.
     pub fn write(&mut self, record: Record) -> csv::Result<()> {
-        let (delim, termi) = self.gff_type.get_separator();
-
-        // If you can remove this ugly code please do it
-        let termi = [termi];
-        let termi = str::from_utf8(&termi).unwrap_or(";");
-
         let attributes;
 
         if !record.attributes.is_empty() {
-            attributes = record.attributes.iter().map(|(a, b)| format!("{}{}{}", a, delim as char, b)).collect::<Vec<_>>().join(&termi);
+            attributes = record.attributes.iter().map(|(a, b)| format!("{}{}{}", a, self.delimitor, b)).join(&self.terminator);
         } else {
             attributes = "".to_owned();
         }
+
         self.inner.encode((record.seqname, record.source, record.feature_type, record.start, record.end, record.score, record.strand, record.frame, attributes))
     }
 }
