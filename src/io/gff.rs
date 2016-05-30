@@ -131,7 +131,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                         .record_terminator(csv::RecordTerminator::Any(termi))
                         .has_headers(false)
                         .decode()
-                        .collect::<csv::Result<HashMap<String, String>>>()
+                        .collect::<csv::Result<_>>()
                         .unwrap(),
                 }
             })
