@@ -143,7 +143,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
 /// A GFF writer.
 pub struct Writer<W: io::Write> {
     inner: csv::Writer<W>,
-    delimitor: char,
+    delimiter: char,
     terminator: String,
 }
 
@@ -163,7 +163,7 @@ impl<W: io::Write> Writer<W> {
 
         Writer {
             inner: csv::Writer::from_writer(writer).delimiter(b'\t').flexible(true),
-            delimitor: delim as char,
+            delimiter: delim as char,
             terminator: String::from_utf8(vec![termi]).unwrap(),
         }
     }
@@ -173,7 +173,7 @@ impl<W: io::Write> Writer<W> {
         let attributes;
 
         if !record.attributes.is_empty() {
-            attributes = record.attributes.iter().map(|(a, b)| format!("{}{}{}", a, self.delimitor, b)).join(&self.terminator);
+            attributes = record.attributes.iter().map(|(a, b)| format!("{}{}{}", a, self.delimiter, b)).join(&self.terminator);
         } else {
             attributes = "".to_owned();
         }
