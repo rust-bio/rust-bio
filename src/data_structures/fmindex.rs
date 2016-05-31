@@ -7,7 +7,6 @@
 
 use std::iter::DoubleEndedIterator;
 
-use data_structures::suffix_array::SuffixArray;
 use data_structures::bwt::{Occ, Less, less, BWT};
 use alphabets::dna;
 use std::mem::swap;
@@ -16,11 +15,11 @@ use std::ops::Deref;
 /// A suffix array interval.
 #[derive(Clone, Copy, Debug)]
 pub struct Interval {
-    lower: usize,
-    upper: usize,
+    pub lower: usize,
+    pub upper: usize,
 }
 
-pub trait FMIndexAble {
+pub trait FMIndexable {
     /// Get occurrence count of symbol a in BWT[..r+1].
     fn occ(&self, r: usize, a: u8) -> usize;
     /// Also known as
@@ -28,7 +27,7 @@ pub trait FMIndexAble {
     fn bwt(&self) -> &BWT;
 
     /// Perform backward search, yielding suffix array
-    /// interval denoting exact occurences of the given pattern of length m in the text.
+    /// interval denoting exact occurrences of the given pattern of length m in the text.
     /// Complexity: O(m).
     ///
     /// # Arguments
@@ -38,20 +37,26 @@ pub trait FMIndexAble {
     /// # Example
     ///
     /// ```
-    /// use bio::data_structures::bwt::bwt;
-    /// use bio::data_structures::fmindex::FMIndex;
+    /// use bio::data_structures::bwt::{bwt, less, Occ};
+    /// use bio::data_structures::fmindex::{FMIndex, FMIndexable};
     /// use bio::data_structures::suffix_array::suffix_array;
     /// use bio::alphabets::dna;
+    /// use std::rc::Rc;
     ///
     /// let text = b"GCCTTAACATTATTACGCCTA$";
-    /// let alphabet = dna::alphabet();
-    /// let pos = suffix_array(text);
-    /// let fm = FMIndex::new(bwt(text, &pos), 3, &alphabet);
+    /// let alphabet = dna::n_alphabet();
+    /// let sa = Rc::new(suffix_array(text));
+    /// let bwt = Rc::new(bwt(text, sa.as_ref()));
+    /// let less = Rc::new(less(&bwt, &alphabet));
+    /// let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
+    /// let fm = FMIndex::new(bwt, less, occ);
     ///
     /// let pattern = b"TTA";
     /// let sai = fm.backward_search(pattern.iter());
     ///
-    /// let occ = sai.occ(&pos);
+    /// let occ = (sai.lower..sai.upper)
+    ///                     .map(|pos| *sa.get(pos).unwrap())
+    ///                     .collect::<Vec<usize>>();
     ///
     /// assert_eq!(occ, [3, 12, 9]);
     /// ```
@@ -93,7 +98,7 @@ pub struct FMIndex<
 impl<
     DBWT: Deref<Target = BWT> + Clone,
     DLess: Deref<Target = Less> + Clone,
-    DOcc: Deref<Target = Occ> + Clone> FMIndexAble for FMIndex<DBWT, DLess, DOcc> {
+    DOcc: Deref<Target = Occ> + Clone> FMIndexable for FMIndex<DBWT, DLess, DOcc> {
 
     fn occ(&self, r: usize, a: u8) -> usize {
         self.occ.get(&self.bwt, r, a)
@@ -145,7 +150,6 @@ impl<
 
         FMDIndex {
             fmindex: self,
-            revcomp: dna::RevComp::new(),
         }
     }
 }
@@ -193,13 +197,12 @@ pub struct FMDIndex<
     DOcc: Deref<Target = Occ> + Clone> {
 
     fmindex: FMIndex<DBWT, DLess, DOcc>,
-    revcomp: dna::RevComp,
 }
 
 impl<
     DBWT: Deref<Target = BWT> + Clone,
     DLess: Deref<Target = Less> + Clone,
-    DOcc: Deref<Target = Occ> + Clone> FMIndexAble for FMDIndex<DBWT, DLess, DOcc> {
+    DOcc: Deref<Target = Occ> + Clone> FMIndexable for FMDIndex<DBWT, DLess, DOcc> {
 
     fn occ(&self, r: usize, a: u8) -> usize {
         self.fmindex.occ(r, a)
@@ -226,21 +229,36 @@ impl<
     /// # Example
     ///
     /// ```
-    /// use bio::data_structures::fmindex::FMDIndex;
+    /// use bio::alphabets::dna;
+    /// use bio::data_structures::fmindex::FMIndex;
     /// use bio::data_structures::suffix_array::suffix_array;
-    /// use bio::data_structures::bwt::bwt;
+    /// use bio::data_structures::bwt::{bwt, less, Occ};
+    /// use std::rc::Rc;
     ///
     /// let text = b"ATTC$GAAT$";
-    /// let pos = suffix_array(text);
-    /// let fmdindex = FMDIndex::new(bwt(text, &pos), 3);
+    /// let alphabet = dna::n_alphabet();
+    /// let sa = Rc::new(suffix_array(text));
+    /// let bwt = Rc::new(bwt(text, sa.as_ref()));
+    /// let less = Rc::new(less(&bwt, &alphabet));
+    /// let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
+    /// let fm = FMIndex::new(bwt, less, occ);
+    /// let fmdindex = fm.as_fmdindex();
     ///
     /// let pattern = b"ATT";
     /// let intervals = fmdindex.smems(pattern, 2);
-    /// let occ = intervals[0].occ(&pos);
-    /// let occ_revcomp = intervals[0].occ_revcomp(&pos);
+    /// let forward = intervals[0].forward();
+    /// let revcomp = intervals[0].revcomp();
     ///
-    /// assert_eq!(occ, [0]);
-    /// assert_eq!(occ_revcomp, [6]);
+    /// let forward_occ = (forward.lower..forward.upper)
+    ///                     .map(|pos| *sa.get(pos).unwrap())
+    ///                     .collect::<Vec<usize>>();
+    ///
+    /// let revcomp_occ = (revcomp.lower..revcomp.upper)
+    ///                     .map(|pos| *sa.get(pos).unwrap())
+    ///                     .collect::<Vec<usize>>();
+    ///
+    /// assert_eq!(forward_occ, [0]);
+    /// assert_eq!(revcomp_occ, [6]);
     /// ```
     pub fn smems(&self, pattern: &[u8], i: usize) -> Vec<BiInterval> {
 
@@ -311,7 +329,7 @@ impl<
 
     fn init_interval(&self, pattern: &[u8], i: usize) -> BiInterval {
         let a = pattern[i];
-        let comp_a = self.revcomp.comp(a);
+        let comp_a = dna::complement(a);
         let lower = self.fmindex.less(a);
 
         BiInterval {
@@ -353,7 +371,7 @@ impl<
 
 
     fn forward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
-        let comp_a = self.revcomp.comp(a);
+        let comp_a = dna::complement(a);
 
         self.backward_ext(&interval.swapped(), comp_a)
             .swapped()
@@ -375,9 +393,8 @@ mod tests {
 
     #[test]
     fn test_smems() {
-        let revcomp = dna::RevComp::new();
         let orig_text = b"GCCTTAACAT";
-        let revcomp_text = revcomp.get(orig_text);
+        let revcomp_text = dna::revcomp(orig_text);
         let text_builder: Vec<&[u8]> = vec![orig_text, b"$", &revcomp_text[..], b"$"];
         let text = text_builder.concat();
 

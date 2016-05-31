@@ -27,6 +27,8 @@
 use std::cmp::min;
 use std::iter::repeat;
 
+use utils::TextSlice;
+
 
 /// Default cost function (unit costs).
 pub fn unit_cost(a: u8, b: u8) -> u32 {
@@ -59,8 +61,8 @@ impl<F> Ukkonen<F>
     /// Find all matches between pattern and text with up to k errors.
     /// Matches are returned as an iterator over pairs of end position and distance.
     pub fn find_all_end<'a>(&'a mut self,
-                            pattern: &'a [u8],
-                            text: &'a [u8],
+                            pattern: TextSlice<'a>,
+                            text: TextSlice<'a>,
                             k: usize)
                             -> Matches<F> {
         let m = pattern.len();
@@ -87,8 +89,8 @@ pub struct Matches<'a, F>
     where F: 'a + Fn(u8, u8) -> u32
 {
     ukkonen: &'a mut Ukkonen<F>,
-    pattern: &'a [u8],
-    text: &'a [u8],
+    pattern: TextSlice<'a>,
+    text: TextSlice<'a>,
     i: usize,
     lastk: usize,
     m: usize,

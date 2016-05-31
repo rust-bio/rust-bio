@@ -228,7 +228,7 @@ fn sentinel_count(text: &[u8]) -> usize {
 
 
 /// Transform the given text into integers for usage in `SAIS`.
-fn transform_text<T: Integer + Unsigned + NumCast + Copy>(text: &[u8],
+fn transform_text<T: Integer + Unsigned + NumCast + Copy + Debug>(text: &[u8],
                                                           alphabet: &Alphabet,
                                                           sentinel_count: usize)
                                                           -> Vec<T> {
@@ -344,15 +344,15 @@ impl SAIS {
             let mut reduced_text: Vec<S> = vec![cast(0).unwrap(); lms_substring_count];
             let mut label = 0;
             reduced_text[self.reduced_text_pos[self.pos[0]]] = cast(label).unwrap();
-            let mut prev = self.pos[0];
-            for &p in self.pos[1..].iter() {
+            let mut prev = None;
+            for &p in self.pos.iter() {
                 if pos_types.is_lms_pos(p) {
                     // choose same label if substrings are equal
-                    if !self.lms_substring_eq(text, pos_types, prev, p) {
+                    if prev.is_some() && !self.lms_substring_eq(text, pos_types, prev.unwrap(), p) {
                         label += 1;
                     }
                     reduced_text[self.reduced_text_pos[p]] = cast(label).unwrap();
-                    prev = p;
+                    prev = Some(p);
                 }
             }
 
@@ -367,6 +367,16 @@ impl SAIS {
                 self.lms_pos.clear();
                 for &p in &self.pos {
                     self.lms_pos.push(lms_pos[p]);
+                }
+            }
+            else {
+                // otherwise, lms_pos is updated with the sorted suffixes from pos
+                // obtain sorted lms suffixes
+                self.lms_pos.clear();
+                for &p in &self.pos {
+                    if pos_types.is_lms_pos(p) {
+                        self.lms_pos.push(p);
+                    }
                 }
             }
         }
@@ -472,6 +482,7 @@ impl SAIS {
 
 
 /// Position types (L or S).
+#[derive(Debug)]
 struct PosTypes {
     pos_types: BitVec,
 }
@@ -623,6 +634,9 @@ mod tests {
         let tests = [(&b"A$C$G$T$"[..], "simple"),
                      (&b"A$A$T$T$"[..], "duplicates"),
                      (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
+                     (&b"AGCCAT$\
+                        CAGCC$"[..],
+                        "substring"),
                      (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
                         AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
                         "complex"),
