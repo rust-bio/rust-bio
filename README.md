@@ -1,7 +1,7 @@
 [![Crates.io](https://img.shields.io/crates/d/bio.svg?style=flat-square)](https://crates.io/crates/bio)
 [![Crates.io](https://img.shields.io/crates/v/bio.svg?style=flat-square)](https://crates.io/crates/bio)
 [![Crates.io](https://img.shields.io/crates/l/bio.svg?style=flat-square)](https://crates.io/crates/bio)
-[![Travis](https://img.shields.io/travis/rust-bio/rust-bio.svg?style=flat-square)](https://travis-ci.org/rust-bio/rust-bio)
+[![Travis](https://img.shields.io/travis/rust-bio/rust-bio/master.svg?style=flat-square)](https://travis-ci.org/rust-bio/rust-bio)
 
 # Rust-Bio, a bioinformatics library for Rust.
 
@@ -21,6 +21,7 @@ Currently, rust-bio provides
 * BWT and FM-Index,
 * FMD-Index for finding supermaximal exact matches,
 * a q-gram index,
+* an orf research algorithm,
 * a rank/select data structure,
 * [serde](https://github.com/serde-rs/serde) support for all data structures when built with `nightly` feature,
 * FASTQ and FASTA and BED readers and writers,
@@ -45,6 +46,9 @@ For reading and writing BAM and BCF files, have a look at https://github.com/chr
 * [Adam Perry](https://github.com/dikaiosune)
 * [Taylor Cramer](https://github.com/cramertj)
 * [Andre Bogus](https://github.com/llogiq)
+* [Martin Larralde](https://github.com/althonos)
+* Philipp Angerer
+* [Pierre Marijon](https://github.com/natir)
 
 The next name in this list could be you! If you are interested in joining the effort to build a general purpose Rust bioinformatics library, just introduce yourself [here](https://github.com/rust-bio/rust-bio/issues/3), or issue a pull request with your first contribution.
 

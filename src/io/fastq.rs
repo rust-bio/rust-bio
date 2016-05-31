@@ -17,6 +17,7 @@ use std::io;
 use std::io::prelude::*;
 use std::ascii::AsciiExt;
 use std::fs;
+use std::fmt;
 use std::path::Path;
 use std::convert::AsRef;
 
@@ -78,6 +79,7 @@ impl<R: io::Read> Reader<R> {
 
 
 /// A FastQ record.
+#[derive(Debug, Clone)]
 pub struct Record {
     header: String,
     seq: String,
@@ -144,6 +146,13 @@ impl Record {
         self.seq.clear();
         self.qual.clear();
     }
+}
+
+
+impl fmt::Display for Record {
+	fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+		write!(f, "@{}\n{}\n+\n{}", self.header, self.seq, self.qual)
+	}
 }
 
 

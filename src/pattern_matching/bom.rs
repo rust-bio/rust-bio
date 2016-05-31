@@ -20,6 +20,7 @@
 
 
 use std::iter::repeat;
+use utils::TextSlice;
 
 use vec_map::VecMap;
 
@@ -33,7 +34,7 @@ pub struct BOM {
 
 impl BOM {
     /// Create a new instance for a given pattern.
-    pub fn new(pattern: &[u8]) -> Self {
+    pub fn new(pattern: TextSlice) -> Self {
         let m = pattern.len();
         let maxsym = *pattern.iter().max().expect("Expecting non-empty pattern.") as usize;
         let mut table: Vec<VecMap<usize>> = Vec::with_capacity(m);
@@ -89,7 +90,7 @@ impl BOM {
     }
 
     /// Find all matches of the pattern in the given text. Matches are returned as an iterator over start positions.
-    pub fn find_all<'a>(&'a self, text: &'a [u8]) -> Matches {
+    pub fn find_all<'a>(&'a self, text: TextSlice<'a>) -> Matches {
         Matches {
             bom: self,
             text: text,
@@ -102,7 +103,7 @@ impl BOM {
 /// Iterator over start positions of matches.
 pub struct Matches<'a> {
     bom: &'a BOM,
-    text: &'a [u8],
+    text: TextSlice<'a>,
     window: usize,
 }
 
