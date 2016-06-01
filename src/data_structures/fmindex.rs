@@ -7,10 +7,9 @@
 
 use std::iter::DoubleEndedIterator;
 
-use data_structures::bwt::{Occ, Less, less, BWT};
+use data_structures::bwt::{less, BWT, DerefBWT, DerefOcc, DerefLess};
 use alphabets::dna;
 use std::mem::swap;
-use std::ops::Deref;
 
 /// A suffix array interval.
 #[derive(Clone, Copy, Debug)]
@@ -87,18 +86,18 @@ pub trait FMIndexable {
 
 #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct FMIndex<
-        DBWT: Deref<Target = BWT> + Clone,
-        DLess: Deref<Target = Less> + Clone,
-        DOcc: Deref<Target = Occ> + Clone> {
+        DBWT: DerefBWT + Clone,
+        DLess: DerefLess + Clone,
+        DOcc: DerefOcc + Clone> {
     bwt: DBWT,
     less: DLess,
     occ: DOcc,
 }
 
 impl<
-    DBWT: Deref<Target = BWT> + Clone,
-    DLess: Deref<Target = Less> + Clone,
-    DOcc: Deref<Target = Occ> + Clone> FMIndexable for FMIndex<DBWT, DLess, DOcc> {
+    DBWT: DerefBWT + Clone,
+    DLess: DerefLess + Clone,
+    DOcc: DerefOcc + Clone> FMIndexable for FMIndex<DBWT, DLess, DOcc> {
 
     fn occ(&self, r: usize, a: u8) -> usize {
         self.occ.get(&self.bwt, r, a)
@@ -113,9 +112,9 @@ impl<
 }
 
 impl<
-    DBWT: Deref<Target = BWT> + Clone,
-    DLess: Deref<Target = Less> + Clone,
-    DOcc: Deref<Target = Occ> + Clone> FMIndex<DBWT, DLess, DOcc> {
+    DBWT: DerefBWT + Clone,
+    DLess: DerefLess + Clone,
+    DOcc: DerefOcc + Clone> FMIndex<DBWT, DLess, DOcc> {
 
     /// Construct a new instance of the FM index.
     ///
@@ -192,17 +191,17 @@ impl BiInterval {
 /// strand of DNA texts (Li, 2012).
 #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct FMDIndex<
-    DBWT: Deref<Target = BWT> + Clone,
-    DLess: Deref<Target = Less> + Clone,
-    DOcc: Deref<Target = Occ> + Clone> {
+    DBWT: DerefBWT + Clone,
+    DLess: DerefLess + Clone,
+    DOcc: DerefOcc + Clone> {
 
     fmindex: FMIndex<DBWT, DLess, DOcc>,
 }
 
 impl<
-    DBWT: Deref<Target = BWT> + Clone,
-    DLess: Deref<Target = Less> + Clone,
-    DOcc: Deref<Target = Occ> + Clone> FMIndexable for FMDIndex<DBWT, DLess, DOcc> {
+    DBWT: DerefBWT + Clone,
+    DLess: DerefLess + Clone,
+    DOcc: DerefOcc + Clone> FMIndexable for FMDIndex<DBWT, DLess, DOcc> {
 
     fn occ(&self, r: usize, a: u8) -> usize {
         self.fmindex.occ(r, a)
@@ -219,9 +218,9 @@ impl<
 }
 
 impl<
-    DBWT: Deref<Target = BWT> + Clone,
-    DLess: Deref<Target = Less> + Clone,
-    DOcc: Deref<Target = Occ> + Clone>  FMDIndex<DBWT, DLess, DOcc> {
+    DBWT: DerefBWT + Clone,
+    DLess: DerefLess + Clone,
+    DOcc: DerefOcc + Clone>  FMDIndex<DBWT, DLess, DOcc> {
 
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
     /// Complexity O(m) with pattern of length m.

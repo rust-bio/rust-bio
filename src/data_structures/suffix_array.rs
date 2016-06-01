@@ -10,7 +10,6 @@
 use std::iter;
 use std;
 use std::fmt::Debug;
-use std::ops::Deref;
 
 use num::{Integer, Unsigned, NumCast};
 use num::traits::cast;
@@ -20,7 +19,7 @@ use vec_map::VecMap;
 
 use alphabets::{Alphabet, RankTransform};
 use data_structures::smallints::SmallInts;
-use data_structures::bwt::{BWT, Less, Occ};
+use data_structures::bwt::{DerefBWT, DerefLess, DerefOcc};
 
 pub trait SuffixArray {
     fn get(&self, index: usize) -> Option<usize>;
@@ -28,7 +27,7 @@ pub trait SuffixArray {
 }
 
 pub type RawSuffixArray = Vec<usize>;
-pub struct SampledSuffixArray<DBWT: Deref<Target = BWT>, DLess: Deref<Target = Less>, DOcc: Deref<Target = Occ>> {
+pub struct SampledSuffixArray<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> {
     bwt: DBWT,
     less: DLess,
     occ: DOcc,
@@ -51,7 +50,7 @@ impl SuffixArray for RawSuffixArray {
     }
 }
 
-impl<DBWT: Deref<Target = BWT>, DLess: Deref<Target = Less>, DOcc: Deref<Target = Occ>> SuffixArray for SampledSuffixArray<DBWT, DLess, DOcc> {
+impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SuffixArray for SampledSuffixArray<DBWT, DLess, DOcc> {
     fn get(&self, index: usize) -> Option<usize> {
         if index < self.len() {
             let mut pos = index;
