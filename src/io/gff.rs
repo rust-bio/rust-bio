@@ -42,13 +42,13 @@ pub enum GffType {
     GFF2,
     /// Same as GFF2 just possible keyword and possible value change
     GTF2,
-    /// Any first field of tuple is key value separator, second is field separator
+    /// Any, first field of tuple is key value separator, second is field separator
     Any(u8, u8),
 }
 
 impl GffType {
     #[inline]
-    fn get_separator(&self) -> (u8, u8) {
+    fn separator(&self) -> (u8, u8) {
         match *self {
             GffType::GFF3 => (b'=', b','),
             GffType::GFF2 => (b' ', b';'),
@@ -77,7 +77,7 @@ pub struct Reader<R: io::Read> {
 }
 
 impl Reader<fs::File> {
-    /// Read GFF from given file path.
+    /// Read GFF from given file path in given format.
     pub fn from_file<P: AsRef<Path>>(path: P, fileformat: GffType) -> io::Result<Self> {
         fs::File::open(path).map(|f| Reader::new(f, fileformat))
     }
@@ -85,7 +85,7 @@ impl Reader<fs::File> {
 
 
 impl<R: io::Read> Reader<R> {
-    /// Create a new GFF reader given an instance of `io::Read`.
+    /// Create a new GFF reader given an instance of `io::Read`, in given format.
     pub fn new(reader: R, fileformat: GffType) -> Self {
         Reader {
             inner: csv::Reader::from_reader(reader).delimiter(b'\t').has_headers(false),
@@ -149,7 +149,7 @@ pub struct Writer<W: io::Write> {
 
 
 impl Writer<fs::File> {
-    /// Write to a given file path.
+    /// Write to a given file path in given format.
     pub fn to_file<P: AsRef<Path>>(path: P, fileformat: GffType) -> io::Result<Self> {
         fs::File::create(path).map(|f| Writer::new(f, fileformat))
     }
