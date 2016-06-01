@@ -8,6 +8,7 @@
 use std::iter::DoubleEndedIterator;
 
 use data_structures::bwt::{less, BWT, DerefBWT, DerefOcc, DerefLess};
+use data_structures::suffix_array::{SuffixArray, DerefSuffixArray};
 use alphabets::dna;
 use std::mem::swap;
 
@@ -16,6 +17,15 @@ use std::mem::swap;
 pub struct Interval {
     pub lower: usize,
     pub upper: usize,
+}
+
+impl Interval {
+  pub fn occ<SA: SuffixArray, T: DerefSuffixArray<SA>>(&self, sa: T) -> Vec<usize> {
+      (self.lower..self.upper)
+          .map(|pos| sa.get(pos)
+                        .expect("Interval out of range of suffix array"))
+          .collect()
+  }
 }
 
 pub trait FMIndexable {
@@ -53,9 +63,7 @@ pub trait FMIndexable {
     /// let pattern = b"TTA";
     /// let sai = fm.backward_search(pattern.iter());
     ///
-    /// let occ = (sai.lower..sai.upper)
-    ///                     .map(|pos| *sa.get(pos).unwrap())
-    ///                     .collect::<Vec<usize>>();
+    /// let occ = sai.occ(sa.clone());
     ///
     /// assert_eq!(occ, [3, 12, 9]);
     /// ```
@@ -245,16 +253,10 @@ impl<
     ///
     /// let pattern = b"ATT";
     /// let intervals = fmdindex.smems(pattern, 2);
-    /// let forward = intervals[0].forward();
-    /// let revcomp = intervals[0].revcomp();
     ///
-    /// let forward_occ = (forward.lower..forward.upper)
-    ///                     .map(|pos| *sa.get(pos).unwrap())
-    ///                     .collect::<Vec<usize>>();
+    /// let forward_occ = intervals[0].forward().occ(sa.clone());
     ///
-    /// let revcomp_occ = (revcomp.lower..revcomp.upper)
-    ///                     .map(|pos| *sa.get(pos).unwrap())
-    ///                     .collect::<Vec<usize>>();
+    /// let revcomp_occ = intervals[0].revcomp().occ(sa.clone());
     ///
     /// assert_eq!(forward_occ, [0]);
     /// assert_eq!(revcomp_occ, [6]);
@@ -382,13 +384,9 @@ impl<
 mod tests {
     use super::*;
     use alphabets::dna;
-    use data_structures::suffix_array::{suffix_array, SuffixArray};
+    use data_structures::suffix_array::suffix_array;
     use data_structures::bwt::{bwt, less, Occ};
     use std::rc::Rc;
-
-    fn sa_interval_to_vec(sa: &SuffixArray, interval: &Interval) -> Vec<usize> {
-        (interval.lower..interval.upper).map(|pos| sa.get(pos).unwrap()).collect()
-    }
 
     #[test]
     fn test_smems() {
@@ -405,24 +403,19 @@ mod tests {
 
         let fmindex = FMIndex::new(bwt, less, occ);
         let fmdindex = fmindex.as_fmdindex();
-        let sa = sa as Rc<SuffixArray>;
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
             let forward = intervals[0].forward();
             let revcomp = intervals[0].revcomp();
-            assert_eq!(
-                sa_interval_to_vec(sa.as_ref(), &forward),
-                [5, 16]);
-            assert_eq!(
-                sa_interval_to_vec(sa.as_ref(), &revcomp),
-                [3, 14]);
+            assert_eq!(forward.occ(sa.clone()), [5, 16]);
+            assert_eq!(revcomp.occ(sa.clone()), [3, 14]);
         }
         {
             let pattern = b"CTTAA";
             let intervals = fmdindex.smems(pattern, 1);
-            assert_eq!(sa_interval_to_vec(sa.as_ref(), &intervals[0].forward()), [2]);
-            assert_eq!(sa_interval_to_vec(sa.as_ref(), &intervals[0].revcomp()), [14]);
+            assert_eq!(intervals[0].forward().occ(sa.clone()), [2]);
+            assert_eq!(intervals[0].revcomp().occ(sa.clone()), [14]);
             assert_eq!(intervals[0].match_size, 5)
         }
     }
@@ -444,9 +437,8 @@ mod tests {
         let interval = fmdindex.init_interval(pattern, 0);
 
 
-        let sa = sa as Rc<SuffixArray>;
-        assert_eq!(sa_interval_to_vec(sa.as_ref(), &interval.forward()), [3, 5]);
-        assert_eq!(sa_interval_to_vec(sa.as_ref(), &interval.revcomp()), [8, 0]);
+        assert_eq!(interval.forward().occ(sa.clone()), [3, 5]);
+        assert_eq!(interval.revcomp().occ(sa.clone()), [8, 0]);
     }
 
     #[test]
@@ -523,13 +515,12 @@ mod tests {
         let read = b"GGCGTGGTGGCTTATGCCTGTAATCCCAGCACTTTGGGAGGTCGAAGTGGGCGG";
         let read_pos = 0;
 
-        let sa = sa as Rc<SuffixArray>;
         for i in 0..read.len() {
             println!("i {}", i);
             let intervals = fmdindex.smems(read, i);
             println!("{:?}", intervals);
             let matches = intervals.iter()
-                                   .flat_map(|interval| sa_interval_to_vec(sa.as_ref(), &interval.forward()))
+                                   .flat_map(|interval| interval.forward().occ(sa.clone()))
                                    .collect::<Vec<usize>>();
             //assert_eq!(matches, vec![read_pos]);
         }

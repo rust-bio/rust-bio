@@ -22,6 +22,9 @@ use alphabets::{Alphabet, RankTransform};
 use data_structures::smallints::SmallInts;
 use data_structures::bwt::{DerefBWT, DerefLess, DerefOcc};
 
+pub trait DerefSuffixArray<SA: SuffixArray>: Deref<Target = SA> {}
+impl<SA, T: Deref<Target = SA>> DerefSuffixArray<SA> for T where SA: SuffixArray {}
+
 pub trait SuffixArray {
     fn get(&self, index: usize) -> Option<usize>;
     fn len(&self) -> usize;
