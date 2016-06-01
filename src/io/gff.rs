@@ -58,18 +58,6 @@ impl GffType {
     }
 }
 
-impl PartialEq<(u8, u8)> for GffType {
-    #[inline]
-    fn eq(&self, &other: &(u8, u8)) -> bool {
-        match *self {
-            GffType::GFF3 => other.0 == b'=' && other.1 == b',',
-            GffType::GFF2 => other.0 == b' ' && other.1 == b';',
-            GffType::GTF2 => other.0 == b' ' && other.1 == b';',
-            GffType::Any(x, y) => other.0 == x && other.1 == y,
-        }
-    }
-}
-
 /// A GFF reader.
 pub struct Reader<R: io::Read> {
     inner: csv::Reader<R>,
@@ -113,7 +101,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
     type Item = csv::Result<Record>;
 
     fn next(&mut self) -> Option<csv::Result<Record>> {
-        let (delim, termi) = self.gff_type.get_separator();
+        let (delim, termi) = self.gff_type.separator();
 
         self.inner.next().map(|res| {
             res.map(|(seqname, source, feature_type, start, end, score, strand, frame, attributes)| {
@@ -159,7 +147,7 @@ impl Writer<fs::File> {
 impl<W: io::Write> Writer<W> {
     /// Write to a given writer.
     pub fn new(writer: W, fileformat: GffType) -> Self {
-        let (delim, termi) = fileformat.get_separator();
+        let (delim, termi) = fileformat.separator();
 
         Writer {
             inner: csv::Writer::from_writer(writer).delimiter(b'\t').flexible(true),
