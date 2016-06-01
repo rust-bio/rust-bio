@@ -10,6 +10,7 @@
 use std::iter;
 use std;
 use std::fmt::Debug;
+use std::ops::Deref;
 
 use num::{Integer, Unsigned, NumCast};
 use num::traits::cast;
@@ -178,7 +179,7 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
 ///     ]
 /// )
 /// ```
-pub fn lcp(text: &[u8], pos: &RawSuffixArray) -> LCPArray {
+pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray {
     assert!(text.len() == pos.len());
     let n = text.len();
 

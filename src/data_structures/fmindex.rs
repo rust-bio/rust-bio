@@ -45,7 +45,7 @@ pub trait FMIndexable {
     /// let text = b"GCCTTAACATTATTACGCCTA$";
     /// let alphabet = dna::n_alphabet();
     /// let sa = Rc::new(suffix_array(text));
-    /// let bwt = Rc::new(bwt(text, sa.as_ref()));
+    /// let bwt = Rc::new(bwt(text, sa.clone()));
     /// let less = Rc::new(less(&bwt, &alphabet));
     /// let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
     /// let fm = FMIndex::new(bwt, less, occ);
@@ -237,7 +237,7 @@ impl<
     /// let text = b"ATTC$GAAT$";
     /// let alphabet = dna::n_alphabet();
     /// let sa = Rc::new(suffix_array(text));
-    /// let bwt = Rc::new(bwt(text, sa.as_ref()));
+    /// let bwt = Rc::new(bwt(text, sa.clone()));
     /// let less = Rc::new(less(&bwt, &alphabet));
     /// let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
     /// let fm = FMIndex::new(bwt, less, occ);
@@ -399,7 +399,7 @@ mod tests {
 
         let alphabet = dna::n_alphabet();
         let sa = Rc::new(suffix_array(&text));
-        let bwt = Rc::new(bwt(&text, sa.as_ref()));
+        let bwt = Rc::new(bwt(&text, sa.clone()));
         let less = Rc::new(less(&bwt, &alphabet));
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
@@ -434,7 +434,7 @@ mod tests {
 
         let alphabet = dna::n_alphabet();
         let sa = Rc::new(suffix_array(text));
-        let bwt = Rc::new(bwt(text, sa.as_ref()));
+        let bwt = Rc::new(bwt(text, sa.clone()));
         let less = Rc::new(less(&bwt, &alphabet));
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
@@ -513,7 +513,7 @@ mod tests {
 
         let alphabet = dna::n_alphabet();
         let sa = Rc::new(suffix_array(reads));
-        let bwt = Rc::new(bwt(reads, sa.as_ref()));
+        let bwt = Rc::new(bwt(reads, sa.clone()));
         let less = Rc::new(less(&bwt, &alphabet));
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
