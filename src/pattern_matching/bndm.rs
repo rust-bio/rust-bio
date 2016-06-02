@@ -20,7 +20,7 @@
 
 
 use pattern_matching::shift_and::masks;
-use utils::TextSlice;
+use utils::{TextSlice, IntoTextIterator};
 
 
 /// BNDM algorithm.
@@ -33,15 +33,15 @@ pub struct BNDM {
 
 impl BNDM {
     /// Create a new instance for a given pattern.
-    pub fn new(pattern: TextSlice) -> Self {
+    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self where
+        P::IntoIter: DoubleEndedIterator + ExactSizeIterator {
+
+        let pattern = pattern.into_iter();
         let m = pattern.len();
         assert!(m <= 64, "Expecting a pattern of at most 64 symbols.");
         // take the reverse pattern and build nondeterministic
         // suffix automaton
-        let mut rev = pattern.to_vec();
-        rev.reverse();
-
-        let (masks, accept) = masks(&rev);
+        let (masks, accept) = masks(pattern.rev());
 
         BNDM {
             m: m,

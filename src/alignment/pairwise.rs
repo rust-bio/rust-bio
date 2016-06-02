@@ -42,6 +42,7 @@ use std::cmp::max;
 
 use alignment::{Alignment, AlignmentOperation};
 use data_structures::bitenc::BitEnc;
+use utils::TextSlice;
 
 
 enum AlignmentType {
@@ -241,7 +242,7 @@ impl<'a, F> Aligner<'a, F>
     }
 
     /// Calculate global alignment of x against y.
-    pub fn global(&mut self, x: &[u8], y: &[u8]) -> Alignment {
+    pub fn global(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
         let (m, n) = (x.len(), y.len());
         self.init(m, AlignmentType::Global);
         self.traceback.init(m, n, AlignmentType::Global);
@@ -262,7 +263,7 @@ impl<'a, F> Aligner<'a, F>
     }
 
     /// Calculate semiglobal alignment of x against y (x is global, y is local).
-    pub fn semiglobal(&mut self, x: &[u8], y: &[u8]) -> Alignment {
+    pub fn semiglobal(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
         let (m, n) = (x.len(), y.len());
         self.init(m, AlignmentType::Semiglobal);
         self.traceback.init(m, n, AlignmentType::Semiglobal);
@@ -290,7 +291,7 @@ impl<'a, F> Aligner<'a, F>
     }
 
     /// Calculate local alignment of x against y.
-    pub fn local(&mut self, x: &[u8], y: &[u8]) -> Alignment {
+    pub fn local(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
         let (m, n) = (x.len(), y.len());
         self.init(m, AlignmentType::Local);
         self.traceback.init(m, n, AlignmentType::Local);
@@ -389,7 +390,7 @@ impl Traceback {
         self.matrix[i].get(j).unwrap()
     }
 
-    fn alignment(&self, mut i: usize, mut j: usize, x: &[u8], y: &[u8], score: i32) -> Alignment {
+    fn alignment(&self, mut i: usize, mut j: usize, x: TextSlice, y: TextSlice, score: i32) -> Alignment {
         let mut ops = Vec::with_capacity(x.len());
 
         loop {

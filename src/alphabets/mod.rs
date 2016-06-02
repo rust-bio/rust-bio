@@ -14,12 +14,12 @@
 //! assert!(!alphabet.is_word(b"AXYZ"));
 //! ```
 
-use std::iter::FromIterator;
-use std::slice;
 use std::mem;
 
 use bit_set::BitSet;
 use vec_map::VecMap;
+
+use utils::{IntoTextIterator, TextIterator};
 
 pub mod dna;
 pub mod protein;
@@ -35,8 +35,11 @@ pub struct Alphabet {
 
 impl Alphabet {
     /// Create new alphabet from given symbols.
-    pub fn new(symbols: &[u8]) -> Self {
-        Alphabet::from_iter(symbols.iter())
+    pub fn new<'a, T: IntoTextIterator<'a>>(symbols: T) -> Self {
+        let mut s = BitSet::new();
+        s.extend(symbols.into_iter().map(|&c| c as usize));
+
+        Alphabet { symbols: s }
     }
 
     /// Insert symbol into alphabet.
@@ -45,8 +48,8 @@ impl Alphabet {
     }
 
     /// Check if given text is a word over the alphabet.
-    pub fn is_word(&self, text: &[u8]) -> bool {
-        text.iter().all(|&c| self.symbols.contains(c as usize))
+    pub fn is_word<'a, T: IntoTextIterator<'a>>(&self, text: T) -> bool {
+        text.into_iter().all(|&c| self.symbols.contains(c as usize))
     }
 
     /// Return lexicographically maximal symbol.
@@ -65,15 +68,6 @@ impl Alphabet {
     }
 }
 
-impl<'a> FromIterator<&'a u8> for Alphabet {
-    /// Create a new alphabet from the given iterator.
-    fn from_iter<T: IntoIterator<Item = &'a u8>>(iterator: T) -> Self {
-        let mut s = BitSet::new();
-        s.extend(iterator.into_iter().map(|&c| c as usize));
-
-        Alphabet { symbols: s }
-    }
-}
 
 /// Tools based on transforming the alphabet symbols to their lexicographical ranks.
 #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
@@ -99,8 +93,8 @@ impl RankTransform {
     }
 
     /// Transform a given `text`.
-    pub fn transform(&self, text: &[u8]) -> Vec<u8> {
-        text.iter()
+    pub fn transform<'a, T: IntoTextIterator<'a>>(&self, text: T) -> Vec<u8> {
+        text.into_iter()
             .map(|&c| *self.ranks.get(c as usize).expect("Unexpected character in text."))
             .collect()
     }
@@ -109,13 +103,13 @@ impl RankTransform {
     /// as `usize` by storing the symbol ranks in log2(|A|) bits (with |A| being the alphabet size).
     ///
     /// If q is larger than usize::BITS / log2(|A|), this method fails with an assertion.
-    pub fn qgrams<'a>(&'a self, q: u32, text: &'a [u8]) -> QGrams {
+    pub fn qgrams<'a, T: IntoTextIterator<'a>>(&'a self, q: u32, text: T) -> QGrams<T::IntoIter> {
         let bits = (self.ranks.len() as f32).log2().ceil() as u32;
         assert!((bits * q) as usize <= mem::size_of::<usize>() * 8,
                 "Expecting q to be smaller than usize / log2(|A|)");
 
         let mut qgrams = QGrams {
-            text: text.iter(),
+            text: text.into_iter(),
             ranks: self,
             bits: bits,
             mask: (1 << (q * bits)) - 1,
@@ -139,8 +133,8 @@ impl RankTransform {
 
 
 /// Iterator over q-grams.
-pub struct QGrams<'a> {
-    text: slice::Iter<'a, u8>,
+pub struct QGrams<'a, T: TextIterator<'a>> {
+    text: T,
     ranks: &'a RankTransform,
     bits: u32,
     mask: usize,
@@ -148,7 +142,7 @@ pub struct QGrams<'a> {
 }
 
 
-impl<'a> QGrams<'a> {
+impl<'a, T: TextIterator<'a>> QGrams<'a, T> {
     fn qgram_push(&mut self, a: u8) {
         self.qgram <<= self.bits;
         self.qgram |= a as usize;
@@ -157,7 +151,7 @@ impl<'a> QGrams<'a> {
 }
 
 
-impl<'a> Iterator for QGrams<'a> {
+impl<'a, T: TextIterator<'a>> Iterator for QGrams<'a, T> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {

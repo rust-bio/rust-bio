@@ -20,7 +20,7 @@
 
 use std::iter::Enumerate;
 
-use utils::{TextSlice, IntoTextIterator, TextIterator};
+use utils::{IntoTextIterator, TextIterator};
 
 /// ShiftAnd algorithm.
 pub struct ShiftAnd {
@@ -32,13 +32,16 @@ pub struct ShiftAnd {
 
 impl ShiftAnd {
     /// Create new ShiftAnd instance from a given pattern.
-    pub fn new(pattern: TextSlice) -> ShiftAnd {
-        assert!(pattern.len() <= 64,
+    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self where
+        P::IntoIter: ExactSizeIterator {
+        let pattern = pattern.into_iter();
+        let m = pattern.len();
+        assert!(m <= 64,
                 "Expecting a pattern of at most 64 symbols.");
         let (masks, accept) = masks(pattern);
 
         ShiftAnd {
-            m: pattern.len(),
+            m: m,
             masks: masks,
             accept: accept,
         }
@@ -59,11 +62,11 @@ impl ShiftAnd {
 
 /// Calculate ShiftAnd masks. This function is called automatically when instantiating
 /// a new ShiftAnd for a given pattern.
-pub fn masks(pattern: &[u8]) -> ([u64; 256], u64) {
+pub fn masks<'a, I: IntoTextIterator<'a>>(pattern: I) -> ([u64; 256], u64) {
     let mut masks = [0; 256];
 
     let mut bit = 1;
-    for &c in pattern.iter() {
+    for &c in pattern {
         masks[c as usize] |= bit;
         bit *= 2;
     }
