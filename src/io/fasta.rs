@@ -86,8 +86,8 @@ impl<R: io::Read> Reader<R> {
 
 /// A FASTA index as created by SAMtools (.fai).
 pub struct Index {
-    inner: collections::HashMap<Vec<u8>, IndexRecord>,
-    seqs: Vec<Vec<u8>>,
+    inner: collections::HashMap<String, IndexRecord>,
+    seqs: Vec<String>,
 }
 
 
@@ -99,8 +99,8 @@ impl Index {
         let mut fai_reader = csv::Reader::from_reader(fai).delimiter(b'\t').has_headers(false);
         for row in fai_reader.decode() {
             let (name, record): (String, IndexRecord) = try!(row);
-            seqs.push(name.clone().into_bytes());
-            inner.insert(name.into_bytes(), record);
+            seqs.push(name.clone());
+            inner.insert(name, record);
         }
         Ok(Index {
             inner: inner,
@@ -179,7 +179,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 
     /// For a given seqname, read the whole sequence into the given vector.
-    pub fn read_all(&mut self, seqname: TextSlice, seq: &mut Text) -> io::Result<()> {
+    pub fn read_all(&mut self, seqname: &str, seq: &mut Text) -> io::Result<()> {
         match self.index.inner.get(seqname) {
             Some(&idx) => self.read(seqname, 0, idx.len, seq),
             None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
@@ -188,7 +188,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
     /// Read the given interval of the given seqname into the given vector (stop position is exclusive).
     pub fn read(&mut self,
-                seqname: TextSlice,
+                seqname: &str,
                 start: u64,
                 stop: u64,
                 seq: &mut Text)
@@ -240,7 +240,7 @@ struct IndexRecord {
 
 /// A sequence record returned by the FASTA index.
 pub struct Sequence {
-    pub name: Text,
+    pub name: String,
     pub len: u64,
 }
 

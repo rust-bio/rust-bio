@@ -21,7 +21,7 @@ use std::fmt;
 use std::path::Path;
 use std::convert::AsRef;
 
-use utils::{Text, TextSlice};
+use utils::TextSlice;
 
 /// A FastQ reader.
 pub struct Reader<R: io::Read> {
