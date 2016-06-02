@@ -8,7 +8,7 @@
 use std::iter::DoubleEndedIterator;
 
 use data_structures::bwt::{less, BWT, DerefBWT, DerefOcc, DerefLess};
-use data_structures::suffix_array::{SuffixArray, DerefSuffixArray};
+use data_structures::suffix_array::SuffixArray;
 use alphabets::dna;
 use std::mem::swap;
 
@@ -20,7 +20,7 @@ pub struct Interval {
 }
 
 impl Interval {
-  pub fn occ<SA: SuffixArray, T: DerefSuffixArray<SA>>(&self, sa: T) -> Vec<usize> {
+  pub fn occ<SA: SuffixArray>(&self, sa: &SA) -> Vec<usize> {
       (self.lower..self.upper)
           .map(|pos| sa.get(pos)
                         .expect("Interval out of range of suffix array"))
@@ -54,8 +54,8 @@ pub trait FMIndexable {
     ///
     /// let text = b"GCCTTAACATTATTACGCCTA$";
     /// let alphabet = dna::n_alphabet();
-    /// let sa = Rc::new(suffix_array(text));
-    /// let bwt = Rc::new(bwt(text, sa.clone()));
+    /// let sa = suffix_array(text);
+    /// let bwt = Rc::new(bwt(text, &sa));
     /// let less = Rc::new(less(&bwt, &alphabet));
     /// let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
     /// let fm = FMIndex::new(bwt, less, occ);
@@ -63,7 +63,7 @@ pub trait FMIndexable {
     /// let pattern = b"TTA";
     /// let sai = fm.backward_search(pattern.iter());
     ///
-    /// let occ = sai.occ(sa.clone());
+    /// let occ = sai.occ(&sa);
     ///
     /// assert_eq!(occ, [3, 12, 9]);
     /// ```
@@ -244,8 +244,8 @@ impl<
     ///
     /// let text = b"ATTC$GAAT$";
     /// let alphabet = dna::n_alphabet();
-    /// let sa = Rc::new(suffix_array(text));
-    /// let bwt = Rc::new(bwt(text, sa.clone()));
+    /// let sa = suffix_array(text);
+    /// let bwt = Rc::new(bwt(text, &sa));
     /// let less = Rc::new(less(&bwt, &alphabet));
     /// let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
     /// let fm = FMIndex::new(bwt, less, occ);
@@ -254,9 +254,9 @@ impl<
     /// let pattern = b"ATT";
     /// let intervals = fmdindex.smems(pattern, 2);
     ///
-    /// let forward_occ = intervals[0].forward().occ(sa.clone());
+    /// let forward_occ = intervals[0].forward().occ(&sa);
     ///
-    /// let revcomp_occ = intervals[0].revcomp().occ(sa.clone());
+    /// let revcomp_occ = intervals[0].revcomp().occ(&sa);
     ///
     /// assert_eq!(forward_occ, [0]);
     /// assert_eq!(revcomp_occ, [6]);
@@ -397,7 +397,7 @@ mod tests {
 
         let alphabet = dna::n_alphabet();
         let sa = Rc::new(suffix_array(&text));
-        let bwt = Rc::new(bwt(&text, sa.clone()));
+        let bwt = Rc::new(bwt(&text, &sa));
         let less = Rc::new(less(&bwt, &alphabet));
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
@@ -408,14 +408,14 @@ mod tests {
             let intervals = fmdindex.smems(pattern, 0);
             let forward = intervals[0].forward();
             let revcomp = intervals[0].revcomp();
-            assert_eq!(forward.occ(sa.clone()), [5, 16]);
-            assert_eq!(revcomp.occ(sa.clone()), [3, 14]);
+            assert_eq!(forward.occ(sa.as_ref()), [5, 16]);
+            assert_eq!(revcomp.occ(sa.as_ref()), [3, 14]);
         }
         {
             let pattern = b"CTTAA";
             let intervals = fmdindex.smems(pattern, 1);
-            assert_eq!(intervals[0].forward().occ(sa.clone()), [2]);
-            assert_eq!(intervals[0].revcomp().occ(sa.clone()), [14]);
+            assert_eq!(intervals[0].forward().occ(sa.as_ref()), [2]);
+            assert_eq!(intervals[0].revcomp().occ(sa.as_ref()), [14]);
             assert_eq!(intervals[0].match_size, 5)
         }
     }
@@ -426,8 +426,8 @@ mod tests {
         let text = b"ACGT$TGCA$";
 
         let alphabet = dna::n_alphabet();
-        let sa = Rc::new(suffix_array(text));
-        let bwt = Rc::new(bwt(text, sa.clone()));
+        let sa = suffix_array(text);
+        let bwt = Rc::new(bwt(text, &sa));
         let less = Rc::new(less(&bwt, &alphabet));
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
@@ -437,8 +437,8 @@ mod tests {
         let interval = fmdindex.init_interval(pattern, 0);
 
 
-        assert_eq!(interval.forward().occ(sa.clone()), [3, 5]);
-        assert_eq!(interval.revcomp().occ(sa.clone()), [8, 0]);
+        assert_eq!(interval.forward().occ(&sa), [3, 5]);
+        assert_eq!(interval.revcomp().occ(&sa), [8, 0]);
     }
 
     #[test]
@@ -504,8 +504,8 @@ mod tests {
                        TGCCTACCTTAAAAAAGAAGAAAGA$";
 
         let alphabet = dna::n_alphabet();
-        let sa = Rc::new(suffix_array(reads));
-        let bwt = Rc::new(bwt(reads, sa.clone()));
+        let sa = suffix_array(reads);
+        let bwt = Rc::new(bwt(reads, &sa));
         let less = Rc::new(less(&bwt, &alphabet));
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
@@ -520,7 +520,7 @@ mod tests {
             let intervals = fmdindex.smems(read, i);
             println!("{:?}", intervals);
             let matches = intervals.iter()
-                                   .flat_map(|interval| interval.forward().occ(sa.clone()))
+                                   .flat_map(|interval| interval.forward().occ(&sa))
                                    .collect::<Vec<usize>>();
             //assert_eq!(matches, vec![read_pos]);
         }

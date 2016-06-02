@@ -39,8 +39,8 @@
 //!
 //! // Create an FM-Index for a given text.
 //! let alphabet = alphabets::dna::iupac_alphabet();
-//! let sa = Rc::new(suffix_array(text));
-//! let bwt = Rc::new(bwt(text, sa.clone()));
+//! let sa = suffix_array(text);
+//! let bwt = Rc::new(bwt(text, &sa));
 //! let less = Rc::new(less(&bwt, &alphabet));
 //! let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 //! let fmindex = FMIndex::new(bwt, less, occ);
