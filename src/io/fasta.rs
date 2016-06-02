@@ -25,6 +25,7 @@ use std::convert::AsRef;
 
 use csv;
 
+use utils::{TextSlice, Text};
 
 /// A FASTA reader.
 pub struct Reader<R: io::Read> {
@@ -85,8 +86,8 @@ impl<R: io::Read> Reader<R> {
 
 /// A FASTA index as created by SAMtools (.fai).
 pub struct Index {
-    inner: collections::HashMap<Vec<u8>, IndexRecord>,
-    seqs: Vec<Vec<u8>>,
+    inner: collections::HashMap<String, IndexRecord>,
+    seqs: Vec<String>,
 }
 
 
@@ -98,8 +99,8 @@ impl Index {
         let mut fai_reader = csv::Reader::from_reader(fai).delimiter(b'\t').has_headers(false);
         for row in fai_reader.decode() {
             let (name, record): (String, IndexRecord) = try!(row);
-            seqs.push(name.clone().into_bytes());
-            inner.insert(name.into_bytes(), record);
+            seqs.push(name.clone());
+            inner.insert(name, record);
         }
         Ok(Index {
             inner: inner,
@@ -178,7 +179,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 
     /// For a given seqname, read the whole sequence into the given vector.
-    pub fn read_all(&mut self, seqname: &[u8], seq: &mut Vec<u8>) -> io::Result<()> {
+    pub fn read_all(&mut self, seqname: &str, seq: &mut Text) -> io::Result<()> {
         match self.index.inner.get(seqname) {
             Some(&idx) => self.read(seqname, 0, idx.len, seq),
             None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
@@ -187,10 +188,10 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
     /// Read the given interval of the given seqname into the given vector (stop position is exclusive).
     pub fn read(&mut self,
-                seqname: &[u8],
+                seqname: &str,
                 start: u64,
                 stop: u64,
-                seq: &mut Vec<u8>)
+                seq: &mut Text)
                 -> io::Result<()> {
         match self.index.inner.get(seqname) {
             Some(idx) => {
@@ -239,7 +240,7 @@ struct IndexRecord {
 
 /// A sequence record returned by the FASTA index.
 pub struct Sequence {
-    pub name: Vec<u8>,
+    pub name: String,
     pub len: u64,
 }
 
@@ -270,7 +271,7 @@ impl<W: io::Write> Writer<W> {
     }
 
     /// Write a Fasta record with given id, optional description and sequence.
-    pub fn write(&mut self, id: &str, desc: Option<&str>, seq: &[u8]) -> io::Result<()> {
+    pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice) -> io::Result<()> {
         try!(self.writer.write(b">"));
         try!(self.writer.write(id.as_bytes()));
         if desc.is_some() {
@@ -335,7 +336,7 @@ impl Record {
     }
 
     /// Return the sequence of the record.
-    pub fn seq(&self) -> &[u8] {
+    pub fn seq(&self) -> TextSlice {
         self.seq.as_bytes()
     }
 
@@ -405,7 +406,7 @@ ATTGTTGTTTTA
                              .ok()
                              .expect("Error reading index");
         let mut seq = Vec::new();
-        reader.read(b"id", 1, 5, &mut seq).ok().expect("Error reading sequence.");
+        reader.read("id", 1, 5, &mut seq).ok().expect("Error reading sequence.");
         assert_eq!(seq, b"CCGT");
     }
 
