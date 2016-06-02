@@ -406,7 +406,7 @@ ATTGTTGTTTTA
                              .ok()
                              .expect("Error reading index");
         let mut seq = Vec::new();
-        reader.read(b"id", 1, 5, &mut seq).ok().expect("Error reading sequence.");
+        reader.read("id", 1, 5, &mut seq).ok().expect("Error reading sequence.");
         assert_eq!(seq, b"CCGT");
     }
 
