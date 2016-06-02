@@ -44,18 +44,21 @@ pub struct Myers {
 
 impl Myers {
     /// Create a new instance of Myers algorithm for a given pattern.
-    pub fn new(pattern: TextSlice) -> Self {
-        assert!(pattern.len() <= 64 && pattern.len() > 0);
+    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self where
+        P::IntoIter: ExactSizeIterator {
+        let pattern = pattern.into_iter();
+        let m = pattern.len();
+        assert!(m <= 64 && m > 0);
 
         let mut peq = [0; 256];
-        for (i, &a) in pattern.iter().enumerate() {
+        for (i, &a) in pattern.enumerate() {
             peq[a as usize] |= 1 << i;
         }
 
         Myers {
             peq: peq,
-            bound: 1 << (pattern.len() - 1),
-            m: pattern.len() as u8,
+            bound: 1 << (m - 1),
+            m: m as u8,
         }
     }
 

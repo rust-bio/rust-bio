@@ -21,6 +21,7 @@ use std::fmt;
 use std::path::Path;
 use std::convert::AsRef;
 
+use utils::TextSlice;
 
 /// A FastQ reader.
 pub struct Reader<R: io::Read> {
@@ -131,7 +132,7 @@ impl Record {
     }
 
     /// Return the sequence of the record.
-    pub fn seq(&self) -> &[u8] {
+    pub fn seq(&self) -> TextSlice {
         self.seq.trim_right().as_bytes()
     }
 
@@ -208,7 +209,7 @@ impl<W: io::Write> Writer<W> {
     pub fn write(&mut self,
                  id: &str,
                  desc: Option<&str>,
-                 seq: &[u8],
+                 seq: TextSlice,
                  qual: &[u8])
                  -> io::Result<()> {
         try!(self.writer.write(b"@"));

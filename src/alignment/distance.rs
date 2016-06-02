@@ -36,6 +36,8 @@ use itertools::Zip;
 use std::cmp::min;
 use std::result::Result;
 
+use utils::TextSlice;
+
 
 /// Compute the Hamming distance between two strings with `hamming`. If returns the `Result<u32, &str>` type
 /// with the first element corresponding to the distance between two strings (a number of mismatches) and the second one to the error message
@@ -72,7 +74,7 @@ use std::result::Result;
 /// }
 /// assert!(hamming(x, y).is_err());
 /// ```
-pub fn hamming(alpha: &[u8], beta: &[u8]) -> Result<u32, &'static str> {
+pub fn hamming(alpha: TextSlice, beta: TextSlice) -> Result<u32, &'static str> {
     if alpha.len() == beta.len() {
         let mut score: u32 = 0;
         for (a, b) in Zip::new((alpha, beta)) {
@@ -104,7 +106,7 @@ pub fn hamming(alpha: &[u8], beta: &[u8]) -> Result<u32, &'static str> {
 /// assert_eq!(l_score, 5);
 /// ```
 #[allow(unused_assignments)]
-pub fn levenshtein(alpha: &[u8], beta: &[u8]) -> u32 {
+pub fn levenshtein(alpha: TextSlice, beta: TextSlice) -> u32 {
     let mut columns = [vec!(0u32; alpha.len() + 1), vec!(0u32; alpha.len() + 1)];
     let mut i_prev = 0;
     let mut i_cur = 1;

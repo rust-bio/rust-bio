@@ -24,10 +24,11 @@
 //! assert_eq!(occ, [(13, 1), (14, 1)]);
 //! ```
 
+use std::iter;
 use std::cmp::min;
 use std::iter::repeat;
 
-use utils::TextSlice;
+use utils::{TextSlice, IntoTextIterator, TextIterator};
 
 
 /// Default cost function (unit costs).
@@ -60,24 +61,22 @@ impl<F> Ukkonen<F>
 
     /// Find all matches between pattern and text with up to k errors.
     /// Matches are returned as an iterator over pairs of end position and distance.
-    pub fn find_all_end<'a>(&'a mut self,
+    pub fn find_all_end<'a, T: IntoTextIterator<'a>>(&'a mut self,
                             pattern: TextSlice<'a>,
-                            text: TextSlice<'a>,
+                            text: T,
                             k: usize)
-                            -> Matches<F> {
+                            -> Matches<F, T::IntoIter> {
         let m = pattern.len();
-        self.D[0].clear();
-        self.D[0].extend(repeat(k + 1).take(m + 1));
         self.D[1].clear();
-        self.D[1].extend(0..m + 1);
+        self.D[1].extend(repeat(k + 1).take(m + 1));
+        self.D[0].clear();
+        self.D[0].extend(0..m + 1);
         Matches {
             ukkonen: self,
             pattern: pattern,
-            text: text,
-            i: 1,
+            text: text.into_iter().enumerate(),
             lastk: min(k, m),
             m: m,
-            n: text.len(),
             k: k,
         }
     }
@@ -85,29 +84,27 @@ impl<F> Ukkonen<F>
 
 
 /// Iterator over pairs of end positions and distance of matches.
-pub struct Matches<'a, F>
+pub struct Matches<'a, F, T: TextIterator<'a>>
     where F: 'a + Fn(u8, u8) -> u32
 {
     ukkonen: &'a mut Ukkonen<F>,
     pattern: TextSlice<'a>,
-    text: TextSlice<'a>,
-    i: usize,
+    text: iter::Enumerate<T>,
     lastk: usize,
     m: usize,
-    n: usize,
     k: usize,
 }
 
 
-impl<'a, F> Iterator for Matches<'a, F>
+impl<'a, F, T: TextIterator<'a>> Iterator for Matches<'a, F, T>
     where F: 'a + Fn(u8, u8) -> u32
 {
     type Item = (usize, usize);
 
     fn next(&mut self) -> Option<(usize, usize)> {
         let cost = &self.ukkonen.cost;
-        while self.i <= self.n {
-            let col = self.i % 2;
+        while let Some((i, c)) = self.text.next() {
+            let col = i % 2;
             let prev = 1 - col;
 
             // start with zero edit distance (semi-global alignment)
@@ -119,7 +116,7 @@ impl<'a, F> Iterator for Matches<'a, F>
                 self.ukkonen.D[col][j] =
                     min(min(self.ukkonen.D[prev][j] + 1, self.ukkonen.D[col][j - 1] + 1),
                         self.ukkonen.D[prev][j - 1] +
-                        (cost)(self.pattern[j - 1], self.text[self.i - 1]) as usize);
+                        (cost)(self.pattern[j - 1], *c) as usize);
             }
 
             // reduce lastk as long as k is exceeded: while lastk can increase by at most 1, it can
@@ -128,12 +125,8 @@ impl<'a, F> Iterator for Matches<'a, F>
                 self.lastk -= 1;
             }
 
-            println!("{} {}", self.i, self.lastk);
-
-            self.i += 1;
-
             if self.lastk == self.m {
-                return Some((self.i - 2, self.ukkonen.D[col][self.m]));
+                return Some((i, self.ukkonen.D[col][self.m]));
             }
         }
 

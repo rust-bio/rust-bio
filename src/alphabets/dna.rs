@@ -17,7 +17,7 @@
 //! ```
 
 use alphabets::Alphabet;
-use utils::TextSlice;
+use utils::IntoTextIterator;
 
 
 /// The DNA alphabet (uppercase and lowercase).
@@ -61,6 +61,7 @@ pub fn complement(a: u8) -> u8 {
 
 
 /// Calculate reverse complement of given text (IUPAC alphabet supported).
-pub fn revcomp(text: TextSlice) -> Vec<u8> {
-    text.iter().rev().map(|&a| complement(a)).collect()
+pub fn revcomp<'a, T: IntoTextIterator<'a>>(text: T) -> Vec<u8> where
+    T::IntoIter: DoubleEndedIterator {
+    text.into_iter().rev().map(|&a| complement(a)).collect()
 }

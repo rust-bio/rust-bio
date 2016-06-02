@@ -5,6 +5,7 @@
 
 //! Various alignment and distance computing algorithms.
 
+use utils::TextSlice;
 
 pub mod pairwise;
 pub mod distance;
@@ -120,7 +121,7 @@ impl Alignment {
     /// let alignment = aligner.global(x, y);
     /// println!("Global: \n{}\n", alignment.pretty(x, y));
     /// ```
-    pub fn pretty(&self, x: &[u8], y: &[u8]) -> String {
+    pub fn pretty(&self, x: TextSlice, y: TextSlice) -> String {
         let mut x_pretty = String::new();
         let mut y_pretty = String::new();
         let mut inb_pretty = String::new();
