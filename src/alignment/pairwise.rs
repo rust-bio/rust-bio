@@ -452,6 +452,27 @@ mod tests {
                    [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
     }
 
+
+    #[test]
+    fn test_global_affine_ins() {
+        let x = b"ACGAGAACA";
+        let y = b"ACGACA";
+        let score = |a: u8, b: u8| {
+            if a == b {
+                1i32
+            } else {
+                -1i32
+            }
+        };
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let alignment = aligner.global(x, y);
+
+        println!("aln:\n{}", alignment.pretty(x, y));
+        assert_eq!(alignment.operations, [Match, Match, Match, Ins, Ins, Ins, Match, Match, Match]);
+    }
+
+
+
     #[test]
     fn test_local() {
         let x = b"ACCGTGGAT";
