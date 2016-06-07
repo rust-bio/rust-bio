@@ -198,6 +198,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
             Some(idx) => {
                 seq.clear();
 
+                let stop = min(stop, idx.len);
                 let length = stop - start as u64;
                 let mut buf = vec![0u8; idx.line_bases as usize];
 
@@ -206,12 +207,13 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
                     let line_start = current_start / idx.line_bases * idx.line_bytes;
                     let line_offset = current_start % idx.line_bases;
                     let offset = idx.offset + line_start + line_offset;
-                    try!(self.reader.seek(io::SeekFrom::Start(offset)));
 
                     let left_to_read = length - seq.len() as u64;
                     let left_in_line = min(left_to_read, idx.line_bases - line_offset) as usize;
 
-                    try!(self.reader.read(&mut buf[..left_in_line]));
+                    try!(self.reader.seek(io::SeekFrom::Start(offset)));
+                    try!(self.reader.read_exact(&mut buf[..left_in_line]));
+
                     seq.extend_from_slice(&buf[..left_in_line]);
 
                     if seq.len() as u64 == length
