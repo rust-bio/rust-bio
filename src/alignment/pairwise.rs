@@ -239,7 +239,7 @@ impl<'a, F> Aligner<'a, F>
 
         // set minimum score to -inf, and allow to add gap_extend
         // without overflow
-        let min_score = i32::MIN - self.gap_extend;
+        let min_score = i32::MIN - self.gap_open;
         for k in 0..2 {
             self.S[k].clear();
             self.I[k].clear();
@@ -744,6 +744,50 @@ mod tests {
                 [Match, Subst, Subst, Match, Subst, Subst, Subst, Match, Match, Match, Match]);
     }
 
+
+    #[test]
+    fn test_left_aligned_del() {
+        let x = b"GTGCATCATGTG";
+        let y = b"GTGCATCATCATGTG";
+        let score = |a: u8, b: u8| {
+            if a == b {
+                1i32
+            } else {
+                -1i32
+            }
+        };
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let alignment = aligner.global(x, y);
+        println!("\naln:\n{}", alignment.pretty(x, y));
+
+        assert_eq!(alignment.ystart, 0);
+        assert_eq!(alignment.xstart, 0);
+        assert_eq!(alignment.operations,
+                   [Match, Match, Match, Del, Del, Del, Match, Match, Match, Match, Match, Match, Match, Match, Match]);
+    }
+
+
+    #[test]
+    fn test_left_aligned_ins() {
+
+        let x = b"GTGCATCATCATGTG";
+        let y = b"GTGCATCATGTG";
+        let score = |a: u8, b: u8| {
+            if a == b {
+                1i32
+            } else {
+                -1i32
+            }
+        };
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let alignment = aligner.global(x, y);
+        println!("\naln:\n{}", alignment.pretty(x, y));
+
+        assert_eq!(alignment.ystart, 0);
+        assert_eq!(alignment.xstart, 0);
+        assert_eq!(alignment.operations,
+                   [Match, Match, Match, Ins, Ins, Ins, Match, Match, Match, Match, Match, Match, Match, Match, Match]);
+    }
 
 
 
