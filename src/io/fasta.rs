@@ -202,6 +202,10 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
                     return Err(io::Error::new(io::ErrorKind::Other, "FASTA read interval was out of bounds"));
                 }
 
+                if start > stop {
+                    return Err(io::Error::new(io::ErrorKind::Other, "Invalid query interval"));
+                }
+
                 let stop = min(stop, idx.len);
                 let length = stop - start as u64;
                 let mut buf = vec![0u8; idx.line_bases as usize];
@@ -444,6 +448,13 @@ ATTGTTGTTTTA
         reader.read("id2", 12, 40, &mut seq).ok().expect("Error reading sequence.");
         assert_eq!(seq, b"ATTGTTGTTTTAATTGTTGTTTTAGGGG");
 
+        reader.read("id2", 12, 12, &mut seq).ok().expect("Error reading sequence.");
+        assert_eq!(seq, b"");
+
+        reader.read("id2", 12, 13, &mut seq).ok().expect("Error reading sequence.");
+        assert_eq!(seq, b"A");
+
+        assert!(reader.read("id2", 12, 11, &mut seq).is_err());
         assert!(reader.read("id2", 12, 1000, &mut seq).is_err());
     }
 
