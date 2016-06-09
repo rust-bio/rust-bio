@@ -25,7 +25,6 @@ use std::convert::AsRef;
 
 use csv;
 
-use utils::{TextSlice, Text};
 
 /// A FASTA reader.
 pub struct Reader<R: io::Read> {
@@ -86,8 +85,8 @@ impl<R: io::Read> Reader<R> {
 
 /// A FASTA index as created by SAMtools (.fai).
 pub struct Index {
-    inner: collections::HashMap<String, IndexRecord>,
-    seqs: Vec<String>,
+    inner: collections::HashMap<Vec<u8>, IndexRecord>,
+    seqs: Vec<Vec<u8>>,
 }
 
 
@@ -99,8 +98,8 @@ impl Index {
         let mut fai_reader = csv::Reader::from_reader(fai).delimiter(b'\t').has_headers(false);
         for row in fai_reader.decode() {
             let (name, record): (String, IndexRecord) = try!(row);
-            seqs.push(name.clone());
-            inner.insert(name, record);
+            seqs.push(name.clone().into_bytes());
+            inner.insert(name.into_bytes(), record);
         }
         Ok(Index {
             inner: inner,
@@ -179,7 +178,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 
     /// For a given seqname, read the whole sequence into the given vector.
-    pub fn read_all(&mut self, seqname: &str, seq: &mut Text) -> io::Result<()> {
+    pub fn read_all(&mut self, seqname: &[u8], seq: &mut Vec<u8>) -> io::Result<()> {
         match self.index.inner.get(seqname) {
             Some(&idx) => self.read(seqname, 0, idx.len, seq),
             None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
@@ -188,38 +187,32 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
     /// Read the given interval of the given seqname into the given vector (stop position is exclusive).
     pub fn read(&mut self,
-                seqname: &str,
+                seqname: &[u8],
                 start: u64,
                 stop: u64,
-                seq: &mut Text)
+                seq: &mut Vec<u8>)
                 -> io::Result<()> {
         match self.index.inner.get(seqname) {
             Some(idx) => {
                 seq.clear();
-                // derived from
-                // http://www.allenyu.info/item/24-quickly-fetch-sequence-from-samtools-faidx-indexed-fasta-sequences.html
+
+                let length = stop - start;
+                let newlines_before = if start > 0 { (start - 1) / idx.line_bytes } else {0};
+                let newlines_by_end = (start + length - 1) / idx.line_bytes;
+                let newlines_inside = newlines_by_end - newlines_before;
+                let seqlen = length + newlines_inside;
+
                 let line = start / idx.line_bases * idx.line_bytes;
                 let line_offset = start % idx.line_bases;
                 let offset = idx.offset + line + line_offset;
-                let lines = stop / idx.line_bases * idx.line_bytes - line;
-                let line_stop = stop % idx.line_bases -
-                                if lines == 0 {
-                    line_offset
-                } else {
-                    0
-                };
 
                 try!(self.reader.seek(io::SeekFrom::Start(offset)));
-                let mut buf = vec![0u8; idx.line_bases as usize];
-                for _ in 0..lines {
-                    // read full lines
-                    try!(self.reader.read(&mut buf));
-                    seq.extend_from_slice(&buf);
-                }
-                // read last line
-                println!("linestop {}", line_stop);
-                try!(self.reader.read(&mut buf[..line_stop as usize]));
-                seq.extend_from_slice(&buf[..line_stop as usize]);
+                let mut buf = vec![0u8; seqlen as usize];
+                try!(self.reader.read_exact(&mut buf));
+
+                let buf_filter = buf.iter().filter(|&&b| b != b'\n' && b != b'\r');
+                seq.extend(buf_filter);
+
                 Ok(())
             }
             None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
@@ -240,7 +233,7 @@ struct IndexRecord {
 
 /// A sequence record returned by the FASTA index.
 pub struct Sequence {
-    pub name: String,
+    pub name: Vec<u8>,
     pub len: u64,
 }
 
@@ -271,7 +264,7 @@ impl<W: io::Write> Writer<W> {
     }
 
     /// Write a Fasta record with given id, optional description and sequence.
-    pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice) -> io::Result<()> {
+    pub fn write(&mut self, id: &str, desc: Option<&str>, seq: &[u8]) -> io::Result<()> {
         try!(self.writer.write(b">"));
         try!(self.writer.write(id.as_bytes()));
         if desc.is_some() {
@@ -336,7 +329,7 @@ impl Record {
     }
 
     /// Return the sequence of the record.
-    pub fn seq(&self) -> TextSlice {
+    pub fn seq(&self) -> &[u8] {
         self.seq.as_bytes()
     }
 
@@ -406,8 +399,24 @@ ATTGTTGTTTTA
                              .ok()
                              .expect("Error reading index");
         let mut seq = Vec::new();
-        reader.read("id", 1, 5, &mut seq).ok().expect("Error reading sequence.");
+        reader.read(b"id", 1, 5, &mut seq).ok().expect("Error reading sequence.");
         assert_eq!(seq, b"CCGT");
+    }
+
+
+
+    #[test]
+    fn test_indexed_reader_big() {
+        let fasta = "/Users/patrick/refdata/hg19-2.0.0/fasta/genome.fa";
+        let mut reader = IndexedReader::from_file(&fasta)
+                             .ok()
+                             .expect("Error reading index");
+        let mut seq = Vec::new();
+        let start = 27168299;
+        let end = 27168321;
+
+        reader.read(b"chr9", start, end, &mut seq).ok().expect("Error reading sequence.");
+        assert_eq!(end-start, seq.len() as u64);
     }
 
     #[test]
