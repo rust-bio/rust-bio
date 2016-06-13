@@ -167,6 +167,11 @@ pub fn lcp(text: &[u8], pos: &SuffixArraySlice) -> LCPArray {
 /// * `pos` - the suffix array
 /// * `lcp` - the lcp array
 ///
+/// # Returns
+///
+/// An vector of the length of the shortest unique substring for each position of the text.
+/// Suffixes are excluded. If no unique substring starts at a given position, the entry is `None`.
+///
 /// # Example
 ///
 /// ```
