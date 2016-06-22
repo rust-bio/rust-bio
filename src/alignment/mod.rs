@@ -1,4 +1,4 @@
-// Copyright 2014-2015 Johannes Köster, Vadim Nazarov.
+// Copyright 2014-2015 Johannes Köster, Vadim Nazarov, Patrick Marks
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -21,13 +21,16 @@ pub enum AlignmentOperation {
 }
 
 
-/// An alignment, consisting of a score, a start in sequence y, a start in sequence x, the length
-/// of sequence x and its edit operations (see alignment::pairwise for meaning of x and y).
+/// An alignment, consisting of a score, the start and end position of the alignment on
+/// sequence x and sequence y, the length of sequence x,
+/// and the alignment edit operations (see alignment::pairwise for meaning of x and y).
 #[derive(Debug)]
 pub struct Alignment {
     pub score: i32,
     pub ystart: usize,
     pub xstart: usize,
+    pub yend: usize,
+    pub xend: usize,
     pub xlen: usize,
     pub operations: Vec<AlignmentOperation>,
 }
@@ -229,6 +232,8 @@ mod tests {
             score: 5,
             xstart: 3,
             ystart: 0,
+            xend: 10,
+            yend: 10,
             xlen: 10,
             operations: vec![Match, Match, Match, Subst, Ins, Ins, Del, Del],
         };

@@ -11,6 +11,7 @@ use std::iter;
 use std;
 use std::fmt::Debug;
 use std::ops::Deref;
+use std::cmp;
 
 use num::{Integer, Unsigned, NumCast};
 use num::traits::cast;
@@ -207,6 +208,53 @@ pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray
     }
 
     lcp
+}
+
+
+/// Calculate all locally shortest unique substrings from a given suffix and lcp array
+/// (Ohlebusch (2013). "Bioinformatics Algorithms". ISBN 978-3-00-041316-2).
+/// Complexity: O(n)
+///
+/// # Arguments
+///
+/// * `pos` - the suffix array
+/// * `lcp` - the lcp array
+///
+/// # Returns
+///
+/// An vector of the length of the shortest unique substring for each position of the text.
+/// Suffixes are excluded. If no unique substring starts at a given position, the entry is `None`.
+///
+/// # Example
+///
+/// ```
+/// use bio::data_structures::suffix_array::{suffix_array,lcp,shortest_unique_substrings};
+/// let text = b"GCTGCTA$";
+/// let pos = suffix_array(text);
+///
+/// // obtain compressed LCP array
+/// let lcp = lcp(text, &pos);
+///
+/// // calculate shortest unique substrings
+/// let sus = shortest_unique_substrings(&pos, &lcp);
+/// assert_eq!(sus, [Some(4), Some(3), Some(2), Some(4), Some(3), Some(2), Some(1), Some(1)]);
+/// ```
+pub fn shortest_unique_substrings<SA: SuffixArray>(pos: &SA, lcp: &LCPArray) -> Vec<Option<usize>> {
+    let n = pos.len();
+    // Initialize array representing the length of the shortest unique substring starting at position i
+    let mut sus = vec![None; n];
+    for i in 0..n {
+        // The longest common prefixes (LCP) of suffix pos[i] with its predecessor and successor are not unique.
+        // In turn the their maximum + 1 is the length of the shortest unique substring starting at pos[i].
+        let len = 1 + cmp::max(lcp.get(i).unwrap(), lcp.get(i + 1).unwrap_or(0)) as usize;
+        let p = pos.get(i).unwrap();
+        // Check if the suffix pos[i] is a prefix of pos[i+1]. In that case, there is no unique substring
+        // at this position.
+        if n - p >= len {
+            sus[p] = Some(len);
+        }
+    }
+    sus
 }
 
 
