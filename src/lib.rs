@@ -46,7 +46,7 @@
 //! let fmindex = FMIndex::new(bwt, less, occ);
 //!
 //! let interval = fmindex.backward_search(pattern.iter());
-//! let positions = interval.lower..interval.upper;
+//! let positions = interval.occ(&sa);
 //! ```
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.
