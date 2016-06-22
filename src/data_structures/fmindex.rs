@@ -280,7 +280,7 @@ impl<
 
             // if size changed, add last interval to list
             if interval.size != forward_interval.size {
-                curr.push(interval.clone());
+                curr.push(interval);
             }
             // if new interval size is zero, stop, as no further forward extension is possible
             if forward_interval.size == 0 {
@@ -289,7 +289,7 @@ impl<
             interval = forward_interval;
         }
         // add the last non-zero interval
-        curr.push(interval.clone());
+        curr.push(interval);
         // reverse intervals such that longest comes first
         curr.reverse();
 
