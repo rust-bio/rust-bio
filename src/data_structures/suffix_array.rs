@@ -23,12 +23,34 @@ use alphabets::{Alphabet, RankTransform};
 use data_structures::smallints::SmallInts;
 use data_structures::bwt::{DerefBWT, DerefLess, DerefOcc};
 
+pub type LCPArray = SmallInts<i8, isize>;
+pub type RawSuffixArray = Vec<usize>;
+
 pub trait SuffixArray {
     fn get(&self, index: usize) -> Option<usize>;
     fn len(&self) -> usize;
+
+    fn sampled<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc>
+        (&self, bwt: DBWT, less: DLess, occ: DOcc, sampling_rate: usize) ->
+        SampledSuffixArray<DBWT, DLess, DOcc> {
+
+        let mut sample = Vec::new();
+        for i in 0..self.len() {
+            if (i % sampling_rate) == 0 {
+                sample.push(self.get(i).unwrap());
+            }
+        }
+
+        SampledSuffixArray {
+            bwt: bwt,
+            less: less,
+            occ: occ,
+            sample: sample,
+            s: sampling_rate,
+        }
+    }
 }
 
-pub type RawSuffixArray = Vec<usize>;
 pub struct SampledSuffixArray<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> {
     bwt: DBWT,
     less: DLess,
@@ -36,7 +58,6 @@ pub struct SampledSuffixArray<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> 
     sample: Vec<usize>,
     s: usize, // Rate of sampling
 }
-pub type LCPArray = SmallInts<i8, isize>;
 
 impl SuffixArray for RawSuffixArray {
     fn get(&self, index: usize) -> Option<usize> {
@@ -57,16 +78,12 @@ impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SuffixArray for SampledSu
         if index < self.len() {
             let mut pos = index;
             let mut offset = 0;
-            println!("pos sample: {:?}", self.sample);
             loop {
-                println!("pos: {}, offset: {}", pos, offset);
                 if pos % self.s == 0 {
-                    println!("FOUND\n");
                     return Some(self.sample[pos / self.s] + offset);
                 }
 
                 let c = self.bwt[pos];
-                println!("c: {}", c as char);
                 pos = self.less[c as usize] + self.occ.get(&self.bwt, pos - 1, c);
                 offset += 1;
             }
@@ -587,7 +604,8 @@ mod tests {
     use super::*;
     use super::{PosTypes, SAIS, transform_text};
     use bit_vec::BitVec;
-    use alphabets::Alphabet;
+    use alphabets::{Alphabet, dna};
+    use data_structures::bwt::{bwt, less, Occ};
     use std::str;
 
     #[test]
@@ -679,22 +697,23 @@ mod tests {
 
     #[test]
     fn test_sorts_lexically() {
-        let tests = [(&b"A$C$G$T$"[..], "simple"),
-                     (&b"A$A$T$T$"[..], "duplicates"),
-                     (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
-                     (&b"AGCCAT$\
-                        CAGCC$"[..],
-                        "substring"),
-                     (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
-                        AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
-                        "complex"),
-                     (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
-                        TTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATTATAATTAGGCCTAC$\
-                        AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
-                        TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"[..],
-                        "complex with revcomps"),
-                     ];
-        for &(text, test_name) in tests.into_iter() {
+        let test_cases =             [(&b"A$C$G$T$"[..], "simple"),
+             (&b"A$A$T$T$"[..], "duplicates"),
+             (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
+             (&b"AGCCAT$\
+                CAGCC$"[..],
+                "substring"),
+             (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
+                AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
+                "complex"),
+             (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
+                TTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATTATAATTAGGCCTAC$\
+                AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
+                TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"[..],
+                "complex with revcomps"),
+             ];
+
+        for &(text, test_name) in test_cases.into_iter() {
             let pos = suffix_array(text);
             for i in 0..(pos.len() - 2) {
                 // Check that every element in the suffix array is lexically <= the next elem
@@ -709,6 +728,38 @@ mod tests {
                                 pos[i],
                                 pos[i + 1],
                                 test_name));
+            }
+        }
+    }
+
+    #[test]
+    fn test_sampled_matches() {
+        let test_cases =             [(&b"A$C$G$T$"[..], "simple"),
+             (&b"A$A$T$T$"[..], "duplicates"),
+             (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
+             (&b"AGCCAT$\
+                CAGCC$"[..],
+                "substring"),
+             (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
+                AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
+                "complex"),
+             (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
+                TTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATTATAATTAGGCCTAC$\
+                AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
+                TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"[..],
+                "complex with revcomps"),
+             ];
+
+        for &(text, test_name) in test_cases.into_iter() {
+            let alphabet = dna::n_alphabet();
+            let sa = suffix_array(text);
+            let bwt = bwt(text, &sa);
+            let less = less(&bwt, &alphabet);
+            let occ = Occ::new(&bwt, 3, &alphabet);
+            let sampled = sa.sampled(&bwt, &less, &occ, 1);
+
+            for i in 0..sa.len() {
+                assert_eq!(sa.get(i), sampled.get(i));
             }
         }
     }
