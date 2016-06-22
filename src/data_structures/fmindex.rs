@@ -140,25 +140,6 @@ impl<
             occ: occ,
         }
     }
-
-    /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
-    /// This expects a BWT that was created from a text over the DNA alphabet with N
-    /// (`alphabets::dna::n_alphabet()`) consisting of the
-    /// concatenation with its reverse complement, separated by the sentinel symbol `$`.
-    /// I.e., let T be the original text and R be its reverse complement.
-    /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
-    /// T1$R1$T2$R2$T3$R3$.
-    ///
-    pub fn as_fmdindex(self) -> FMDIndex<DBWT, DLess, DOcc> {
-        let mut alphabet = dna::n_alphabet();
-        alphabet.insert(b'$');
-        assert!(alphabet.is_word(self.bwt()),
-                "Expecting BWT over the DNA alphabet (including N) with the sentinel $.");
-
-        FMDIndex {
-            fmindex: self,
-        }
-    }
 }
 
 /// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
@@ -228,6 +209,30 @@ impl<
 impl<
     DBWT: DerefBWT + Clone,
     DLess: DerefLess + Clone,
+    DOcc: DerefOcc + Clone> From<FMIndex<DBWT, DLess, DOcc>> for FMDIndex<DBWT, DLess, DOcc> {
+    /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
+    /// This expects a BWT that was created from a text over the DNA alphabet with N
+    /// (`alphabets::dna::n_alphabet()`) consisting of the
+    /// concatenation with its reverse complement, separated by the sentinel symbol `$`.
+    /// I.e., let T be the original text and R be its reverse complement.
+    /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
+    /// T1$R1$T2$R2$T3$R3$.
+    ///
+    fn from(fmindex: FMIndex<DBWT, DLess, DOcc>) -> FMDIndex<DBWT, DLess, DOcc> {
+        let mut alphabet = dna::n_alphabet();
+        alphabet.insert(b'$');
+        assert!(alphabet.is_word(fmindex.bwt()),
+                "Expecting BWT over the DNA alphabet (including N) with the sentinel $.");
+
+        FMDIndex {
+            fmindex: fmindex,
+        }
+    }
+}
+
+impl<
+    DBWT: DerefBWT + Clone,
+    DLess: DerefLess + Clone,
     DOcc: DerefOcc + Clone>  FMDIndex<DBWT, DLess, DOcc> {
 
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
@@ -237,7 +242,7 @@ impl<
     ///
     /// ```
     /// use bio::alphabets::dna;
-    /// use bio::data_structures::fmindex::FMIndex;
+    /// use bio::data_structures::fmindex::{FMIndex, FMDIndex};
     /// use bio::data_structures::suffix_array::suffix_array;
     /// use bio::data_structures::bwt::{bwt, less, Occ};
     /// use std::rc::Rc;
@@ -249,7 +254,7 @@ impl<
     /// let less = Rc::new(less(&bwt, &alphabet));
     /// let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
     /// let fm = FMIndex::new(bwt, less, occ);
-    /// let fmdindex = fm.as_fmdindex();
+    /// let fmdindex = FMDIndex::from(fm);
     ///
     /// let pattern = b"ATT";
     /// let intervals = fmdindex.smems(pattern, 2);
@@ -402,7 +407,7 @@ mod tests {
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
         let fmindex = FMIndex::new(bwt, less, occ);
-        let fmdindex = fmindex.as_fmdindex();
+        let fmdindex = FMDIndex::from(fmindex);
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
@@ -432,7 +437,7 @@ mod tests {
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
         let fmindex = FMIndex::new(bwt, less, occ);
-        let fmdindex = fmindex.as_fmdindex();
+        let fmdindex = FMDIndex::from(fmindex);
         let pattern = b"T";
         let interval = fmdindex.init_interval(pattern, 0);
 
@@ -510,7 +515,7 @@ mod tests {
         let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
 
         let fmindex = FMIndex::new(bwt, less, occ);
-        let fmdindex = fmindex.as_fmdindex();
+        let fmdindex = FMDIndex::from(fmindex);
 
         let read = b"GGCGTGGTGGCTTATGCCTGTAATCCCAGCACTTTGGGAGGTCGAAGTGGGCGG";
         let read_pos = 0;
