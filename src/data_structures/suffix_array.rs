@@ -750,7 +750,7 @@ mod tests {
                 "complex with revcomps"),
              ];
 
-        for &(text, test_name) in test_cases.into_iter() {
+        for &(text, _) in test_cases.into_iter() {
             let alphabet = dna::n_alphabet();
             let sa = suffix_array(text);
             let bwt = bwt(text, &sa);

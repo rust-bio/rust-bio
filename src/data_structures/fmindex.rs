@@ -1,4 +1,4 @@
-// Cloneright 2014 Johannes Köster.
+// Copyright 2014 Johannes Köster.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -50,15 +50,14 @@ pub trait FMIndexable {
     /// use bio::data_structures::fmindex::{FMIndex, FMIndexable};
     /// use bio::data_structures::suffix_array::suffix_array;
     /// use bio::alphabets::dna;
-    /// use std::rc::Rc;
     ///
     /// let text = b"GCCTTAACATTATTACGCCTA$";
     /// let alphabet = dna::n_alphabet();
     /// let sa = suffix_array(text);
-    /// let bwt = Rc::new(bwt(text, &sa));
-    /// let less = Rc::new(less(&bwt, &alphabet));
-    /// let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
-    /// let fm = FMIndex::new(bwt, less, occ);
+    /// let bwt = bwt(text, &sa);
+    /// let less = less(&bwt, &alphabet);
+    /// let occ = Occ::new(&bwt, 3, &alphabet);
+    /// let fm = FMIndex::new(&bwt, &less, &occ);
     ///
     /// let pattern = b"TTA";
     /// let sai = fm.backward_search(pattern.iter());
@@ -245,15 +244,14 @@ impl<
     /// use bio::data_structures::fmindex::{FMIndex, FMDIndex};
     /// use bio::data_structures::suffix_array::suffix_array;
     /// use bio::data_structures::bwt::{bwt, less, Occ};
-    /// use std::rc::Rc;
     ///
     /// let text = b"ATTC$GAAT$";
     /// let alphabet = dna::n_alphabet();
     /// let sa = suffix_array(text);
-    /// let bwt = Rc::new(bwt(text, &sa));
-    /// let less = Rc::new(less(&bwt, &alphabet));
-    /// let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
-    /// let fm = FMIndex::new(bwt, less, occ);
+    /// let bwt = bwt(text, &sa);
+    /// let less = less(&bwt, &alphabet);
+    /// let occ = Occ::new(&bwt, 3, &alphabet);
+    /// let fm = FMIndex::new(&bwt, &less, &occ);
     /// let fmdindex = FMDIndex::from(fm);
     ///
     /// let pattern = b"ATT";
@@ -391,7 +389,6 @@ mod tests {
     use alphabets::dna;
     use data_structures::suffix_array::suffix_array;
     use data_structures::bwt::{bwt, less, Occ};
-    use std::rc::Rc;
 
     #[test]
     fn test_smems() {
@@ -401,26 +398,26 @@ mod tests {
         let text = text_builder.concat();
 
         let alphabet = dna::n_alphabet();
-        let sa = Rc::new(suffix_array(&text));
-        let bwt = Rc::new(bwt(&text, &sa));
-        let less = Rc::new(less(&bwt, &alphabet));
-        let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
+        let sa = suffix_array(&text);
+        let bwt = bwt(&text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
 
-        let fmindex = FMIndex::new(bwt, less, occ);
+        let fmindex = FMIndex::new(&bwt, &less, &occ);
         let fmdindex = FMDIndex::from(fmindex);
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
             let forward = intervals[0].forward();
             let revcomp = intervals[0].revcomp();
-            assert_eq!(forward.occ(sa.as_ref()), [5, 16]);
-            assert_eq!(revcomp.occ(sa.as_ref()), [3, 14]);
+            assert_eq!(forward.occ(&sa), [5, 16]);
+            assert_eq!(revcomp.occ(&sa), [3, 14]);
         }
         {
             let pattern = b"CTTAA";
             let intervals = fmdindex.smems(pattern, 1);
-            assert_eq!(intervals[0].forward().occ(sa.as_ref()), [2]);
-            assert_eq!(intervals[0].revcomp().occ(sa.as_ref()), [14]);
+            assert_eq!(intervals[0].forward().occ(&sa), [2]);
+            assert_eq!(intervals[0].revcomp().occ(&sa), [14]);
             assert_eq!(intervals[0].match_size, 5)
         }
     }
@@ -432,11 +429,11 @@ mod tests {
 
         let alphabet = dna::n_alphabet();
         let sa = suffix_array(text);
-        let bwt = Rc::new(bwt(text, &sa));
-        let less = Rc::new(less(&bwt, &alphabet));
-        let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
+        let bwt = bwt(text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
 
-        let fmindex = FMIndex::new(bwt, less, occ);
+        let fmindex = FMIndex::new(&bwt, &less, &occ);
         let fmdindex = FMDIndex::from(fmindex);
         let pattern = b"T";
         let interval = fmdindex.init_interval(pattern, 0);
@@ -510,11 +507,11 @@ mod tests {
 
         let alphabet = dna::n_alphabet();
         let sa = suffix_array(reads);
-        let bwt = Rc::new(bwt(reads, &sa));
-        let less = Rc::new(less(&bwt, &alphabet));
-        let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
+        let bwt = bwt(reads, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
 
-        let fmindex = FMIndex::new(bwt, less, occ);
+        let fmindex = FMIndex::new(&bwt, &less, &occ);
         let fmdindex = FMDIndex::from(fmindex);
 
         let read = b"GGCGTGGTGGCTTATGCCTGTAATCCCAGCACTTTGGGAGGTCGAAGTGGGCGG";
