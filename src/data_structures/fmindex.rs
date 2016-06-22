@@ -527,7 +527,7 @@ mod tests {
             let matches = intervals.iter()
                                    .flat_map(|interval| interval.forward().occ(&sa))
                                    .collect::<Vec<usize>>();
-            //assert_eq!(matches, vec![read_pos]);
+            assert_eq!(matches, vec![read_pos]);
         }
     }
 }
