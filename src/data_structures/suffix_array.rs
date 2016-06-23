@@ -26,11 +26,37 @@ use data_structures::bwt::{DerefBWT, DerefLess, DerefOcc};
 pub type LCPArray = SmallInts<i8, isize>;
 pub type RawSuffixArray = Vec<usize>;
 
-pub trait SuffixArray {
-    fn get(&self, index: usize) -> Option<usize>;
-    fn len(&self) -> usize;
 
-    fn sampled<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc>
+pub trait SampleableSuffixArray: SuffixArray {
+    /// Sample the suffix array with the given sample rate.
+    ///
+    /// # Arguments
+    ///
+    /// * `bwt` - the corresponding BWT
+    /// * `less` - the corresponding less array
+    /// * `occ` - the corresponding occ table
+    /// * `sampling_rate` - if sampling rate is k, every k-th entry will be kept
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::suffix_array::{suffix_array, SampleableSuffixArray, SuffixArray};
+    /// use bio::data_structures::bwt::{bwt, less, Occ};
+    /// use bio::alphabets::dna;
+    ///
+    /// let text = b"ACGCGAT$";
+    /// let alphabet = dna::n_alphabet();
+    /// let sa = suffix_array(text);
+    /// let bwt = bwt(text, &sa);
+    /// let less = less(&bwt, &alphabet);
+    /// let occ = Occ::new(&bwt, 3, &alphabet);
+    /// let sampled = sa.sample(&bwt, &less, &occ, 1);
+    ///
+    /// for i in 0..sa.len() {
+    ///    assert_eq!(sa.get(i), sampled.get(i));
+    /// }
+    /// ```
+    fn sample<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc>
         (&self, bwt: DBWT, less: DLess, occ: DOcc, sampling_rate: usize) ->
         SampledSuffixArray<DBWT, DLess, DOcc> {
 
@@ -51,6 +77,15 @@ pub trait SuffixArray {
     }
 }
 
+
+/// A trait exposing general functionality of suffix arrays.
+pub trait SuffixArray {
+    fn get(&self, index: usize) -> Option<usize>;
+    fn len(&self) -> usize;
+}
+
+
+/// A sampled suffix array.
 pub struct SampledSuffixArray<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> {
     bwt: DBWT,
     less: DLess,
@@ -58,6 +93,7 @@ pub struct SampledSuffixArray<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> 
     sample: Vec<usize>,
     s: usize, // Rate of sampling
 }
+
 
 impl SuffixArray for RawSuffixArray {
     fn get(&self, index: usize) -> Option<usize> {
@@ -68,10 +104,15 @@ impl SuffixArray for RawSuffixArray {
             None
         }
     }
+
     fn len(&self) -> usize {
         Vec::len(self)
     }
 }
+
+
+impl SampleableSuffixArray for RawSuffixArray {}
+
 
 impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SuffixArray for SampledSuffixArray<DBWT, DLess, DOcc> {
     fn get(&self, index: usize) -> Option<usize> {
@@ -756,7 +797,7 @@ mod tests {
             let bwt = bwt(text, &sa);
             let less = less(&bwt, &alphabet);
             let occ = Occ::new(&bwt, 3, &alphabet);
-            let sampled = sa.sampled(&bwt, &less, &occ, 1);
+            let sampled = sa.sample(&bwt, &less, &occ, 2);
 
             for i in 0..sa.len() {
                 assert_eq!(sa.get(i), sampled.get(i));
