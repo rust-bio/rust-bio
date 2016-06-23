@@ -7,58 +7,36 @@
 
 use std::iter::DoubleEndedIterator;
 
-use data_structures::bwt::{Occ, Less, less, BWT};
-use data_structures::suffix_array::SuffixArraySlice;
-use alphabets::{Alphabet, dna};
+use data_structures::bwt::{less, BWT, DerefBWT, DerefOcc, DerefLess};
+use data_structures::suffix_array::SuffixArray;
+use alphabets::dna;
 use std::mem::swap;
 
 /// A suffix array interval.
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 pub struct Interval {
-    lower: usize,
-    upper: usize,
+    pub lower: usize,
+    pub upper: usize,
 }
-
 
 impl Interval {
-    /// Return the occurrence positions of the pattern as a slice of the suffix array.
-    pub fn occ<'a>(&self, pos: &'a SuffixArraySlice) -> &'a [usize] {
-        &pos[self.lower..self.upper]
-    }
+  pub fn occ<SA: SuffixArray>(&self, sa: &SA) -> Vec<usize> {
+      (self.lower..self.upper)
+          .map(|pos| sa.get(pos)
+                        .expect("Interval out of range of suffix array"))
+          .collect()
+  }
 }
 
-
-/// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
-/// intervals matching a given pattern.
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
-pub struct FMIndex {
-    bwt: BWT,
-    less: Less,
-    occ: Occ,
-}
-
-
-impl FMIndex {
-    /// Construct a new instance of the FM index.
-    ///
-    /// # Arguments
-    ///
-    /// * `bwt` - the BWT
-    /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
-    ///   less memory usage, but worse performance)
-    /// * `alphabet` - the alphabet of the underlying text, omitting the sentinel
-    pub fn new(bwt: BWT, k: usize, alphabet: &Alphabet) -> Self {
-        let less = less(&bwt, alphabet);
-        let occ = Occ::new(&bwt, k, alphabet);
-        FMIndex {
-            bwt: bwt,
-            less: less,
-            occ: occ,
-        }
-    }
+pub trait FMIndexable {
+    /// Get occurrence count of symbol a in BWT[..r+1].
+    fn occ(&self, r: usize, a: u8) -> usize;
+    /// Also known as
+    fn less(&self, a: u8) -> usize;
+    fn bwt(&self) -> &BWT;
 
     /// Perform backward search, yielding suffix array
-    /// interval denoting exact occurences of the given pattern of length m in the text.
+    /// interval denoting exact occurrences of the given pattern of length m in the text.
     /// Complexity: O(m).
     ///
     /// # Arguments
@@ -68,27 +46,28 @@ impl FMIndex {
     /// # Example
     ///
     /// ```
-    /// use bio::data_structures::bwt::bwt;
-    /// use bio::data_structures::fmindex::FMIndex;
+    /// use bio::data_structures::bwt::{bwt, less, Occ};
+    /// use bio::data_structures::fmindex::{FMIndex, FMIndexable};
     /// use bio::data_structures::suffix_array::suffix_array;
     /// use bio::alphabets::dna;
     ///
     /// let text = b"GCCTTAACATTATTACGCCTA$";
-    /// let alphabet = dna::alphabet();
-    /// let pos = suffix_array(text);
-    /// let fm = FMIndex::new(bwt(text, &pos), 3, &alphabet);
+    /// let alphabet = dna::n_alphabet();
+    /// let sa = suffix_array(text);
+    /// let bwt = bwt(text, &sa);
+    /// let less = less(&bwt, &alphabet);
+    /// let occ = Occ::new(&bwt, 3, &alphabet);
+    /// let fm = FMIndex::new(&bwt, &less, &occ);
     ///
     /// let pattern = b"TTA";
     /// let sai = fm.backward_search(pattern.iter());
     ///
-    /// let occ = sai.occ(&pos);
+    /// let occ = sai.occ(&sa);
     ///
     /// assert_eq!(occ, [3, 12, 9]);
     /// ```
-    pub fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator>(&self,
-                                                                                 pattern: P)
-                                                                                 -> Interval {
-        let (mut l, mut r) = (0, self.bwt.len() - 1);
+    fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator> (&self, pattern: P) -> Interval {
+        let (mut l, mut r) = (0, self.bwt().len() - 1);
         for &a in pattern.rev() {
             let less = self.less(a);
             l = less +
@@ -106,23 +85,64 @@ impl FMIndex {
         }
     }
 
-    pub fn occ(&self, r: usize, a: u8) -> usize {
+
+}
+
+/// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
+/// intervals matching a given pattern.
+
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+pub struct FMIndex<
+        DBWT: DerefBWT + Clone,
+        DLess: DerefLess + Clone,
+        DOcc: DerefOcc + Clone> {
+    bwt: DBWT,
+    less: DLess,
+    occ: DOcc,
+}
+
+impl<
+    DBWT: DerefBWT + Clone,
+    DLess: DerefLess + Clone,
+    DOcc: DerefOcc + Clone> FMIndexable for FMIndex<DBWT, DLess, DOcc> {
+
+    fn occ(&self, r: usize, a: u8) -> usize {
         self.occ.get(&self.bwt, r, a)
     }
-
-    pub fn less(&self, a: u8) -> usize {
+    fn less(&self, a: u8) -> usize {
         self.less[a as usize]
     }
-
     /// Provide a reference to the underlying BWT.
-    pub fn bwt(&self) -> &BWT {
+    fn bwt(&self) -> &BWT {
         &self.bwt
     }
 }
 
+impl<
+    DBWT: DerefBWT + Clone,
+    DLess: DerefLess + Clone,
+    DOcc: DerefOcc + Clone> FMIndex<DBWT, DLess, DOcc> {
+
+    /// Construct a new instance of the FM index.
+    ///
+    /// # Arguments
+    ///
+    /// * `sa` - the suffix array (or sample)
+    /// * `bwt` - the BWT
+    /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
+    ///   less memory usage, but worse performance)
+    /// * `alphabet` - the alphabet of the underlying text, omitting the sentinel
+    pub fn new(bwt: DBWT, less: DLess, occ: DOcc) -> Self {
+        FMIndex {
+            bwt: bwt,
+            less: less,
+            occ: occ,
+        }
+    }
+}
 
 /// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 pub struct BiInterval {
     lower: usize,
     lower_rev: usize,
@@ -130,20 +150,18 @@ pub struct BiInterval {
     match_size: usize,
 }
 
-
 impl BiInterval {
-    /// Return the occurrence positions of the pattern as a slice of the suffix array.
-    pub fn occ<'a>(&self, pos: &'a SuffixArraySlice) -> &'a [usize] {
-        self._pos(pos, self.lower)
+    pub fn forward(&self) -> Interval {
+        Interval {
+            upper: self.lower + self.size,
+            lower: self.lower
+        }
     }
-
-    /// Return the occurrence positions of the reverse complement of the pattern as a slice of the suffix array.
-    pub fn occ_revcomp<'a>(&self, pos: &'a SuffixArraySlice) -> &'a [usize] {
-        self._pos(pos, self.lower_rev)
-    }
-
-    fn _pos<'a>(&self, pos: &'a SuffixArraySlice, lower: usize) -> &'a [usize] {
-        &pos[lower..lower + self.size]
+    pub fn revcomp(&self) -> Interval {
+        Interval {
+            upper: self.lower_rev + self.size,
+            lower: self.lower_rev
+        }
     }
 
     fn swapped(&self) -> BiInterval {
@@ -160,12 +178,37 @@ impl BiInterval {
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
 #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
-pub struct FMDIndex {
-    fmindex: FMIndex
+pub struct FMDIndex<
+    DBWT: DerefBWT + Clone,
+    DLess: DerefLess + Clone,
+    DOcc: DerefOcc + Clone> {
+
+    fmindex: FMIndex<DBWT, DLess, DOcc>,
 }
 
+impl<
+    DBWT: DerefBWT + Clone,
+    DLess: DerefLess + Clone,
+    DOcc: DerefOcc + Clone> FMIndexable for FMDIndex<DBWT, DLess, DOcc> {
 
-impl FMDIndex {
+    fn occ(&self, r: usize, a: u8) -> usize {
+        self.fmindex.occ(r, a)
+    }
+
+    fn less(&self, a: u8) -> usize {
+        self.fmindex.less(a)
+    }
+
+    /// Provide a reference to the underlying BWT.
+    fn bwt(&self) -> &BWT {
+        self.fmindex.bwt()
+    }
+}
+
+impl<
+    DBWT: DerefBWT + Clone,
+    DLess: DerefLess + Clone,
+    DOcc: DerefOcc + Clone> From<FMIndex<DBWT, DLess, DOcc>> for FMDIndex<DBWT, DLess, DOcc> {
     /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
     /// This expects a BWT that was created from a text over the DNA alphabet with N
     /// (`alphabets::dna::n_alphabet()`) consisting of the
@@ -174,21 +217,22 @@ impl FMDIndex {
     /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
     /// T1$R1$T2$R2$T3$R3$.
     ///
-    /// # Arguments
-    ///
-    /// * `bwt` - the BWT
-    /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
-    ///   less memory usage, but worse performance)
-    pub fn new(bwt: BWT, k: usize) -> Self {
+    fn from(fmindex: FMIndex<DBWT, DLess, DOcc>) -> FMDIndex<DBWT, DLess, DOcc> {
         let mut alphabet = dna::n_alphabet();
         alphabet.insert(b'$');
-        assert!(alphabet.is_word(&bwt),
+        assert!(alphabet.is_word(fmindex.bwt()),
                 "Expecting BWT over the DNA alphabet (including N) with the sentinel $.");
 
         FMDIndex {
-            fmindex: FMIndex::new(bwt, k, &alphabet)
+            fmindex: fmindex,
         }
     }
+}
+
+impl<
+    DBWT: DerefBWT + Clone,
+    DLess: DerefLess + Clone,
+    DOcc: DerefOcc + Clone>  FMDIndex<DBWT, DLess, DOcc> {
 
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
     /// Complexity O(m) with pattern of length m.
@@ -196,21 +240,29 @@ impl FMDIndex {
     /// # Example
     ///
     /// ```
-    /// use bio::data_structures::fmindex::FMDIndex;
+    /// use bio::alphabets::dna;
+    /// use bio::data_structures::fmindex::{FMIndex, FMDIndex};
     /// use bio::data_structures::suffix_array::suffix_array;
-    /// use bio::data_structures::bwt::bwt;
+    /// use bio::data_structures::bwt::{bwt, less, Occ};
     ///
     /// let text = b"ATTC$GAAT$";
-    /// let pos = suffix_array(text);
-    /// let fmdindex = FMDIndex::new(bwt(text, &pos), 3);
+    /// let alphabet = dna::n_alphabet();
+    /// let sa = suffix_array(text);
+    /// let bwt = bwt(text, &sa);
+    /// let less = less(&bwt, &alphabet);
+    /// let occ = Occ::new(&bwt, 3, &alphabet);
+    /// let fm = FMIndex::new(&bwt, &less, &occ);
+    /// let fmdindex = FMDIndex::from(fm);
     ///
     /// let pattern = b"ATT";
     /// let intervals = fmdindex.smems(pattern, 2);
-    /// let occ = intervals[0].occ(&pos);
-    /// let occ_revcomp = intervals[0].occ_revcomp(&pos);
     ///
-    /// assert_eq!(occ, [0]);
-    /// assert_eq!(occ_revcomp, [6]);
+    /// let forward_occ = intervals[0].forward().occ(&sa);
+    ///
+    /// let revcomp_occ = intervals[0].revcomp().occ(&sa);
+    ///
+    /// assert_eq!(forward_occ, [0]);
+    /// assert_eq!(revcomp_occ, [6]);
     /// ```
     pub fn smems(&self, pattern: &[u8], i: usize) -> Vec<BiInterval> {
 
@@ -252,7 +304,7 @@ impl FMDIndex {
             // size of the last confirmed interval
             let mut last_size = -1;
 
-            for &interval in prev.iter() {
+            for interval in prev.iter() {
                 // backward extend interval
                 let forward_interval = self.backward_ext(&interval, a);
 
@@ -262,7 +314,7 @@ impl FMDIndex {
                         // interval is maximal and can be added to the matches
                         curr.is_empty() && k < j {
                     j = k;
-                    matches.push(interval);
+                    matches.push((*interval).clone());
                 }
                 // add _interval to curr (will be further extended next iteration)
                 if forward_interval.size != 0 && forward_interval.size as isize != last_size {
@@ -328,11 +380,6 @@ impl FMDIndex {
         self.backward_ext(&interval.swapped(), comp_a)
             .swapped()
     }
-
-    /// Provide a reference to the underlying FMIndex.
-    pub fn fmindex(&self) -> &FMIndex {
-        &self.fmindex
-    }
 }
 
 
@@ -341,7 +388,7 @@ mod tests {
     use super::*;
     use alphabets::dna;
     use data_structures::suffix_array::suffix_array;
-    use data_structures::bwt::bwt;
+    use data_structures::bwt::{bwt, less, Occ};
 
     #[test]
     fn test_smems() {
@@ -349,34 +396,51 @@ mod tests {
         let revcomp_text = dna::revcomp(orig_text);
         let text_builder: Vec<&[u8]> = vec![orig_text, b"$", &revcomp_text[..], b"$"];
         let text = text_builder.concat();
-        let pos = suffix_array(&text);
-        println!("pos {:?}", pos);
-        println!("text {:?}", text);
-        let fmdindex = FMDIndex::new(bwt(&text, &pos), 3);
+
+        let alphabet = dna::n_alphabet();
+        let sa = suffix_array(&text);
+        let bwt = bwt(&text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+
+        let fmindex = FMIndex::new(&bwt, &less, &occ);
+        let fmdindex = FMDIndex::from(fmindex);
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
-            assert_eq!(intervals[0].occ(&pos), [5, 16]);
-            assert_eq!(intervals[0].occ_revcomp(&pos), [3, 14]);
+            let forward = intervals[0].forward();
+            let revcomp = intervals[0].revcomp();
+            assert_eq!(forward.occ(&sa), [5, 16]);
+            assert_eq!(revcomp.occ(&sa), [3, 14]);
         }
         {
             let pattern = b"CTTAA";
             let intervals = fmdindex.smems(pattern, 1);
-            assert_eq!(intervals[0].occ(&pos), [2]);
-            assert_eq!(intervals[0].occ_revcomp(&pos), [14]);
+            assert_eq!(intervals[0].forward().occ(&sa), [2]);
+            assert_eq!(intervals[0].revcomp().occ(&sa), [14]);
             assert_eq!(intervals[0].match_size, 5)
         }
     }
 
+
     #[test]
     fn test_init_interval() {
         let text = b"ACGT$TGCA$";
-        let pos = suffix_array(text);
-        let fmdindex = FMDIndex::new(bwt(text, &pos), 3);
+
+        let alphabet = dna::n_alphabet();
+        let sa = suffix_array(text);
+        let bwt = bwt(text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+
+        let fmindex = FMIndex::new(&bwt, &less, &occ);
+        let fmdindex = FMDIndex::from(fmindex);
         let pattern = b"T";
         let interval = fmdindex.init_interval(pattern, 0);
-        assert_eq!(interval.occ(&pos), [3, 5]);
-        assert_eq!(interval.occ_revcomp(&pos), [8, 0]);
+
+
+        assert_eq!(interval.forward().occ(&sa), [3, 5]);
+        assert_eq!(interval.revcomp().occ(&sa), [8, 0]);
     }
 
     #[test]
@@ -440,8 +504,15 @@ mod tests {
                        ATTTATAGCAATAAA$TCTTTCTTCTTTTTTAAGGTAGGCATTTATTGCTATAAATTTC\
                        CCTCTTTAGTACTGCCTTTG$CAAAGGCAGTACTAAAGAGGGAAATTTATAGCAATAAA\
                        TGCCTACCTTAAAAAAGAAGAAAGA$";
-        let suffix_array = suffix_array(reads);
-        let fmdindex = FMDIndex::new(bwt(reads, &suffix_array), 1);
+
+        let alphabet = dna::n_alphabet();
+        let sa = suffix_array(reads);
+        let bwt = bwt(reads, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+
+        let fmindex = FMIndex::new(&bwt, &less, &occ);
+        let fmdindex = FMDIndex::from(fmindex);
 
         let read = b"GGCGTGGTGGCTTATGCCTGTAATCCCAGCACTTTGGGAGGTCGAAGTGGGCGG";
         let read_pos = 0;
@@ -451,8 +522,7 @@ mod tests {
             let intervals = fmdindex.smems(read, i);
             println!("{:?}", intervals);
             let matches = intervals.iter()
-                                   .flat_map(|interval| interval.occ(&suffix_array).iter())
-                                   .map(|i| *i)
+                                   .flat_map(|interval| interval.forward().occ(&sa))
                                    .collect::<Vec<usize>>();
             assert_eq!(matches, vec![read_pos]);
         }

@@ -30,19 +30,23 @@
 //! ```rust
 //! use bio::alphabets;
 //! use bio::data_structures::suffix_array::suffix_array;
-//! use bio::data_structures::bwt::bwt;
-//! use bio::data_structures::fmindex::FMIndex;
+//! use bio::data_structures::bwt::{bwt, less, Occ};
+//! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
+//! use std::rc::Rc;
 //!
 //! let text = b"ACGGATGCTGGATCGGATCGCGCTAGCTA$";
 //! let pattern = b"ACCG";
 //!
 //! // Create an FM-Index for a given text.
 //! let alphabet = alphabets::dna::iupac_alphabet();
-//! let pos = suffix_array(text);
-//! let fmindex = FMIndex::new(bwt(text, &pos), 3, &alphabet);
+//! let sa = suffix_array(text);
+//! let bwt = Rc::new(bwt(text, &sa));
+//! let less = Rc::new(less(&bwt, &alphabet));
+//! let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
+//! let fmindex = FMIndex::new(bwt, less, occ);
 //!
 //! let interval = fmindex.backward_search(pattern.iter());
-//! let positions = interval.occ(&pos);
+//! let positions = interval.occ(&sa);
 //! ```
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.

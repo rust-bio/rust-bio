@@ -10,6 +10,7 @@
 use std::iter;
 use std;
 use std::fmt::Debug;
+use std::ops::Deref;
 use std::cmp;
 
 use num::{Integer, Unsigned, NumCast};
@@ -20,11 +21,80 @@ use vec_map::VecMap;
 
 use alphabets::{Alphabet, RankTransform};
 use data_structures::smallints::SmallInts;
+use data_structures::bwt::{DerefBWT, DerefLess, DerefOcc};
 
-
-pub type SuffixArray = Vec<usize>;
-pub type SuffixArraySlice = [usize];
 pub type LCPArray = SmallInts<i8, isize>;
+pub type RawSuffixArray = Vec<usize>;
+
+pub trait SuffixArray {
+    fn get(&self, index: usize) -> Option<usize>;
+    fn len(&self) -> usize;
+
+    fn sampled<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc>
+        (&self, bwt: DBWT, less: DLess, occ: DOcc, sampling_rate: usize) ->
+        SampledSuffixArray<DBWT, DLess, DOcc> {
+
+        let mut sample = Vec::new();
+        for i in 0..self.len() {
+            if (i % sampling_rate) == 0 {
+                sample.push(self.get(i).unwrap());
+            }
+        }
+
+        SampledSuffixArray {
+            bwt: bwt,
+            less: less,
+            occ: occ,
+            sample: sample,
+            s: sampling_rate,
+        }
+    }
+}
+
+pub struct SampledSuffixArray<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> {
+    bwt: DBWT,
+    less: DLess,
+    occ: DOcc,
+    sample: Vec<usize>,
+    s: usize, // Rate of sampling
+}
+
+impl SuffixArray for RawSuffixArray {
+    fn get(&self, index: usize) -> Option<usize> {
+        // Explicitly written out because Vec::get(index) generates a recursion warning
+        if index < self.len() {
+            Some(self[index])
+        } else {
+            None
+        }
+    }
+    fn len(&self) -> usize {
+        Vec::len(self)
+    }
+}
+
+impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SuffixArray for SampledSuffixArray<DBWT, DLess, DOcc> {
+    fn get(&self, index: usize) -> Option<usize> {
+        if index < self.len() {
+            let mut pos = index;
+            let mut offset = 0;
+            loop {
+                if pos % self.s == 0 {
+                    return Some(self.sample[pos / self.s] + offset);
+                }
+
+                let c = self.bwt[pos];
+                pos = self.less[c as usize] + self.occ.get(&self.bwt, pos - 1, c);
+                offset += 1;
+            }
+        } else {
+            None
+        }
+    }
+    fn len(&self) -> usize {
+        self.bwt.len()
+    }
+}
 
 /// Construct suffix array for given text of length n.
 /// Complexity: O(n).
@@ -71,7 +141,7 @@ pub type LCPArray = SmallInts<i8, isize>;
 ///     2, 16, 0, 19, 4, 13, 10, 3, 12, 9
 /// ]);
 /// ```
-pub fn suffix_array(text: &[u8]) -> SuffixArray {
+pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
     let n = text.len();
     let alphabet = Alphabet::new(text);
     let sentinel_count = sentinel_count(text);
@@ -127,7 +197,7 @@ pub fn suffix_array(text: &[u8]) -> SuffixArray {
 ///     ]
 /// )
 /// ```
-pub fn lcp(text: &[u8], pos: &SuffixArraySlice) -> LCPArray {
+pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray {
     assert!(text.len() == pos.len());
     let n = text.len();
 
@@ -186,7 +256,7 @@ pub fn lcp(text: &[u8], pos: &SuffixArraySlice) -> LCPArray {
 /// let sus = shortest_unique_substrings(&pos, &lcp);
 /// assert_eq!(sus, [Some(4), Some(3), Some(2), Some(4), Some(3), Some(2), Some(1), Some(1)]);
 /// ```
-pub fn shortest_unique_substrings(pos: &SuffixArraySlice, lcp: &LCPArray) -> Vec<Option<usize>> {
+pub fn shortest_unique_substrings<SA: SuffixArray>(pos: &SA, lcp: &LCPArray) -> Vec<Option<usize>> {
     let n = pos.len();
     // Initialize array representing the length of the shortest unique substring starting at position i
     let mut sus = vec![None; n];
@@ -194,7 +264,7 @@ pub fn shortest_unique_substrings(pos: &SuffixArraySlice, lcp: &LCPArray) -> Vec
         // The longest common prefixes (LCP) of suffix pos[i] with its predecessor and successor are not unique.
         // In turn the their maximum + 1 is the length of the shortest unique substring starting at pos[i].
         let len = 1 + cmp::max(lcp.get(i).unwrap(), lcp.get(i + 1).unwrap_or(0)) as usize;
-        let p = pos[i];
+        let p = pos.get(i).unwrap();
         // Check if the suffix pos[i] is a prefix of pos[i+1]. In that case, there is no unique substring
         // at this position.
         if n - p >= len {
@@ -534,7 +604,8 @@ mod tests {
     use super::*;
     use super::{PosTypes, SAIS, transform_text};
     use bit_vec::BitVec;
-    use alphabets::Alphabet;
+    use alphabets::{Alphabet, dna};
+    use data_structures::bwt::{bwt, less, Occ};
     use std::str;
 
     #[test]
@@ -620,35 +691,75 @@ mod tests {
     }
 
     fn str_from_pos(sa: &Vec<usize>, text: &[u8], index: usize) -> String {
-        String::from(str::from_utf8(&text[sa[index]..]).unwrap().split("$").next().unwrap_or("")) + "$"
+        String::from(str::from_utf8(&text[sa[index]..]).unwrap().split("$").next().unwrap_or("")) +
+        "$"
     }
 
     #[test]
     fn test_sorts_lexically() {
-        let tests = [(&b"A$C$G$T$"[..], "simple"),
-                     (&b"A$A$T$T$"[..], "duplicates"),
-                     (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
-                     (&b"AGCCAT$\
-                        CAGCC$"[..],
-                        "substring"),
-                     (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
-                        AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
-                        "complex"),
-                     (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
-                        TTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATTATAATTAGGCCTAC$\
-                        AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
-                        TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"[..],
-                        "complex with revcomps"),
-                     ];
-        for &(text, test_name) in tests.into_iter() {
+        let test_cases =             [(&b"A$C$G$T$"[..], "simple"),
+             (&b"A$A$T$T$"[..], "duplicates"),
+             (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
+             (&b"AGCCAT$\
+                CAGCC$"[..],
+                "substring"),
+             (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
+                AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
+                "complex"),
+             (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
+                TTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATTATAATTAGGCCTAC$\
+                AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
+                TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"[..],
+                "complex with revcomps"),
+             ];
+
+        for &(text, test_name) in test_cases.into_iter() {
             let pos = suffix_array(text);
             for i in 0..(pos.len() - 2) {
                 // Check that every element in the suffix array is lexically <= the next elem
                 let cur = str_from_pos(&pos, &text, i);
                 let next = str_from_pos(&pos, &text, i + 1);
 
-                assert!(cur <= next, format!("Failed:\n{}\n{}\nat positions {} and {} are out of order in test: {}",
-                    cur, next, pos[i], pos[i + 1], test_name));
+                assert!(cur <= next,
+                        format!("Failed:\n{}\n{}\nat positions {} and {} are out of order in \
+                                 test: {}",
+                                cur,
+                                next,
+                                pos[i],
+                                pos[i + 1],
+                                test_name));
+            }
+        }
+    }
+
+    #[test]
+    fn test_sampled_matches() {
+        let test_cases =             [(&b"A$C$G$T$"[..], "simple"),
+             (&b"A$A$T$T$"[..], "duplicates"),
+             (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
+             (&b"AGCCAT$\
+                CAGCC$"[..],
+                "substring"),
+             (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
+                AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
+                "complex"),
+             (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
+                TTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATTATAATTAGGCCTAC$\
+                AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
+                TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"[..],
+                "complex with revcomps"),
+             ];
+
+        for &(text, _) in test_cases.into_iter() {
+            let alphabet = dna::n_alphabet();
+            let sa = suffix_array(text);
+            let bwt = bwt(text, &sa);
+            let less = less(&bwt, &alphabet);
+            let occ = Occ::new(&bwt, 3, &alphabet);
+            let sampled = sa.sampled(&bwt, &less, &occ, 1);
+
+            for i in 0..sa.len() {
+                assert_eq!(sa.get(i), sampled.get(i));
             }
         }
     }
