@@ -13,6 +13,8 @@ use std::fmt::Debug;
 use std::ops::Deref;
 use std::cmp;
 
+use itertools::Itertools;
+
 use num::{Integer, Unsigned, NumCast};
 use num::traits::cast;
 
@@ -27,7 +29,11 @@ pub type LCPArray = SmallInts<i8, isize>;
 pub type RawSuffixArray = Vec<usize>;
 
 
-pub trait SampleableSuffixArray: SuffixArray {
+/// A trait exposing general functionality of suffix arrays.
+pub trait SuffixArray {
+    fn get(&self, index: usize) -> Option<usize>;
+    fn len(&self) -> usize;
+
     /// Sample the suffix array with the given sample rate.
     ///
     /// # Arguments
@@ -40,7 +46,7 @@ pub trait SampleableSuffixArray: SuffixArray {
     /// # Example
     ///
     /// ```
-    /// use bio::data_structures::suffix_array::{suffix_array, SampleableSuffixArray, SuffixArray};
+    /// use bio::data_structures::suffix_array::{suffix_array, SuffixArray};
     /// use bio::data_structures::bwt::{bwt, less, Occ};
     /// use bio::alphabets::dna;
     ///
@@ -60,7 +66,7 @@ pub trait SampleableSuffixArray: SuffixArray {
         (&self, bwt: DBWT, less: DLess, occ: DOcc, sampling_rate: usize) ->
         SampledSuffixArray<DBWT, DLess, DOcc> {
 
-        let mut sample = Vec::new();
+        let mut sample = Vec::with_capacity((self.len() as f32 / sampling_rate as f32).ceil() as usize);
         for i in 0..self.len() {
             if (i % sampling_rate) == 0 {
                 sample.push(self.get(i).unwrap());
@@ -75,13 +81,6 @@ pub trait SampleableSuffixArray: SuffixArray {
             s: sampling_rate,
         }
     }
-}
-
-
-/// A trait exposing general functionality of suffix arrays.
-pub trait SuffixArray {
-    fn get(&self, index: usize) -> Option<usize>;
-    fn len(&self) -> usize;
 }
 
 
@@ -108,10 +107,23 @@ impl SuffixArray for RawSuffixArray {
     fn len(&self) -> usize {
         Vec::len(self)
     }
+
+    fn sample<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc>
+        (&self, bwt: DBWT, less: DLess, occ: DOcc, sampling_rate: usize) ->
+        SampledSuffixArray<DBWT, DLess, DOcc> {
+        // Provide a specialized, faster implementation using iterators.
+
+        let sample = self.iter().cloned().step(sampling_rate).collect();
+
+        SampledSuffixArray {
+            bwt: bwt,
+            less: less,
+            occ: occ,
+            sample: sample,
+            s: sampling_rate,
+        }
+    }
 }
-
-
-impl SampleableSuffixArray for RawSuffixArray {}
 
 
 impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SuffixArray for SampledSuffixArray<DBWT, DLess, DOcc> {
@@ -132,10 +144,19 @@ impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SuffixArray for SampledSu
             None
         }
     }
+
     fn len(&self) -> usize {
         self.bwt.len()
     }
 }
+
+
+impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SampledSuffixArray<DBWT, DLess, DOcc> {
+    pub fn sampling_rate(&self) -> usize {
+        self.s
+    }
+}
+
 
 /// Construct suffix array for given text of length n.
 /// Complexity: O(n).
