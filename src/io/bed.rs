@@ -102,9 +102,9 @@ impl<W: io::Write> Writer<W> {
     }
 
     /// Write a given BED record.
-    pub fn write(&mut self, record: Record) -> csv::Result<()> {
+    pub fn write(&mut self, record: &Record) -> csv::Result<()> {
         if record.aux.is_empty() {
-            self.inner.encode((record.chrom, record.start, record.end))
+            self.inner.encode((&record.chrom, record.start, record.end))
         } else {
             self.inner.encode(record)
         }
@@ -251,7 +251,7 @@ mod tests {
         let mut reader = Reader::new(BED_FILE);
         let mut writer = Writer::new(vec![]);
         for r in reader.records() {
-            writer.write(r.ok().expect("Error reading record")).ok().expect("Error writing record");
+            writer.write(&r.ok().expect("Error reading record")).ok().expect("Error writing record");
         }
         assert_eq!(writer.inner.as_bytes(), BED_FILE);
     }

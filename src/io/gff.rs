@@ -157,7 +157,7 @@ impl<W: io::Write> Writer<W> {
     }
 
     /// Write a given GFF record.
-    pub fn write(&mut self, record: Record) -> csv::Result<()> {
+    pub fn write(&mut self, record: &Record) -> csv::Result<()> {
         let attributes;
 
         if !record.attributes.is_empty() {
@@ -166,7 +166,7 @@ impl<W: io::Write> Writer<W> {
             attributes = "".to_owned();
         }
 
-        self.inner.encode((record.seqname, record.source, record.feature_type, record.start, record.end, record.score, record.strand, record.frame, attributes))
+        self.inner.encode((&record.seqname, &record.source, &record.feature_type, record.start, record.end, &record.score, &record.strand, &record.frame, attributes))
     }
 }
 
@@ -252,7 +252,7 @@ impl Record {
     pub fn attributes(&self) -> &HashMap<String, String> {
         &self.attributes
     }
-    
+
     /// Get mutable reference on seqname of feature.
     pub fn seqname_mut(&mut self) -> &mut String {
         return &mut self.seqname;
@@ -299,7 +299,7 @@ mod tests {
     use super::*;
     use io::Strand;
     use std::collections::HashMap;
-    
+
     const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed,ID=test
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV,ID=PRO_0000148105
 ";
@@ -384,7 +384,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut reader = Reader::new(GFF_FILE_ONE_ATTRIB, GffType::GFF3);
         let mut writer = Writer::new(vec![], GffType::GFF3);
         for r in reader.records() {
-            writer.write(r.ok().expect("Error reading record")).ok().expect("Error writing record");
+            writer.write(&r.ok().expect("Error reading record")).ok().expect("Error writing record");
         }
         assert_eq!(writer.inner.as_string(), String::from_utf8_lossy(GFF_FILE_ONE_ATTRIB))
     }
@@ -394,7 +394,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut reader = Reader::new(GTF_FILE_ONE_ATTRIB, GffType::GTF2);
         let mut writer = Writer::new(vec![], GffType::GTF2);
         for r in reader.records() {
-            writer.write(r.ok().expect("Error reading record")).ok().expect("Error writing record");
+            writer.write(&r.ok().expect("Error reading record")).ok().expect("Error writing record");
         }
         assert_eq!(writer.inner.as_string(), String::from_utf8_lossy(GTF_FILE_ONE_ATTRIB))
     }
@@ -404,7 +404,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut reader = Reader::new(GTF_FILE_ONE_ATTRIB, GffType::GTF2);
         let mut writer = Writer::new(vec![], GffType::GFF3);
         for r in reader.records() {
-            writer.write(r.ok().expect("Error reading record")).ok().expect("Error writing record");
+            writer.write(&r.ok().expect("Error reading record")).ok().expect("Error writing record");
         }
         assert_eq!(writer.inner.as_string(), String::from_utf8_lossy(GFF_FILE_ONE_ATTRIB))
     }

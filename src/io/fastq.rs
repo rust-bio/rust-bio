@@ -198,7 +198,7 @@ impl<W: io::Write> Writer<W> {
     }
 
     /// Directly write a FastQ record.
-    pub fn write_record(&mut self, record: Record) -> io::Result<()> {
+    pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
         self.write(record.id().unwrap_or(""),
                    record.desc(),
                    record.seq(),
