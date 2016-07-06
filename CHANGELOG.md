@@ -7,6 +7,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Reverse complement now supports the whole IUPAC alphabet.
 - Various algorithms take now IntoTextIterator instead of only slices.
 - Fasta reader and writer treat sequence names as strings.
+- Refactoring of suffix array + fmindex API to provide more flexibility.
 
 ## [0.6.0] - 2016-05-09
 - Type aliases for various text representations.
