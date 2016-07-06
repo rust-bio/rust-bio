@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [0.7.0] - 2016-07-06
 - Reverse complement API has been refactored into plain functions.
 - Reverse complement now supports the whole IUPAC alphabet.
 - Various algorithms take now IntoTextIterator instead of only slices.
