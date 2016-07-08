@@ -7,8 +7,8 @@
 
 use std::iter::DoubleEndedIterator;
 
-use data_structures::bwt::{less, BWT, DerefBWT, DerefOcc, DerefLess};
-use data_structures::suffix_array::SuffixArray;
+use data_structures::bwt::{less, BWT};
+use data_structures::suffix_array::{SampledSuffixArray, SuffixArray};
 use alphabets::dna;
 use std::mem::swap;
 
@@ -31,9 +31,9 @@ impl Interval {
 pub trait FMIndexable {
     /// Get occurrence count of symbol a in BWT[..r+1].
     fn occ(&self, r: usize, a: u8) -> usize;
-    /// Also known as
     fn less(&self, a: u8) -> usize;
     fn bwt(&self) -> &BWT;
+    fn sa(&self) -> &SampledSuffixArray;
 
     /// Perform backward search, yielding suffix array
     /// interval denoting exact occurrences of the given pattern of length m in the text.
@@ -48,7 +48,7 @@ pub trait FMIndexable {
     /// ```
     /// use bio::data_structures::bwt::{bwt, less, Occ};
     /// use bio::data_structures::fmindex::{FMIndex, FMIndexable};
-    /// use bio::data_structures::suffix_array::suffix_array;
+    /// use bio::data_structures::suffix_array::{suffix_array, SampleableSuffixArray};
     /// use bio::alphabets::dna;
     ///
     /// let text = b"GCCTTAACATTATTACGCCTA$";
@@ -57,7 +57,8 @@ pub trait FMIndexable {
     /// let bwt = bwt(text, &sa);
     /// let less = less(&bwt, &alphabet);
     /// let occ = Occ::new(&bwt, 3, &alphabet);
-    /// let fm = FMIndex::new(&bwt, &less, &occ);
+    /// let ssa = sa.sample(bwt, less, occ, 1);
+    /// let fm = FMIndex::new(ssa);
     ///
     /// let pattern = b"TTA";
     /// let sai = fm.backward_search(pattern.iter());
@@ -65,7 +66,9 @@ pub trait FMIndexable {
     /// let occ = sai.occ(&sa);
     ///
     /// assert_eq!(occ, [3, 12, 9]);
+    /// assert_eq!(occ, sai.occ(fm.sa()));
     /// ```
+
     fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator> (&self, pattern: P) -> Interval {
         let (mut l, mut r) = (0, self.bwt().len() - 1);
         for &a in pattern.rev() {
@@ -92,37 +95,11 @@ pub trait FMIndexable {
 /// intervals matching a given pattern.
 
 #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
-pub struct FMIndex<
-        DBWT: DerefBWT + Clone,
-        DLess: DerefLess + Clone,
-        DOcc: DerefOcc + Clone> {
-    bwt: DBWT,
-    less: DLess,
-    occ: DOcc,
+pub struct FMIndex {
+    sa: SampledSuffixArray,
 }
 
-impl<
-    DBWT: DerefBWT + Clone,
-    DLess: DerefLess + Clone,
-    DOcc: DerefOcc + Clone> FMIndexable for FMIndex<DBWT, DLess, DOcc> {
-
-    fn occ(&self, r: usize, a: u8) -> usize {
-        self.occ.get(&self.bwt, r, a)
-    }
-    fn less(&self, a: u8) -> usize {
-        self.less[a as usize]
-    }
-    /// Provide a reference to the underlying BWT.
-    fn bwt(&self) -> &BWT {
-        &self.bwt
-    }
-}
-
-impl<
-    DBWT: DerefBWT + Clone,
-    DLess: DerefLess + Clone,
-    DOcc: DerefOcc + Clone> FMIndex<DBWT, DLess, DOcc> {
-
+impl FMIndex {
     /// Construct a new instance of the FM index.
     ///
     /// # Arguments
@@ -132,14 +109,35 @@ impl<
     /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
     ///   less memory usage, but worse performance)
     /// * `alphabet` - the alphabet of the underlying text, omitting the sentinel
-    pub fn new(bwt: DBWT, less: DLess, occ: DOcc) -> Self {
-        FMIndex {
-            bwt: bwt,
-            less: less,
-            occ: occ,
+    pub fn new(sa: SampledSuffixArray) -> Self {
+      FMIndex {
+            sa: sa
         }
     }
+
+    pub fn sa(&self) -> &SampledSuffixArray {
+        &self.sa
+    }
 }
+
+impl FMIndexable for FMIndex {
+    fn occ(&self, r: usize, a: u8) -> usize {
+        self.sa.occ(r, a)
+    }
+
+    fn less(&self, a: u8) -> usize {
+        self.sa.less(a)
+    }
+
+    fn bwt(&self) -> &BWT {
+        self.sa.bwt()
+    }
+
+    fn sa(&self) -> &SampledSuffixArray {
+        &self.sa
+    }
+}
+
 
 /// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
 #[derive(Clone, Copy, Debug)]
@@ -178,18 +176,11 @@ impl BiInterval {
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
 #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
-pub struct FMDIndex<
-    DBWT: DerefBWT + Clone,
-    DLess: DerefLess + Clone,
-    DOcc: DerefOcc + Clone> {
-
-    fmindex: FMIndex<DBWT, DLess, DOcc>,
+pub struct FMDIndex {
+    fmindex: FMIndex,
 }
 
-impl<
-    DBWT: DerefBWT + Clone,
-    DLess: DerefLess + Clone,
-    DOcc: DerefOcc + Clone> FMIndexable for FMDIndex<DBWT, DLess, DOcc> {
+impl FMIndexable for FMDIndex {
 
     fn occ(&self, r: usize, a: u8) -> usize {
         self.fmindex.occ(r, a)
@@ -203,12 +194,13 @@ impl<
     fn bwt(&self) -> &BWT {
         self.fmindex.bwt()
     }
+
+    fn sa(&self) -> &SampledSuffixArray {
+        self.fmindex.sa()
+    }
 }
 
-impl<
-    DBWT: DerefBWT + Clone,
-    DLess: DerefLess + Clone,
-    DOcc: DerefOcc + Clone> From<FMIndex<DBWT, DLess, DOcc>> for FMDIndex<DBWT, DLess, DOcc> {
+impl From<FMIndex> for FMDIndex {
     /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
     /// This expects a BWT that was created from a text over the DNA alphabet with N
     /// (`alphabets::dna::n_alphabet()`) consisting of the
@@ -217,7 +209,7 @@ impl<
     /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
     /// T1$R1$T2$R2$T3$R3$.
     ///
-    fn from(fmindex: FMIndex<DBWT, DLess, DOcc>) -> FMDIndex<DBWT, DLess, DOcc> {
+    fn from(fmindex: FMIndex) -> FMDIndex {
         let mut alphabet = dna::n_alphabet();
         alphabet.insert(b'$');
         assert!(alphabet.is_word(fmindex.bwt()),
@@ -229,10 +221,7 @@ impl<
     }
 }
 
-impl<
-    DBWT: DerefBWT + Clone,
-    DLess: DerefLess + Clone,
-    DOcc: DerefOcc + Clone>  FMDIndex<DBWT, DLess, DOcc> {
+impl FMDIndex {
 
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
     /// Complexity O(m) with pattern of length m.
@@ -242,7 +231,7 @@ impl<
     /// ```
     /// use bio::alphabets::dna;
     /// use bio::data_structures::fmindex::{FMIndex, FMDIndex};
-    /// use bio::data_structures::suffix_array::suffix_array;
+    /// use bio::data_structures::suffix_array::{suffix_array, SampleableSuffixArray};
     /// use bio::data_structures::bwt::{bwt, less, Occ};
     ///
     /// let text = b"ATTC$GAAT$";
@@ -251,7 +240,8 @@ impl<
     /// let bwt = bwt(text, &sa);
     /// let less = less(&bwt, &alphabet);
     /// let occ = Occ::new(&bwt, 3, &alphabet);
-    /// let fm = FMIndex::new(&bwt, &less, &occ);
+    /// let ssa = sa.sample(bwt, less, occ, 1);
+    /// let fm = FMIndex::new(ssa);
     /// let fmdindex = FMDIndex::from(fm);
     ///
     /// let pattern = b"ATT";
@@ -387,7 +377,7 @@ impl<
 mod tests {
     use super::*;
     use alphabets::dna;
-    use data_structures::suffix_array::suffix_array;
+    use data_structures::suffix_array::{suffix_array, SampleableSuffixArray, SuffixArray};
     use data_structures::bwt::{bwt, less, Occ};
 
     #[test]
@@ -403,7 +393,8 @@ mod tests {
         let less = less(&bwt, &alphabet);
         let occ = Occ::new(&bwt, 3, &alphabet);
 
-        let fmindex = FMIndex::new(&bwt, &less, &occ);
+        let ssa = sa.sample(bwt, less, occ, 1);
+        let fmindex = FMIndex::new(ssa);
         let fmdindex = FMDIndex::from(fmindex);
         {
             let pattern = b"AA";
@@ -433,7 +424,8 @@ mod tests {
         let less = less(&bwt, &alphabet);
         let occ = Occ::new(&bwt, 3, &alphabet);
 
-        let fmindex = FMIndex::new(&bwt, &less, &occ);
+        let ssa = sa.sample(bwt, less, occ, 1);
+        let fmindex = FMIndex::new(ssa);
         let fmdindex = FMDIndex::from(fmindex);
         let pattern = b"T";
         let interval = fmdindex.init_interval(pattern, 0);
@@ -511,7 +503,8 @@ mod tests {
         let less = less(&bwt, &alphabet);
         let occ = Occ::new(&bwt, 3, &alphabet);
 
-        let fmindex = FMIndex::new(&bwt, &less, &occ);
+        let ssa = sa.sample(bwt, less, occ, 1);
+        let fmindex = FMIndex::new(ssa);
         let fmdindex = FMDIndex::from(fmindex);
 
         let read = b"GGCGTGGTGGCTTATGCCTGTAATCCCAGCACTTTGGGAGGTCGAAGTGGGCGG";
