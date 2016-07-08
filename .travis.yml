@@ -7,13 +7,14 @@ matrix:
     - rust: stable
     - rust: beta
     - rust: nightly
+      env: TRAVIS_CARGO_NIGHTLY_FEATURE=""
     - rust: nightly
-      env: FEATURES="--features nightly"
+      env: TRAVIS_CARGO_NIGHTLY_FEATURE="nightly"
   allow_failures:
   - rust: nightly
 script:
-  - travis-cargo build $FEATURES
-  - travis-cargo test $FEATURES
+  - travis-cargo build
+  - travis-cargo test
 after_success: |
   [ $TRAVIS_BRANCH = master ] &&
   [ $TRAVIS_PULL_REQUEST = false ] &&
