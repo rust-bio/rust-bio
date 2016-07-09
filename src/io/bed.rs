@@ -16,7 +16,7 @@
 //! for record in reader.records() {
 //!     let rec = record.ok().expect("Error reading record.");
 //!     println!("{}", rec.chrom());
-//!     writer.write(rec).ok().expect("Error writing record.");
+//!     writer.write(&rec).ok().expect("Error writing record.");
 //! }
 //! ```
 
