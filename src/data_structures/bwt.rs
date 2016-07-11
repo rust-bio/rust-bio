@@ -12,21 +12,11 @@ use std::iter::repeat;
 use utils::prescan;
 use alphabets::Alphabet;
 use data_structures::suffix_array::RawSuffixArray;
-use std::ops::Deref;
 
 pub type BWT = Vec<u8>;
 pub type BWTSlice = [u8];
 pub type Less = Vec<usize>;
 pub type BWTFind = Vec<usize>;
-
-pub trait DerefBWT: Deref<Target = BWT> {}
-impl<T: Deref<Target = BWT>> DerefBWT for T {}
-
-pub trait DerefOcc: Deref<Target = Occ> {}
-impl<T: Deref<Target = Occ>> DerefOcc for T {}
-
-pub trait DerefLess: Deref<Target = Less> {}
-impl<T: Deref<Target = Less>> DerefLess for T {}
 
 /// Calculate Burrows-Wheeler-Transform of the given text of length n.
 /// Complexity: O(n).
@@ -124,9 +114,7 @@ impl Occ {
     /// Complexity: O(k).
     pub fn get(&self, bwt: &BWTSlice, r: usize, a: u8) -> usize {
         let i = r / self.k;
-        // TODO use sum() once it has been stabilized: .sum::<usize>()
-        self.occ[i][a as usize] +
-        bwt[(i * self.k) + 1..r + 1].iter().map(|&c| (c == a) as usize).fold(0, |s, e| s + e)
+        self.occ[i][a as usize] + bwt[(i * self.k) + 1..r + 1].iter().filter(|&&c| c == a).count()
     }
 }
 

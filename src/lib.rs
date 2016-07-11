@@ -29,10 +29,9 @@
 //!
 //! ```rust
 //! use bio::alphabets;
-//! use bio::data_structures::suffix_array::suffix_array;
+//! use bio::data_structures::suffix_array::{suffix_array, SampleableSuffixArray};
 //! use bio::data_structures::bwt::{bwt, less, Occ};
-//! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
-//! use std::rc::Rc;
+//! use bio::data_structures::fmindex::{fmindex_raw, fmindex_sampled, FMIndexable};
 //!
 //! let text = b"ACGGATGCTGGATCGGATCGCGCTAGCTA$";
 //! let pattern = b"ACCG";
@@ -40,13 +39,34 @@
 //! // Create an FM-Index for a given text.
 //! let alphabet = alphabets::dna::iupac_alphabet();
 //! let sa = suffix_array(text);
-//! let bwt = Rc::new(bwt(text, &sa));
-//! let less = Rc::new(less(&bwt, &alphabet));
-//! let occ = Rc::new(Occ::new(&bwt, 3, &alphabet));
-//! let fmindex = FMIndex::new(bwt, less, occ);
+//! let bw = bwt(text, &sa);
+//! let lss = less(&bw, &alphabet);
+//! let occ = Occ::new(&bw, 3, &alphabet);
+//! let ssa = sa.sample(bw, lss, occ, 32);
+//! let fm_sampled = fmindex_sampled(ssa);
 //!
-//! let interval = fmindex.backward_search(pattern.iter());
-//! let positions = interval.occ(&sa);
+//! // Store the suffix array interval from the search, then find positions in the text
+//! let interval = fm_sampled.backward_search(pattern.iter());
+//! let pos_sampled = interval.occ(&sa);
+//!
+//! // FMIndexable also provides a convenience method for finding positions
+//! let pos_sampled2 = fm_sampled.offsets(pattern.iter());
+//! assert_eq!(pos_sampled, pos_sampled2);
+//!
+//! // You can also trade memory usage for raw speed with the raw suffix array, as well
+//! let bw = bwt(text, &sa);
+//! let occ = Occ::new(&bw, 3, &alphabet);
+//! let lss = less(&bw, &alphabet);
+//! let fm_raw = fmindex_raw(sa, bw, occ, lss);
+//!
+//! // Store the suffix array interval from the search, then find positions in the text
+//! let interval = fm_raw.backward_search(pattern.iter());
+//! let pos_raw = interval.occ(fm_raw.sa());
+//!
+//! // FMIndexable also provides a convenience method for finding positions
+//! let pos_raw2 = fm_raw.offsets(pattern.iter());
+//! assert_eq!(pos_raw, pos_raw2);
+//! assert_eq!(pos_raw, pos_sampled);
 //! ```
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.
