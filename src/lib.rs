@@ -42,7 +42,7 @@
 //! let bwt = bwt(text, &sa);
 //! let less = less(&bwt, &alphabet);
 //! let occ = Occ::new(&bwt, 3, &alphabet);
-//! let ssa = sa.sample(bwt, less, occ, 1);
+//! let ssa = sa.sample(bwt, less, occ, 32);
 //! let fmindex = FMIndex::new(ssa);
 //!
 //! let interval = fmindex.backward_search(pattern.iter());

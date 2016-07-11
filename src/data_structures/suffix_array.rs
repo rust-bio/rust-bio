@@ -9,7 +9,9 @@
 
 use std::iter;
 use std;
+use std::collections::HashMap;
 use std::fmt::Debug;
+use std::iter::FromIterator;
 use std::ops::Deref;
 use std::cmp;
 
@@ -17,7 +19,6 @@ use num::{Integer, Unsigned, NumCast};
 use num::traits::cast;
 
 use bit_vec::BitVec;
-use itertools::Itertools;
 use vec_map::VecMap;
 
 use alphabets::{Alphabet, RankTransform};
@@ -72,7 +73,7 @@ impl SampleableSuffixArray for RawSuffixArray {
     /// let bwt = bwt(text, &sa);
     /// let less = less(&bwt, &alphabet);
     /// let occ = Occ::new(&bwt, 3, &alphabet);
-    /// let sampled = sa.sample(bwt, less, occ, 1);
+    /// let sampled = sa.sample(bwt, less, occ, 2);
     ///
     /// for i in 0..sa.len() {
     ///    assert_eq!(sa.get(i), sampled.get(i));
@@ -80,7 +81,10 @@ impl SampleableSuffixArray for RawSuffixArray {
     /// ```
     fn sample(&self, bwt: BWT, less: Less, occ: Occ, sampling_rate: usize) -> SampledSuffixArray {
 
-        let sample = self.iter().cloned().step(sampling_rate).collect();
+        let sample = HashMap::from_iter(self.iter()
+            .enumerate()
+            .filter(|&(_, n)| n % sampling_rate == 0)
+            .map(|(i, &n)| (i, n)));
 
         SampledSuffixArray {
             bwt: bwt,
@@ -98,7 +102,7 @@ pub struct SampledSuffixArray {
     bwt: BWT,
     less: Less,
     occ: Occ,
-    sample: Vec<usize>,
+    sample: HashMap<usize, usize>,
     s: usize, // Rate of sampling
 }
 
@@ -122,17 +126,20 @@ impl SampledSuffixArray {
 
 impl SuffixArray for SampledSuffixArray {
     fn get(&self, index: usize) -> Option<usize> {
+
         if index < self.len() {
-            let mut pos = index;
-            let mut offset = 0;
-            loop {
-                if pos % self.s == 0 {
-                    return Some(self.sample[pos / self.s] + offset);
-                }
-                let c = self.bwt[pos];
-                pos = self.less[c as usize] + self.occ.get(&self.bwt, pos - 1, c);
-                offset += 1;
+
+            let mut nsteps = 0;
+            let mut row = index;
+
+            while !self.sample.contains_key(&row) {
+                let c = self.bwt[row];
+                let rank = if row == 0 { 0 } else { self.occ(row - 1, c) };
+                row = rank + self.less(c);
+                nsteps += 1;
             }
+
+            Some(self.sample[&row] + nsteps)
         } else {
             None
         }
@@ -782,33 +789,21 @@ mod tests {
 
     #[test]
     fn test_sampled_matches() {
-        let test_cases =             [(&b"A$C$G$T$"[..], "simple"),
-             (&b"A$A$T$T$"[..], "duplicates"),
-             (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
-             (&b"AGCCAT$\
-                CAGCC$"[..],
-                "substring"),
-             (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
-                AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
-                "complex"),
-             (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
-                TTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATTATAATTAGGCCTAC$\
-                AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
-                TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"[..],
-                "complex with revcomps"),
-             ];
-
-        for &(text, _) in test_cases.into_iter() {
+        fn run_test_case(text: &[u8]) {
             let alphabet = dna::n_alphabet();
             let sa = suffix_array(text);
             let bwt = bwt(text, &sa);
             let less = less(&bwt, &alphabet);
             let occ = Occ::new(&bwt, 3, &alphabet);
-            let sampled = sa.sample(bwt, less, occ, 1);
+            let sampled = sa.sample(bwt, less, occ, 16);
 
             for i in 0..sa.len() {
                 assert_eq!(sa.get(i), sampled.get(i));
             }
         }
+
+        run_test_case(b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAAAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$");
+
+        run_test_case(b"TACTCCGCTAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTTAAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTAGCGGAGTATAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTTGTCCAGTATACTGGACAAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTAACGCACCCCGGCATTCGTCGACTCTACACTTAGTGGAACATACAAATTCGCTCGCAGGAGCGCCTCATACATTCTAACGCAGTGATCTTCGGCTGAGACTAGTCTCAGCCGAAGATCACTGCGTTAGAATGTATGAGGCGCTCCTGCGAGCGAATTTGTATGTTCCACTAAGTGTAGAGTCGACGAATGCCGGGGTGCGT$");
     }
 }

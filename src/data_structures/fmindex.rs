@@ -57,7 +57,7 @@ pub trait FMIndexable {
     /// let bwt = bwt(text, &sa);
     /// let less = less(&bwt, &alphabet);
     /// let occ = Occ::new(&bwt, 3, &alphabet);
-    /// let ssa = sa.sample(bwt, less, occ, 1);
+    /// let ssa = sa.sample(bwt, less, occ, 7);
     /// let fm = FMIndex::new(ssa);
     ///
     /// let pattern = b"TTA";
@@ -240,7 +240,7 @@ impl FMDIndex {
     /// let bwt = bwt(text, &sa);
     /// let less = less(&bwt, &alphabet);
     /// let occ = Occ::new(&bwt, 3, &alphabet);
-    /// let ssa = sa.sample(bwt, less, occ, 1);
+    /// let ssa = sa.sample(bwt, less, occ, 2);
     /// let fm = FMIndex::new(ssa);
     /// let fmdindex = FMDIndex::from(fm);
     ///
@@ -393,7 +393,7 @@ mod tests {
         let less = less(&bwt, &alphabet);
         let occ = Occ::new(&bwt, 3, &alphabet);
 
-        let ssa = sa.sample(bwt, less, occ, 1);
+        let ssa = sa.sample(bwt, less, occ, 3);
         let fmindex = FMIndex::new(ssa);
         let fmdindex = FMDIndex::from(fmindex);
         {
@@ -424,7 +424,7 @@ mod tests {
         let less = less(&bwt, &alphabet);
         let occ = Occ::new(&bwt, 3, &alphabet);
 
-        let ssa = sa.sample(bwt, less, occ, 1);
+        let ssa = sa.sample(bwt, less, occ, 8);
         let fmindex = FMIndex::new(ssa);
         let fmdindex = FMDIndex::from(fmindex);
         let pattern = b"T";
@@ -503,7 +503,7 @@ mod tests {
         let less = less(&bwt, &alphabet);
         let occ = Occ::new(&bwt, 3, &alphabet);
 
-        let ssa = sa.sample(bwt, less, occ, 1);
+        let ssa = sa.sample(bwt, less, occ, 5);
         let fmindex = FMIndex::new(ssa);
         let fmdindex = FMDIndex::from(fmindex);
 
