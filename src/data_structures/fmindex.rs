@@ -442,7 +442,7 @@ impl<C: FMIndexCore> FMDIndex<C> {
 mod tests {
     use super::*;
     use alphabets::dna;
-    use data_structures::suffix_array::{suffix_array, SampleableSuffixArray, SuffixArray};
+    use data_structures::suffix_array::{suffix_array, SampleableSuffixArray};
     use data_structures::bwt::{bwt, less, Occ};
 
     #[test]

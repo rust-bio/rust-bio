@@ -11,7 +11,7 @@ use std::iter::repeat;
 
 use utils::prescan;
 use alphabets::Alphabet;
-use data_structures::suffix_array::{RawSuffixArray, SuffixArray};
+use data_structures::suffix_array::RawSuffixArray;
 
 pub type BWT = Vec<u8>;
 pub type BWTSlice = [u8];
