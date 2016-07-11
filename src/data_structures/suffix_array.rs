@@ -81,6 +81,7 @@ impl SampleableSuffixArray for RawSuffixArray {
     /// ```
     fn sample(&self, bwt: BWT, less: Less, occ: Occ, sampling_rate: usize) -> SampledSuffixArray {
 
+        // this gives us every n-th suffix of the *text*, as opposed to every nth entry in array
         let sample = HashMap::from_iter(self.iter()
             .enumerate()
             .filter(|&(_, n)| n % sampling_rate == 0)
@@ -132,6 +133,8 @@ impl SuffixArray for SampledSuffixArray {
             let mut nsteps = 0;
             let mut row = index;
 
+            // while the sampled array doesn't have the row we're looking for,
+            // "step up" to the next applicable row, track # of steps up, and look for new row
             while !self.sample.contains_key(&row) {
                 let c = self.bwt[row];
                 let rank = if row == 0 { 0 } else { self.occ(row - 1, c) };
@@ -139,6 +142,7 @@ impl SuffixArray for SampledSuffixArray {
                 nsteps += 1;
             }
 
+            // row is now pointing to a sampled row, so we need to add the number of steps we took
             Some(self.sample[&row] + nsteps)
         } else {
             None
@@ -146,6 +150,8 @@ impl SuffixArray for SampledSuffixArray {
     }
 
     fn len(&self) -> usize {
+        // since the sample doesn't store the full array, we need to report the length of the
+        // original suffix array. thankfully, the BWT is the same length as the original array
         self.bwt.len()
     }
 }

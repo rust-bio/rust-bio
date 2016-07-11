@@ -110,6 +110,7 @@ pub trait FMIndexCore {
 }
 
 impl FMIndexCore for SampledSuffixArray {
+    // the trait needs to track what kind of suffix array reference it's returning
     type SA = SampledSuffixArray;
 
     fn occ(&self, r: usize, a: u8) -> usize {
