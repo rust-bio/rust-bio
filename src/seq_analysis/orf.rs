@@ -25,7 +25,7 @@
 //! ```
 //!
 //! Right now the only way to check the reverse strand for orf is to use
-//! the alphabet::dna::RevComp struct and to check for both sequences.
+//! the `alphabet::dna::RevComp` struct and to check for both sequences.
 //! But that's not so performance friendly, as the reverse complementation and the orf research
 //! could go on at the same time.
 
@@ -144,11 +144,9 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
                     // reinitialize
                     self.state.start_pos[offset] = None;
                 }
-            } else {
-                // check if entering orf
-                if self.finder.start_codons.contains(&self.state.codon) {
+            // check if entering orf
+            } else if self.finder.start_codons.contains(&self.state.codon) {
                     self.state.start_pos[offset] = Some(index);
-                }
             }
             if result.is_some() {
                 return result;

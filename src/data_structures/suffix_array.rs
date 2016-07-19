@@ -470,7 +470,7 @@ impl SAIS {
             let mut label = 0;
             reduced_text[self.reduced_text_pos[self.pos[0]]] = cast(label).unwrap();
             let mut prev = None;
-            for &p in self.pos.iter() {
+            for &p in &self.pos {
                 if pos_types.is_lms_pos(p) {
                     // choose same label if substrings are equal
                     if prev.is_some() && !self.lms_substring_eq(text, pos_types, prev.unwrap(), p) {

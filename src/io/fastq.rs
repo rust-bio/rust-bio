@@ -80,7 +80,7 @@ impl<R: io::Read> Reader<R> {
 
 
 /// A FastQ record.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Record {
     header: String,
     seq: String,

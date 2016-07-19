@@ -424,8 +424,7 @@ impl<'a, F> Aligner<'a, F>
         let i_tb = &self.I_traceback;
         let d_tb = &self.D_traceback;
 
-        for tb in [s_tb, i_tb, d_tb].iter()
-        {
+        for tb in &[s_tb, i_tb, d_tb] {
             for jj in 0..(j+1) {
                 let mut s = String::new();
                 for ii in 0..(i+1) {

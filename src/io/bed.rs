@@ -113,7 +113,7 @@ impl<W: io::Write> Writer<W> {
 
 
 /// A BED record as defined by BEDtools (http://bedtools.readthedocs.org/en/latest/content/general-usage.html)
-#[derive(RustcEncodable)]
+#[derive(RustcEncodable, Default)]
 pub struct Record {
     chrom: String,
     start: u64,

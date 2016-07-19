@@ -72,7 +72,7 @@ impl<R: io::Read> Reader<R> {
             if self.line.is_empty() || self.line.starts_with('>') {
                 break;
             }
-            record.seq.push_str(&self.line.trim_right());
+            record.seq.push_str(self.line.trim_right());
         }
 
         Ok(())
@@ -303,6 +303,7 @@ impl<W: io::Write> Writer<W> {
 
 
 /// A FASTA record.
+#[derive(Default)]
 pub struct Record {
     header: String,
     seq: String,

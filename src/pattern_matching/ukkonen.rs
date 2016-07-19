@@ -103,7 +103,7 @@ impl<'a, F, T: TextIterator<'a>> Iterator for Matches<'a, F, T>
 
     fn next(&mut self) -> Option<(usize, usize)> {
         let cost = &self.ukkonen.cost;
-        while let Some((i, c)) = self.text.next() {
+        for (i, c) in &mut self.text {
             let col = i % 2;
             let prev = 1 - col;
 

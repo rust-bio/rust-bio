@@ -306,7 +306,7 @@ impl<
 
             for interval in prev.iter() {
                 // backward extend interval
-                let forward_interval = self.backward_ext(&interval, a);
+                let forward_interval = self.backward_ext(interval, a);
 
                 if (forward_interval.size == 0 || k == -1) &&
                         // interval could not be extended further
@@ -314,7 +314,7 @@ impl<
                         // interval is maximal and can be added to the matches
                         curr.is_empty() && k < j {
                     j = k;
-                    matches.push((*interval).clone());
+                    matches.push(*interval);
                 }
                 // add _interval to curr (will be further extended next iteration)
                 if forward_interval.size != 0 && forward_interval.size as isize != last_size {
