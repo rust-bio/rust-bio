@@ -18,7 +18,7 @@ pub type TextSlice<'a> = &'a [u8];
 pub trait TextIterator<'a>: Iterator<Item = &'a u8> {}
 impl<'a, I: Iterator<Item = &'a u8>> TextIterator<'a> for I {}
 
-/// Type alias for a type that can be coerced into a ``TextIterator``.
+/// Type alias for a type that can be coerced into a `TextIterator`.
 /// This includes ``&Vec<u8>``, ``&[u8]``, ``Iterator<Item=&u8>``.
 pub trait IntoTextIterator<'a>: IntoIterator<Item = &'a u8> {}
 impl<'a, T: IntoIterator<Item = &'a u8>> IntoTextIterator<'a> for T {}

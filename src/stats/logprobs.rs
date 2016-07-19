@@ -12,11 +12,11 @@ use std::iter;
 pub use stats::{Prob, LogProb};
 
 
-/// A factor to convert log-probabilities to PHRED-scale (phred = p * LOG_TO_PHRED_FACTOR).
+/// A factor to convert log-probabilities to PHRED-scale (phred = p * `LOG_TO_PHRED_FACTOR`).
 const LOG_TO_PHRED_FACTOR: f64 = -4.3429448190325175; // -10 * 1 / ln(10)
 
 
-/// A factor to convert PHRED-scale to log-probabilities (p = phred * PHRED_TO_LOG_FACTOR).
+/// A factor to convert PHRED-scale to log-probabilities (p = phred * `PHRED_TO_LOG_FACTOR`).
 const PHRED_TO_LOG_FACTOR: f64 = -0.23025850929940456; // 1 / (-10 * log10(e))
 
 
@@ -99,7 +99,7 @@ pub fn add(mut p0: LogProb, mut p1: LogProb) -> LogProb {
 pub fn sub(p0: LogProb, p1: LogProb) -> LogProb {
     assert!(p0 >= p1,
             "Subtraction would lead to negative probability, which is undefined in log space.");
-    if p0 == p1 || p0 == f64::NEG_INFINITY {
+    if (p0 - p1).abs() <= f64::EPSILON || p0 == f64::NEG_INFINITY {
         // the first case leads to zero,
         // in the second case p0 and p1 are -inf, which is fine
         f64::NEG_INFINITY

@@ -29,7 +29,7 @@ use csv;
 
 use io::Strand;
 
-/// GffType
+/// `GffType`
 ///
 /// We have three format in the GFF family.
 /// The change is in the last field of GFF.
@@ -158,13 +158,11 @@ impl<W: io::Write> Writer<W> {
 
     /// Write a given GFF record.
     pub fn write(&mut self, record: &Record) -> csv::Result<()> {
-        let attributes;
-
-        if !record.attributes.is_empty() {
-            attributes = record.attributes.iter().map(|(a, b)| format!("{}{}{}", a, self.delimiter, b)).join(&self.terminator);
+        let attributes = if !record.attributes.is_empty() {
+            record.attributes.iter().map(|(a, b)| format!("{}{}{}", a, self.delimiter, b)).join(&self.terminator)
         } else {
-            attributes = "".to_owned();
-        }
+            "".to_owned()
+        };
 
         self.inner.encode((&record.seqname, &record.source, &record.feature_type, record.start, record.end, &record.score, &record.strand, &record.frame, attributes))
     }
@@ -172,7 +170,7 @@ impl<W: io::Write> Writer<W> {
 
 
 /// A GFF record
-#[derive(RustcEncodable)]
+#[derive(RustcEncodable, Default)]
 pub struct Record {
     seqname: String,
     source: String,
@@ -255,42 +253,42 @@ impl Record {
 
     /// Get mutable reference on seqname of feature.
     pub fn seqname_mut(&mut self) -> &mut String {
-        return &mut self.seqname;
+        &mut self.seqname
     }
 
     /// Get mutable reference on source of feature.
     pub fn source_mut(&mut self) -> &mut String {
-        return &mut self.source;
+        &mut self.source
     }
 
     /// Get mutable reference on type of feature.
     pub fn feature_type_mut(&mut self) -> &mut String {
-        return &mut self.feature_type;
+        &mut self.feature_type
     }
 
     /// Get mutable reference on start of feature.
     pub fn start_mut(&mut self) -> &mut u64 {
-        return &mut self.start;
+        &mut self.start
     }
 
     /// Get mutable reference on end of feature.
     pub fn end_mut(&mut self) -> &mut u64 {
-        return &mut self.end;
+        &mut self.end
     }
 
     /// Get mutable reference on score of feature.
     pub fn score_mut(&mut self) -> &mut String {
-        return &mut self.score;
+        &mut self.score
     }
 
     /// Get mutable reference on strand of feature.
     pub fn strand_mut(&mut self) -> &mut String {
-        return &mut self.strand;
+        &mut self.strand
     }
 
     /// Get mutable reference on attributes of feature.
     pub fn attributes_mut(&mut self) -> &mut HashMap<String, String> {
-        return &mut self.attributes;
+        &mut self.attributes
     }
 }
 

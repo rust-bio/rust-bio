@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! ShiftAnd algorithm for pattern matching.
+//! `ShiftAnd` algorithm for pattern matching.
 //! Patterns may contain at most 64 symbols.
 //! Complexity: O(n) with text length n.
 //!
@@ -22,7 +22,7 @@ use std::iter::Enumerate;
 
 use utils::{IntoTextIterator, TextIterator};
 
-/// ShiftAnd algorithm.
+/// `ShiftAnd` algorithm.
 pub struct ShiftAnd {
     m: usize,
     masks: [u64; 256],

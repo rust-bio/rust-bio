@@ -23,7 +23,7 @@ pub enum AlignmentOperation {
 
 /// An alignment, consisting of a score, the start and end position of the alignment on
 /// sequence x and sequence y, the length of sequence x,
-/// and the alignment edit operations (see alignment::pairwise for meaning of x and y).
+/// and the alignment edit operations (see `alignment::pairwise` for meaning of x and y).
 #[derive(Debug)]
 pub struct Alignment {
     pub score: i32,

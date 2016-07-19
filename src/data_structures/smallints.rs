@@ -113,7 +113,7 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
     /// Iterate over sequence. Values will be returned in the big integer type (`B`).
     pub fn iter(&self) -> Iter<S, B> {
         Iter {
-            smallints: &self,
+            smallints: self,
             items: self.smallints.iter().enumerate(),
         }
     }
@@ -143,7 +143,7 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
 }
 
 
-/// Iterator over the elements of a SmallInts sequence.
+/// Iterator over the elements of a `SmallInts` sequence.
 pub struct Iter<'a, S, B>
     where S: 'a + Integer + Bounded + NumCast + Copy,
           B: 'a + Integer + NumCast + Copy,

@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! GC counter over an IntoTextIterator object.
+//! GC counter over an `IntoTextIterator` object.
 
 //! Complexity: o(n)
 
