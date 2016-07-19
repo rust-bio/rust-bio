@@ -2,6 +2,7 @@
 [![Crates.io](https://img.shields.io/crates/v/bio.svg?style=flat-square)](https://crates.io/crates/bio)
 [![Crates.io](https://img.shields.io/crates/l/bio.svg?style=flat-square)](https://crates.io/crates/bio)
 [![Travis](https://img.shields.io/travis/rust-bio/rust-bio/master.svg?style=flat-square)](https://travis-ci.org/rust-bio/rust-bio)
+[![Clippy Linting Result](https://clippy.bashy.io/github/rust-bio/rust-bio/master/badge.svg?style=flat-square)](https://clippy.bashy.io/github/rust-bio/rust-bio/master/log)
 
 # Rust-Bio, a bioinformatics library for Rust.
 
