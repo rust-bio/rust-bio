@@ -354,7 +354,7 @@ impl<
         // Hence, we calculate lower revcomp bounds by iterating over
         // symbols and updating from previous one.
         for &b in b"$TGCNAtgcna".iter() {
-            l = l + s;
+            l += s;
             o = self.fmindex.occ(interval.lower - 1, b);
             // calculate size
             s = self.fmindex.occ(interval.lower + interval.size - 1, b) - o;

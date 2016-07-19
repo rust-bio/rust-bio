@@ -80,7 +80,7 @@ impl BitEnc {
                 while bit <= 32 {
                     self.set_by_addr(block, bit, value);
                     n -= 1;
-                    bit = bit + self.width
+                    bit += self.width
                 }
             }
         }
