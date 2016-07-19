@@ -116,7 +116,7 @@ pub fn levenshtein(alpha: TextSlice, beta: TextSlice) -> u32 {
     }
 
     for (j, item) in beta.iter().enumerate() {
-        i_cur = i_cur % 2;
+        i_cur %= 2;
         i_prev = 1 - i_cur;
 
         columns[i_cur][0] = 1 + j as u32;
