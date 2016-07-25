@@ -661,11 +661,13 @@ impl PosTypes {
 
 #[cfg(test)]
 mod tests {
+    // Commented-out imports waiting on re-enabling of sampled suffix array
+    // See issue #70
     use super::*;
     use super::{PosTypes, SAIS, transform_text};
     use bit_vec::BitVec;
-    use alphabets::{Alphabet, dna};
-    use data_structures::bwt::{bwt, less, Occ};
+    use alphabets::{Alphabet /*, dna*/};
+    //use data_structures::bwt::{bwt, less, Occ};
     use std::str;
 
     #[test]
