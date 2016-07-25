@@ -15,7 +15,7 @@ fn search_index_seeds(b: &mut Bencher) {
     let sa = suffix_array(STR_1);
     let bwt = bwt(STR_1, &sa);
     let less = less(&bwt, &alphabet);
-    let occ = Occ::new(&bwt, 3, &alphabet);
+    let occ = Occ::new(&bwt, 128, &alphabet);
     let fmindex = FMIndex::new(&bwt, &less, &occ);
 
     b.iter(|| {

@@ -123,11 +123,24 @@ impl Occ {
     /// Get occurrence count of symbol a in BWT[..r+1].
     /// Complexity: O(k).
     pub fn get(&self, bwt: &BWTSlice, r: usize, a: u8) -> usize {
+        // self.k is our sampling rate, so find our last sampled checkpoint
         let i = r / self.k;
+        let checkpoint = self.occ[i][a as usize];
 
-        let count = bwt[(i * self.k) + 1..r + 1].iter().filter(|&&c| c == a).count();
+        // find the portion of the BWT past the checkpoint which we need to count
+        let start = (i * self.k) + 1;
+        let end = r + 1;
 
-        self.occ[i][a as usize] + count
+        // count all the matching bytes b/t the closest checkpoint and our desired lookup
+        let mut count = 0;
+        for &x in &bwt[start..end] {
+            if x == a {
+                count += 1;
+            }
+        }
+
+        // return the sampled checkpoint for this character + the manual count we just did
+        checkpoint + count
     }
 }
 
