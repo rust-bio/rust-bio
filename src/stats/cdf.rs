@@ -3,6 +3,9 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Support for discrete probability distributions in terms of cumulative distribution
+//! functions (CDF).
+
 use std::f64;
 use std::iter;
 use std::slice;
@@ -23,6 +26,10 @@ pub struct CDF<T: PartialOrd> {
 impl<T: PartialOrd> CDF<T> {
     /// Create CDF from given probability mass function (PMF). The PMF may contain duplicate values
     /// the probabilities of which are summed during generation of the CDF.
+    ///
+    /// # Arguments
+    ///
+    /// * `pmf` - the PMF as a vector of value/probability pairs
     pub fn from_pmf(mut entries: Vec<(T, LogProb)>) -> Self {
         entries.sort_by(|&(ref a, _), &(ref b, _)| a.partial_cmp(b).unwrap());
         let mut inner: Vec<(T, LogProb)> = Vec::new();
@@ -52,6 +59,7 @@ impl<T: PartialOrd> CDF<T> {
         CDF { inner: entries.collect_vec() }
     }
 
+    /// Reduce CDF by omitting values with zero probability.
     pub fn reduce(self) -> Self {
         let mut inner = Vec::new();
         let mut last = f64::NEG_INFINITY;
@@ -64,6 +72,7 @@ impl<T: PartialOrd> CDF<T> {
         CDF { inner: inner }
     }
 
+    /// Downsample CDF to n entries.
     pub fn sample(mut self, n: usize) -> Self {
         if self.inner.len() <= n {
             self
@@ -79,10 +88,12 @@ impl<T: PartialOrd> CDF<T> {
         }
     }
 
+    /// Provide iterator.
     pub fn iter(&self) -> slice::Iter<(T, f64)>{
         self.inner.iter()
     }
 
+    /// Iterator over corresponding PMF.
     pub fn iter_pmf<'a>(&'a self) -> CDFPMFIter<'a, T> {
         fn cdf_to_pmf<'a, G>(last_prob: &mut LogProb, e: &'a (G, LogProb)) -> Option<(&'a G, LogProb)> {
             let &(ref value, cdf_prob) = e;
@@ -94,7 +105,7 @@ impl<T: PartialOrd> CDF<T> {
     }
 
     /// Get cumulative probability for a given value. If the value is not present,
-    /// return the probability of the previous value.
+    /// return the probability of the previous value. Complexity O(log n).
     pub fn get(&self, value: &T) -> Option<LogProb> {
         if self.inner.is_empty() {
             None
@@ -107,6 +118,7 @@ impl<T: PartialOrd> CDF<T> {
         }
     }
 
+    /// Get probability (i.e. probability mass) for a given value. Complexity O(log n).
     pub fn get_pmf(&self, value: &T) -> Option<LogProb> {
         if self.inner.is_empty() {
             None
@@ -119,6 +131,7 @@ impl<T: PartialOrd> CDF<T> {
         }
     }
 
+    /// Return total probability.
     pub fn total_prob(&self) -> LogProb {
         let &(_, prob) = self.inner.last().unwrap();
         prob
@@ -135,6 +148,7 @@ impl<T: PartialOrd> CDF<T> {
         &max.0
     }
 
+    /// Return 95% credible interval.
     pub fn credible_interval(&self) -> (&T, &T) {
         let lower = self.inner.binary_search_by(|&(_, p)| p.partial_cmp(&0.025f64.ln()).unwrap()).unwrap_or_else(|i| i);
         let upper = self.inner.binary_search_by(|&(_, p)| p.partial_cmp(&0.975f64.ln()).unwrap()).unwrap_or_else(|i| i - 1);
@@ -142,6 +156,7 @@ impl<T: PartialOrd> CDF<T> {
         (&self.inner[lower].0, &self.inner[upper].0)
     }
 
+    /// Number of entries in the CDF.
     pub fn len(&self) -> usize {
         self.inner.len()
     }
