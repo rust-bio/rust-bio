@@ -8,6 +8,7 @@
 
 pub mod combinatorics;
 pub mod logprobs;
+pub mod cdf;
 
 
 /// An alias for `f64` to indicate a probability.
