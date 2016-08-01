@@ -8,6 +8,13 @@
 use std::mem;
 use std::f64;
 use std::iter;
+use std::ops::{Add, Sub, Mul, Div};
+use num::traits::cast;
+use num::NumCast;
+
+use itertools::linspace;
+use itertools::Itertools;
+use itertools::misc::ToFloat;
 
 pub use stats::{Prob, LogProb};
 
@@ -128,6 +135,19 @@ pub fn cumsum<I: Iterator<Item = LogProb>>(probs: I) -> ScanIter<I> {
 }
 
 
+/// Integrate numerically stable over given log-space density in the interval [a, b]. Uses the trapezoidal rule with n grid points.
+pub fn integrate<T, D>(density: D, a: T, b: T, n: usize) -> LogProb
+    where T: NumCast + Copy + Add<Output=T> + Sub<Output=T> + Div<Output=T> + Mul<Output=T>, D: Fn(T) -> LogProb, usize: ToFloat<T>
+{
+    let mut probs = linspace(a, b, n).dropping(1).dropping_back(1).map(|v| 2.0f64.ln() + density(v)).collect_vec();
+    probs.push(density(a));
+    probs.push(density(b));
+    let width: f64 = cast(b - a).unwrap();
+
+    width.ln() - (2.0 * (n - 1) as f64).ln() + sum(&probs)
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -162,5 +182,12 @@ mod tests {
     fn test_ln_1m_exp() {
         assert_eq!(ln_1m_exp(f64::NEG_INFINITY), 0.0);
         assert_eq!(ln_1m_exp(-0.0), f64::NEG_INFINITY);
+    }
+
+    #[test]
+    fn test_integrate() {
+        let density = |_| 0.1f64.ln();
+        let prob = integrate(density, 0.0, 10.0, 5);
+        assert_relative_eq!(prob.exp(), 1.0, epsilon=0.0000001);
     }
 }
