@@ -62,9 +62,9 @@ pub trait FMIndexable {
     /// let pattern = b"TTA";
     /// let sai = fm.backward_search(pattern.iter());
     ///
-    /// let occ = sai.occ(&sa);
+    /// let positions = sai.occ(&sa);
     ///
-    /// assert_eq!(occ, [3, 12, 9]);
+    /// assert_eq!(positions, [3, 12, 9]);
     /// ```
     fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator> (&self, pattern: P) -> Interval {
         let (mut l, mut r) = (0, self.bwt().len() - 1);
@@ -257,12 +257,12 @@ impl<
     /// let pattern = b"ATT";
     /// let intervals = fmdindex.smems(pattern, 2);
     ///
-    /// let forward_occ = intervals[0].forward().occ(&sa);
+    /// let forward_positions = intervals[0].forward().occ(&sa);
     ///
-    /// let revcomp_occ = intervals[0].revcomp().occ(&sa);
+    /// let revcomp_positions = intervals[0].revcomp().occ(&sa);
     ///
-    /// assert_eq!(forward_occ, [0]);
-    /// assert_eq!(revcomp_occ, [6]);
+    /// assert_eq!(forward_positions, [0]);
+    /// assert_eq!(revcomp_positions, [6]);
     /// ```
     pub fn smems(&self, pattern: &[u8], i: usize) -> Vec<BiInterval> {
 

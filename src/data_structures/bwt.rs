@@ -124,9 +124,10 @@ impl Occ {
     /// Complexity: O(k).
     pub fn get(&self, bwt: &BWTSlice, r: usize, a: u8) -> usize {
         let i = r / self.k;
-        // TODO use sum() once it has been stabilized: .sum::<usize>()
-        self.occ[i][a as usize] +
-        bwt[(i * self.k) + 1..r + 1].iter().map(|&c| (c == a) as usize).fold(0, |s, e| s + e)
+
+        let count = bwt[(i * self.k) + 1..r + 1].iter().filter(|&&c| c == a).count();
+
+        self.occ[i][a as usize] + count
     }
 }
 
