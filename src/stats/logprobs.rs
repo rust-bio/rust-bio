@@ -136,7 +136,7 @@ pub fn cumsum<I: Iterator<Item = LogProb>>(probs: I) -> ScanIter<I> {
 
 
 /// Integrate numerically stable over given log-space density in the interval [a, b]. Uses the trapezoidal rule with n grid points.
-pub fn integrate<T, D>(density: D, a: T, b: T, n: usize) -> LogProb
+pub fn integrate<T, D>(density: &D, a: T, b: T, n: usize) -> LogProb
     where T: NumCast + Copy + Add<Output=T> + Sub<Output=T> + Div<Output=T> + Mul<Output=T>, D: Fn(T) -> LogProb, usize: ToFloat<T>
 {
     let mut probs = linspace(a, b, n).dropping(1).dropping_back(1).map(|v| 2.0f64.ln() + density(v)).collect_vec();
@@ -187,7 +187,7 @@ mod tests {
     #[test]
     fn test_integrate() {
         let density = |_| 0.1f64.ln();
-        let prob = integrate(density, 0.0, 10.0, 5);
+        let prob = integrate(&density, 0.0, 10.0, 5);
         assert_relative_eq!(prob.exp(), 1.0, epsilon=0.0000001);
     }
 }
