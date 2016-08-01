@@ -189,8 +189,6 @@ pub type CDFPMFIter<'a, T> = iter::Scan<slice::Iter<'a, (T, LogProb)>, LogProb, 
 mod test {
     use super::*;
 
-    use itertools::Itertools;
-
 
     #[test]
     fn test_cdf() {
