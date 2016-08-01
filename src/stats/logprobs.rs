@@ -187,7 +187,7 @@ mod tests {
     #[test]
     fn test_integrate() {
         let density = |_| 0.1f64.ln();
-        let prob = integrate(density, 0.0, 10.0, 2);
+        let prob = integrate(density, 0.0, 10.0, 5);
         assert_relative_eq!(prob.exp(), 1.0, epsilon=0.0000001);
     }
 }
