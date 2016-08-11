@@ -44,6 +44,8 @@ custom_derive! {
         NewtypeDeref,
         NewtypeAdd(*),
         NewtypeSub(*),
+        NewtypeMul(*),
+        NewtypeDiv(*),
         PartialEq,
         PartialOrd,
         Copy,
