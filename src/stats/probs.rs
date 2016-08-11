@@ -36,8 +36,6 @@ fn ln_1m_exp(p: f64) -> f64 {
     }
 }
 
-
-/// A newtype for probabilities.
 custom_derive! {
     #[derive(
         NewtypeFrom,
@@ -50,13 +48,30 @@ custom_derive! {
         PartialOrd,
         Copy,
         Clone,
-        Debug
+        Debug,
+        Default
     )]
-    pub struct Prob(f64);
+    /// A newtype for probabilities.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #[macro_use]
+    /// extern crate approx;
+    /// # extern crate bio;
+    /// # fn main() {
+    /// use bio::stats::Prob;
+    ///
+    /// let p = Prob(0.5);
+    /// let q = Prob(0.2);
+    ///
+    /// assert_relative_eq!(*(p + q), *Prob(0.7));
+    /// # }
+    /// ```
+    pub struct Prob(pub f64);
 }
 
 
-/// A newtype for log-scale probabilities.
 custom_derive! {
     #[derive(
         NewtypeFrom,
@@ -69,11 +84,31 @@ custom_derive! {
         Clone,
         Debug
     )]
-    pub struct LogProb(f64);
+    /// A newtype for log-scale probabilities.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #[macro_use]
+    /// extern crate approx;
+    /// # extern crate bio;
+    /// # fn main() {
+    /// use bio::stats::{LogProb, Prob};
+    ///
+    /// // convert from probability
+    /// let p = LogProb::from(Prob(0.5));
+    /// // convert manually
+    /// let q = LogProb(0.2f64.ln());
+    /// // obtain zero probability in log-space
+    /// let o = LogProb::ln_one();
+    ///
+    /// assert_relative_eq!(*Prob::from(p.ln_add_exp(q) + o), *Prob(0.7));
+    /// # }
+    /// ```
+    pub struct LogProb(pub f64);
 }
 
 
-/// A newtype for PHRED-scale probabilities.
 custom_derive! {
     #[derive(
         NewtypeFrom,
@@ -86,7 +121,23 @@ custom_derive! {
         Clone,
         Debug
     )]
-    pub struct PHREDProb(f64);
+    /// A newtype for PHRED-scale probabilities.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #[macro_use]
+    /// extern crate approx;
+    /// # extern crate bio;
+    /// # fn main() {
+    /// use bio::stats::{PHREDProb, Prob};
+    ///
+    /// let p = PHREDProb::from(Prob(0.5));
+    ///
+    /// assert_relative_eq!(*Prob::from(p), *Prob(0.5));
+    /// # }
+    /// ```
+    pub struct PHREDProb(pub f64);
 }
 
 
@@ -95,18 +146,22 @@ pub type ScanIter<I> = iter::Scan<<I as IntoIterator>::IntoIter, LogProb, fn(&mu
 
 
 impl LogProb {
+    /// Log-space representation of Pr=0
     pub fn ln_zero() -> LogProb {
         LogProb(f64::NEG_INFINITY)
     }
 
+    /// Log-space representation of Pr=1
     pub fn ln_one() -> LogProb {
         LogProb(0.0)
     }
 
+    /// Numerically stable calculation of 1 - p in log-space.
     pub fn ln_one_minus_exp(&self) -> LogProb {
         LogProb(ln_1m_exp(**self))
     }
 
+    /// Numerically stable sum of probabilities in log-space.
     pub fn ln_sum_exp(probs: &[LogProb]) -> LogProb {
         if probs.is_empty() {
             Self::ln_zero()
@@ -142,6 +197,7 @@ impl LogProb {
         }
     }
 
+    /// Numerically stable addition probabilities in log-space.
     pub fn ln_add_exp(self, other: LogProb) -> LogProb {
         let (mut p0, mut p1) = (self, other);
         if p1 > p0 {
@@ -156,6 +212,7 @@ impl LogProb {
         }
     }
 
+    /// Numerically stable subtraction of probabilities in log-space.
     pub fn ln_sub_exp(self, other: LogProb) -> LogProb {
         let (p0, p1) = (self, other);
         assert!(p0 >= p1,
@@ -223,6 +280,13 @@ impl From<PHREDProb> for LogProb {
 }
 
 
+impl From<Prob> for PHREDProb {
+    fn from(p: Prob) -> PHREDProb {
+        PHREDProb(-10.0 * p.log10())
+    }
+}
+
+
 impl From<LogProb> for PHREDProb {
     fn from(p: LogProb) -> PHREDProb {
         PHREDProb(*p * LOG_TO_PHRED_FACTOR)
@@ -230,10 +294,23 @@ impl From<LogProb> for PHREDProb {
 }
 
 
+impl Default for LogProb {
+    fn default() -> LogProb {
+        LogProb::ln_zero()
+    }
+}
+
+
+impl Default for PHREDProb {
+    fn default() -> PHREDProb {
+        PHREDProb::from(Prob(0.0))
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::f64;
     use itertools::Itertools;
 
     #[test]
