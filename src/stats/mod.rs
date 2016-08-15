@@ -7,12 +7,6 @@
 
 
 pub mod combinatorics;
-pub mod logprobs;
+pub mod probs;
 
-
-/// An alias for `f64` to indicate a probability.
-pub type Prob = f64;
-
-
-/// An alias for `f64` to indicate a log-probability.
-pub type LogProb = f64;
+pub use stats::probs::{Prob, LogProb, PHREDProb};
