@@ -37,20 +37,6 @@ fn ln_1m_exp(p: f64) -> f64 {
 }
 
 custom_derive! {
-    #[derive(
-        NewtypeFrom,
-        NewtypeDeref,
-        NewtypeAdd(*),
-        NewtypeSub(*),
-        NewtypeMul(*),
-        NewtypeDiv(*),
-        PartialEq,
-        PartialOrd,
-        Copy,
-        Clone,
-        Debug,
-        Default
-    )]
     /// A newtype for probabilities.
     ///
     /// # Example
@@ -68,22 +54,25 @@ custom_derive! {
     /// assert_relative_eq!(*(p + q), *Prob(0.7));
     /// # }
     /// ```
-    pub struct Prob(pub f64);
-}
-
-
-custom_derive! {
     #[derive(
         NewtypeFrom,
         NewtypeDeref,
         NewtypeAdd(*),
         NewtypeSub(*),
+        NewtypeMul(*),
+        NewtypeDiv(*),
         PartialEq,
         PartialOrd,
         Copy,
         Clone,
-        Debug
+        Debug,
+        Default
     )]
+    pub struct Prob(pub f64);
+}
+
+
+custom_derive! {
     /// A newtype for log-scale probabilities.
     ///
     /// # Example
@@ -105,11 +94,6 @@ custom_derive! {
     /// assert_relative_eq!(*Prob::from(p.ln_add_exp(q) + o), *Prob(0.7));
     /// # }
     /// ```
-    pub struct LogProb(pub f64);
-}
-
-
-custom_derive! {
     #[derive(
         NewtypeFrom,
         NewtypeDeref,
@@ -121,6 +105,11 @@ custom_derive! {
         Clone,
         Debug
     )]
+    pub struct LogProb(pub f64);
+}
+
+
+custom_derive! {
     /// A newtype for PHRED-scale probabilities.
     ///
     /// # Example
@@ -137,6 +126,17 @@ custom_derive! {
     /// assert_relative_eq!(*Prob::from(p), *Prob(0.5));
     /// # }
     /// ```
+    #[derive(
+        NewtypeFrom,
+        NewtypeDeref,
+        NewtypeAdd(*),
+        NewtypeSub(*),
+        PartialEq,
+        PartialOrd,
+        Copy,
+        Clone,
+        Debug
+    )]
     pub struct PHREDProb(pub f64);
 }
 
