@@ -24,3 +24,6 @@ lazy_static = "0.1.*"
 serde = { version = "0.6", optional = true }
 serde_macros = { version = "0.6", optional = true }
 approx = "0.1.*"
+custom_derive = "0.1.*"
+newtype_derive = "0.1.*"
+ordered-float = "0.2.*"

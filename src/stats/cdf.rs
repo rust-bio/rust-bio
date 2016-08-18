@@ -9,37 +9,55 @@
 use std::f64;
 use std::iter;
 use std::slice;
+use std::ops::Range;
 
 use num::traits::{cast, NumCast};
 use itertools::Itertools;
 
-use stats::logprobs::{self, LogProb};
+use stats::LogProb;
+
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+pub struct Entry<T: Ord> {
+    pub value: T,
+    pub prob: LogProb
+}
+
+
+impl<T: Ord> Entry<T> {
+    pub fn new(value: T, prob: LogProb) -> Self {
+        Entry { value: value, prob: prob }
+    }
+}
+
 
 
 /// Implementation of a cumulative distribution function.
 #[derive(Debug, Clone)]
-pub struct CDF<T: PartialOrd> {
-    inner: Vec<(T, LogProb)>
+#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+pub struct CDF<T: Ord> {
+    inner: Vec<Entry<T>>
 }
 
 
-impl<T: PartialOrd> CDF<T> {
+impl<T: Ord> CDF<T> {
     /// Create CDF from given probability mass function (PMF). The PMF may contain duplicate values
     /// the probabilities of which are summed during generation of the CDF.
     ///
     /// # Arguments
     ///
-    /// * `pmf` - the PMF as a vector of value/probability pairs
-    pub fn from_pmf(mut entries: Vec<(T, LogProb)>) -> Self {
-        entries.sort_by(|&(ref a, _), &(ref b, _)| a.partial_cmp(b).unwrap());
-        let mut inner: Vec<(T, LogProb)> = Vec::new();
+    /// * `pmf` - the PMF as a vector of `Entry` objects
+    pub fn from_pmf(mut entries: Vec<Entry<T>>) -> Self {
+        entries.sort_by(|a, b| a.value.cmp(&b.value));
+        let mut inner: Vec<Entry<T>> = Vec::new();
         for mut e in entries.into_iter() {
-            let p = logprobs::add(inner.last().map_or(f64::NEG_INFINITY, |e| e.1), e.1);
-            if !inner.is_empty() && inner.last().unwrap().0 == e.0 {
-                inner.last_mut().unwrap().1 = p;
+            let p = inner.last().map_or(LogProb::ln_zero(), |e| e.prob).ln_add_exp(e.prob);
+            if !inner.is_empty() && inner.last().unwrap().value == e.value {
+                inner.last_mut().unwrap().prob = p;
             }
             else {
-                e.1 = p;
+                e.prob = p;
                 inner.push(e);
             }
         }
@@ -47,25 +65,25 @@ impl<T: PartialOrd> CDF<T> {
             inner: inner
         };
 
-        if relative_eq!(cdf.total_prob(), 0.0) && cdf.total_prob() > 0.0 {
-            cdf.inner.last_mut().unwrap().1 = 0.0;
+        if relative_eq!(*cdf.total_prob(), *LogProb::ln_one()) && *cdf.total_prob() > *LogProb::ln_one() {
+            cdf.inner.last_mut().unwrap().prob = LogProb::ln_one();
         }
 
         cdf
     }
 
     /// Create CDF from iterator. This can be used to replace the values of a CDF.
-    pub fn from_cdf<I: Iterator<Item = (T, LogProb)>>(entries: I) -> Self {
+    pub fn from_cdf<I: Iterator<Item = Entry<T>>>(entries: I) -> Self {
         CDF { inner: entries.collect_vec() }
     }
 
     /// Reduce CDF by omitting values with zero probability.
     pub fn reduce(self) -> Self {
         let mut inner = Vec::new();
-        let mut last = f64::NEG_INFINITY;
+        let mut last = LogProb::ln_zero();
         for e in self.inner.into_iter() {
-            if last != e.1 {
-                last = e.1;
+            if last != e.prob {
+                last = e.prob;
                 inner.push(e);
             }
         }
@@ -89,19 +107,18 @@ impl<T: PartialOrd> CDF<T> {
     }
 
     /// Provide iterator.
-    pub fn iter(&self) -> slice::Iter<(T, f64)>{
+    pub fn iter(&self) -> slice::Iter<Entry<T>>{
         self.inner.iter()
     }
 
     /// Iterator over corresponding PMF.
     pub fn iter_pmf<'a>(&'a self) -> CDFPMFIter<'a, T> {
-        fn cdf_to_pmf<'a, G>(last_prob: &mut LogProb, e: &'a (G, LogProb)) -> Option<(&'a G, LogProb)> {
-            let &(ref value, cdf_prob) = e;
-            let prob = logprobs::sub(cdf_prob, *last_prob);
-            *last_prob = cdf_prob;
-            Some((value, prob))
+        fn cdf_to_pmf<'a, G: Ord>(last_prob: &mut LogProb, e: &'a Entry<G>) -> Option<Entry<&'a G>> {
+            let prob = e.prob.ln_sub_exp(*last_prob);
+            *last_prob = e.prob;
+            Some(Entry::new(&e.value, prob))
         }
-        self.inner.iter().scan(f64::NEG_INFINITY, cdf_to_pmf)
+        self.inner.iter().scan(LogProb::ln_zero(), cdf_to_pmf)
     }
 
     /// Get cumulative probability for a given value. If the value is not present,
@@ -111,9 +128,9 @@ impl<T: PartialOrd> CDF<T> {
             None
         }
         else {
-            Some(match self.inner.binary_search_by(|e| e.0.partial_cmp(value).unwrap()) {
-                Ok(i) => self.inner[i].1,
-                Err(i) => if i > 0 { self.inner[i - 1].1 } else { f64::NEG_INFINITY }
+            Some(match self.inner.binary_search_by(|e| e.value.partial_cmp(value).unwrap()) {
+                Ok(i) => self.inner[i].prob,
+                Err(i) => if i > 0 { self.inner[i - 1].prob } else { LogProb::ln_zero() }
             })
         }
     }
@@ -124,36 +141,40 @@ impl<T: PartialOrd> CDF<T> {
             None
         }
         else {
-            Some(match self.inner.binary_search_by(|e| e.0.partial_cmp(value).unwrap()) {
-                Ok(i) => if i > 0 { logprobs::sub(self.inner[i].1, self.inner[i - 1].1) } else { self.inner[0].1 },
-                Err(i) => if i > 0 { self.inner[i - 1].1 } else { f64::NEG_INFINITY }
+            Some(match self.inner.binary_search_by(|e| e.value.partial_cmp(value).unwrap()) {
+                Ok(i) => if i > 0 { self.inner[i].prob.ln_sub_exp(self.inner[i - 1].prob) } else { self.inner[0].prob },
+                Err(i) => if i > 0 { self.inner[i - 1].prob } else { LogProb::ln_zero() }
             })
         }
     }
 
     /// Return total probability.
     pub fn total_prob(&self) -> LogProb {
-        let &(_, prob) = self.inner.last().unwrap();
-        prob
+        self.inner.last().map_or(LogProb::ln_zero(), |e| e.prob)
     }
 
     /// Return maximum a posteriori probability estimate (MAP).
-    pub fn map(&self) -> &T {
-        let mut max = self.iter_pmf().next().unwrap();
-        for e in self.iter_pmf() {
-            if e.1 >= max.1 {
-                max = e;
+    pub fn map(&self) -> Option<&T> {
+        if let Some(mut max) = self.iter_pmf().next() {
+            for e in self.iter_pmf() {
+                if e.prob >= max.prob {
+                    max = e;
+                }
             }
+            Some(&max.value)
+        } else {
+            None
         }
-        &max.0
     }
 
     /// Return 95% credible interval.
-    pub fn credible_interval(&self) -> (&T, &T) {
-        let lower = self.inner.binary_search_by(|&(_, p)| p.partial_cmp(&0.025f64.ln()).unwrap()).unwrap_or_else(|i| i);
-        let upper = self.inner.binary_search_by(|&(_, p)| p.partial_cmp(&0.975f64.ln()).unwrap()).unwrap_or_else(|i| i - 1);
+    pub fn credible_interval(&self) -> Range<&T> {
+        let p_lower = LogProb(0.025f64.ln());
+        let p_upper = LogProb(0.095f64.ln());
+        let lower = self.inner.binary_search_by(|e| e.prob.partial_cmp(&p_lower).unwrap()).unwrap_or_else(|i| i);
+        let upper = self.inner.binary_search_by(|e| e.prob.partial_cmp(&p_upper).unwrap()).unwrap_or_else(|i| i - 1);
 
-        (&self.inner[lower].0, &self.inner[upper].0)
+        &self.inner[lower].value..&self.inner[upper].value
     }
 
     /// Number of entries in the CDF.
@@ -163,47 +184,52 @@ impl<T: PartialOrd> CDF<T> {
 }
 
 
-impl<T: NumCast + Clone + PartialOrd> CDF<T> {
+impl<T: NumCast + Clone + Ord> CDF<T> {
+    /// Calculate expected value.
     pub fn expected_value(&self) -> f64 {
-        self.iter_pmf().map(|(value, prob)| {
-            cast::<T, f64>(value.clone()).unwrap() * prob.exp()
+        self.iter_pmf().map(|e| {
+            cast::<T, f64>(e.value.clone()).unwrap() * e.prob.exp()
         }).fold(0.0f64, |s, e| s + e)
     }
 
+    /// Calculate variance.
     pub fn variance(&self) -> f64 {
         let ev = self.expected_value();
-        self.iter_pmf().map(|(value, prob)| {
-                (cast::<T, f64>(value.clone()).unwrap() - ev).powi(2) * prob.exp()
+        self.iter_pmf().map(|e| {
+                (cast::<T, f64>(e.value.clone()).unwrap() - ev).powi(2) * e.prob.exp()
         }).fold(0.0, |s, e| s + e)
     }
 
+    /// Calculate standard deviation.
     pub fn standard_deviation(&self) -> f64 {
         self.variance().sqrt()
     }
 }
 
-pub type CDFPMFIter<'a, T> = iter::Scan<slice::Iter<'a, (T, LogProb)>, LogProb, fn(&mut LogProb, &'a (T, LogProb)) -> Option<(&'a T, LogProb)>>;
+pub type CDFPMFIter<'a, T> = iter::Scan<slice::Iter<'a, Entry<T>>, LogProb, fn(&mut LogProb, &'a Entry<T>) -> Option<Entry<&'a T>>>;
 
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use stats::LogProb;
+    use ordered_float::NotNaN;
 
 
     #[test]
     fn test_cdf() {
-        let mut pmf = vec![(0.0, 0.1f64.ln())];
+        let mut pmf = vec![Entry::new(NotNaN::new(0.0).unwrap(), LogProb(0.1f64.ln()))];
         for i in 0..9 {
-            pmf.push((i as f64, 0.1f64.ln()));
+            pmf.push(Entry::new(NotNaN::new(i as f64).unwrap(), LogProb(0.1f64.ln())));
         }
         println!("{:?}", pmf);
 
         let cdf = CDF::from_pmf(pmf.clone());
         println!("{:?}", cdf);
-        for &(value, prob) in pmf.iter().skip(2) {
-            assert_ulps_eq!(prob, cdf.get_pmf(&value).unwrap(), epsilon = 0.0000000000001);
+        for e in pmf.iter().skip(2) {
+            assert_ulps_eq!(*e.prob, *cdf.get_pmf(&e.value).unwrap(), epsilon = 0.0000000000001);
         }
-        assert_relative_eq!(cdf.total_prob(), 1.0f64.ln());
-        assert_relative_eq!(cdf.get(&1.0).unwrap(), 0.3f64.ln(), epsilon = 0.00000001);
+        assert_relative_eq!(*cdf.total_prob(), 1.0f64.ln());
+        assert_relative_eq!(*cdf.get(&NotNaN::new(1.0).unwrap()).unwrap(), 0.3f64.ln(), epsilon = 0.00000001);
     }
 }
