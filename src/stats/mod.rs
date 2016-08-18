@@ -7,7 +7,6 @@
 
 
 pub mod combinatorics;
-pub mod cdf;
 pub mod probs;
 
 pub use stats::probs::{Prob, LogProb, PHREDProb};

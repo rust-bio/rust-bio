@@ -5,6 +5,8 @@
 
 //! Handling log-probabilities.
 
+pub mod cdf;
+
 use std::mem;
 use std::f64;
 use std::iter;
