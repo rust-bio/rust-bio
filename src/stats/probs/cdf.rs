@@ -11,7 +11,6 @@ use std::iter;
 use std::slice;
 use std::ops::Range;
 
-use num::traits::{cast, NumCast};
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
@@ -190,11 +189,11 @@ impl<T: Ord> CDF<T> {
 }
 
 
-impl<T: NumCast + Clone + Ord> CDF<T> {
+impl<T: Clone + Ord> CDF<T> where f64: From<T> {
     /// Calculate expected value.
     pub fn expected_value(&self) -> f64 {
         self.iter_pmf().map(|e| {
-            cast::<T, f64>(e.value.clone()).unwrap() * e.prob.exp()
+            f64::from(e.value.clone()) * e.prob.exp()
         }).fold(0.0f64, |s, e| s + e)
     }
 
@@ -202,7 +201,7 @@ impl<T: NumCast + Clone + Ord> CDF<T> {
     pub fn variance(&self) -> f64 {
         let ev = self.expected_value();
         self.iter_pmf().map(|e| {
-                (cast::<T, f64>(e.value.clone()).unwrap() - ev).powi(2) * e.prob.exp()
+                (f64::from(e.value.clone()) - ev).powi(2) * e.prob.exp()
         }).fold(0.0, |s, e| s + e)
     }
 
