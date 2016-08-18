@@ -90,8 +90,10 @@ impl<T: Ord> CDF<T> {
         CDF { inner: inner }
     }
 
-    /// Downsample CDF to n entries.
+    /// Downsample CDF to n entries. Panics if n <= 1 and returns identity if n is greater
+    /// than the number of entries.
     pub fn sample(mut self, n: usize) -> Self {
+        assert!(n > 1);
         if self.inner.len() <= n {
             self
         }
