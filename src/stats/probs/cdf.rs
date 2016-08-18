@@ -51,7 +51,7 @@ impl<T: Ord> CDF<T> {
     pub fn from_pmf(mut entries: Vec<Entry<T>>) -> Self {
         entries.sort_by(|a, b| a.value.cmp(&b.value));
         let mut inner: Vec<Entry<T>> = Vec::new();
-        for mut e in entries.into_iter() {
+        for mut e in entries {
             let p = inner.last().map_or(LogProb::ln_zero(), |e| e.prob).ln_add_exp(e.prob);
             if !inner.is_empty() && inner.last().unwrap().value == e.value {
                 inner.last_mut().unwrap().prob = p;
@@ -81,7 +81,7 @@ impl<T: Ord> CDF<T> {
     pub fn reduce(self) -> Self {
         let mut inner = Vec::new();
         let mut last = LogProb::ln_zero();
-        for e in self.inner.into_iter() {
+        for e in self.inner {
             if last != e.prob {
                 last = e.prob;
                 inner.push(e);
