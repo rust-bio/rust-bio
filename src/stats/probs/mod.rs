@@ -5,6 +5,8 @@
 
 //! Handling log-probabilities.
 
+pub mod cdf;
+
 use std::mem;
 use std::f64;
 use std::iter;
@@ -145,15 +147,19 @@ custom_derive! {
 pub type ScanIter<I> = iter::Scan<<I as IntoIterator>::IntoIter, LogProb, fn(&mut LogProb, LogProb) -> Option<LogProb>>;
 
 
+static LOGPROB_LN_ZERO: LogProb = LogProb(f64::NEG_INFINITY);
+static LOGPROB_LN_ONE: LogProb = LogProb(0.0);
+
+
 impl LogProb {
     /// Log-space representation of Pr=0
     pub fn ln_zero() -> LogProb {
-        LogProb(f64::NEG_INFINITY)
+        LOGPROB_LN_ZERO
     }
 
     /// Log-space representation of Pr=1
     pub fn ln_one() -> LogProb {
-        LogProb(0.0)
+        LOGPROB_LN_ONE
     }
 
     /// Numerically stable calculation of 1 - p in log-space.
