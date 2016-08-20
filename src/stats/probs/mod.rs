@@ -11,8 +11,6 @@ use std::mem;
 use std::f64;
 use std::iter;
 use std::ops::{Add, Sub, Mul, Div};
-use num::traits::cast;
-use num::NumCast;
 
 use itertools::linspace;
 use itertools::Itertools;
@@ -240,13 +238,16 @@ impl LogProb {
     }
 
     /// Integrate numerically stable over given log-space density in the interval [a, b]. Uses the trapezoidal rule with n grid points.
-    pub fn ln_integrate_exp<T, D>(density: &D, a: T, b: T, n: usize) -> LogProb
-        where T: NumCast + Copy + Add<Output=T> + Sub<Output=T> + Div<Output=T> + Mul<Output=T>, D: Fn(T) -> LogProb, usize: ToFloat<T>
+    pub fn ln_integrate_exp<T, D>(density: &D, a: T, b: T, n: usize) -> LogProb where
+        T: Copy + Add<Output=T> + Sub<Output=T> + Div<Output=T> + Mul<Output=T>,
+        D: Fn(T) -> LogProb,
+        usize: ToFloat<T>,
+        f64: From<T>
     {
         let mut probs = linspace(a, b, n).dropping(1).dropping_back(1).map(|v| LogProb(*density(v) + 2.0f64.ln())).collect_vec();
         probs.push(density(a));
         probs.push(density(b));
-        let width: f64 = cast(b - a).unwrap();
+        let width = f64::from(b - a);
 
         LogProb(*Self::ln_sum_exp(&probs) + width.ln() - (2.0 * (n - 1) as f64).ln())
     }
