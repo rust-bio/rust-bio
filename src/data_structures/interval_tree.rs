@@ -25,11 +25,27 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
         }
     }
 
-    pub fn find_any_intersection(&self, interval: Range<N>) -> Option<(&Range<N>, &D)> {
+    pub fn find_any(&self, interval: &Range<N>) -> Option<(&Range<N>, &D)> {
         validate(&interval);
         match self.root {
-            Some(ref n) => n.find_any_intersection(interval),
+            Some(ref n) => {
+                let mut result = vec![];
+                n.find(interval, true, &mut result);
+                result.pop()
+            }
             None => None,
+        }
+    }
+
+    pub fn find_all(&self, interval: &Range<N>) -> Vec<(&Range<N>, &D)> {
+        validate(&interval);
+        match self.root {
+            Some(ref n) => {
+                let mut result = vec![];
+                n.find(interval, true, &mut result);
+                result
+            }
+            None => vec![],
         }
     }
 }
@@ -83,23 +99,35 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
         self.repair();
     }
 
-    pub fn find_any_intersection(&self, interval: Range<N>) -> Option<(&Range<N>, &D)> {
+    pub fn find<'a>(&'a self,
+                    interval: &Range<N>,
+                    only_one: bool,
+                    result: &mut Vec<(&'a Range<N>, &'a D)>) {
         if interval.end <= self.interval.start || self.interval.end <= interval.start {
             // no overlap with current node, recur into children
             if let Some(ref left) = self.left {
                 if left.max > interval.start {
-                    return left.find_any_intersection(interval);
+                    left.find(interval, only_one, result);
+                    return;
                 }
             }
             if let Some(ref right) = self.right {
-                return right.find_any_intersection(interval);
+                right.find(interval, only_one, result);
+                return;
             }
         } else {
-            // overlaps current node
-            return Some((&self.interval, &self.value));
-            // TODO: iterate over children here to return all interections
+            result.push((&self.interval, &self.value));
+            if only_one {
+                return;
+            } else {
+                if let Some(ref left) = self.left {
+                    left.find(interval, only_one, result);
+                }
+                if let Some(ref right) = self.right {
+                    right.find(interval, only_one, result);
+                }
+            }
         }
-        return None;
     }
 
     fn update_height(&mut self) {
@@ -279,7 +307,7 @@ mod tests {
         expected_data.push_str(&expected_bounds.start.to_string());
         expected_data.push_str(":");
         expected_data.push_str(&expected_bounds.end.to_string());
-        if let Some((actual_bounds, actual_data)) = tree.find_any_intersection(target) {
+        if let Some((actual_bounds, actual_data)) = tree.find_any(&target) {
             assert_eq!(&expected_data.to_string(), actual_data);
             assert_eq!(&expected_bounds, actual_bounds);
         } else {
@@ -292,29 +320,29 @@ mod tests {
     fn test_insertion_and_intersection() {
         let mut tree: IntervalTree<i64, String> = IntervalTree::new();
         tree.insert((50..51), "50:51".to_string());
-        assert_eq!(tree.find_any_intersection((49..50)), None);
+        assert_eq!(tree.find_any(&(49..50)), None);
         assert_intersection(&tree, (49..55), (50..51));
-        assert_eq!(tree.find_any_intersection((51..55)), None);
-        assert_eq!(tree.find_any_intersection((52..55)), None);
-        assert_eq!(tree.find_any_intersection((40..45)), None);
+        assert_eq!(tree.find_any(&(51..55)), None);
+        assert_eq!(tree.find_any(&(52..55)), None);
+        assert_eq!(tree.find_any(&(40..45)), None);
         insert_and_validate(&mut tree, 80, 81);
         assert_intersection(&tree, (80..83), (80..81));
-        assert_eq!(tree.find_any_intersection((82..83)), None);
+        assert_eq!(tree.find_any(&(82..83)), None);
         insert_and_validate(&mut tree, 30, 35);
         assert_intersection(&tree, (25..33), (30..35));
-        assert_eq!(tree.find_any_intersection((42..43)), None);
-        assert_eq!(tree.find_any_intersection((35..36)), None);
-        assert_eq!(tree.find_any_intersection((22..29)), None);
+        assert_eq!(tree.find_any(&(42..43)), None);
+        assert_eq!(tree.find_any(&(35..36)), None);
+        assert_eq!(tree.find_any(&(22..29)), None);
         insert_and_validate(&mut tree, 70, 77);
         assert_intersection(&tree, (75..79), (70..77));
-        assert_eq!(tree.find_any_intersection((62..68)), None);
+        assert_eq!(tree.find_any(&(62..68)), None);
         assert_intersection(&tree, (75..77), (70..77));
-        assert_eq!(tree.find_any_intersection((78..79)), None);
+        assert_eq!(tree.find_any(&(78..79)), None);
         assert_intersection(&tree, (49..51), (50..51));
         assert_intersection(&tree, (49..55), (50..51));
-        assert_eq!(tree.find_any_intersection((51..55)), None);
-        assert_eq!(tree.find_any_intersection((52..55)), None);
-        assert_eq!(tree.find_any_intersection((40..45)), None);
+        assert_eq!(tree.find_any(&(51..55)), None);
+        assert_eq!(tree.find_any(&(52..55)), None);
+        assert_eq!(tree.find_any(&(40..45)), None);
         insert_and_validate(&mut tree, 101, 102);
         insert_and_validate(&mut tree, 103, 104);
         insert_and_validate(&mut tree, 105, 106);
@@ -324,8 +352,8 @@ mod tests {
         insert_and_validate(&mut tree, 115, 116);
         insert_and_validate(&mut tree, 117, 118);
         insert_and_validate(&mut tree, 119, 129);
-        assert_eq!(tree.find_any_intersection((112..113)), None);
-        assert_eq!(tree.find_any_intersection((108..109)), None);
+        assert_eq!(tree.find_any(&(112..113)), None);
+        assert_eq!(tree.find_any(&(108..109)), None);
         assert_intersection(&tree, (106..108), (107..108));
     }
 }
