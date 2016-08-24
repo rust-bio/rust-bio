@@ -66,8 +66,11 @@ custom_derive! {
         Copy,
         Clone,
         Debug,
-        Default
+        Default,
+        RustcDecodable,
+        RustcEncodable
     )]
+    #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
     pub struct Prob(pub f64);
 }
 
@@ -103,8 +106,11 @@ custom_derive! {
         PartialOrd,
         Copy,
         Clone,
-        Debug
+        Debug,
+        RustcDecodable,
+        RustcEncodable
     )]
+    #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
     pub struct LogProb(pub f64);
 }
 
@@ -135,8 +141,11 @@ custom_derive! {
         PartialOrd,
         Copy,
         Clone,
-        Debug
+        Debug,
+        RustcDecodable,
+        RustcEncodable
     )]
+    #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
     pub struct PHREDProb(pub f64);
 }
 
