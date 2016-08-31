@@ -271,12 +271,10 @@ impl LogProb {
         assert!(n % 2 == 1, "n must be odd");
         let mut probs = linspace(a, b, n).enumerate().dropping(1).dropping_back(1).map(|(i, v)| {
             let weight = (2 + (i % 2) * 2) as f64;
-            println!("weight {}", weight);
             LogProb(*density(v) + weight.ln()) // factors alter between 2 and 4
         }).collect_vec();
         probs.push(density(a));
         probs.push(density(b));
-        println!("probs {:?}", probs);
         let width = f64::from(b - a);
 
         LogProb(*Self::ln_sum_exp(&probs) + width.ln() - ((n - 1) as f64).ln() - 3.0f64.ln())
