@@ -247,7 +247,7 @@ impl LogProb {
     }
 
     /// Integrate numerically stable over given log-space density in the interval [a, b]. Uses the trapezoidal rule with n grid points.
-    pub fn ln_integrate_exp<T, D>(density: &D, a: T, b: T, n: usize) -> LogProb where
+    pub fn ln_trapezoidal_integrate_exp<T, D>(density: &D, a: T, b: T, n: usize) -> LogProb where
         T: Copy + Add<Output=T> + Sub<Output=T> + Div<Output=T> + Mul<Output=T>,
         D: Fn(T) -> LogProb,
         usize: ToFloat<T>,
@@ -259,6 +259,27 @@ impl LogProb {
         let width = f64::from(b - a);
 
         LogProb(*Self::ln_sum_exp(&probs) + width.ln() - (2.0 * (n - 1) as f64).ln())
+    }
+
+    /// Integrate numerically stable over given log-space density in the interval [a, b]. Uses Simpson's rule with n (odd) grid points.
+    pub fn ln_simpsons_integrate_exp<T, D>(density: &D, a: T, b: T, n: usize) -> LogProb where
+        T: Copy + Add<Output=T> + Sub<Output=T> + Div<Output=T> + Mul<Output=T>,
+        D: Fn(T) -> LogProb,
+        usize: ToFloat<T>,
+        f64: From<T>
+    {
+        assert!(n % 2 == 1, "n must be odd");
+        let mut probs = linspace(a, b, n).enumerate().dropping(1).dropping_back(1).map(|(i, v)| {
+            let weight = (2 + (i % 2) * 2) as f64;
+            println!("weight {}", weight);
+            LogProb(*density(v) + weight.ln()) // factors alter between 2 and 4
+        }).collect_vec();
+        probs.push(density(a));
+        probs.push(density(b));
+        println!("probs {:?}", probs);
+        let width = f64::from(b - a);
+
+        LogProb(*Self::ln_sum_exp(&probs) + width.ln() - ((n - 1) as f64).ln() - 3.0f64.ln())
     }
 
     fn scan_ln_add_exp(s: &mut LogProb, p: LogProb) -> Option<LogProb> {
@@ -360,9 +381,16 @@ mod tests {
     }
 
     #[test]
-    fn test_integrate() {
+    fn test_trapezoidal_integrate() {
         let density = |_| LogProb(0.1f64.ln());
-        let prob = LogProb::ln_integrate_exp(&density, 0.0, 10.0, 5);
+        let prob = LogProb::ln_trapezoidal_integrate_exp(&density, 0.0, 10.0, 5);
+        assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon=0.0000001);
+    }
+
+    #[test]
+    fn test_simpsons_integrate() {
+        let density = |_| LogProb(0.1f64.ln());
+        let prob = LogProb::ln_simpsons_integrate_exp(&density, 0.0, 10.0, 5);
         assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon=0.0000001);
     }
 }
