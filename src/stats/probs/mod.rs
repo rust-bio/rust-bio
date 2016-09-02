@@ -75,6 +75,17 @@ custom_derive! {
 }
 
 
+impl Prob {
+    pub fn checked(p: f64) -> Result<Self, ProbError> {
+        if p >= 0.0 && p <= 1.0 {
+            Ok(Prob(p))
+        } else {
+            Err(ProbError::InvalidProb(p))
+        }
+    }
+}
+
+
 custom_derive! {
     /// A newtype for log-scale probabilities.
     ///
@@ -320,6 +331,17 @@ impl Default for LogProb {
 impl Default for PHREDProb {
     fn default() -> PHREDProb {
         PHREDProb::from(Prob(0.0))
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum ProbError {
+        InvalidProb(value: f64) {
+            description("invalid probability")
+            display("probabilty {} not in interval [0,1]", value)
+        }
     }
 }
 

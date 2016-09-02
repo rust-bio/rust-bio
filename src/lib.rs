@@ -108,6 +108,8 @@ extern crate custom_derive;
 #[macro_use]
 extern crate newtype_derive;
 extern crate ordered_float;
+#[macro_use]
+extern crate quick_error;
 
 pub mod utils;
 pub mod alphabets;
