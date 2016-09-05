@@ -9,6 +9,7 @@
 //!
 //! ```
 //! use bio::data_structures::qgram_index;
+//! use bio::data_structures::interval;
 //! use bio::alphabets;
 //!
 //! let text = b"ACGGCTGAGATGAT";
@@ -20,8 +21,8 @@
 //! let matches = qgram_index.matches(pattern, 1);
 //! assert_eq!(matches, [
 //!     qgram_index::Match {
-//!         pattern: qgram_index::Interval { start: 0, stop: 4 },
-//!         text: qgram_index::Interval { start: 3, stop: 7 },
+//!         pattern: interval::Interval { start: 0, stop: 4 },
+//!         text: interval::Interval { start: 3, stop: 7 },
 //!         count: 2
 //!     }
 //! ]);
@@ -34,6 +35,7 @@ use std;
 use std::cmp;
 
 use alphabets::{Alphabet, RankTransform};
+use data_structures::interval::Interval;
 use utils;
 
 
@@ -199,23 +201,6 @@ impl QGramIndex {
     }
 }
 
-
-/// An interval, consisting of start and stop position (the latter exclusive).
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
-pub struct Interval {
-    pub start: usize,
-    pub stop: usize,
-}
-
-
-impl Interval {
-    /// Get the text within the given interval.
-    pub fn get<'a>(&self, text: &'a [u8]) -> &'a [u8] {
-        &text[self.start..self.stop]
-    }
-}
-
-
 /// A match between the pattern and the text.
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub struct Match {
@@ -224,20 +209,17 @@ pub struct Match {
     pub count: usize,
 }
 
-
 impl cmp::Ord for Match {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.count.cmp(&other.count)
     }
 }
 
-
 impl cmp::PartialOrd for Match {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
-
 
 /// An exact match between the pattern and the text.
 #[derive(PartialEq, Debug, Copy, Clone)]
@@ -246,11 +228,11 @@ pub struct ExactMatch {
     pub text: Interval,
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use alphabets;
+    use data_structures::interval::Interval;
 
     fn setup() -> (&'static [u8], alphabets::Alphabet) {
         let text = b"ACGGCTGAGATGAT";

@@ -12,4 +12,6 @@ pub mod bwt;
 pub mod bitenc;
 pub mod smallints;
 pub mod fmindex;
+pub mod interval;
+pub mod interval_tree;
 pub mod qgram_index;
