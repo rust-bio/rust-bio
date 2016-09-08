@@ -12,6 +12,56 @@ pub struct IntervalTree<N, D> {
     root: Option<Node<N, D>>,
 }
 
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub struct Entry<'a, N: 'a, D: 'a> {
+    data: &'a D,
+    interval: &'a Range<N>,
+}
+
+pub struct IntervalTreeIterator<'a, N: 'a, D: 'a> {
+    nodes: Vec<&'a Node<N, D>>,
+    interval: Range<N>,
+}
+
+impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator for IntervalTreeIterator<'a, N, D> {
+    type Item = Entry<'a, N, D>;
+
+    fn next(&mut self) -> Option<Entry<'a, N, D>> {
+        loop {
+            let candidate = match self.nodes.pop() {
+                None => return None,
+                Some(node) => node,
+            };
+            if self.interval.end <= candidate.interval.start ||
+               candidate.interval.end <= self.interval.start {
+                // no overlap with current candidate, check his children
+                if let Some(ref left) = candidate.left {
+                    if left.max > self.interval.start {
+                        self.nodes.push(left);
+                    }
+                }
+                // TODO: make sure there isn't any unnecessary recursion here
+                if let Some(ref right) = candidate.right {
+                    self.nodes.push(right);
+                }
+            } else {
+                if let Some(ref left) = candidate.left {
+                    self.nodes.push(left);
+                }
+                if let Some(ref right) = candidate.right {
+                    self.nodes.push(right);
+                }
+                let e = Entry {
+                    data: &candidate.value,
+                    interval: &candidate.interval,
+                };
+                return Some(e);
+            }
+        }
+    }
+}
+
+
 impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
     pub fn new() -> Self {
         IntervalTree { root: None }
@@ -23,6 +73,23 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
             Some(ref mut n) => n.insert(interval, data),
             None => self.root = Some(Node::new(interval, data)),
         }
+    }
+
+    pub fn find(&self, interval: Range<N>) -> IntervalTreeIterator<N, D> {
+        validate(&interval);
+        match self.root {
+            Some(ref n) => {
+                n.find_iter(interval)
+            }
+            None => {
+                let empty_nodes = vec![];
+                IntervalTreeIterator { 
+                    nodes: empty_nodes,
+                    interval: interval, 
+                }
+            }
+        }
+
     }
 
     pub fn find_any(&self, interval: &Range<N>) -> Option<(&Range<N>, &D)> {
@@ -98,6 +165,15 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
         }
         self.repair();
     }
+
+    pub fn find_iter<'a>(&'a self, interval: Range<N>) -> IntervalTreeIterator<'a, N, D> {
+        let nodes = vec![self];
+        IntervalTreeIterator {
+            nodes: nodes,
+            interval: interval,
+        }
+    }
+
 
     pub fn find<'a>(&'a self,
                     interval: &Range<N>,
