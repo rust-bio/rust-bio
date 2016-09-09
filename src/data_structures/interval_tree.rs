@@ -23,7 +23,9 @@ pub struct IntervalTreeIterator<'a, N: 'a, D: 'a> {
     interval: Range<N>,
 }
 
-impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator for IntervalTreeIterator<'a, N, D> {
+impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator for IntervalTreeIterator<'a,
+                                                                                             N,
+                                                                                             D> {
     type Item = Entry<'a, N, D>;
 
     fn next(&mut self) -> Option<Entry<'a, N, D>> {
@@ -32,35 +34,32 @@ impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator for Interval
                 None => return None,
                 Some(node) => node,
             };
-            if self.interval.end <= candidate.interval.start ||
-               candidate.interval.end <= self.interval.start {
-                // no overlap with current candidate, check his children
-                if let Some(ref left) = candidate.left {
-                    if left.max > self.interval.start {
-                        self.nodes.push(left);
-                    }
-                }
-                // TODO: make sure there isn't any unnecessary recursion here
-                if let Some(ref right) = candidate.right {
-                    self.nodes.push(right);
-                }
-            } else {
-                if let Some(ref left) = candidate.left {
+
+            if let Some(ref left) = candidate.left {
+                if left.max > self.interval.start {
                     self.nodes.push(left);
                 }
-                if let Some(ref right) = candidate.right {
+            }
+
+            if let Some(ref right) = candidate.right {
+                // TODO: this could be improved by introducing node.min
+                // (similar to node.max)
+                if candidate.interval.start < self.interval.end {
                     self.nodes.push(right);
                 }
-                let e = Entry {
+            }
+
+            // overlap
+            if self.interval.end > candidate.interval.start &&
+               self.interval.start < candidate.interval.end {
+                return Some(Entry {
                     data: &candidate.value,
                     interval: &candidate.interval,
-                };
-                return Some(e);
+                });
             }
         }
     }
 }
-
 
 impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
     pub fn new() -> Self {
@@ -78,14 +77,12 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
     pub fn find(&self, interval: &Range<N>) -> IntervalTreeIterator<N, D> {
         validate(&interval);
         match self.root {
-            Some(ref n) => {
-                n.find_iter(interval.clone())
-            }
+            Some(ref n) => n.find_iter(interval.clone()),
             None => {
                 let empty_nodes = vec![];
-                IntervalTreeIterator { 
+                IntervalTreeIterator {
                     nodes: empty_nodes,
-                    interval: interval.clone(), 
+                    interval: interval.clone(),
                 }
             }
         }
@@ -320,7 +317,7 @@ mod tests {
         }
     }
 
-    fn make_entry_tuples(intervals: Vec<Range<i64>>) -> Vec<(Range<i64>, String)>{
+    fn make_entry_tuples(intervals: Vec<Range<i64>>) -> Vec<(Range<i64>, String)> {
         let mut entries = vec![];
         for interval in intervals {
             let mut data: String = "".to_string();
@@ -334,9 +331,9 @@ mod tests {
     }
 
     fn assert_intersections(tree: &IntervalTree<i64, String>,
-                           target: Range<i64>,
-                           expected_results: Vec<Range<i64>>) {
-        let mut actual_entries : Vec<Entry<i64, String>> = tree.find(&target).collect();
+                            target: Range<i64>,
+                            expected_results: Vec<Range<i64>>) {
+        let mut actual_entries: Vec<Entry<i64, String>> = tree.find(&target).collect();
         actual_entries.sort_by(|x1, x2| x1.data.cmp(&x2.data));
         let expected_entries = make_entry_tuples(expected_results);
         assert_eq!(actual_entries.len(), expected_entries.len());
@@ -346,11 +343,9 @@ mod tests {
         }
     }
 
-    fn assert_not_found(tree: &IntervalTree<i64, String>,
-                        target: Range<i64>) {
+    fn assert_not_found(tree: &IntervalTree<i64, String>, target: Range<i64>) {
         assert_intersections(tree, target, vec![]);
     }
-
 
     #[test]
     fn test_insertion_and_intersection() {
@@ -363,14 +358,19 @@ mod tests {
         assert_not_found(&tree, (40..45));
         insert_and_validate(&mut tree, 80, 81);
         assert_intersections(&tree, (80..83), vec![(80..81)]);
+        assert_intersections(&tree, (1..100), vec![(50..51), (80..81)]);
         assert_not_found(&tree, (82..83));
         insert_and_validate(&mut tree, 30, 35);
         assert_intersections(&tree, (25..33), vec![(30..35)]);
+        assert_intersections(&tree, (1..100), vec![(30..35), (50..51), (80..81)]);
         assert_not_found(&tree, (42..43));
         assert_not_found(&tree, (35..36));
         assert_not_found(&tree, (22..29));
         insert_and_validate(&mut tree, 70, 77);
         assert_intersections(&tree, (75..79), vec![(70..77)]);
+        assert_intersections(&tree,
+                             (1..100),
+                             vec![(30..35), (50..51), (70..77), (80..81)]);
         assert_not_found(&tree, (62..68));
         assert_intersections(&tree, (75..77), vec![(70..77)]);
         assert_not_found(&tree, (78..79));
@@ -391,5 +391,18 @@ mod tests {
         assert_not_found(&tree, (112..113));
         assert_not_found(&tree, (108..109));
         assert_intersections(&tree, (106..108), vec![(107..108)]);
+        assert_intersections(&tree,
+                             (1..100),
+                             vec![(30..35), (50..51), (70..77), (80..81)]);
+        assert_intersections(&tree,
+                             (1..101),
+                             vec![(30..35), (50..51), (70..77), (80..81)]);
+        assert_intersections(&tree,
+                             (1..102),
+                             vec![(30..35), (50..51), (70..77), (80..81), (101..102)]);
+        assert_intersections(&tree,
+                             (100..200),
+                             vec![(101..102), (103..104), (105..106), (107..108), (111..112),
+                                  (113..114), (115..116), (117..118), (119..129)]);
     }
 }
