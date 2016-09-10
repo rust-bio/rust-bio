@@ -36,22 +36,18 @@ impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator for Interval
             };
 
             if let Some(ref left) = candidate.left {
-                if left.max > self.interval.start {
+                if left.has_match(&self.interval) {
                     self.nodes.push(left);
                 }
             }
 
             if let Some(ref right) = candidate.right {
-                // TODO: this could be improved by introducing node.min
-                // (similar to node.max)
-                if candidate.interval.start < self.interval.end {
+                if right.has_match(&self.interval) {
                     self.nodes.push(right);
                 }
             }
 
-            // overlap
-            if self.interval.end > candidate.interval.start &&
-               self.interval.start < candidate.interval.end {
+            if intersect(&self.interval, &candidate.interval) {
                 return Some(Entry {
                     data: &candidate.value,
                     interval: &candidate.interval,
@@ -145,6 +141,24 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
             nodes: nodes,
             interval: interval,
         }
+    }
+
+    pub fn has_match(&self, interval: &Range<N>) -> bool {
+        if intersect(&self.interval, interval) {
+            return true;
+        }
+
+        if let Some(ref left) = self.left {
+            if left.max > interval.start {
+                return left.has_match(interval);
+            }
+        }
+
+        if let Some(ref right) = self.right {
+            return right.has_match(interval);
+        }
+
+        false
     }
 
     fn update_height(&mut self) {
@@ -241,6 +255,11 @@ fn swap_interval_data<N, D>(node_1: &mut Node<N, D>, node_2: &mut Node<N, D>) {
     mem::swap(&mut node_1.value, &mut node_2.value);
     mem::swap(&mut node_1.interval, &mut node_2.interval);
 }
+
+fn intersect<N: Ord>(range_1: &Range<N>, range_2: &Range<N>) -> bool {
+    range_1.end > range_2.start && range_1.start < range_2.end
+}
+
 
 #[cfg(test)]
 mod tests {
