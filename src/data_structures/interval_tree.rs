@@ -14,8 +14,8 @@ pub struct IntervalTree<N, D> {
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Entry<'a, N: 'a, D: 'a> {
-    data: &'a D,
-    interval: &'a Range<N>,
+    pub data: &'a D,
+    pub interval: &'a Range<N>,
 }
 
 pub struct IntervalTreeIterator<'a, N: 'a, D: 'a> {
@@ -206,7 +206,6 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
                 let ref left_right_h = left.right.as_ref().map_or(0, |n| n.height);
                 let ref left_left_h = left.left.as_ref().map_or(0, |n| n.height);
                 if left_right_h > left_left_h {
-                    println!("double rot");
                     left.rotate_left();
                 }
             }
@@ -265,6 +264,7 @@ fn intersect<N: Ord>(range_1: &Range<N>, range_2: &Range<N>) -> bool {
 mod tests {
     use super::*;
     use std::cmp;
+    use std::cmp::{min, max};
     use std::ops::Range;
 
     fn validate(node: &Node<i64, String>) {
@@ -423,5 +423,33 @@ mod tests {
                              (100..200),
                              vec![(101..102), (103..104), (105..106), (107..108), (111..112),
                                   (113..114), (115..116), (117..118), (119..129)]);
+    }
+
+
+    #[test]
+    fn test_insertion_and_intersection_2() {
+        let mut tree: IntervalTree<i64, String> = IntervalTree::new();
+        // interval size we'll insert into the tree
+        let k = 10;
+        for i in 100..200 {
+            insert_and_validate(&mut tree, i, i + k);
+        }
+        for i in 90..210 {
+            // "random" interval length we'll search against.
+            // the exact formula doesn't matter; the point is
+            // it will vary from 0.5 * k to 1.5 * k
+            let l = k / 2 + i % k;
+            let lower_bound = i;
+            let upper_bound = i + l;
+            let smallest_start = max(lower_bound - k + 1, 100);
+            let largest_start = min(upper_bound, 200);
+            let mut expected_intersections = vec![];
+            for j in smallest_start..largest_start {
+                expected_intersections.push(j..j + k);
+            }
+            assert_intersections(&tree,
+                                 (lower_bound..upper_bound),
+                                 expected_intersections);
+        }
     }
 }
