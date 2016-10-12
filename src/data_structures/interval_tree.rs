@@ -14,9 +14,22 @@ pub struct IntervalTree<N, D> {
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Entry<'a, N: 'a, D: 'a> {
-    pub data: &'a D,
-    pub interval: &'a Range<N>,
+    data: &'a D,
+    interval: &'a Range<N>,
 }
+
+impl<'a, N: 'a, D: 'a> Entry<'a, N, D> {
+    /// Get a reference to the data for this entry
+    pub fn data(&self) -> &'a D {
+        self.data
+    }
+
+    /// Get a reference to the interval for this entry
+    pub fn interval(&self) -> &'a Range<N> {
+        self.interval
+    }
+}
+
 
 pub struct IntervalTreeIterator<'a, N: 'a, D: 'a> {
     nodes: Vec<&'a Node<N, D>>,
