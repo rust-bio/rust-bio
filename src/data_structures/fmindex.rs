@@ -344,7 +344,7 @@ impl<
         }
     }
 
-    fn backward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
+    pub fn backward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
         let mut s = 0;
         let mut o = 0;
         let mut l = interval.lower_rev;
@@ -374,7 +374,7 @@ impl<
     }
 
 
-    fn forward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
+    pub fn forward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
         let comp_a = dna::complement(a);
 
         self.backward_ext(&interval.swapped(), comp_a)
