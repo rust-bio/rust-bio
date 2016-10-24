@@ -48,23 +48,26 @@ impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator for Interval
                 Some(node) => node,
             };
 
-            if let Some(ref left) = candidate.left {
-                if left.has_match(&self.interval) {
+            // stop traversal if the query interval is beyond the current node and all children
+            if self.interval.start < candidate.max {
+                if let Some(ref left) = candidate.left {
                     self.nodes.push(left);
                 }
-            }
 
-            if let Some(ref right) = candidate.right {
-                if right.has_match(&self.interval) {
-                    self.nodes.push(right);
+                // don't traverse right if the query interval is completely before the current interval
+                if self.interval.end > candidate.interval.start {
+                    if let Some(ref right) = candidate.right {
+                        self.nodes.push(right);
+                    }
+
+                    // overlap is only possible if both tests pass
+                    if intersect(&self.interval, &candidate.interval) {
+                        return Some(Entry {
+                            data: &candidate.value,
+                            interval: &candidate.interval,
+                        });
+                    }
                 }
-            }
-
-            if intersect(&self.interval, &candidate.interval) {
-                return Some(Entry {
-                    data: &candidate.value,
-                    interval: &candidate.interval,
-                });
             }
         }
     }
