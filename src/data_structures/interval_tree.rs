@@ -78,7 +78,7 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
         IntervalTree { root: None }
     }
 
-    pub fn insert(&mut self, interval: Range<N>, data: D) -> Result<(), String> {
+    pub fn insert(&mut self, interval: Range<N>, data: D) -> Result<(), IntervalTreeError> {
         try!(validate(&interval));
         match self.root {
             Some(ref mut n) => n.insert(interval, data),
@@ -87,7 +87,7 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
         Ok(())
     }
 
-    pub fn find(&self, interval: &Range<N>) -> Result<IntervalTreeIterator<N, D>, String> {
+    pub fn find(&self, interval: &Range<N>) -> Result<IntervalTreeIterator<N, D>, IntervalTreeError> {
         try!(validate(&interval));
         Ok(match self.root {
             Some(ref n) => n.find_iter(interval.clone()),
@@ -102,10 +102,9 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
     }
 }
 
-fn validate<N: Ord + Debug>(interval: &Range<N>) -> Result<(), String> {
+fn validate<N: Ord + Debug>(interval: &Range<N>) -> Result<(), IntervalTreeError> {
     if interval.start > interval.end {
-        Err(format!("Error, a range should have a positive width, got: ({:?})",
-               interval))
+        Err(IntervalTreeError::InvalidRange)
     } else {
         Ok(())
     }
@@ -277,6 +276,16 @@ fn intersect<N: Ord>(range_1: &Range<N>, range_2: &Range<N>) -> bool {
     range_1.start < range_1.end && range_2.start < range_2.end &&
         range_1.end > range_2.start && range_1.start < range_2.end
 }
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum IntervalTreeError {
+        InvalidRange {
+            description("Range for IntervalTree must have a positive width")
+        }
+    }
+}
+
 
 
 #[cfg(test)]
