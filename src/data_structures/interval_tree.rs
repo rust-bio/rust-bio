@@ -110,7 +110,7 @@ fn validate<N: Ord + Debug>(interval: &Range<N>) -> Result<(), IntervalTreeError
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Node<N, D> {
     // actual interval data
     interval: Range<N>,
