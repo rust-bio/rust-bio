@@ -111,7 +111,7 @@ fn validate<N: Ord + Debug>(interval: &Range<N>) -> Result<(), IntervalTreeError
 }
 
 #[derive(Debug, Clone)]
-pub struct Node<N, D> {
+struct Node<N, D> {
     // actual interval data
     interval: Range<N>,
     value: D,
@@ -123,7 +123,7 @@ pub struct Node<N, D> {
 }
 
 impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
-    pub fn new(interval: Range<N>, data: D) -> Self {
+    fn new(interval: Range<N>, data: D) -> Self {
         let max = interval.end.clone();
         Node {
             interval: interval,
@@ -135,7 +135,7 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
         }
     }
 
-    pub fn insert(&mut self, interval: Range<N>, data: D) {
+    fn insert(&mut self, interval: Range<N>, data: D) {
         if interval.start <= self.interval.start {
             if let Some(ref mut son) = self.left {
                 son.insert(interval, data);
@@ -158,24 +158,6 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
             nodes: nodes,
             interval: interval,
         }
-    }
-
-    pub fn has_match(&self, interval: &Range<N>) -> bool {
-        if intersect(&self.interval, interval) {
-            return true;
-        }
-
-        if let Some(ref left) = self.left {
-            if left.max > interval.start {
-                return left.has_match(interval);
-            }
-        }
-
-        if let Some(ref right) = self.right {
-            return right.has_match(interval);
-        }
-
-        false
     }
 
     fn update_height(&mut self) {
@@ -290,7 +272,7 @@ quick_error! {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{Node, IntervalTree, Entry};
     use std::cmp;
     use std::cmp::{min, max};
     use std::ops::Range;
