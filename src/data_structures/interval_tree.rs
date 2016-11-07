@@ -7,7 +7,7 @@ use std::mem;
 use std::fmt::Debug;
 use std::ops::Range;
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct IntervalTree<N, D> {
     root: Option<Node<N, D>>,
 }
@@ -78,17 +78,18 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
         IntervalTree { root: None }
     }
 
-    pub fn insert(&mut self, interval: Range<N>, data: D) {
-        validate(&interval);
+    pub fn insert(&mut self, interval: Range<N>, data: D) -> Result<(), IntervalTreeError> {
+        try!(validate(&interval));
         match self.root {
             Some(ref mut n) => n.insert(interval, data),
             None => self.root = Some(Node::new(interval, data)),
-        }
+        };
+        Ok(())
     }
 
-    pub fn find(&self, interval: &Range<N>) -> IntervalTreeIterator<N, D> {
-        validate(&interval);
-        match self.root {
+    pub fn find(&self, interval: &Range<N>) -> Result<IntervalTreeIterator<N, D>, IntervalTreeError> {
+        try!(validate(&interval));
+        Ok(match self.root {
             Some(ref n) => n.find_iter(interval.clone()),
             None => {
                 let empty_nodes = vec![];
@@ -97,20 +98,20 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
                     interval: interval.clone(),
                 }
             }
-        }
-
+        })
     }
 }
 
-fn validate<N: Ord + Debug>(interval: &Range<N>) {
-    if interval.start >= interval.end {
-        panic!("Expected interval.end > interval.start, got: ({:?})",
-               interval);
+fn validate<N: Ord + Debug>(interval: &Range<N>) -> Result<(), IntervalTreeError> {
+    if interval.start > interval.end {
+        Err(IntervalTreeError::InvalidRange)
+    } else {
+        Ok(())
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Clone)]
-pub struct Node<N, D> {
+#[derive(Debug, Clone)]
+struct Node<N, D> {
     // actual interval data
     interval: Range<N>,
     value: D,
@@ -122,7 +123,7 @@ pub struct Node<N, D> {
 }
 
 impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
-    pub fn new(interval: Range<N>, data: D) -> Self {
+    fn new(interval: Range<N>, data: D) -> Self {
         let max = interval.end.clone();
         Node {
             interval: interval,
@@ -134,7 +135,7 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
         }
     }
 
-    pub fn insert(&mut self, interval: Range<N>, data: D) {
+    fn insert(&mut self, interval: Range<N>, data: D) {
         if interval.start <= self.interval.start {
             if let Some(ref mut son) = self.left {
                 son.insert(interval, data);
@@ -157,24 +158,6 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
             nodes: nodes,
             interval: interval,
         }
-    }
-
-    pub fn has_match(&self, interval: &Range<N>) -> bool {
-        if intersect(&self.interval, interval) {
-            return true;
-        }
-
-        if let Some(ref left) = self.left {
-            if left.max > interval.start {
-                return left.has_match(interval);
-            }
-        }
-
-        if let Some(ref right) = self.right {
-            return right.has_match(interval);
-        }
-
-        false
     }
 
     fn update_height(&mut self) {
@@ -272,13 +255,24 @@ fn swap_interval_data<N, D>(node_1: &mut Node<N, D>, node_2: &mut Node<N, D>) {
 }
 
 fn intersect<N: Ord>(range_1: &Range<N>, range_2: &Range<N>) -> bool {
-    range_1.end > range_2.start && range_1.start < range_2.end
+    range_1.start < range_1.end && range_2.start < range_2.end &&
+        range_1.end > range_2.start && range_1.start < range_2.end
 }
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum IntervalTreeError {
+        InvalidRange {
+            description("Range for IntervalTree must have a positive width")
+        }
+    }
+}
+
 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{Node, IntervalTree, Entry};
     use std::cmp;
     use std::cmp::{min, max};
     use std::ops::Range;
@@ -346,7 +340,7 @@ mod tests {
         name.push_str(&start.to_string());
         name.push_str(":");
         name.push_str(&end.to_string());
-        tree.insert((start..end), name);
+        tree.insert((start..end), name).unwrap();
         if let Some(ref n) = tree.root {
             validate(n);
         }
@@ -368,7 +362,8 @@ mod tests {
     fn assert_intersections(tree: &IntervalTree<i64, String>,
                             target: Range<i64>,
                             expected_results: Vec<Range<i64>>) {
-        let mut actual_entries: Vec<Entry<i64, String>> = tree.find(&target).collect();
+        let mut actual_entries: Vec<Entry<i64, String>> = tree.find(&target).unwrap().collect();
+        println!("{:?}", actual_entries);
         actual_entries.sort_by(|x1, x2| x1.data.cmp(&x2.data));
         let expected_entries = make_entry_tuples(expected_results);
         assert_eq!(actual_entries.len(), expected_entries.len());
@@ -385,7 +380,7 @@ mod tests {
     #[test]
     fn test_insertion_and_intersection() {
         let mut tree: IntervalTree<i64, String> = IntervalTree::new();
-        tree.insert((50..51), "50:51".to_string());
+        tree.insert((50..51), "50:51".to_string()).unwrap();
         assert_not_found(&tree, (49..50));
         assert_intersections(&tree, (49..55), vec![(50..51)]);
         assert_not_found(&tree, (51..55));
@@ -467,5 +462,17 @@ mod tests {
                                  (lower_bound..upper_bound),
                                  expected_intersections);
         }
+    }
+
+    #[test]
+    fn zero_width_ranges() {
+        let mut tree: IntervalTree<i64, String> = IntervalTree::new();
+        tree.insert((10..10), "10:10".to_string()).unwrap();
+
+        assert_not_found(&tree, (5..15));
+        assert_not_found(&tree, (10..10));
+
+        insert_and_validate(&mut tree, 50, 60);
+        assert_not_found(&tree, (55..55));
     }
 }
