@@ -32,7 +32,8 @@ fn test_insert_query(insert_size: i64,
     let mut tree: IntervalTree<i64, Range<i64>> = IntervalTree::new();
 
     for i in insert_bounds.clone() {
-        tree.insert((i..i + insert_size), (i..i + insert_size));
+        tree.insert((i..i + insert_size), (i..i + insert_size))
+            .expect("Error inserting interval");
     }
     for i in query_bounds {
         let lower_bound = i;
@@ -50,7 +51,7 @@ fn test_insert_query(insert_size: i64,
 fn assert_intersections(tree: &IntervalTree<i64, Range<i64>>,
                         target: Range<i64>,
                         expected_results: Vec<Range<i64>>) {
-    let mut actual_entries: Vec<Entry<i64, Range<i64>>> = tree.find(&target).collect();
+    let mut actual_entries: Vec<Entry<i64, Range<i64>>> = tree.find(&target).unwrap().collect();
     actual_entries.sort_by(|x1, x2| x1.data().start.cmp(&x2.data().start));
     let mut expected_entries: Vec<(Range<i64>, Range<i64>)> =
         expected_results.iter().map(|x| (x.clone(), x.clone())).collect();
