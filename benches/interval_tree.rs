@@ -38,8 +38,8 @@ fn test_insert_query(insert_size: i64,
     for i in query_bounds {
         let lower_bound = i;
         let upper_bound = i + query_size;
-        let smallest_start = max(lower_bound - insert_size + 1, insert_bounds.start.clone());
-        let largest_start = min(upper_bound, insert_bounds.end.clone());
+        let smallest_start = max(lower_bound - insert_size + 1, insert_bounds.start);
+        let largest_start = min(upper_bound, insert_bounds.end);
         let mut expected_intersections = vec![];
         for j in smallest_start..largest_start {
             expected_intersections.push(j..j + insert_size);
