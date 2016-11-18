@@ -85,6 +85,17 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> FromIterator<(Range<N>, D)> for Int
     }                                                                                             
 }
 
+impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + Clone + 'a> FromIterator<Entry<'a, N, D>> for IntervalTree<N, D> {
+    fn from_iter<I: IntoIterator<Item=Entry<'a, N, D>>>(iter: I) -> Self {
+        let mut tree = IntervalTree::new();
+
+        for r in iter {
+            tree.insert(r.interval().clone(), r.data().clone()).unwrap();
+        }
+        tree
+    }
+}
+
 impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
     pub fn new() -> Self {
         IntervalTree { root: None }
@@ -490,14 +501,18 @@ mod tests {
 
     #[test]
     fn from_iterator() {
-        let tree: IntervalTree<i64, String> = vec![
-            (10..100, "10:10".to_string()),
-            (10..20, "10:10".to_string()),
-            (1..8, "10:10".to_string())].into_iter().collect();
+        let tree: IntervalTree<i64, ()> = vec![
+            (10..100, ()),
+            (10..20, ()),
+            (1..8, ())].into_iter().collect();
         assert_eq!(tree.find(&(0..1000)).unwrap().count(), 3);
 
         let tree2 : IntervalTree<_, _> = tree.find(&(11..30)).unwrap()
             .map(|e| (e.interval().clone(), e.data().clone()) ).collect();
         assert_eq!(tree2.find(&(0..1000)).unwrap().count(), 2);
+
+        let tree3 : IntervalTree<_, _> = tree.find(&(11..30)).unwrap().collect();
+        assert_eq!(tree3.find(&(0..1000)).unwrap().count(), 2);
+
     }
 }
