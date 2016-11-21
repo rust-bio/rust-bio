@@ -1,3 +1,21 @@
+//! Interval tree, a data structure for efficiently storing and searching numeric intervals.
+//!
+//! This data structure uses the `std::ops:Range` type to define the intervals. The range bounds
+//! may be specified by any type from the `num` crate that satisfies the `std::cmp::Ord` trait.
+//! Upon inserting an interval may be associated with a data value. The interval data is stored in
+//! an augmented AVL-tree which allows for efficient inserting and querying.
+//!
+//! # Example
+//! ```
+//! use bio::data_structures::interval_tree::IntervalTree;
+//!
+//! let mut tree = IntervalTree::new();
+//! tree.insert((11..20), "Range_1").unwrap();
+//! tree.insert((25..30), "Range_2").unwrap();
+//! for r in tree.find(&(15..25)).unwrap() {
+//!     assert_eq!(r.interval(), &(11..20));
+//!     assert_eq!(r.data(), &"Range_1");
+//! }
 extern crate num;
 
 use self::num::traits::Num;
@@ -7,17 +25,20 @@ use std::mem;
 use std::fmt::Debug;
 use std::ops::Range;
 
+/// An interval tree for storing Ranges with data
 #[derive(Debug, Clone)]
 pub struct IntervalTree<N, D> {
     root: Option<Node<N, D>>,
 }
 
+/// An `Entry` is used by the IntervalTreeIterator to return references to the data in the tree
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Entry<'a, N: 'a, D: 'a> {
     data: &'a D,
     interval: &'a Range<N>,
 }
 
+/// A find query on the interval tree returns a `Iterator<
 impl<'a, N: 'a, D: 'a> Entry<'a, N, D> {
     /// Get a reference to the data for this entry
     pub fn data(&self) -> &'a D {
@@ -30,7 +51,8 @@ impl<'a, N: 'a, D: 'a> Entry<'a, N, D> {
     }
 }
 
-
+/// An IntervalTreeIterator is returned from by find and iterates over the entries
+/// overlapping the query
 pub struct IntervalTreeIterator<'a, N: 'a, D: 'a> {
     nodes: Vec<&'a Node<N, D>>,
     interval: Range<N>,
@@ -74,10 +96,12 @@ impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator for Interval
 }
 
 impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
+    /// Creates a new empty `IntervalTree`
     pub fn new() -> Self {
         IntervalTree { root: None }
     }
 
+    /// Inserts a `Range` into the tree and associates it with `data`
     pub fn insert(&mut self, interval: Range<N>, data: D) -> Result<(), IntervalTreeError> {
         try!(validate(&interval));
         match self.root {
@@ -87,6 +111,8 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
         Ok(())
     }
 
+    /// Uses the provided range to find overlapping intervals in the tree and returns an
+    /// `IntervalTreeIterator`
     pub fn find(&self, interval: &Range<N>) -> Result<IntervalTreeIterator<N, D>, IntervalTreeError> {
         try!(validate(&interval));
         Ok(match self.root {
@@ -152,7 +178,7 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
         self.repair();
     }
 
-    pub fn find_iter<'a>(&'a self, interval: Range<N>) -> IntervalTreeIterator<'a, N, D> {
+    fn find_iter<'a>(&'a self, interval: Range<N>) -> IntervalTreeIterator<'a, N, D> {
         let nodes = vec![self];
         IntervalTreeIterator {
             nodes: nodes,
