@@ -9,7 +9,7 @@ use utils::TextSlice;
 
 pub mod pairwise;
 pub mod distance;
-
+pub mod sparse;
 
 /// Alignment operations (Match, Subst, Del and Ins).
 #[derive(PartialEq, Debug, Copy, Clone)]
