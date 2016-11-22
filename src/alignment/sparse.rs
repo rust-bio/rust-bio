@@ -1,3 +1,26 @@
+// Copyright 2014-2015 Johannes Köster, Vadim Nazarov, Patrick Marks
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! Calculate 'sparse' alignments from kmer matches. Can be much faster than Smith-Waterman for long string, when a large enough k is used. 
+//! Complexity: O(n * log(n)) for a pair of strings with n k-kmer matches
+//!
+//!
+//! # Example
+//!
+//! ```
+//! use bio::alignment::sparse::*;
+//!
+//! let s1 =   "ACGTACGATAGGTA";
+//! let s2 = "TTACGTACGATAGGTATT";
+//! let k = 8;
+//! let matches = super::find_kmer_matches(s1, s2, k);
+//! let (tb, score,  _) = super::lcskpp(&matches, k as u32);
+//! let match_path: Vec<(u32,u32)> = tb.iter().map(|i| matches[*i]).collect();
+//! assert_eq!(match_path, vec![(0,2), (1,3), (2,4), (3,5), (4,6), (5,7), (6,8)]);
+//! assert_eq!(score, 14);
+
 use std::cmp::max;
 use std::collections::HashMap;
 
@@ -5,8 +28,10 @@ use std::collections::HashMap;
 ///  From LCSk++: Practical similarity metric for long strings. Filip Pavetić, Goran Žužić, Mile Šikić
 /// Paper here :https://arxiv.org/abs/1407.2407.  Original implementation here: https://github.com/fpavetic/lcskpp
 /// matches is a tuple of the positions of all k-mer matches between two string. Match vector must be sorted by caller.
-/// Second return value is indices of matches representing the LCSk++ path.
-pub fn lcskpp(matches: &Vec<(u32, u32)>, k: u32) -> (Vec<(u32,i32)>, Vec<usize>) {
+/// The first element of the return tuple is the LCSk++ path, represented as vector of indices into the matches vector.
+/// The second element of the return tuple is the score of the path, which is the number of bases covered by the matched kmers.
+/// The third element of the return tuple is full DP vector, which can generally be ignore. (It may be useful for testing purposes).
+pub fn lcskpp(matches: &Vec<(u32, u32)>, k: u32) -> (Vec<usize>, u32, Vec<(u32,i32)>) {
 
     // incoming matches must be sorted to let us find the predecssor kmers by binary search.
     for i in 1 .. matches.len() {
@@ -66,17 +91,17 @@ pub fn lcskpp(matches: &Vec<(u32, u32)>, k: u32) -> (Vec<(u32,i32)>, Vec<usize>)
     }
 
     let mut traceback = Vec::new();
-    let (_, mut prev_match) = best_dp;
+    let (best_score, mut prev_match) = best_dp;
     while prev_match >= 0 {
         traceback.push(prev_match as usize);
         prev_match = dp[prev_match as usize].1;
     }
     traceback.reverse();
 
-    (dp, traceback)
+    (traceback, best_score, dp)
 }
 
-pub fn find_hits(str1: &str, str2: &str, k: usize) -> Vec<(u32, u32)> {
+pub fn find_kmer_matches(str1: &str, str2: &str, k: usize) -> Vec<(u32, u32)> {
 
     let mut set: HashMap<&str, Vec<u32>> = HashMap::new();
     let mut matches = Vec::new();
@@ -147,7 +172,7 @@ impl<T: Ord + Default + Copy> MaxBitTree<T> {
 
 #[cfg(test)]
 mod sparse_alignment {
-    use super::{MaxBitTree, find_hits};
+    use super::{MaxBitTree, find_kmer_matches};
 
     #[test]
     pub fn test_bit_tree() {
@@ -173,17 +198,31 @@ mod sparse_alignment {
     }
 
     #[test]
-    pub fn test_find_hits() {
+    pub fn test_find_kmer_matches() {
         let s1 = "ACGTACGATAGATCCGTACGTAACAGTACAGTATATCAGTTATATGCGATA";
         let s2 = "TTACGTACGATAGATCCGTACGTAACATTTTTGTACAGTATATCAGTTATATGCGA";
         let k = 8;
         //let s1 = "  ACGTACGATAGATCCGTACGTAACA     GTACAGTATATCAGTTATATGCGATA";
         //let s2 = "TTACGTACGATAGATCCGTACGTAACATTTTTGTACAGTATATCAGTTATATGCGA";
 
-        let hits = find_hits(s1, s2, k);
+        let hits = find_kmer_matches(s1, s2, k);
         assert_eq!(hits.len(), (25-k+1) + (24-k+1));
         //println!("hits: {:?}", hits);
     }
+
+
+    #[test]
+    pub fn test_lcskpp0() {
+        let s1 =   "ACGTACGATAGGTA";
+        let s2 = "TTACGTACGATAGGTATT";
+        let k = 8;
+        let matches = super::find_kmer_matches(s1, s2, k);
+        let (tb, score,  _) = super::lcskpp(&matches, k as u32);
+        let match_path: Vec<(u32,u32)> = tb.iter().map(|i| matches[*i]).collect();
+        assert_eq!(match_path, vec![(0,2), (1,3), (2,4), (3,5), (4,6), (5,7), (6,8)]);
+        assert_eq!(score, 14);
+     }
+
 
     #[test]
     pub fn test_lcskpp1() {
@@ -191,8 +230,8 @@ mod sparse_alignment {
         let s2 = "TTACGTACGATAGATCCGTACGTAACATTTTTGTACAGTATATCAGTTATATGCGA";
         let k = 8;
 
-        let evs = super::find_hits(s1, s2, k);
-        let (dps, tb) = super::lcskpp(&evs, k as u32);
+        let matches = super::find_kmer_matches(s1, s2, k);
+        let (tb, score, _) = super::lcskpp(&matches, k as u32);
         
         // For debugging: 
         //for (idx, (ev, (score, prev))) in evs.iter().zip(dps.clone()).enumerate() {
@@ -201,7 +240,7 @@ mod sparse_alignment {
         //println!("tb: {:?}", tb);
 
         // Should have 25bp group of matches plus a 24 bp group of matches
-        assert_eq!(dps[tb[tb.len()-1]].0, (25 + 24) as u32);
+        assert_eq!(score, 25 + 24);
      }
 
     #[test]
@@ -210,8 +249,8 @@ mod sparse_alignment {
         let s1 = "ACGTACGATAGATCCGACGTACGTACGTTCAGTTATATGACGTACGTACGTAACATTTTTGTA";
         let k = 5;
 
-        let evs = super::find_hits(s1, s1, k);
-        let (_, tb) = super::lcskpp(&evs, k as u32);
+        let matches = super::find_kmer_matches(s1, s1, k);
+        let (tb, score, _) = super::lcskpp(&matches, k as u32);
 
         // For debugging: 
         //for (idx, (ev, (score, prev))) in evs.iter().zip(dps.clone()).enumerate() {
@@ -219,8 +258,10 @@ mod sparse_alignment {
         //}
         //println!("tb: {:?}", tb);
 
+        assert_eq!(score, s1.len() as u32);
+
         for i in 0..tb.len() {
-            assert_eq!(evs[tb[i] as usize], (i as u32, i as u32));
+            assert_eq!(matches[tb[i] as usize], (i as u32, i as u32));
         }
      }
  }
