@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.10.0] - 2016-11-02
+### Added
+- An interval tree implementation.
+- Initial utilities for bayesian statistics.
+### Changed
+- Various small improvements to log-space probability API.
+
 ## [0.9.0] - 2016-08-18
 ### Added
 - Implementation of discrete probability distributions via cumulative distribution functions.
