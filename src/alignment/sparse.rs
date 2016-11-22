@@ -15,8 +15,8 @@
 //! let s1 =   "ACGTACGATAGGTA";
 //! let s2 = "TTACGTACGATAGGTATT";
 //! let k = 8;
-//! let matches = super::find_kmer_matches(s1, s2, k);
-//! let (tb, score,  _) = super::lcskpp(&matches, k as u32);
+//! let matches = find_kmer_matches(s1, s2, k);
+//! let (tb, score,  _) = lcskpp(&matches, k as u32);
 //! let match_path: Vec<(u32,u32)> = tb.iter().map(|i| matches[*i]).collect();
 //! assert_eq!(match_path, vec![(0,2), (1,3), (2,4), (3,5), (4,6), (5,7), (6,8)]);
 //! assert_eq!(score, 14);
@@ -231,7 +231,7 @@ mod sparse_alignment {
         let k = 8;
 
         let matches = super::find_kmer_matches(s1, s2, k);
-        let (tb, score, _) = super::lcskpp(&matches, k as u32);
+        let (_, score, _) = super::lcskpp(&matches, k as u32);
         
         // For debugging: 
         //for (idx, (ev, (score, prev))) in evs.iter().zip(dps.clone()).enumerate() {
