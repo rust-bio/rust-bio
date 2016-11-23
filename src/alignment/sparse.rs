@@ -15,7 +15,7 @@
 //! let s1 =   "ACGTACGATAGGTA";
 //! let s2 = "TTACGTACGATAGGTATT";
 //! let k = 8;
-//! let matches = find_kmer_matches(s1, s2, k);
+//! let matches = find_kmer_matches(&s1, &s2, k);
 //! let (tb, score,  _) = lcskpp(&matches, k as u32);
 //! let match_path: Vec<(u32,u32)> = tb.iter().map(|i| matches[*i]).collect();
 //! assert_eq!(match_path, vec![(0,2), (1,3), (2,4), (3,5), (4,6), (5,7), (6,8)]);
@@ -101,17 +101,20 @@ pub fn lcskpp(matches: &Vec<(u32, u32)>, k: u32) -> (Vec<usize>, u32, Vec<(u32,i
     (traceback, best_score, dp)
 }
 
-pub fn find_kmer_matches(str1: &str, str2: &str, k: usize) -> Vec<(u32, u32)> {
+pub fn find_kmer_matches<T: AsRef<[u8]>>(seq1: &T, seq2: &T, k: usize) -> Vec<(u32, u32)> {
 
-    let mut set: HashMap<&str, Vec<u32>> = HashMap::new();
+    let slc1 = seq1.as_ref();
+    let slc2 = seq2.as_ref();
+
+    let mut set: HashMap<&[u8], Vec<u32>> = HashMap::new();
     let mut matches = Vec::new();
 
-    for i in 0 .. str1.len() - k + 1 {
-        set.entry(&str1[i..i+k]).or_insert_with(|| Vec::new()).push(i as u32);
+    for i in 0 .. slc1.len() - k + 1 {
+        set.entry(&slc1[i..i+k]).or_insert_with(|| Vec::new()).push(i as u32);
     }
 
-    for i in 0 .. str2.len() - k + 1 {
-        let slc = &str2[i..i+k];
+    for i in 0 .. slc2.len() - k + 1 {
+        let slc = &slc2[i..i+k];
         match set.get(slc) {
             Some(matches1) => {
                 for pos1 in matches1 {
@@ -205,7 +208,7 @@ mod sparse_alignment {
         //let s1 = "  ACGTACGATAGATCCGTACGTAACA     GTACAGTATATCAGTTATATGCGATA";
         //let s2 = "TTACGTACGATAGATCCGTACGTAACATTTTTGTACAGTATATCAGTTATATGCGA";
 
-        let hits = find_kmer_matches(s1, s2, k);
+        let hits = find_kmer_matches(&s1, &s2, k);
         assert_eq!(hits.len(), (25-k+1) + (24-k+1));
         //println!("hits: {:?}", hits);
     }
@@ -216,7 +219,7 @@ mod sparse_alignment {
         let s1 =   "ACGTACGATAGGTA";
         let s2 = "TTACGTACGATAGGTATT";
         let k = 8;
-        let matches = super::find_kmer_matches(s1, s2, k);
+        let matches = super::find_kmer_matches(&s1, &s2, k);
         let (tb, score,  _) = super::lcskpp(&matches, k as u32);
         let match_path: Vec<(u32,u32)> = tb.iter().map(|i| matches[*i]).collect();
         assert_eq!(match_path, vec![(0,2), (1,3), (2,4), (3,5), (4,6), (5,7), (6,8)]);
@@ -230,7 +233,7 @@ mod sparse_alignment {
         let s2 = "TTACGTACGATAGATCCGTACGTAACATTTTTGTACAGTATATCAGTTATATGCGA";
         let k = 8;
 
-        let matches = super::find_kmer_matches(s1, s2, k);
+        let matches = super::find_kmer_matches(&s1, &s2, k);
         let (_, score, _) = super::lcskpp(&matches, k as u32);
         
         // For debugging: 
@@ -249,7 +252,7 @@ mod sparse_alignment {
         let s1 = "ACGTACGATAGATCCGACGTACGTACGTTCAGTTATATGACGTACGTACGTAACATTTTTGTA";
         let k = 5;
 
-        let matches = super::find_kmer_matches(s1, s1, k);
+        let matches = super::find_kmer_matches(&s1, &s1, k);
         let (tb, score, _) = super::lcskpp(&matches, k as u32);
 
         // For debugging: 
