@@ -16,7 +16,7 @@
 //! let s2 = "TTACGTACGATAGGTATT";
 //! let k = 8;
 //! let matches = find_kmer_matches(&s1, &s2, k);
-//! let (tb, score,  _) = lcskpp(&matches, k as u32);
+//! let (tb, score,  _) = lcskpp(&matches, k);
 //! let match_path: Vec<(u32,u32)> = tb.iter().map(|i| matches[*i]).collect();
 //! assert_eq!(match_path, vec![(0,2), (1,3), (2,4), (3,5), (4,6), (5,7), (6,8)]);
 //! assert_eq!(score, 14);
@@ -31,7 +31,9 @@ use std::collections::HashMap;
 /// The first element of the return tuple is the LCSk++ path, represented as vector of indices into the matches vector.
 /// The second element of the return tuple is the score of the path, which is the number of bases covered by the matched kmers.
 /// The third element of the return tuple is full DP vector, which can generally be ignore. (It may be useful for testing purposes).
-pub fn lcskpp(matches: &Vec<(u32, u32)>, k: u32) -> (Vec<usize>, u32, Vec<(u32,i32)>) {
+pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> (Vec<usize>, u32, Vec<(u32,i32)>) {
+
+    let k = k as u32;
 
     // incoming matches must be sorted to let us find the predecssor kmers by binary search.
     for i in 1 .. matches.len() {
@@ -220,7 +222,7 @@ mod sparse_alignment {
         let s2 = "TTACGTACGATAGGTATT";
         let k = 8;
         let matches = super::find_kmer_matches(&s1, &s2, k);
-        let (tb, score,  _) = super::lcskpp(&matches, k as u32);
+        let (tb, score,  _) = super::lcskpp(&matches, k);
         let match_path: Vec<(u32,u32)> = tb.iter().map(|i| matches[*i]).collect();
         assert_eq!(match_path, vec![(0,2), (1,3), (2,4), (3,5), (4,6), (5,7), (6,8)]);
         assert_eq!(score, 14);
@@ -234,7 +236,7 @@ mod sparse_alignment {
         let k = 8;
 
         let matches = super::find_kmer_matches(&s1, &s2, k);
-        let (_, score, _) = super::lcskpp(&matches, k as u32);
+        let (_, score, _) = super::lcskpp(&matches, k);
         
         // For debugging: 
         //for (idx, (ev, (score, prev))) in evs.iter().zip(dps.clone()).enumerate() {
@@ -253,7 +255,7 @@ mod sparse_alignment {
         let k = 5;
 
         let matches = super::find_kmer_matches(&s1, &s1, k);
-        let (tb, score, _) = super::lcskpp(&matches, k as u32);
+        let (tb, score, _) = super::lcskpp(&matches, k);
 
         // For debugging: 
         //for (idx, (ev, (score, prev))) in evs.iter().zip(dps.clone()).enumerate() {
