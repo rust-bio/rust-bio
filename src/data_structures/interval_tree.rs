@@ -58,9 +58,8 @@ pub struct IntervalTreeIterator<'a, N: 'a, D: 'a> {
     interval: Range<N>,
 }
 
-impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator for IntervalTreeIterator<'a,
-                                                                                             N,
-                                                                                             D> {
+impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator
+    for IntervalTreeIterator<'a, N, D> {
     type Item = Entry<'a, N, D>;
 
     fn next(&mut self) -> Option<Entry<'a, N, D>> {
@@ -168,17 +167,15 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
             } else {
                 self.left = Some(Box::new(Node::new(interval, data)));
             }
+        } else if let Some(ref mut son) = self.right {
+            son.insert(interval, data);
         } else {
-            if let Some(ref mut son) = self.right {
-                son.insert(interval, data);
-            } else {
-                self.right = Some(Box::new(Node::new(interval, data)));
-            }
+            self.right = Some(Box::new(Node::new(interval, data)));
         }
         self.repair();
     }
 
-    fn find_iter<'a>(&'a self, interval: Range<N>) -> IntervalTreeIterator<'a, N, D> {
+    fn find_iter(&self, interval: Range<N>) -> IntervalTreeIterator<N, D> {
         let nodes = vec![self];
         IntervalTreeIterator {
             nodes: nodes,
@@ -187,9 +184,9 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
     }
 
     fn update_height(&mut self) {
-        let ref left_h = self.left.as_ref().map_or(0, |n| n.height);
-        let ref right_h = self.right.as_ref().map_or(0, |n| n.height);
-        self.height = 1 + cmp::max(*left_h, *right_h);
+        let left_h = self.left.as_ref().map_or(0, |n| n.height);
+        let right_h = self.right.as_ref().map_or(0, |n| n.height);
+        self.height = 1 + cmp::max(left_h, right_h);
     }
 
     fn update_max(&mut self) {
@@ -207,8 +204,8 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
     }
 
     fn repair(&mut self) {
-        let ref left_h = self.left.as_ref().map_or(0, |n| n.height);
-        let ref right_h = self.right.as_ref().map_or(0, |n| n.height);
+        let left_h = self.left.as_ref().map_or(0, |n| n.height);
+        let right_h = self.right.as_ref().map_or(0, |n| n.height);
         // each case - update both height and max
         if (left_h - right_h).abs() <= 1 {
             self.update_height();
@@ -217,8 +214,8 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
             {
                 let mut right =
                     self.right.as_mut().expect("Invalid tree: leaf is taller than its sibling.");
-                let ref right_left_h = right.left.as_ref().map_or(0, |n| n.height);
-                let ref right_right_h = right.right.as_ref().map_or(0, |n| n.height);
+                let right_left_h = right.left.as_ref().map_or(0, |n| n.height);
+                let right_right_h = right.right.as_ref().map_or(0, |n| n.height);
                 if right_left_h > right_right_h {
                     right.rotate_right();
                 }
@@ -228,8 +225,8 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
             {
                 let mut left =
                     self.left.as_mut().expect("Invalid tree: leaf is taller than its sibling.");
-                let ref left_right_h = left.right.as_ref().map_or(0, |n| n.height);
-                let ref left_left_h = left.left.as_ref().map_or(0, |n| n.height);
+                let left_right_h = left.right.as_ref().map_or(0, |n| n.height);
+                let left_left_h = left.left.as_ref().map_or(0, |n| n.height);
                 if left_right_h > left_left_h {
                     left.rotate_left();
                 }
@@ -312,8 +309,8 @@ mod tests {
     }
 
     fn validate_height(node: &Node<i64, String>) {
-        let ref left_height = node.left.as_ref().map_or(0, |n| n.height);
-        let ref right_height = node.right.as_ref().map_or(0, |n| n.height);
+        let left_height = node.left.as_ref().map_or(0, |n| n.height);
+        let right_height = node.right.as_ref().map_or(0, |n| n.height);
         assert!((left_height - right_height).abs() <= 1);
         assert_eq!(node.height, cmp::max(left_height, right_height) + 1)
     }
