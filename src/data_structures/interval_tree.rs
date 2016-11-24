@@ -24,6 +24,7 @@ use std::cmp;
 use std::mem;
 use std::fmt::Debug;
 use std::ops::Range;
+use std::iter::FromIterator;
 
 /// An interval tree for storing Ranges with data
 #[derive(Debug, Clone)]
@@ -91,6 +92,28 @@ impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator
                 }
             }
         }
+    }
+}
+
+impl<N: Debug + Num + Clone + Ord, D: Debug> FromIterator<(Range<N>, D)> for IntervalTree<N, D> {
+    fn from_iter<I: IntoIterator<Item=(Range<N>, D)>>(iter: I) -> Self {
+        let mut tree = IntervalTree::new();
+
+        for r in iter {
+            tree.insert(r.0, r.1).unwrap();
+        }
+        tree
+    }                                                                                             
+}
+
+impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + Clone + 'a> FromIterator<Entry<'a, N, D>> for IntervalTree<N, D> {
+    fn from_iter<I: IntoIterator<Item=Entry<'a, N, D>>>(iter: I) -> Self {
+        let mut tree = IntervalTree::new();
+
+        for r in iter {
+            tree.insert(r.interval().clone(), r.data().clone()).unwrap();
+        }
+        tree
     }
 }
 
@@ -497,5 +520,22 @@ mod tests {
 
         insert_and_validate(&mut tree, 50, 60);
         assert_not_found(&tree, (55..55));
+    }
+
+    #[test]
+    fn from_iterator() {
+        let tree: IntervalTree<i64, ()> = vec![
+            (10..100, ()),
+            (10..20, ()),
+            (1..8, ())].into_iter().collect();
+        assert_eq!(tree.find(&(0..1000)).unwrap().count(), 3);
+
+        let tree2 : IntervalTree<_, _> = tree.find(&(11..30)).unwrap()
+            .map(|e| (e.interval().clone(), e.data().clone()) ).collect();
+        assert_eq!(tree2.find(&(0..1000)).unwrap().count(), 2);
+
+        let tree3 : IntervalTree<_, _> = tree.find(&(11..30)).unwrap().collect();
+        assert_eq!(tree3.find(&(0..1000)).unwrap().count(), 2);
+
     }
 }
