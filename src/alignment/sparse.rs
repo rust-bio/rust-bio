@@ -3,9 +3,15 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Calculate 'sparse' alignments from kmer matches. Can be much faster than Smith-Waterman for long string, when a large enough k is used. 
-//! Complexity: O(n * log(n)) for a pair of strings with n k-kmer matches
-//!
+//! Calculate 'sparse' alignments from kmer matches. Can be much faster than 
+//! Smith-Waterman for long string, when a large enough k is used. 
+//! Complexity: O(n * log(n)) for a pair of strings with n k-kmer matches. This
+//! approach is useful for generating an approximate 'backbone' alignments 
+//! between two long sequences, for example in long-read alignment or 
+//! genome-genome alignment. The backbone alignment can be used as-is, or can serve
+//! as a guide for a banded alignment.  By tuning k so that len(query) + len(reference) < 4^k,
+//! the number of false positive kmer matches is kept small, resulting in very
+//! fast run times for long strings.
 //!
 //! # Example
 //!
@@ -22,15 +28,17 @@
 //! assert_eq!(score, 14);
 
 use std::cmp::max;
-use std::collections::HashMap;
+use data_structures::bit_tree::MaxBitTree;
+use data_structures::qgram_index::QGramIndex;
+use alphabets::Alphabet;
 
-/// Sparse DP routine for Longest Common Subsequence in length k substrings. Also known of LCSk++
-///  From LCSk++: Practical similarity metric for long strings. Filip Pavetić, Goran Žužić, Mile Šikić
+/// Sparse DP routine for Longest Common Subsequence in length k substrings.  Also known of LCSk++
+/// From LCSk++: Practical similarity metric for long strings. Filip Pavetić, Goran Žužić, Mile Šikić
 /// Paper here :https://arxiv.org/abs/1407.2407.  Original implementation here: https://github.com/fpavetic/lcskpp
-/// matches is a tuple of the positions of all k-mer matches between two string. Match vector must be sorted by caller.
+/// matches is a tuple of the positions of all k-mer matches between two strings. matches vector must be sorted by caller.
 /// The first element of the return tuple is the LCSk++ path, represented as vector of indices into the matches vector.
 /// The second element of the return tuple is the score of the path, which is the number of bases covered by the matched kmers.
-/// The third element of the return tuple is full DP vector, which can generally be ignore. (It may be useful for testing purposes).
+/// The third element of the return tuple is full DP vector, which can generally be ignored. (It may be useful for testing purposes).
 pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> (Vec<usize>, u32, Vec<(u32,i32)>) {
 
     let k = k as u32;
@@ -103,27 +111,28 @@ pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> (Vec<usize>, u32, Vec<(u32
     (traceback, best_score, dp)
 }
 
-pub fn find_kmer_matches<T: AsRef<[u8]>>(seq1: &T, seq2: &T, k: usize) -> Vec<(u32, u32)> {
 
-    let slc1 = seq1.as_ref();
-    let slc2 = seq2.as_ref();
+/// Find all matches of length k between two strings, using an efficient q-gram index.
+/// For very long reference strings, it may be more efficient to use and FMD index to generate the matches
+pub fn find_kmer_matches<T: AsRef<[u8]>>(query: &T, reference: &T, k: usize) -> Vec<(u32, u32)> {
 
-    let mut set: HashMap<&[u8], Vec<u32>> = HashMap::new();
-    let mut matches = Vec::new();
+    let slc1 = query.as_ref();
+    let slc2 = reference.as_ref();
 
-    for i in 0 .. slc1.len() - k + 1 {
-        set.entry(&slc1[i..i+k]).or_insert_with(|| Vec::new()).push(i as u32);
+    let mut alphabet = Alphabet::new(slc2);
+    if !alphabet.is_word(slc1) {
+        for i in slc1 {
+            alphabet.insert(*i)
+        }
     }
 
-    for i in 0 .. slc2.len() - k + 1 {
-        let slc = &slc2[i..i+k];
-        match set.get(slc) {
-            Some(matches1) => {
-                for pos1 in matches1 {
-                    matches.push((*pos1, i as u32));
-                }
-            },
-            None => (),
+    let qgram = QGramIndex::new(k as u32, slc2, &alphabet);
+    let qg_matches = qgram.exact_matches(slc1);
+
+    let mut matches = Vec::new();
+    for m in qg_matches {
+        for offset in 0 .. m.pattern.stop - m.pattern.start - k + 1 {
+            matches.push(((m.pattern.start + offset) as u32, (m.text.start + offset) as u32));
         }
     }
 
@@ -132,75 +141,9 @@ pub fn find_kmer_matches<T: AsRef<[u8]>>(seq1: &T, seq2: &T, k: usize) -> Vec<(u
 }
 
 
-struct MaxBitTree<T: Default + Ord> {
-    tree: Vec<T>,
-}
-
-/// BIT-tree (Binary Indexed Trees, aka Fenwick Tree)
-/// Maintains a prefix-sum or prefix-max that can be efficiently
-/// Queried and updated.
-/// Implementation outlined here:
-/// https://www.topcoder.com/community/data-science/data-science-tutorials/binary-indexed-trees/
-impl<T: Ord + Default + Copy> MaxBitTree<T> {
-    pub fn new(len: usize) -> MaxBitTree<T> {
-        let mut tree = Vec::new();
-
-        // Pad length by one. The first element is unused.  
-        // Done this way to make the tree structure work correctly.
-        for _ in 0..(len+2) {
-            tree.push(T::default());
-        }
-
-        MaxBitTree { tree: tree }
-    }
-
-    pub fn get(&self, idx: usize) -> T {
-        let mut idx = idx + 1;
-        let mut sum = T::default();
-        while idx > 0 {
-            sum = max(sum, self.tree[idx].clone());
-            idx -= (idx as isize & -(idx as isize)) as usize;
-        }
-
-        sum
-    }
-
-    pub fn set(&mut self, idx: usize, val: T)
-    {
-        let mut idx = idx + 1;
-        while idx < self.tree.len() {
-            self.tree[idx] = max(self.tree[idx].clone(), val);
-            idx += (idx as isize & -(idx as isize)) as usize;
-        }
-    }
-}
-
 #[cfg(test)]
 mod sparse_alignment {
-    use super::{MaxBitTree, find_kmer_matches};
-
-    #[test]
-    pub fn test_bit_tree() {
-        let mut bit = MaxBitTree::new(10);
-
-        bit.set(0, (1,0));
-        bit.set(1, (1,1));
-        bit.set(2, (2,2));
-        bit.set(3, (3,3));
-        bit.set(4, (2,4));
-        bit.set(5, (2,5));
-        bit.set(6, (4,6));
-        bit.set(7, (5,7));
-
-        assert_eq!(bit.get(0), (1, 0));
-        assert_eq!(bit.get(1), (1, 1));
-        assert_eq!(bit.get(2), (2, 2));
-        assert_eq!(bit.get(3), (3, 3));
-        assert_eq!(bit.get(4), (3, 3));
-        assert_eq!(bit.get(5), (3, 3));
-        assert_eq!(bit.get(6), (4, 6));
-        assert_eq!(bit.get(7), (5, 7));
-    }
+    use super::find_kmer_matches;
 
     #[test]
     pub fn test_find_kmer_matches() {

@@ -159,7 +159,7 @@ impl QGramIndex {
 
         for (i, qgram) in self.ranks.qgrams(self.q, pattern).enumerate() {
             for &p in self.qgram_matches(qgram) {
-                let diagonal = p - i;
+                let diagonal = p as i32 - i as i32;
                 match diagonals.entry(diagonal) {
                     Entry::Vacant(v) => {
                         v.insert(ExactMatch {
@@ -308,6 +308,18 @@ mod tests {
             assert_eq!(m.pattern.get(pattern), m.text.get(text));
         }
     }
+
+
+    #[test]
+    fn test_exact_matches_self() {
+        let (text, alphabet) = setup();
+        let q = 3;
+        let qgram_index = QGramIndex::new(q, text, &alphabet);
+
+        let exact_matches = qgram_index.exact_matches(text);
+        assert!(exact_matches.len() >= 1);
+    }
+
 
     #[test]
     #[cfg(feature = "nightly")]
