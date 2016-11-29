@@ -1,4 +1,4 @@
-// Copyright 2014-2015 Johannes Köster, Vadim Nazarov, Patrick Marks
+// Copyright 2014-2015 Patrick Marks
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -112,8 +112,11 @@ pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> (Vec<usize>, u32, Vec<(u32
 }
 
 
-/// Find all matches of length k between two strings, using an efficient q-gram index.
-/// For very long reference strings, it may be more efficient to use and FMD index to generate the matches
+/// Find all matches of length k between two strings, using an efficient q-gram
+/// index. For very long reference strings, it may be more efficient to use and
+/// FMD index to generate the matches. Note that this method is mainly for 
+/// demonstration & testing purposes.  For aligning many query sequences
+/// against the same reference, you should reuse the QGramIndex of the reference.
 pub fn find_kmer_matches<T: AsRef<[u8]>>(query: &T, reference: &T, k: usize) -> Vec<(u32, u32)> {
 
     let slc1 = query.as_ref();
