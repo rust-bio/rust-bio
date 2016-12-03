@@ -197,7 +197,21 @@ impl QGramIndex {
 
         matches
     }
-}
+
+    /// Return all exact matches of length q
+    /// Complexity O(m + k) for pattern of length m and k being the number of matching q-grams.
+    pub fn q_matches(&self, pattern: &[u8]) -> Vec<(usize, usize)> {
+        let mut q_matches = Vec::new();
+
+        for (i, qgram) in self.ranks.qgrams(self.q, pattern).enumerate() {
+            for &p in self.qgram_matches(qgram) {
+                q_matches.push((i,p));
+            }
+        }
+
+        q_matches
+    }
+}    
 
 
 /// An interval, consisting of start and stop position (the latter exclusive).

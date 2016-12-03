@@ -129,7 +129,7 @@ pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> SparseAlignmentResult {
 }
 
 
-/// Find all matches of length k between two strings, using an efficient q-gram
+/// Find all matches of length k between two strings, using a q-gram
 /// index. For very long reference strings, it may be more efficient to use and
 /// FMD index to generate the matches. Note that this method is mainly for 
 /// demonstration & testing purposes.  For aligning many query sequences
@@ -146,19 +146,8 @@ pub fn find_kmer_matches<T: AsRef<[u8]>>(query: &T, reference: &T, k: usize) -> 
         }
     }
 
-    let qgram = QGramIndex::new(k as u32, slc2, &alphabet);
-    let qg_matches = qgram.exact_matches(slc1);
-
-    let mut matches = Vec::new();
-
-    // Q-gram matches will be >= k in length, but each individual kmer match 
-    // must appear in mathces, so for a Q-gram match of length L, 
-    // generate L - k + 1 matches.hh
-    for m in qg_matches {
-        for offset in 0 .. m.pattern.stop - m.pattern.start - k + 1 {
-            matches.push(((m.pattern.start + offset) as u32, (m.text.start + offset) as u32));
-        }
-    }
+    let qgram_index = QGramIndex::new(k as u32, slc2, &alphabet);
+    let mut matches: Vec<(u32, u32)> = qgram_index.q_matches(slc1).into_iter().map(|(x,y)| (x as u32, y as u32)).collect();
 
     matches.sort();
     matches
