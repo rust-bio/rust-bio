@@ -147,7 +147,14 @@ pub fn find_kmer_matches<T: AsRef<[u8]>>(query: &T, reference: &T, k: usize) -> 
     }
 
     let qgram_index = QGramIndex::new(k as u32, slc2, &alphabet);
-    let mut matches: Vec<(u32, u32)> = qgram_index.q_matches(slc1).into_iter().map(|(x,y)| (x as u32, y as u32)).collect();
+    let mut matches = Vec::new();
+
+    /// Generate all exact matches of length q
+    for (i, qgram) in qgram_index.qgrams(slc1).enumerate() {
+        for &p in qgram_index.qgram_matches(qgram) {
+            matches.push((i as u32, p as u32));
+        }
+    }
 
     matches.sort();
     matches
