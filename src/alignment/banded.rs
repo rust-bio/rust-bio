@@ -3,36 +3,33 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Calculate alignments with a generalized variant of the Smith Waterman algorithm.
-//! Complexity: O(n * m) for strings of length m and n.
-//!
-//! For quick computation of alignments and alignment scores there are 6 simple functions.
+//! Banded Smith-Waterman alignment for fast comparison of long strings.
+//! Use sparse dynamic programming to find a 'backbone' alignment from exact
+//! k-mer matches, then compute the SW alignment in a 'band' surrounding the
+//! backbone, with a configurable width w. This method is not guaranteed
+//! to recover the Smith-Waterman alignment, but will usually find the same 
+//! alignment if a) there is a reasonable density of exact k-mer matches
+//! between the sequences, and b) the width parameter w is larger than the
+//! excursion of the alignment path from diagonal between successive kmer 
+//! matches.  This technique is employed in long-read aligners (e.g. BLASR and BWA)
+//! to drastically reduce runtime compared to Smith Waterman. Currently only local
+//! alignment is implemented.
+//! Complexity roughly O(min(m,n) * w)
 //!
 //! # Example
 //!
 //! ```
-//! use bio::alignment::pairwise::*;
-//! use bio::alignment::AlignmentOperation::{Match, Subst};
+//! use bio::alignment::banded::*;
 //!
-//! let x = b"ACCGTGGAT";
-//! let y = b"AAAAACCGTTGAT";
+//! let x = b"AGCACACGTGTGCGCTATACAGTAAGTAGTAGTACACGTGTCACAGTTGTACTAGCATGAC";
+//! let y = b"AGCACACGTGTGCGCTATACAGTACACGTGTCACAGTTGTACTAGCATGAC";
 //! let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-//! let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
-//! let alignment = aligner.semiglobal(x, y);
-//! assert_eq!(alignment.ystart, 4);
-//! assert_eq!(alignment.xstart, 0);
-//! assert_eq!(alignment.operations, [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
-//!
-//! // If you don't known sizes of future sequences, you could
-//! // use Aligner::new().
-//! // Global alignment:
-//! let mut aligner = Aligner::new(-5, -1, &score);
-//! let x = b"ACCGTGGAT";
-//! let y = b"AAAAACCGTTGAT";
-//! let alignment = aligner.global(x, y);
+//! let k = 8;
+//! let w = 6;
+//! let mut aligner = Aligner::new(-5, -1, &score, k, w);
+//! let alignment = aligner.local(x, y);
 //! assert_eq!(alignment.ystart, 0);
 //! assert_eq!(alignment.xstart, 0);
-//! assert_eq!(aligner.local(x, y).score, 7);
 //! ```
 
 use std::i32;
@@ -94,8 +91,6 @@ macro_rules! align {
                 // read next y symbol
                 let b = $y[$state.i - 1];
                 $state.j = max(1, band.ranges[$state.i].start);
-
-                println!("i: {} , band: {:?}", $state.i, band.ranges[$state.i]);
 
                 for jj in band.ranges[$state.i].start.saturating_sub(10)..$state.j {
                     $aligner.I[$state.col][jj] = i32::MIN + 200;
