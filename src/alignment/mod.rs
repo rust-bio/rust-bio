@@ -10,9 +10,10 @@ use utils::TextSlice;
 pub mod pairwise;
 pub mod distance;
 pub mod sparse;
+pub mod banded;
 
 /// Alignment operations (Match, Subst, Del and Ins).
-#[derive(PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum AlignmentOperation {
     Match,
     Subst,
@@ -24,7 +25,7 @@ pub enum AlignmentOperation {
 /// An alignment, consisting of a score, the start and end position of the alignment on
 /// sequence x and sequence y, the length of sequence x,
 /// and the alignment edit operations (see `alignment::pairwise` for meaning of x and y).
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Alignment {
     pub score: i32,
     pub ystart: usize,
