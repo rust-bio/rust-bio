@@ -35,6 +35,7 @@
 use std::i32;
 use std::iter::repeat;
 
+use std::collections::HashMap;
 use alignment::{Alignment, AlignmentOperation};
 use data_structures::bitenc::BitEnc;
 use utils::TextSlice;
@@ -253,6 +254,7 @@ impl<'a, F> Aligner<'a, F>
     //     Aligner::new(-1, -1, *&score)
     // }
 
+    #[inline(never)]
     fn init(&mut self, x: TextSlice, y: TextSlice, alignment_type: AlignmentType) {
         let m = x.len();
         let n = y.len();
@@ -313,6 +315,7 @@ impl<'a, F> Aligner<'a, F>
     }
 
     /// Calculate local alignment of x against y.
+    #[inline(never)]
     pub fn local(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
         self.init(x, y, AlignmentType::Local);
 
@@ -468,8 +471,38 @@ pub fn key_line<I: Iterator<Item=(u32, u32)>>(mut kmer_starts: I, _k: usize) -> 
 }
 
 impl Band {
+
+
+    pub fn find_kmer_matches<T: AsRef<[u8]>>(seq1: &T, seq2: &T, k: usize) -> Vec<(u32, u32)> {
+
+        let slc1 = seq1.as_ref();
+        let slc2 = seq2.as_ref();
+
+        let mut set: HashMap<&[u8], Vec<u32>> = HashMap::new();
+        let mut matches = Vec::new();
+
+        for i in 0 .. slc1.len() - k + 1 {
+            set.entry(&slc1[i..i+k]).or_insert_with(|| Vec::new()).push(i as u32);
+        }
+
+        for i in 0 .. slc2.len() - k + 1 {
+            let slc = &slc2[i..i+k];
+            match set.get(slc) {
+                Some(matches1) => {
+                    for pos1 in matches1 {
+                        matches.push((*pos1, i as u32));
+                    }
+                },
+                None => (),
+            }
+        }
+
+        matches.sort();
+        matches
+    }
+
     pub fn create_local(x: TextSlice, y: TextSlice, k: usize, w: usize) -> Band {
-        let matches = sparse::find_kmer_matches(&x,&y,k);
+        let matches = Band::find_kmer_matches(&x,&y,k);
         let res = sparse::lcskpp(&matches, k);
 
         // each entry in matches that is included in the returned path, generates a diagonal line k bases long
@@ -671,6 +704,7 @@ mod banded {
             }
         };
 
+        
         let mut banded_aligner = banded::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score, 10, 10);
         let banded_alignment = banded_aligner.local(x, y);
 
@@ -686,6 +720,18 @@ mod banded {
         let y = x.clone();
         compare_to_full_alignment(x,y);
     }
+
+    /*
+    #[test]
+    fn test_speed() {
+        let x = b"ACGTATCGATAGCTGAGTTACCAAGATAGGGTTGTGTAGATGAAGAGATAGCTGAGTTACCAGTTCACGTGCAACTAGACCCTAGATAGGGTTGTGTAGATGATCCACAGACGTATCATAGATTATCAAGAGATAGCTGAGTTACCAAGATAGGGTTGTGTAGATGATTCCACAG";
+        let y = x.clone();
+
+        for _ in 0..1000000 {
+            compare_to_full_alignment(x,y);
+        }
+    }
+    */
 
     #[test]
     fn test_deletion() {
