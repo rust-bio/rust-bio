@@ -86,6 +86,20 @@ pub fn pattern_to_kmer(pattern: &[u8]) -> DNAKMer {
     return DNAKMer(result);
 }
 
+pub fn pattern_to_kmer_complement(pattern: &[u8]) -> DNAKMer {
+    let l = pattern.len();
+    assert!(l > 0 && l <= 32);
+    let mut mul = 1;
+    let mut result = 0;
+
+    for i in 0..l {
+        result += mul * dna_to_number(dna::complement(pattern[i]));
+        mul *= 4;
+    }
+
+    return DNAKMer(result);
+}
+
 pub fn pattern_to_canonical(pattern: &[u8]) -> DNAKMer {
     let l = pattern.len();
     assert!(l <= 32);
@@ -110,6 +124,39 @@ pub fn next_dnakmer(kmer: DNAKMer, k: usize, b: u8) -> DNAKMer {
     result <<= 2;
     result &= KMER_MASKS[k];
     result |= dna_to_number(b);
+    return DNAKMer(result); 
+}
+
+pub fn dna_complement(base: u8) -> u8 {
+    match base {
+        b'A' => b'T',
+        b'a' => b't',
+        b'C' => b'G',
+        b'c' => b'g',
+        b'G' => b'C',
+        b'g' => b'c',
+        b'T' => b'A',
+        b't' => b'a',
+        _ => panic!("Invalid byte")
+    }
+}
+
+pub fn rev_comp(kmer: DNAKMer, k: usize) -> DNAKMer {
+    let DNAKMer(input) = kmer;
+     // We can do this because complementary pairs are bitwise complements
+    let comp = !input & KMER_MASKS[k];
+    let mut result = 0;
+    let midpt = k/2 + k % 2;
+    for i in 0..midpt {
+        // Swap lo and hi
+        let lo_idx = 2 * i;
+        let hi_idx = 2 * (k - i - 1);
+        let lo = (comp & (0x3 << lo_idx)) >> lo_idx;
+        let hi = (comp & (0x3 << hi_idx)) >> hi_idx;
+        result |= lo << hi_idx;
+        result |= hi << lo_idx;
+    }
+    
     return DNAKMer(result); 
 }
 
@@ -176,6 +223,8 @@ pub fn dnakmer_seq<'a>(k: usize, s: &'a [u8]) -> DNAKMerSeq<'a> {
 mod test {
     use super::pattern_to_canonical;
     use super::pattern_to_kmer;
+    use super::pattern_to_kmer_complement;
+    use super::rev_comp;
     use super::DNAKMer;
     use super::dnakmer_seq;
 
@@ -222,6 +271,16 @@ mod test {
                 pattern_to_kmer(b"GATTGGCT"));
         assert!(pattern_to_canonical(b"ACCT") !=
                 pattern_to_kmer(b"GAAC"));
+    }
+
+    #[test]
+    fn rev_comp_test() {
+        assert!(pattern_to_kmer_complement(b"GATTACA") ==
+                pattern_to_kmer(b"TGTAATC"));
+        assert!(pattern_to_kmer_complement(b"GATTGGCT") ==
+                rev_comp(pattern_to_kmer(b"GATTGGCT"), 8));
+        assert!(pattern_to_kmer_complement(b"GATAGTACA") ==
+                rev_comp(pattern_to_kmer(b"GATAGTACA"), 9));
     }
 
     #[test]
