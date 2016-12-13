@@ -1,7 +1,7 @@
 //! Interval tree, a data structure for efficiently storing and searching numeric intervals.
 //!
 //! This data structure uses the `std::ops:Range` type to define the intervals. The range bounds
-//! may be specified by any type from the `num` crate that satisfies the `std::cmp::Ord` trait.
+//! may be specified by any type satisfies both the `std::cmp::Ord` and `Clone` trait.
 //! Upon inserting an interval may be associated with a data value. The interval data is stored in
 //! an augmented AVL-tree which allows for efficient inserting and querying.
 //!
@@ -16,13 +16,9 @@
 //!     assert_eq!(r.interval(), &(11..20));
 //!     assert_eq!(r.data(), &"Range_1");
 //! }
-extern crate num;
-
-use self::num::traits::Num;
 
 use std::cmp;
 use std::mem;
-use std::fmt::Debug;
 use std::ops::Range;
 
 /// An interval tree for storing Ranges with data
@@ -31,7 +27,7 @@ pub struct IntervalTree<N, D> {
     root: Option<Node<N, D>>,
 }
 
-/// An `Entry` is used by the IntervalTreeIterator to return references to the data in the tree
+/// An `Entry` is used by the `IntervalTreeIterator` to return references to the data in the tree
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Entry<'a, N: 'a, D: 'a> {
     data: &'a D,
@@ -51,14 +47,14 @@ impl<'a, N: 'a, D: 'a> Entry<'a, N, D> {
     }
 }
 
-/// An IntervalTreeIterator is returned from by find and iterates over the entries
+/// An `IntervalTreeIterator` is returned from by find and iterates over the entries
 /// overlapping the query
 pub struct IntervalTreeIterator<'a, N: 'a, D: 'a> {
     nodes: Vec<&'a Node<N, D>>,
     interval: Range<N>,
 }
 
-impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator
+impl<'a, N: Ord + 'a, D: 'a> Iterator
     for IntervalTreeIterator<'a, N, D> {
     type Item = Entry<'a, N, D>;
 
@@ -94,7 +90,7 @@ impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator
     }
 }
 
-impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
+impl<N: Clone + Ord, D> IntervalTree<N, D> {
     /// Creates a new empty `IntervalTree`
     pub fn new() -> Self {
         IntervalTree { root: None }
@@ -127,7 +123,7 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
     }
 }
 
-fn validate<N: Ord + Debug>(interval: &Range<N>) -> Result<(), IntervalTreeError> {
+fn validate<N: Ord>(interval: &Range<N>) -> Result<(), IntervalTreeError> {
     if interval.start > interval.end {
         Err(IntervalTreeError::InvalidRange)
     } else {
@@ -147,7 +143,7 @@ struct Node<N, D> {
     right: Option<Box<Node<N, D>>>,
 }
 
-impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
+impl<N: Clone + Ord, D> Node<N, D> {
     fn new(interval: Range<N>, data: D) -> Self {
         let max = interval.end.clone();
         Node {
