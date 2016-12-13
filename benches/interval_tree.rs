@@ -1,7 +1,6 @@
 #![feature(test)]
 
 extern crate test;
-extern crate bit_vec;
 extern crate bio;
 
 use test::Bencher;
@@ -32,8 +31,7 @@ fn test_insert_query(insert_size: i64,
     let mut tree: IntervalTree<i64, Range<i64>> = IntervalTree::new();
 
     for i in insert_bounds.clone() {
-        tree.insert((i..i + insert_size), (i..i + insert_size))
-            .expect("Error inserting interval");
+        tree.insert((i..i + insert_size), (i..i + insert_size));
     }
     for i in query_bounds {
         let lower_bound = i;
@@ -51,14 +49,14 @@ fn test_insert_query(insert_size: i64,
 fn assert_intersections(tree: &IntervalTree<i64, Range<i64>>,
                         target: Range<i64>,
                         expected_results: Vec<Range<i64>>) {
-    let mut actual_entries: Vec<Entry<i64, Range<i64>>> = tree.find(&target).unwrap().collect();
+    let mut actual_entries: Vec<_> = tree.find(target).collect();
     actual_entries.sort_by(|x1, x2| x1.data().start.cmp(&x2.data().start));
-    let mut expected_entries: Vec<(Range<i64>, Range<i64>)> =
-        expected_results.iter().map(|x| (x.clone(), x.clone())).collect();
-    expected_entries.sort_by(|x1, x2| x1.1.start.cmp(&x2.1.start));
+    let mut expected_entries: Vec<_> =
+        expected_results.iter().map(|x| (x.clone(), Interval::from(x.clone()))).collect();
+    expected_entries.sort_by(|x1, x2| x1.0.start.cmp(&x2.0.start));
     assert_eq!(actual_entries.len(), expected_entries.len());
     for (actual, expected) in actual_entries.iter().zip(expected_entries.iter()) {
-        assert_eq!(actual.interval(), &expected.0);
-        assert_eq!(actual.data(), &expected.1);
+        assert_eq!(actual.interval(), &expected.1);
+        assert_eq!(actual.data(), &expected.0);
     }
 }
