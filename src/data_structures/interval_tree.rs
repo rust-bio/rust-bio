@@ -29,6 +29,7 @@
 use std::cmp;
 use std::mem;
 use std::ops::{Range, Deref};
+use std::iter::FromIterator;
 
 /// An interval tree for storing intervals with data
 #[derive(Debug, Clone)]
@@ -175,6 +176,16 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
                 }
             }
         }
+    }
+}
+
+impl<N: Clone + Ord, D, R: Into<Interval<N>>> FromIterator<(R, D)> for IntervalTree<N, D> {
+    fn from_iter<I: IntoIterator<Item=(R, D)>>(iter: I) -> Self {
+        let mut tree = IntervalTree::new();
+        for r in iter {
+            tree.insert(r.0, r.1);
+        }
+        tree
     }
 }
 
@@ -559,5 +570,16 @@ mod tests {
         assert_eq!(r.end, 10);
     }
 
+    #[test]
+    fn from_iterator() {
+        let tree: IntervalTree<i64, ()> = vec![
+            (10..100, ()),
+            (10..20, ()),
+            (1..8, ())].into_iter().collect();
+        assert_eq!(tree.find(&(0..1000)).count(), 3);
+        let tree2 : IntervalTree<_, _> = tree.find(&(11..30))
+            .map(|e| (e.interval().clone(), e.data().clone()) ).collect();
+        assert_eq!(tree2.find(&(0..1000)).count(), 2);
 
+    }
 }
