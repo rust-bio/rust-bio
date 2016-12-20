@@ -28,61 +28,13 @@
 
 use std::cmp;
 use std::mem;
-use std::ops::{Range, Deref};
 use std::iter::FromIterator;
+use utils::Interval;
 
 /// An interval tree for storing intervals with data
 #[derive(Debug, Clone)]
 pub struct IntervalTree<N: Ord + Clone, D> {
     root: Option<Node<N, D>>,
-}
-
-/// An `Interval` wraps the `std::ops::Range` from the stdlib and is defined by a start and end field
-/// where end should be >= start.
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Interval<N: Ord + Clone>(Range<N>);
-
-impl<N: Ord + Clone> Interval<N> {
-    /// Construct a new `Interval` from the given Range.
-    /// Will return `Err` if end < start.
-    pub fn new(r: Range<N>) -> Result<Interval<N>, IntervalTreeError> {
-        if r.end >= r.start {
-            Ok(Interval(r))
-        } else {
-            Err(IntervalTreeError::InvalidRange)
-        }
-    }
-}
-
-/// Convert a `Range` into an `Interval`. This conversion will panic if the `Range` has end < start
-impl<N: Ord + Clone> From<Range<N>> for Interval<N> {
-    fn from(r: Range<N>) -> Self {
-        match Interval::new(r) {
-            Ok(interval) => interval,
-            Err(_) => panic!("Cannot convert negative width range to interval")
-        }
-    }
-}
-
-/// Convert a reference to a `Range` to an interval by cloning. This conversion will panic if the
-/// `Range` has end < start
-impl<'a, N: Ord + Clone> From<&'a Range<N>> for Interval<N> {
-    fn from(r: &Range<N>) -> Self {
-        match Interval::new(r.clone()) {
-            Ok(interval) => interval,
-            Err(_) => panic!("Cannot convert negative width range to interval")
-        }
-    }
-}
-
-
-/// Use the `Deref` operator to get a reference to `Range` wrapped by the `Interval` newtype.
-impl<N: Ord + Clone> Deref for Interval<N> {
-    type Target = Range<N>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
 }
 
 /// An `Entry` is used by the `IntervalTreeIterator` to return references to the data in the tree
@@ -335,17 +287,6 @@ fn intersect<N: Ord + Clone>(range_1: &Interval<N>, range_2: &Interval<N>) -> bo
     range_1.start < range_1.end && range_2.start < range_2.end &&
         range_1.end > range_2.start && range_1.start < range_2.end
 }
-
-quick_error! {
-    #[derive(Debug)]
-    pub enum IntervalTreeError {
-        InvalidRange {
-            description("An Interval must have a Range with a positive width")
-        }
-    }
-}
-
-
 
 #[cfg(test)]
 mod tests {
