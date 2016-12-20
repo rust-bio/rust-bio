@@ -12,7 +12,8 @@
 //!
 //! # Example
 //! ```
-//! use bio::data_structures::interval_tree::{IntervalTree, Interval};
+//! use bio::data_structures::interval_tree::{IntervalTree};
+//! use bio::utils::Interval;
 //!
 //! let mut tree = IntervalTree::new();
 //! tree.insert(11..20, "Range_1");
@@ -290,7 +291,8 @@ fn intersect<N: Ord + Clone>(range_1: &Interval<N>, range_2: &Interval<N>) -> bo
 
 #[cfg(test)]
 mod tests {
-    use super::{Node, Interval, IntervalTree, Entry};
+    use super::{Node, IntervalTree, Entry};
+    use utils::Interval;
     use std::cmp;
     use std::cmp::{min, max};
     use std::ops::Range;
@@ -492,23 +494,6 @@ mod tests {
 
         insert_and_validate(&mut tree, 50, 60);
         assert_not_found(&tree, (55..55));
-    }
-
-    #[test]
-    #[should_panic]
-    fn negative_width_range() {
-        let _ = Interval::from(10..5);
-    }
-
-    #[test]
-    fn range_interval_conversions() {
-        assert_eq!(Interval::new(1..10).unwrap(), (1..10).into());
-        assert_eq!(Interval::from(1..10),Interval::new(1..10).unwrap()) ;
-        //deref access
-        let r = Interval::new(1..10).unwrap();
-        assert_eq!(*r, (1..10));
-        assert_eq!(r.start, 1);
-        assert_eq!(r.end, 10);
     }
 
     #[test]

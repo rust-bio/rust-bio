@@ -6,6 +6,7 @@ extern crate bio;
 use test::Bencher;
 
 use bio::data_structures::interval_tree::*;
+use bio::utils::Interval;
 use std::cmp::{min, max};
 use std::ops::Range;
 
