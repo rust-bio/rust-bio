@@ -1,65 +1,71 @@
-//! Interval tree, a data structure for efficiently storing and searching numeric intervals.
+//! Interval tree, a data structure for efficiently storing and searching intervals.
 //!
-//! This data structure uses the `std::ops:Range` type to define the intervals. The range bounds
-//! may be specified by any type from the `num` crate that satisfies the `std::cmp::Ord` trait.
-//! Upon inserting an interval may be associated with a data value. The interval data is stored in
+//! This data structure uses an `Interval` type to define the intervals. It is implemented by
+//! wrapping the `std::ops::Range` in a newtype. An interval must have a positive with and the interval bounds
+//! may be specified by any type satisfies both the `std::cmp::Ord` and `Clone` trait. Because
+//! `Interval` implements `From<Range>` you can also uses normal `Range` arguments in the
+//! `insert` and `find` functions. This implicit conversion will panic if a negative-width range is
+//! supplied.
+//!
+//! Upon inserting an interval may be associated with a data value. The intervals are stored in
 //! an augmented AVL-tree which allows for efficient inserting and querying.
 //!
 //! # Example
 //! ```
-//! use bio::data_structures::interval_tree::IntervalTree;
+//! use bio::data_structures::interval_tree::{IntervalTree};
+//! use bio::utils::Interval;
 //!
 //! let mut tree = IntervalTree::new();
-//! tree.insert((11..20), "Range_1").unwrap();
-//! tree.insert((25..30), "Range_2").unwrap();
-//! for r in tree.find(&(15..25)).unwrap() {
-//!     assert_eq!(r.interval(), &(11..20));
+//! tree.insert(11..20, "Range_1");
+//! tree.insert(25..30, "Range_2");
+//! for r in tree.find(15..25) {
+//!     assert_eq!(r.interval().start, 11);
+//!     assert_eq!(r.interval().end, 20);
+//!     assert_eq!(r.interval(), &(Interval::from(11..20)));
 //!     assert_eq!(r.data(), &"Range_1");
 //! }
-extern crate num;
-
-use self::num::traits::Num;
+//! ```
+//!
 
 use std::cmp;
 use std::mem;
-use std::fmt::Debug;
-use std::ops::Range;
+use std::iter::FromIterator;
+use utils::Interval;
 
-/// An interval tree for storing Ranges with data
+/// An interval tree for storing intervals with data
 #[derive(Debug, Clone)]
-pub struct IntervalTree<N, D> {
+pub struct IntervalTree<N: Ord + Clone, D> {
     root: Option<Node<N, D>>,
 }
 
-/// An `Entry` is used by the IntervalTreeIterator to return references to the data in the tree
+/// An `Entry` is used by the `IntervalTreeIterator` to return references to the data in the tree
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub struct Entry<'a, N: 'a, D: 'a> {
+pub struct Entry<'a, N: Ord + Clone + 'a, D: 'a> {
     data: &'a D,
-    interval: &'a Range<N>,
+    interval: &'a Interval<N>,
 }
 
 /// A find query on the interval tree returns a `Iterator<
-impl<'a, N: 'a, D: 'a> Entry<'a, N, D> {
+impl<'a, N: Ord + Clone + 'a, D: 'a> Entry<'a, N, D> {
     /// Get a reference to the data for this entry
     pub fn data(&self) -> &'a D {
         self.data
     }
 
     /// Get a reference to the interval for this entry
-    pub fn interval(&self) -> &'a Range<N> {
+    pub fn interval(&self) -> &'a Interval<N> {
         self.interval
     }
 }
 
-/// An IntervalTreeIterator is returned from by find and iterates over the entries
+/// An `IntervalTreeIterator` is returned by `Intervaltree::find` and iterates over the entries
 /// overlapping the query
-pub struct IntervalTreeIterator<'a, N: 'a, D: 'a> {
+pub struct IntervalTreeIterator<'a, N: Ord + Clone + 'a, D: 'a> {
     nodes: Vec<&'a Node<N, D>>,
-    interval: Range<N>,
+    interval: Interval<N>,
 }
 
-impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator
-    for IntervalTreeIterator<'a, N, D> {
+impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D> {
     type Item = Entry<'a, N, D>;
 
     fn next(&mut self) -> Option<Entry<'a, N, D>> {
@@ -94,51 +100,52 @@ impl<'a, N: Debug + Num + Clone + Ord + 'a, D: Debug + 'a> Iterator
     }
 }
 
-impl<N: Debug + Num + Clone + Ord, D: Debug> IntervalTree<N, D> {
+impl<N: Clone + Ord, D> IntervalTree<N, D> {
     /// Creates a new empty `IntervalTree`
     pub fn new() -> Self {
         IntervalTree { root: None }
     }
 
-    /// Inserts a `Range` into the tree and associates it with `data`
-    pub fn insert(&mut self, interval: Range<N>, data: D) -> Result<(), IntervalTreeError> {
-        try!(validate(&interval));
+    /// Inserts an `Interval` into the tree and associates it with `data`
+    pub fn insert<I: Into<Interval<N>>>(&mut self, interval: I, data: D) {
+        let interval = interval.into();
         match self.root {
             Some(ref mut n) => n.insert(interval, data),
             None => self.root = Some(Node::new(interval, data)),
         };
-        Ok(())
     }
 
-    /// Uses the provided range to find overlapping intervals in the tree and returns an
+    /// Uses the provided `Interval` to find overlapping intervals in the tree and returns an
     /// `IntervalTreeIterator`
-    pub fn find(&self, interval: &Range<N>) -> Result<IntervalTreeIterator<N, D>, IntervalTreeError> {
-        try!(validate(&interval));
-        Ok(match self.root {
-            Some(ref n) => n.find_iter(interval.clone()),
+    pub fn find<I: Into<Interval<N>>>(&self, interval: I) -> IntervalTreeIterator<N, D> {
+        let interval = interval.into();
+        match self.root {
+            Some(ref n) => n.find_iter(interval),
             None => {
                 let empty_nodes = vec![];
                 IntervalTreeIterator {
                     nodes: empty_nodes,
-                    interval: interval.clone(),
+                    interval: interval,
                 }
             }
-        })
+        }
     }
 }
 
-fn validate<N: Ord + Debug>(interval: &Range<N>) -> Result<(), IntervalTreeError> {
-    if interval.start > interval.end {
-        Err(IntervalTreeError::InvalidRange)
-    } else {
-        Ok(())
+impl<N: Clone + Ord, D, R: Into<Interval<N>>> FromIterator<(R, D)> for IntervalTree<N, D> {
+    fn from_iter<I: IntoIterator<Item=(R, D)>>(iter: I) -> Self {
+        let mut tree = IntervalTree::new();
+        for r in iter {
+            tree.insert(r.0, r.1);
+        }
+        tree
     }
 }
 
 #[derive(Debug, Clone)]
-struct Node<N, D> {
+struct Node<N: Ord + Clone, D> {
     // actual interval data
-    interval: Range<N>,
+    interval: Interval<N>,
     value: D,
     // tree metadata
     max: N,
@@ -147,8 +154,8 @@ struct Node<N, D> {
     right: Option<Box<Node<N, D>>>,
 }
 
-impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
-    fn new(interval: Range<N>, data: D) -> Self {
+impl<N: Ord + Clone, D> Node<N, D> {
+    fn new(interval: Interval<N>, data: D) -> Self {
         let max = interval.end.clone();
         Node {
             interval: interval,
@@ -160,7 +167,7 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
         }
     }
 
-    fn insert(&mut self, interval: Range<N>, data: D) {
+    fn insert(&mut self, interval: Interval<N>, data: D) {
         if interval.start <= self.interval.start {
             if let Some(ref mut son) = self.left {
                 son.insert(interval, data);
@@ -175,7 +182,7 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
         self.repair();
     }
 
-    fn find_iter(&self, interval: Range<N>) -> IntervalTreeIterator<N, D> {
+    fn find_iter(&self, interval: Interval<N>) -> IntervalTreeIterator<N, D> {
         let nodes = vec![self];
         IntervalTreeIterator {
             nodes: nodes,
@@ -272,30 +279,20 @@ impl<N: Debug + Num + Clone + Ord, D: Debug> Node<N, D> {
     }
 }
 
-fn swap_interval_data<N, D>(node_1: &mut Node<N, D>, node_2: &mut Node<N, D>) {
+fn swap_interval_data<N: Ord + Clone, D>(node_1: &mut Node<N, D>, node_2: &mut Node<N, D>) {
     mem::swap(&mut node_1.value, &mut node_2.value);
     mem::swap(&mut node_1.interval, &mut node_2.interval);
 }
 
-fn intersect<N: Ord>(range_1: &Range<N>, range_2: &Range<N>) -> bool {
+fn intersect<N: Ord + Clone>(range_1: &Interval<N>, range_2: &Interval<N>) -> bool {
     range_1.start < range_1.end && range_2.start < range_2.end &&
         range_1.end > range_2.start && range_1.start < range_2.end
 }
 
-quick_error! {
-    #[derive(Debug)]
-    pub enum IntervalTreeError {
-        InvalidRange {
-            description("Range for IntervalTree must have a positive width")
-        }
-    }
-}
-
-
-
 #[cfg(test)]
 mod tests {
     use super::{Node, IntervalTree, Entry};
+    use utils::Interval;
     use std::cmp;
     use std::cmp::{min, max};
     use std::ops::Range;
@@ -363,20 +360,20 @@ mod tests {
         name.push_str(&start.to_string());
         name.push_str(":");
         name.push_str(&end.to_string());
-        tree.insert((start..end), name).unwrap();
+        tree.insert((start..end), name);
         if let Some(ref n) = tree.root {
             validate(n);
         }
     }
 
-    fn make_entry_tuples(intervals: Vec<Range<i64>>) -> Vec<(Range<i64>, String)> {
+    fn make_entry_tuples(intervals: Vec<Range<i64>>) -> Vec<(Interval<i64>, String)> {
         let mut entries = vec![];
         for interval in intervals {
             let mut data: String = "".to_string();
             data.push_str(&interval.start.to_string());
             data.push_str(":");
             data.push_str(&interval.end.to_string());
-            entries.push((interval, data));
+            entries.push((interval.into(), data));
         }
         entries.sort_by(|x1, x2| x1.1.cmp(&x2.1));
         entries
@@ -385,13 +382,13 @@ mod tests {
     fn assert_intersections(tree: &IntervalTree<i64, String>,
                             target: Range<i64>,
                             expected_results: Vec<Range<i64>>) {
-        let mut actual_entries: Vec<Entry<i64, String>> = tree.find(&target).unwrap().collect();
+        let mut actual_entries: Vec<Entry<i64, String>> = tree.find(&target).collect();
         println!("{:?}", actual_entries);
         actual_entries.sort_by(|x1, x2| x1.data.cmp(&x2.data));
         let expected_entries = make_entry_tuples(expected_results);
         assert_eq!(actual_entries.len(), expected_entries.len());
         for (actual, expected) in actual_entries.iter().zip(expected_entries.iter()) {
-            assert_eq!(actual.interval, &expected.0);
+            assert_eq!(*actual.interval, expected.0);
             assert_eq!(actual.data, &expected.1);
         }
     }
@@ -403,7 +400,7 @@ mod tests {
     #[test]
     fn test_insertion_and_intersection() {
         let mut tree: IntervalTree<i64, String> = IntervalTree::new();
-        tree.insert((50..51), "50:51".to_string()).unwrap();
+        tree.insert((50..51), "50:51".to_string());
         assert_not_found(&tree, (49..50));
         assert_intersections(&tree, (49..55), vec![(50..51)]);
         assert_not_found(&tree, (51..55));
@@ -490,12 +487,25 @@ mod tests {
     #[test]
     fn zero_width_ranges() {
         let mut tree: IntervalTree<i64, String> = IntervalTree::new();
-        tree.insert((10..10), "10:10".to_string()).unwrap();
+        tree.insert((10..10), "10:10".to_string());
 
         assert_not_found(&tree, (5..15));
         assert_not_found(&tree, (10..10));
 
         insert_and_validate(&mut tree, 50, 60);
         assert_not_found(&tree, (55..55));
+    }
+
+    #[test]
+    fn from_iterator() {
+        let tree: IntervalTree<i64, ()> = vec![
+            (10..100, ()),
+            (10..20, ()),
+            (1..8, ())].into_iter().collect();
+        assert_eq!(tree.find(&(0..1000)).count(), 3);
+        let tree2 : IntervalTree<_, _> = tree.find(&(11..30))
+            .map(|e| (e.interval().clone(), e.data().clone()) ).collect();
+        assert_eq!(tree2.find(&(0..1000)).count(), 2);
+
     }
 }
