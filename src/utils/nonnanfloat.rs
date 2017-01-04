@@ -1,5 +1,5 @@
 use std::cmp;
-use num::Float;
+use num_traits::Float;
 
 #[derive(PartialOrd, PartialEq, Debug, Copy, Clone)]
 pub struct NonNaNFloat<F: Float>(F);
