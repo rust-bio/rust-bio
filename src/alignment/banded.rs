@@ -278,7 +278,7 @@ impl<'a, F> Aligner<'a, F>
 
         // set minimum score to -inf, and allow to add gap_extend
         // without overflow
-        let min_score = i32::MIN - self.gap_open;
+        let min_score = i32::MIN - self.gap_open + 200;
         for k in 0..2 {
             self.S[k].clear();
             self.I[k].clear();
@@ -314,8 +314,35 @@ impl<'a, F> Aligner<'a, F>
         }
     }
 
+
+    /// Calculate semiglobal alignment of x against y (x is global, y is local).
+    pub fn semiglobal(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+        self.init(x, y, AlignmentType::Semiglobal);
+
+        align!(self,
+               x,
+               y,
+               state,
+               {
+                   self.S[state.col][0] = 0;
+               },
+               {},
+               {
+                   // the second condition ensures that score is overwritten if best
+                   // does not reflect a full x-column (can happen in first iteration)
+                   if state.score > state.best || state.best_j != state.m {
+                       state.best = state.score;
+                       state.best_i = state.i;
+                       state.best_j = state.m;
+                   }
+               },
+               {
+                   self.alignment(state.best_i, state.best_j, x, y, state.best)
+               })
+    }
+
+
     /// Calculate local alignment of x against y.
-    #[inline(never)]
     pub fn local(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
         self.init(x, y, AlignmentType::Local);
 
@@ -504,6 +531,9 @@ impl Band {
     pub fn create_local(x: TextSlice, y: TextSlice, k: usize, w: usize) -> Band {
         let matches = Band::find_kmer_matches(&x,&y,k);
         let res = sparse::lcskpp(&matches, k);
+        let ps = res.path[0];
+        let pe = res.path[res.path.len()-1];
+        println!("sparse: rstart:{} tstart:{} rend:{}, tend:{}, hits:{}", matches[ps].0, matches[ps].1, matches[pe].0, matches[pe].1, res.score);
 
         // each entry in matches that is included in the returned path, generates a diagonal line k bases long
         // each gap generates a line from the end of the previous k-match to the start of the next one.
@@ -568,7 +598,7 @@ impl Band {
                     // case 2:
                     } else {
                         for c in prev.1 .. m.1 {
-                            let r = prev.0 + (m.0 - prev.0) * c / (m.1 - prev.1);
+                            let r = prev.0 + (m.0 - prev.0) * (c - prev.1) / (m.1 - prev.1);
                             reg(r, c)
                         }
                         
@@ -595,6 +625,11 @@ impl Band {
         }
 
         } // end borrow of ranges
+
+        // Don't allow negative size ranges
+        for i in 0 .. y.len()+1 {
+            ranges[i].start = min(ranges[i].start, ranges[i].end);
+        }
 
         Band { ranges: ranges }
     }
@@ -732,6 +767,15 @@ mod banded {
         }
     }
     */
+
+    #[test]
+    fn test_big() {
+        let query = b"CATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCGTGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGCAGAACAGGAGGCCCCATCTCCCGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTCCCCAGCTCTTGCTTCAGGGCCTCACGTTTCGCCCCCTGAGGCCTGGGGGCTCCATCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTG";
+
+        let target = b"CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCATGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGCAGAACAGGAGGCCCCATCTCCCGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTCCCCAGCTCTTGCTTCAGGGCCTCACGTTTCGCCCCCTGAGGCCTGGGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGCACGGCTCCCAACTCTCTTCCGGCCAAGGATCCCGTGTTCCTGAAATGTCTTTCTACCAAACACAGTTGCTGTGTAACCACTCATTTCATTTTCCTAATTTGTGTTGATCCAGGACACGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
+
+        compare_to_full_alignment(query, target);
+    }
 
     #[test]
     fn test_deletion() {

@@ -217,7 +217,32 @@ impl Alignment {
             }
         }
 
-        format!("{}\n{}\n{}", x_pretty, inb_pretty, y_pretty)
+        let mut s = String::new();
+        let mut idx = 0;
+        let step = 100;
+        use std::cmp::min;
+
+        println!("lengths: {}, {}, {}", x_pretty.len(), inb_pretty.len(), y_pretty.len());
+
+        let ml = min(x_pretty.len(), min(inb_pretty.len(), y_pretty.len()));
+
+        while idx < ml{
+            let rng = idx..min(idx + step, ml);
+            s.push_str(&x_pretty[rng.clone()]);
+            s.push_str("\n");
+
+            s.push_str(&inb_pretty[rng.clone()]);
+            s.push_str("\n");
+
+            s.push_str(&y_pretty[rng]);
+            s.push_str("\n");
+
+            s.push_str("\n\n");
+            idx += step;
+        }
+
+        //format!("{}\n{}\n{}", x_pretty, inb_pretty, y_pretty)
+        s
     }
 }
 

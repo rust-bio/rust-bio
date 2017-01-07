@@ -164,6 +164,8 @@ pub fn find_kmer_matches<T: AsRef<[u8]>>(query: &T, reference: &T, k: usize) -> 
 #[cfg(test)]
 mod sparse_alignment {
     use super::find_kmer_matches;
+    use std::collections::HashSet;
+    use std::mem;
 
     #[test]
     pub fn test_find_kmer_matches() {
@@ -176,6 +178,15 @@ mod sparse_alignment {
         let hits = find_kmer_matches(&s1, &s2, k);
         assert_eq!(hits.len(), (25-k+1) + (24-k+1));
         //println!("hits: {:?}", hits);
+    }
+
+
+    #[test]
+    pub fn test_sz() {
+
+        let sz = mem::size_of::<HashSet<u64>>();
+        println!("sz: {}", sz);
+        assert!(false);
     }
 
 
@@ -232,4 +243,29 @@ mod sparse_alignment {
             assert_eq!(matches[res.path[i] as usize], (i as u32, i as u32));
         }
      }
+
+/*
+    #[test]
+    fn test_lcskpp_big() {
+        let query = b"CATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCGTGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGCAGAACAGGAGGCCCCATCTCCCGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTCCCCAGCTCTTGCTTCAGGGCCTCACGTTTCGCCCCCTGAGGCCTGGGGGCTCCATCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTG";
+
+        let target = b"CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCATGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGCAGAACAGGAGGCCCCATCTCCCGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTCCCCAGCTCTTGCTTCAGGGCCTCACGTTTCGCCCCCTGAGGCCTGGGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGCACGGCTCCCAACTCTCTTCCGGCCAAGGATCCCGTGTTCCTGAAATGTCTTTCTACCAAACACAGTTGCTGTGTAACCACTCATTTCATTTTCCTAATTTGTGTTGATCCAGGACACGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
+
+        let matches = super::find_kmer_matches(&query, &target, k);
+        let res = super::lcskpp(&matches, k);
+
+        // For debugging: 
+        //for (idx, (ev, (score, prev))) in evs.iter().zip(dps.clone()).enumerate() {
+        //    println!("idx: {:?}\tev: {:?}\tscore: {:?}\t prev: {:?}", idx, ev, score, prev);
+        //}
+        //println!("tb: {:?}", tb);
+
+        assert_eq!(res.score, s1.len() as u32);
+
+        for i in 0..res.path.len() {
+            assert_eq!(matches[res.path[i] as usize], (i as u32, i as u32));
+        }
+    }
+*/
+
  }
