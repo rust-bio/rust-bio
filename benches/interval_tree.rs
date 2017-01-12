@@ -1,12 +1,12 @@
 #![feature(test)]
 
 extern crate test;
-extern crate bit_vec;
 extern crate bio;
 
 use test::Bencher;
 
 use bio::data_structures::interval_tree::*;
+use bio::utils::Interval;
 use std::cmp::{min, max};
 use std::ops::Range;
 
@@ -37,8 +37,8 @@ fn test_insert_query(insert_size: i64,
     for i in query_bounds {
         let lower_bound = i;
         let upper_bound = i + query_size;
-        let smallest_start = max(lower_bound - insert_size + 1, insert_bounds.start.clone());
-        let largest_start = min(upper_bound, insert_bounds.end.clone());
+        let smallest_start = max(lower_bound - insert_size + 1, insert_bounds.start);
+        let largest_start = min(upper_bound, insert_bounds.end);
         let mut expected_intersections = vec![];
         for j in smallest_start..largest_start {
             expected_intersections.push(j..j + insert_size);
@@ -50,14 +50,14 @@ fn test_insert_query(insert_size: i64,
 fn assert_intersections(tree: &IntervalTree<i64, Range<i64>>,
                         target: Range<i64>,
                         expected_results: Vec<Range<i64>>) {
-    let mut actual_entries: Vec<Entry<i64, Range<i64>>> = tree.find(&target).collect();
+    let mut actual_entries: Vec<_> = tree.find(target).collect();
     actual_entries.sort_by(|x1, x2| x1.data().start.cmp(&x2.data().start));
-    let mut expected_entries: Vec<(Range<i64>, Range<i64>)> =
-        expected_results.iter().map(|x| (x.clone(), x.clone())).collect();
-    expected_entries.sort_by(|x1, x2| x1.1.start.cmp(&x2.1.start));
+    let mut expected_entries: Vec<_> =
+        expected_results.iter().map(|x| (x.clone(), Interval::from(x.clone()))).collect();
+    expected_entries.sort_by(|x1, x2| x1.0.start.cmp(&x2.0.start));
     assert_eq!(actual_entries.len(), expected_entries.len());
     for (actual, expected) in actual_entries.iter().zip(expected_entries.iter()) {
-        assert_eq!(actual.interval(), &expected.0);
-        assert_eq!(actual.data(), &expected.1);
+        assert_eq!(actual.interval(), &expected.1);
+        assert_eq!(actual.data(), &expected.0);
     }
 }

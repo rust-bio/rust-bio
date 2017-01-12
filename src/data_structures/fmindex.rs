@@ -7,7 +7,7 @@
 
 use std::iter::DoubleEndedIterator;
 
-use data_structures::bwt::{less, BWT, DerefBWT, DerefOcc, DerefLess};
+use data_structures::bwt::{BWT, DerefBWT, DerefOcc, DerefLess};
 use data_structures::suffix_array::SuffixArray;
 use alphabets::dna;
 use std::mem::swap;
@@ -270,7 +270,7 @@ impl<
         let prev = &mut Vec::new();
         let mut matches = Vec::new();
 
-        let mut interval = self.init_interval(pattern, i);
+        let mut interval = self.init_interval(pattern[i]);
 
         for &a in pattern[i + 1..].iter() {
             // forward extend interval
@@ -331,8 +331,8 @@ impl<
         matches
     }
 
-    fn init_interval(&self, pattern: &[u8], i: usize) -> BiInterval {
-        let a = pattern[i];
+    /// Initialize interval with given start character.
+    pub fn init_interval(&self, a: u8) -> BiInterval {
         let comp_a = dna::complement(a);
         let lower = self.fmindex.less(a);
 
@@ -344,6 +344,7 @@ impl<
         }
     }
 
+    /// Backward extension of given interval with given character.
     pub fn backward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
         let mut s = 0;
         let mut o = 0;
@@ -436,7 +437,7 @@ mod tests {
         let fmindex = FMIndex::new(&bwt, &less, &occ);
         let fmdindex = FMDIndex::from(fmindex);
         let pattern = b"T";
-        let interval = fmdindex.init_interval(pattern, 0);
+        let interval = fmdindex.init_interval(pattern[0]);
 
 
         assert_eq!(interval.forward().occ(&sa), [3, 5]);

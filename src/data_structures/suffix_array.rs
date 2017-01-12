@@ -13,8 +13,8 @@ use std::fmt::Debug;
 use std::ops::Deref;
 use std::cmp;
 
-use num::{Integer, Unsigned, NumCast};
-use num::traits::cast;
+use num_traits::{Unsigned, NumCast, cast};
+use num_integer::Integer;
 
 use bit_vec::BitVec;
 use vec_map::VecMap;

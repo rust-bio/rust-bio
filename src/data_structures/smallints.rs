@@ -28,9 +28,8 @@ use std::mem::size_of;
 use std::collections::BTreeMap;
 use std::slice;
 
-use num::{NumCast, Bounded, Integer, Num};
-use num::traits::cast;
-
+use num_traits::{NumCast, Bounded, Num, cast};
+use num_integer::Integer;
 
 /// Data structure for storing a sequence of small integers with few big ones space efficiently
 /// while supporting classical vector operations.
