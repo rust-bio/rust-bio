@@ -40,7 +40,6 @@ use std::i32;
 use std::iter::repeat;
 
 use alignment::{Alignment, AlignmentOperation};
-use data_structures::bitenc::BitEnc;
 use utils::TextSlice;
 
 #[derive(Copy, Clone)]
@@ -94,15 +93,17 @@ macro_rules! align {
                     // read next x symbol
                     let a = $x[$state.j - 1];
 
+                    let mut tb = TracebackCell::new();
+
                     // score for deletion
                     let d_open = $aligner.S[prev][$state.j] + $aligner.gap_open;
                     let d_extend = $aligner.D[prev][$state.j] + $aligner.gap_extend;
 
                     if d_open > d_extend {
-                        $aligner.D_traceback.subst($state.i, $state.j);
+                        tb.set_d(TBSUBST);
                         $aligner.D[$state.col][$state.j] = d_open;
                     } else {
-                        $aligner.D_traceback.del($state.i, $state.j);
+                        tb.set_d(TBDEL);
                         $aligner.D[$state.col][$state.j] = d_extend;
                     }
 
@@ -111,10 +112,10 @@ macro_rules! align {
                     let i_extend = $aligner.I[$state.col][$state.j-1] + $aligner.gap_extend;
 
                     if i_open > i_extend {
-                        $aligner.I_traceback.subst($state.i, $state.j);
+                        tb.set_i(TBSUBST);
                         $aligner.I[$state.col][$state.j] = i_open;
                     } else {
-                        $aligner.I_traceback.ins($state.i, $state.j);
+                        tb.set_i(TBINS);
                         $aligner.I[$state.col][$state.j] = i_extend;
                     };
 
@@ -122,20 +123,22 @@ macro_rules! align {
                     // score for substitution
                     let match_score = ($aligner.score)(a, b);
                     $state.score = $aligner.S[prev][$state.j-1] + match_score;
-                    $aligner.S_traceback.subst($state.i, $state.j);
+                    tb.set_s(TBSUBST);
 
                     let from_d = $aligner.D[prev][$state.j-1] + match_score;
                     let from_i = $aligner.I[prev][$state.j-1] + match_score;
 
                     if from_d > $state.score {
                         $state.score = from_d;
-                        $aligner.S_traceback.del($state.i, $state.j);
+                        tb.set_s(TBDEL);
                     }
 
                     if from_i > $state.score {
                         $state.score = from_i;
-                        $aligner.S_traceback.ins($state.i, $state.j);
+                        tb.set_s(TBINS);
                     }
+
+                    $aligner.traceback.set($state.i, $state.j, tb);
 
                     // inner code
                     $inner
@@ -165,9 +168,7 @@ pub struct Aligner<'a, F>
     S: [Vec<i32>; 2],
     I: [Vec<i32>; 2],
     D: [Vec<i32>; 2],
-    S_traceback: Traceback,
-    I_traceback: Traceback,
-    D_traceback: Traceback,
+    traceback: Traceback,
     gap_open: i32,
     gap_extend: i32,
     score: &'a F,
@@ -209,14 +210,16 @@ impl<'a, F> Aligner<'a, F>
     /// * `score` - function that returns the score for substitutions (also see bio::scores)
     ///
     pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, score: &'a F) -> Self {
+
+        assert!(gap_open <= 0, "gap_open can't be positive");
+        assert!(gap_extend <= 0, "gap_extend can't be positive");
+
         let get_vec = || Vec::with_capacity(m + 1);
         Aligner {
             S: [get_vec(), get_vec()],
             I: [get_vec(), get_vec()],
             D: [get_vec(), get_vec()],
-            S_traceback: Traceback::with_capacity(m, n),
-            I_traceback: Traceback::with_capacity(m, n),
-            D_traceback: Traceback::with_capacity(m, n),
+            traceback: Traceback::with_capacity(m, n),
             gap_open: gap_open,
             gap_extend: gap_extend,
             score: score,
@@ -233,9 +236,7 @@ impl<'a, F> Aligner<'a, F>
 
     fn init(&mut self, m: usize, n: usize, alignment_type: AlignmentType) {
 
-        self.S_traceback.init(m, n, alignment_type);
-        self.I_traceback.init(m, n, alignment_type);
-        self.D_traceback.init(m, n, alignment_type);
+        self.traceback.init(m, n, alignment_type);
 
         // set minimum score to -inf, and allow to add gap_extend
         // without overflow
@@ -289,9 +290,7 @@ impl<'a, F> Aligner<'a, F>
                    self.I[state.col][0] = i32::MIN - self.gap_open;
                    self.D[state.col][0] = self.gap_open + (state.i as i32 - 1) * self.gap_extend;
 
-                   self.S_traceback.del(state.i, 0);
-                   self.D_traceback.del(state.i, 0);
-                   self.I_traceback.del(state.i, 0);
+                   self.traceback.get_mut(state.i, 0).set_all(TBDEL);
                },
                {},
                {},
@@ -341,7 +340,7 @@ impl<'a, F> Aligner<'a, F>
                },
                {
                    if state.score < 0 {
-                       self.S_traceback.start(state.i, state.j);
+                       self.traceback.get_mut(state.i, state.j).set_s(TBSTART);
                        state.score = 0;
                    } else if state.score > state.best {
                        state.best = state.score;
@@ -355,21 +354,18 @@ impl<'a, F> Aligner<'a, F>
                })
     }
 
-    fn alignment(&self, mut i: usize, mut j: usize, x: TextSlice, y: TextSlice, score: i32) -> Alignment {
-        let s_tb = &self.S_traceback;
-        let i_tb = &self.I_traceback;
-        let d_tb = &self.D_traceback;
+    fn alignment(&self, yend: usize, xend: usize, x: TextSlice, y: TextSlice, score: i32) -> Alignment {
 
-        let xend = j;
-        let yend = i;
+        let mut i = yend;
+        let mut j = xend;
 
         let mut ops = Vec::with_capacity(x.len());
 
-        let get = |i,j,ty| {
+        let get = move |i,j,ty| {
                 match ty {
-                    TBDEL => d_tb.get(i,j),
-                    TBINS => i_tb.get(i,j),
-                    _ => s_tb.get(i,j),
+                    TBDEL => self.traceback.get(i,j).get_d(),
+                    TBINS => self.traceback.get(i,j).get_i(),
+                    _ => self.traceback.get(i,j).get_s(),
                 }
         };
 
@@ -416,19 +412,16 @@ impl<'a, F> Aligner<'a, F>
         }
     }
 
+    
     // Debugging helper function for visualizing traceback matrices
     #[allow(dead_code)]
     fn print_traceback_matrices(&self, i: usize, j: usize)
     {
-        let s_tb = &self.S_traceback;
-        let i_tb = &self.I_traceback;
-        let d_tb = &self.D_traceback;
-
-        for tb in &[s_tb, i_tb, d_tb] {
+        for tb in &[TBSUBST, TBINS, TBDEL] {
             for jj in 0..(j+1) {
                 let mut s = String::new();
                 for ii in 0..(i+1) {
-                    match tb.get(ii,jj) {
+                    match self.traceback.get(ii,jj).get(*tb) {
                         TBSUBST => s.push_str(" M"),
                         TBDEL => s.push_str(" D"),
                         TBINS => s.push_str(" I"),
@@ -442,10 +435,66 @@ impl<'a, F> Aligner<'a, F>
     }
 }
 
+/// Packed representation of one cell of a Smith-Waterman traceback matrix.
+/// Stores the D, S, and I traceback matrix values in a single byte.
+#[derive(Copy, Clone)]
+struct TracebackCell {
+    v: u8,
+}
+
+const DPOS: u8 = 0x3;
+const SPOS: u8 = 0x3 << 2;
+const IPOS: u8 = 0x3 << 4;  
+
+impl TracebackCell {
+    /// Initialize a blank traceback cell
+    pub fn new() -> TracebackCell {
+        TracebackCell { v: 0 }
+    }
+
+    pub fn set_d(&mut self, value: u8) {
+        self.v = self.v & !DPOS | (value)
+    }
+
+    pub fn get_d(&self) -> u8 {
+        self.v & 0x3
+    }
+
+    pub fn set_s(&mut self, value: u8) {
+        self.v = self.v & !SPOS | (value << 2)
+    }
+
+    pub fn get_s(&self) -> u8 {
+        (self.v >> 2) & 0x3
+    }
+
+    pub fn set_i(&mut self, value: u8) {
+        self.v = self.v & !IPOS | (value << 4)
+    }
+
+    pub fn get_i(&self) -> u8 {
+        (self.v >> 4) & 0x3
+    }
+
+    pub fn get(&self, which: u8) -> u8 {
+        match which {
+            TBINS => self.get_i(),
+            TBDEL => self.get_d(),
+            _ => self.get_s(),
+        }
+    }
+
+    /// Set all matrices to the same value.
+    pub fn set_all(&mut self, value: u8) {
+        self.set_d(value);
+        self.set_s(value);
+        self.set_i(value);
+    }
+}
 
 /// Internal traceback.
 struct Traceback {
-    matrix: Vec<BitEnc>,
+    matrix: Vec<Vec<TracebackCell>>,
 }
 
 
@@ -458,57 +507,65 @@ impl Traceback {
     fn with_capacity(m: usize, n: usize) -> Self {
         let mut matrix = Vec::with_capacity(n + 1);
         for _ in 0..n + 1 {
-            matrix.push(BitEnc::with_capacity(2, m + 1));
+            matrix.push(Vec::with_capacity(m+1));
         }
         Traceback { matrix: matrix }
     }
 
     fn init(&mut self, m: usize, n: usize, alignment_type: AlignmentType) {
+        let mut ins = TracebackCell::new();
+        ins.set_all(TBINS);
+
         match alignment_type {
             AlignmentType::Global => {
                 // set the first cell to start, the rest to insertions
                 for i in 0..n + 1 {
                     self.matrix[i].clear();
-                    self.matrix[i].push_values(m + 1, TBINS);
+                    for _ in 0 .. m+1 {
+                        self.matrix[i].push(ins)
+                    }
                 }
-                self.matrix[0].set(0, TBSTART);
+
+                self.matrix[0][0].set_all(TBSTART);
             }
+
             AlignmentType::Semiglobal => {
                 // set the first cell of each column to start, the rest to insertions
                 for i in 0..n + 1 {
                     self.matrix[i].clear();
-                    self.matrix[i].push_values(m + 1, TBINS);
-                    self.matrix[i].set(0, TBSTART);
+                    for _ in 0 .. m+1 {
+                        self.matrix[i].push(ins);
+                    }
+
+                    self.matrix[i][0].set_all(TBSTART);
                 }
             }
+
             AlignmentType::Local => {
                 // set every cell to start
+                let mut start = TracebackCell::new();
+                start.set_all(TBSTART);
+
                 for i in 0..n + 1 {
                     self.matrix[i].clear();
-                    self.matrix[i].push_values(m + 1, TBSTART);
+                    for _ in 0 .. m + 1 {
+                        self.matrix[i].push(start);
+                    }
                 }
             }
         }
     }
 
-    fn start(&mut self, i: usize, j: usize) {
-        self.matrix[i].set(j, TBSTART);
+    fn set(&mut self, i: usize, j: usize, v: TracebackCell) {
+        self.matrix[i][j] = v;
     }
 
-    fn subst(&mut self, i: usize, j: usize) {
-        self.matrix[i].set(j, TBSUBST);
-    }
-
-    fn del(&mut self, i: usize, j: usize) {
-        self.matrix[i].set(j, TBDEL);
-    }
-
-    fn ins(&mut self, i: usize, j: usize) {
-        self.matrix[i].set(j, TBINS);
-    }
-
-    fn get(&self, i: usize, j: usize) -> u8 {
+    fn get(&self, i: usize, j: usize) -> &TracebackCell  {
         self.matrix[i].get(j).unwrap()
+    }
+
+    fn get_mut(&mut self, i: usize, j: usize) -> &mut TracebackCell  {
+        self.matrix[i].get_mut(j).unwrap()
     }
 }
 
@@ -519,6 +576,25 @@ mod tests {
     use alignment::AlignmentOperation::{Match, Subst, Ins, Del};
     use scores::blosum62;
     use std::iter::repeat;
+
+    #[test]
+    fn traceback_cell() {
+        let mut tb = super::TracebackCell::new();
+
+        tb.set_d(1);
+        assert_eq!(tb.get_d(), 1);
+
+        tb.set_s(2);
+        assert_eq!(tb.get_s(), 2);
+        assert_eq!(tb.get_d(), 1);
+
+        tb.set_i(3);
+        assert_eq!(tb.get_i(), 3);
+        assert_eq!(tb.get_s(), 2);
+        assert_eq!(tb.get_d(), 1);
+        
+
+    }
 
     #[test]
     fn test_semiglobal() {
@@ -839,4 +915,5 @@ mod tests {
     //     assert_eq!(aligner.global(x, y).score, 4);
     //     assert_eq!(aligner.global(y, x).score, 4);
     // }
+    
 }
