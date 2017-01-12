@@ -579,7 +579,7 @@ mod tests {
 
     #[test]
     fn traceback_cell() {
-        let mut tb = TracebackCell::new();
+        let mut tb = super::TracebackCell::new();
 
         tb.set_d(1);
         assert_eq!(tb.get_d(), 1);
