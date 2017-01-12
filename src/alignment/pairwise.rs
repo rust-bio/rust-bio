@@ -40,7 +40,6 @@ use std::i32;
 use std::iter::repeat;
 
 use alignment::{Alignment, AlignmentOperation};
-use data_structures::bitenc::BitEnc;
 use utils::TextSlice;
 
 #[derive(Copy, Clone)]
@@ -211,6 +210,10 @@ impl<'a, F> Aligner<'a, F>
     /// * `score` - function that returns the score for substitutions (also see bio::scores)
     ///
     pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, score: &'a F) -> Self {
+
+        assert!(gap_open <= 0, "gap_open can't be positive");
+        assert!(gap_extend <= 0, "gap_extend can't be positive");
+
         let get_vec = || Vec::with_capacity(m + 1);
         Aligner {
             S: [get_vec(), get_vec()],
@@ -287,7 +290,7 @@ impl<'a, F> Aligner<'a, F>
                    self.I[state.col][0] = i32::MIN - self.gap_open;
                    self.D[state.col][0] = self.gap_open + (state.i as i32 - 1) * self.gap_extend;
 
-                   let tb = self.traceback.get_mut(state.i, 0).set_all(TBDEL);
+                   self.traceback.get_mut(state.i, 0).set_all(TBDEL);
                },
                {},
                {},
@@ -352,14 +355,13 @@ impl<'a, F> Aligner<'a, F>
     }
 
     fn alignment(&self, yend: usize, xend: usize, x: TextSlice, y: TextSlice, score: i32) -> Alignment {
-        //let tb = &self.traceback;
 
         let mut i = yend;
         let mut j = xend;
 
         let mut ops = Vec::with_capacity(x.len());
 
-        let mut get = move |i,j,ty| {
+        let get = move |i,j,ty| {
                 match ty {
                     TBDEL => self.traceback.get(i,j).get_d(),
                     TBINS => self.traceback.get(i,j).get_i(),
@@ -450,15 +452,6 @@ impl TracebackCell {
         TracebackCell { v: 0 }
     }
 
-    /// Initial a cell with the same value in each matrix
-    pub fn same(value: u8) -> TracebackCell {
-        let mut res = Self::new();
-        res.set_d(value);
-        res.set_s(value);
-        res.set_i(value);
-        res
-    }
-
     pub fn set_d(&mut self, value: u8) {
         self.v = self.v & !DPOS | (value)
     }
@@ -528,7 +521,7 @@ impl Traceback {
                 // set the first cell to start, the rest to insertions
                 for i in 0..n + 1 {
                     self.matrix[i].clear();
-                    for j in 0 .. m+1 {
+                    for _ in 0 .. m+1 {
                         self.matrix[i].push(ins)
                     }
                 }
@@ -540,7 +533,7 @@ impl Traceback {
                 // set the first cell of each column to start, the rest to insertions
                 for i in 0..n + 1 {
                     self.matrix[i].clear();
-                    for j in 0 .. m+1 {
+                    for _ in 0 .. m+1 {
                         self.matrix[i].push(ins);
                     }
 
@@ -555,7 +548,7 @@ impl Traceback {
 
                 for i in 0..n + 1 {
                     self.matrix[i].clear();
-                    for j in 0 .. m + 1 {
+                    for _ in 0 .. m + 1 {
                         self.matrix[i].push(start);
                     }
                 }
@@ -922,4 +915,5 @@ mod tests {
     //     assert_eq!(aligner.global(x, y).score, 4);
     //     assert_eq!(aligner.global(y, x).score, 4);
     // }
+    
 }
