@@ -452,6 +452,7 @@ impl TracebackCell {
         TracebackCell { v: 0 }
     }
 
+    #[inline(always)]
     pub fn set_d(&mut self, value: u8) {
         self.v = self.v & !DPOS | (value)
     }
@@ -460,6 +461,7 @@ impl TracebackCell {
         self.v & 0x3
     }
 
+    #[inline(always)]
     pub fn set_s(&mut self, value: u8) {
         self.v = self.v & !SPOS | (value << 2)
     }
@@ -468,6 +470,7 @@ impl TracebackCell {
         (self.v >> 2) & 0x3
     }
 
+    #[inline(always)]
     pub fn set_i(&mut self, value: u8) {
         self.v = self.v & !IPOS | (value << 4)
     }
