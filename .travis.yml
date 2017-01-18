@@ -14,13 +14,9 @@ matrix:
   - rust: nightly
   - rust: beta
 script:
-  - travis-cargo build
-  - travis-cargo test
-after_success: |
-  [ $TRAVIS_BRANCH = master ] &&
-  [ $TRAVIS_PULL_REQUEST = false ] &&
-  travis-cargo doc &&
-  travis-cargo --only stable doc-upload
+  - travis-cargo build && travis-cargo test
+after_success:
+  - travis-cargo coveralls --no-sudo --verify
 env:
   global:
     secure: ujLBCE7iB7rMZaOSQQS0t7RjenxDnV/rtiMEB/aJnzbCBTo2RtJifyXkZci28YT0Sab8HeyCTsKafszgphj0BvSYUI8fwexPtRCXmgcLjouXRD0NWAr3dtEx0TPPXcwquer0BQzfeEZUmOnChKXDlcE3GSIdRSI+1Y8inbF4cRM=
