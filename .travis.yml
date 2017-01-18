@@ -1,7 +1,18 @@
 language: rust
+
 sudo: false
+
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - binutils-dev
+
 before_script:
 - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+
 matrix:
   include:
     - rust: stable
@@ -13,10 +24,13 @@ matrix:
   allow_failures:
   - rust: nightly
   - rust: beta
+
 script:
   - travis-cargo build && travis-cargo test
+
 after_success:
   - travis-cargo coveralls --no-sudo --verify
+
 env:
   global:
     secure: ujLBCE7iB7rMZaOSQQS0t7RjenxDnV/rtiMEB/aJnzbCBTo2RtJifyXkZci28YT0Sab8HeyCTsKafszgphj0BvSYUI8fwexPtRCXmgcLjouXRD0NWAr3dtEx0TPPXcwquer0BQzfeEZUmOnChKXDlcE3GSIdRSI+1Y8inbF4cRM=
