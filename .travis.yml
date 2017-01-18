@@ -11,7 +11,8 @@ addons:
       - binutils-dev
 
 before_script:
-- pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+#- pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+  - pip install git+https://github.com/johanneskoester/travis-cargo.git --user && export PATH=$HOME/.local/bin:$PATH
 
 matrix:
   include:
