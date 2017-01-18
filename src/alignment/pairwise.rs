@@ -620,7 +620,7 @@ mod tests {
     }
 
 
-    // This test may trigger underflow of i32
+    // Test case for underflow of the SW score.
     #[test]
     fn test_semiglobal_gap_open_lt_mismatch() {
         let x = b"ACCGTGGAT";
