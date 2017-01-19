@@ -19,15 +19,7 @@
 //! bits.set(5, true);
 //! bits.set(32, true);
 //! let rs = RankSelect::new(bits, 1);
-//! assert!(rs.rank(1).unwrap() == 0);
-//! assert!(rs.rank(5).unwrap() == 1);
 //! assert!(rs.rank(6).unwrap() == 1);
-//! assert!(rs.rank(32).unwrap() == 2);
-//! assert!(rs.rank(33).unwrap() == 2);
-//! assert!(rs.rank(64) == None);
-//!
-//! assert!(rs.select(0).unwrap() == 0);
-//! assert!(rs.select(1).unwrap() == 5);
 //! # }
 //! ```
 
