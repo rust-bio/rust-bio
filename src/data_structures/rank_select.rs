@@ -150,6 +150,26 @@ fn superblocks(n: usize, s: usize, raw_bits: &[u8]) -> Vec<u32> {
 
 #[cfg(tests)]
 mod tests {
+    use super::*;
+    use bit_vec::BitVec;
+
+    #[test]
+    fn test_rank_select() {
+        let mut bits = BitVec::from_elem(64, false);
+        bits.set(5, true);
+        bits.set(32, true);
+        let rs = RankSelect::new(bits, 1);
+        assert!(rs.rank(1).unwrap() == 0);
+        assert!(rs.rank(5).unwrap() == 1);
+        assert!(rs.rank(6).unwrap() == 1);
+        assert!(rs.rank(32).unwrap() == 2);
+        assert!(rs.rank(33).unwrap() == 2);
+        assert!(rs.rank(64) == None);
+        assert!(rs.select(0).unwrap() == 0);
+        assert!(rs.select(1).unwrap() == 5);
+    }
+
+
     #[test]
     #[cfg(feature = "nightly")]
     fn test_serde() {
