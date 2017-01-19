@@ -111,3 +111,18 @@ impl<'a> Iterator for Matches<'a> {
         None
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use itertools::Itertools;
+
+    #[test]
+    fn test_find_all() {
+        let text = b"dhjalkjwqnnnannanaflkjdklfj";
+        let pattern = b"qnnnannan";
+        let bndm = BNDM::new(pattern);
+        assert_eq!(bndm.find_all(text).collect_vec(), [8]);
+    }
+}
