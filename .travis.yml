@@ -30,7 +30,7 @@ script:
   - travis-cargo build && travis-cargo test
 
 after_success:
-  - travis-cargo coveralls --no-sudo --verify
+  - travis-cargo coveralls --no-sudo --verify --exclude-pattern="benches/,CHANGELOG.md,README.md,LICENSE.md,Cargo.lock,Cargo.toml"
 
 env:
   global:
