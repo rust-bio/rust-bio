@@ -164,6 +164,16 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use itertools::Itertools;
+
+    #[test]
+    fn test_find_all_end() {
+        let text = b"ACCGTGGATGAGCGCCATAG";
+        let pattern = b"TGAGCGT";
+        let myers = Myers::new(pattern);
+        let occ = myers.find_all_end(text, 1).collect_vec();
+        assert_eq!(occ, [(13, 1), (14, 1)]);
+    }
 
     #[test]
     fn test_distance() {
@@ -176,4 +186,6 @@ mod tests {
         let myers_wildcard = Myers::with_wildcard(pattern, b'N');
         assert_eq!(myers_wildcard.distance(text), 0);
     }
+
+
 }

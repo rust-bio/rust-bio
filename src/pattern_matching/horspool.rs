@@ -123,6 +123,7 @@ impl<'a> Iterator for Matches<'a> {
 #[cfg(test)]
 mod tests {
     use super::Horspool;
+    use itertools::Itertools;
 
     #[test]
     fn test_shift() {
@@ -132,5 +133,13 @@ mod tests {
         assert_eq!(horspool.shift[b'C' as usize], 1);
         assert_eq!(horspool.shift[b'B' as usize], 4);
         assert_eq!(horspool.shift[b'X' as usize], 4);
+    }
+
+    #[test]
+    fn test_find_all() {
+        let text = b"dhjalkjwqnnnannanaflkjdklfj";
+        let pattern = b"qnnnannan";
+        let horspool = Horspool::new(pattern);
+        assert_eq!(horspool.find_all(text).collect_vec(), [8]);
     }
 }

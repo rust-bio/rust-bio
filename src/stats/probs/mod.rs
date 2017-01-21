@@ -12,9 +12,9 @@ use std::f64;
 use std::iter;
 use std::ops::{Add, Sub, Mul, Div};
 
-use itertools::linspace;
+use itertools_num::linspace;
 use itertools::Itertools;
-use itertools::misc::ToFloat;
+use num_traits::Float;
 
 
 /// A factor to convert log-probabilities to PHRED-scale (phred = p * `LOG_TO_PHRED_FACTOR`).
@@ -259,9 +259,8 @@ impl LogProb {
 
     /// Integrate numerically stable over given log-space density in the interval [a, b]. Uses the trapezoidal rule with n grid points.
     pub fn ln_trapezoidal_integrate_exp<T, D>(density: &D, a: T, b: T, n: usize) -> LogProb where
-        T: Copy + Add<Output=T> + Sub<Output=T> + Div<Output=T> + Mul<Output=T>,
+        T: Copy + Add<Output=T> + Sub<Output=T> + Div<Output=T> + Mul<Output=T> + Float,
         D: Fn(T) -> LogProb,
-        usize: ToFloat<T>,
         f64: From<T>
     {
         let mut probs = linspace(a, b, n).dropping(1).dropping_back(1).map(|v| LogProb(*density(v) + 2.0f64.ln())).collect_vec();
@@ -274,9 +273,8 @@ impl LogProb {
 
     /// Integrate numerically stable over given log-space density in the interval [a, b]. Uses Simpson's rule with n (odd) grid points.
     pub fn ln_simpsons_integrate_exp<T, D>(density: &D, a: T, b: T, n: usize) -> LogProb where
-        T: Copy + Add<Output=T> + Sub<Output=T> + Div<Output=T> + Mul<Output=T>,
+        T: Copy + Add<Output=T> + Sub<Output=T> + Div<Output=T> + Mul<Output=T> + Float,
         D: Fn(T) -> LogProb,
-        usize: ToFloat<T>,
         f64: From<T>
     {
         assert!(n % 2 == 1, "n must be odd");
