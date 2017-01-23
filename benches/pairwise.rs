@@ -144,20 +144,20 @@ CTGTCCAGGACGCCACATGTAGTGAAACTTACATGTTCGTTGGGTTCACCCGACT";
 #[bench]
 fn bench_aligner_wc_local(b: &mut Bencher) {
     let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-    let mut aligner = Aligner::with_capacity(STR_1.len(), STR_2.len(), 5, -1, &score);
+    let mut aligner = Aligner::with_capacity(STR_1.len(), STR_2.len(), -5, -1, &score);
     b.iter(|| { aligner.local(STR_1, STR_2) });
 }
 
 #[bench]
 fn bench_aligner_wc_global(b: &mut Bencher) {
     let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-    let mut aligner = Aligner::with_capacity(STR_1.len(), STR_2.len(), 5, -1, &score);
+    let mut aligner = Aligner::with_capacity(STR_1.len(), STR_2.len(), -5, -1, &score);
     b.iter(|| { aligner.global(STR_1, STR_2) });
 }
 
 #[bench]
 fn bench_aligner_wc_semiglobal(b: &mut Bencher) {
     let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-    let mut aligner = Aligner::with_capacity(STR_1.len(), STR_2.len(), 5, -1, &score);
+    let mut aligner = Aligner::with_capacity(STR_1.len(), STR_2.len(), -5, -1, &score);
     b.iter(|| { aligner.semiglobal(STR_1, STR_2) });
 }

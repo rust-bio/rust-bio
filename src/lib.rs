@@ -93,8 +93,10 @@ extern crate serde;
 
 extern crate rustc_serialize;
 extern crate csv;
-extern crate num;
+extern crate num_traits;
+extern crate num_integer;
 extern crate itertools;
+extern crate itertools_num;
 extern crate bit_vec;
 extern crate vec_map;
 extern crate bit_set;

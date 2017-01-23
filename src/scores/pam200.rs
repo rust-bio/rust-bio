@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use nalgebra::DMat;
+use nalgebra::DMatrix;
 
 lazy_static! {
 
@@ -39,7 +39,7 @@ lazy_static! {
 		-9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9,  1
 	];
 
-	static ref MAT: DMat<i32> = DMat::from_col_vec(27, 27, &*ARRAY);
+	static ref MAT: DMatrix<i32> = DMatrix::from_column_vector(27, 27, &*ARRAY);
 }
 
 #[inline]
