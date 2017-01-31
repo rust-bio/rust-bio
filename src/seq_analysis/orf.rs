@@ -13,7 +13,7 @@
 //! use bio::seq_analysis::orf::{Finder, Orf};
 //! let start_codons = vec!(b"ATG");
 //! let stop_codons  = vec!(b"TGA", b"TAG", b"TAA");
-//! let min_len:usize = 50;
+//! let min_len = 50;
 //! let finder = Finder::new(start_codons, stop_codons, min_len);
 //!
 //! let sequence = b"ACGGCTAGAAAAGGCTAGAAAA";
@@ -50,7 +50,7 @@ impl Finder {
                    -> Self {
         Finder {
             start_codons: start_codons.into_iter()                          // Convert start_ and
-                                      .map(|x| {                            // stop_codons from 
+                                      .map(|x| {                            // stop_codons from
                                           x.into_iter()                     // Vec<&[u8;3]> to
                                            .map(|&x| x as u8)               // Vec<VecDeque<u8>>
                                            .collect::<VecDeque<u8>>()       // so they can be
@@ -78,7 +78,7 @@ impl Finder {
 }
 
 /// An orf representation with start and end position of said orf,
-/// as well as offset of the reading frame (1,2,3) and strand location 
+/// as well as offset of the reading frame (1,2,3) and strand location
 // (current: +, reverse complementary: -).
 pub struct Orf {
     pub start: usize,
@@ -153,5 +153,25 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
             }
         }
         None
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_orf() {
+        let start_codons = vec!(b"ATG");
+        let stop_codons  = vec!(b"TGA", b"TAG", b"TAA");
+        let min_len = 50;
+        let finder = Finder::new(start_codons, stop_codons, min_len);
+
+        let sequence = b"ACGGCTAGAAAAGGCTAGAAAA";
+
+        for Orf{start, end, ..} in finder.find_all(sequence) {
+           let _ = &sequence[start..end];
+        }
     }
 }

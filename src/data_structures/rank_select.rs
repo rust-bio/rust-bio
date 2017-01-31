@@ -140,7 +140,7 @@ fn superblocks(n: usize, s: usize, raw_bits: &[u8]) -> Vec<u32> {
     superblocks
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
     use super::*;
     use bit_vec::BitVec;
