@@ -50,6 +50,10 @@ enum AlignmentType {
 }
 
 
+/// Value to use as a 'negative infinity' score. Should be close to i32::MIN,
+/// but avoid underflow when used with reasonable scoring parameters. Use 0.9 * i32::MIN
+const MIN_SCORE: i32 = -1932735283;
+
 /// Current internal state of alignment.
 struct AlignmentState {
     m: usize,
@@ -240,7 +244,7 @@ impl<'a, F> Aligner<'a, F>
 
         // set minimum score to -inf, and allow to add gap_extend
         // without overflow
-        let min_score = i32::MIN - self.gap_open;
+        let min_score = MIN_SCORE;
         for k in 0..2 {
             self.S[k].clear();
             self.I[k].clear();
@@ -286,8 +290,8 @@ impl<'a, F> Aligner<'a, F>
                y,
                state,
                {
-                   self.S[state.col][0] = i32::MIN - self.gap_open;
-                   self.I[state.col][0] = i32::MIN - self.gap_open;
+                   self.S[state.col][0] = MIN_SCORE;
+                   self.I[state.col][0] = MIN_SCORE;
                    self.D[state.col][0] = self.gap_open + (state.i as i32 - 1) * self.gap_extend;
 
                    self.traceback.get_mut(state.i, 0).set_all(TBDEL);
@@ -617,6 +621,28 @@ mod tests {
         assert_eq!(alignment.operations,
                    [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
     }
+
+
+    // Test case for underflow of the SW score.
+    #[test]
+    fn test_semiglobal_gap_open_lt_mismatch() {
+        let x = b"ACCGTGGAT";
+        let y = b"AAAAACCGTTGAT";
+        let score = |a: u8, b: u8| {
+            if a == b {
+                1i32
+            } else {
+                -5i32
+            }
+        };
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -2, -1, &score);
+        let alignment = aligner.semiglobal(x, y);
+        assert_eq!(alignment.ystart, 4);
+        assert_eq!(alignment.xstart, 0);
+        assert_eq!(alignment.operations,
+                   [Match, Match, Match, Match, Del, Match, Ins, Match, Match, Match]);
+    }
+
 
     #[test]
     fn test_global_affine_ins() {
