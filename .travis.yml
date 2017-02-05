@@ -1,7 +1,19 @@
 language: rust
+
 sudo: false
+
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - binutils-dev
+
 before_script:
-- pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+#- pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+  - pip install git+https://github.com/johanneskoester/travis-cargo.git --user && export PATH=$HOME/.local/bin:$PATH
+
 matrix:
   include:
     - rust: stable
@@ -12,14 +24,14 @@ matrix:
       env: TRAVIS_CARGO_NIGHTLY_FEATURE="nightly"
   allow_failures:
   - rust: nightly
+  - rust: beta
+
 script:
-  - travis-cargo build
-  - travis-cargo test
-after_success: |
-  [ $TRAVIS_BRANCH = master ] &&
-  [ $TRAVIS_PULL_REQUEST = false ] &&
-  travis-cargo doc &&
-  travis-cargo --only stable doc-upload
+  - travis-cargo build && travis-cargo test
+
+after_success:
+  - travis-cargo coveralls --no-sudo --verify --exclude-pattern="benches/,CHANGELOG.md,README.md,LICENSE.md,Cargo.lock,Cargo.toml"
+
 env:
   global:
     secure: ujLBCE7iB7rMZaOSQQS0t7RjenxDnV/rtiMEB/aJnzbCBTo2RtJifyXkZci28YT0Sab8HeyCTsKafszgphj0BvSYUI8fwexPtRCXmgcLjouXRD0NWAr3dtEx0TPPXcwquer0BQzfeEZUmOnChKXDlcE3GSIdRSI+1Y8inbF4cRM=

@@ -2,7 +2,7 @@
 [![Crates.io](https://img.shields.io/crates/v/bio.svg?style=flat-square)](https://crates.io/crates/bio)
 [![Crates.io](https://img.shields.io/crates/l/bio.svg?style=flat-square)](https://crates.io/crates/bio)
 [![Travis](https://img.shields.io/travis/rust-bio/rust-bio/master.svg?style=flat-square)](https://travis-ci.org/rust-bio/rust-bio)
-[![Clippy Linting Result](https://clippy.bashy.io/github/rust-bio/rust-bio/master/badge.svg?style=flat-square)](https://clippy.bashy.io/github/rust-bio/rust-bio/master/log)
+[![Coveralls](https://img.shields.io/coveralls/rust-bio/rust-bio.svg?style=flat-square)](https://coveralls.io/github/rust-bio/rust-bio)
 
 # Rust-Bio, a bioinformatics library for Rust.
 
@@ -51,6 +51,8 @@ For reading and writing BAM and BCF files, have a look at https://github.com/chr
 * Philipp Angerer
 * [Pierre Marijon](https://github.com/natir)
 * [Franklin Delehelle](https://github.com/delehef)
+* [Marcin Fatyga](https://github.com/rednum)
+* [Patrick Marks](https://github.com/pmarks)
 
 The next name in this list could be you! If you are interested in joining the effort to build a general purpose Rust bioinformatics library, just introduce yourself [here](https://github.com/rust-bio/rust-bio/issues/3), or issue a pull request with your first contribution.
 

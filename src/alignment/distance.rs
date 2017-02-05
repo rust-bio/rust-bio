@@ -32,7 +32,7 @@
 //! ```
 
 
-use itertools::Zip;
+use itertools::multizip;
 use std::cmp::min;
 use std::result::Result;
 
@@ -77,7 +77,7 @@ use utils::TextSlice;
 pub fn hamming(alpha: TextSlice, beta: TextSlice) -> Result<u32, &'static str> {
     if alpha.len() == beta.len() {
         let mut score: u32 = 0;
-        for (a, b) in Zip::new((alpha, beta)) {
+        for (a, b) in multizip((alpha, beta)) {
             if a != b {
                 score += 1;
             }

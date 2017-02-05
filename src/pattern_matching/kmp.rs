@@ -117,6 +117,15 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
 #[cfg(test)]
 mod tests {
     use super::{lps, KMP};
+    use itertools::Itertools;
+
+    #[test]
+    fn test_find_all() {
+        let text = b"dhjalkjwqnnnannanaflkjdklfj";
+        let pattern = b"qnnnannan";
+        let kmp = KMP::new(pattern);
+        assert_eq!(kmp.find_all(text).collect_vec(), [8]);
+    }
 
     #[test]
     fn test_lps() {

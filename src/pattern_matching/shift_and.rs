@@ -97,3 +97,17 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use itertools::Itertools;
+
+    #[test]
+    fn test_find_all() {
+        let text = b"dhjalkjwqnnnannanaflkjdklfj";
+        let pattern = b"qnnnannan";
+        let shiftand = ShiftAnd::new(pattern);
+        assert_eq!(shiftand.find_all(text).collect_vec(), [8]);
+    }
+}

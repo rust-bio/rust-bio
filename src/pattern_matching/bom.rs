@@ -141,6 +141,7 @@ impl<'a> Iterator for Matches<'a> {
 #[cfg(test)]
 mod tests {
     use super::BOM;
+    use itertools::Itertools;
 
     #[test]
     fn test_delta() {
@@ -163,5 +164,13 @@ mod tests {
         assert_eq!(bom.delta(4, b'n'), Some(8));
         assert_eq!(bom.delta(4, b'q'), Some(9));
         bom.delta(9, b'a');
+    }
+
+    #[test]
+    fn test_find_all() {
+        let text = b"dhjalkjwqnnnannanaflkjdklfj";
+        let pattern = b"qnnnannan";
+        let bom = BOM::new(pattern);
+        assert_eq!(bom.find_all(text).collect_vec(), [8]);
     }
 }

@@ -93,8 +93,10 @@ extern crate serde;
 
 extern crate rustc_serialize;
 extern crate csv;
-extern crate num;
+extern crate num_traits;
+extern crate num_integer;
 extern crate itertools;
+extern crate itertools_num;
 extern crate bit_vec;
 extern crate vec_map;
 extern crate bit_set;
@@ -103,6 +105,13 @@ extern crate lazy_static;
 extern crate nalgebra;
 #[macro_use]
 extern crate approx;
+#[macro_use]
+extern crate custom_derive;
+#[macro_use]
+extern crate newtype_derive;
+extern crate ordered_float;
+#[macro_use]
+extern crate quick_error;
 
 pub mod utils;
 pub mod alphabets;
