@@ -89,7 +89,7 @@ pub fn invert_bwt(bwt: &BWTSlice) -> Vec<u8> {
 #[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
 pub struct Occ {
     occ: Vec<Vec<usize>>,
-    k: usize,
+    k: u32,
 }
 
 
@@ -105,14 +105,14 @@ impl Occ {
     ///
     /// * `bwt` - the BWT
     /// * `k` - the sampling rate: every k-th entry will be stored
-    pub fn new(bwt: &BWTSlice, k: usize, alphabet: &Alphabet) -> Self {
+    pub fn new(bwt: &BWTSlice, k: u32, alphabet: &Alphabet) -> Self {
         let n = bwt.len();
         let m = alphabet.max_symbol().expect("Expecting non-empty alphabet.") as usize + 1;
-        let mut occ = Vec::with_capacity(n / k);
+        let mut occ = Vec::with_capacity(n / k as usize);
         let mut curr_occ: Vec<usize> = repeat(0).take(m).collect();
         for (i, &c) in bwt.iter().enumerate() {
             curr_occ[c as usize] += 1;
-            if i % k == 0 {
+            if i % k as usize == 0 {
                 occ.push(curr_occ.clone());
             }
         }
@@ -123,16 +123,38 @@ impl Occ {
     /// Get occurrence count of symbol a in BWT[..r+1].
     /// Complexity: O(k).
     pub fn get(&self, bwt: &BWTSlice, r: usize, a: u8) -> usize {
+        // NOTE:
+        //
+        // Retrieving byte match counts in this function is critical to the performance of FM Index.
+        //
+        // The below manual count code is roughly equivalent to:
+        // ```
+        // let count = bwt[(i * self.k) + 1..r + 1].iter().filter(|&&c| c == a).count();
+        // self.occ[i][a as usize] + count
+        // ```
+        //
+        // But there are a couple of reasons to do this manually:
+        // 1) As of 2016, versions of rustc/LLVM vectorize this manual loop more reliably
+        //    than the iterator adapter version.
+        // 2) Manually accumulating the byte match count in a single chunk can allows
+        //    us to use a `u32` for that count, which has faster arithmetic on common arches.
+        //    This does necessitate storing `k` as a u32.
+        //
+        // See the conversation in these issues for some of the history here:
+        //
+        // https://github.com/rust-bio/rust-bio/pull/74
+        // https://github.com/rust-bio/rust-bio/pull/76
+
         // self.k is our sampling rate, so find our last sampled checkpoint
-        let i = r / self.k;
+        let i = r / self.k as usize;
         let checkpoint = self.occ[i][a as usize];
 
         // find the portion of the BWT past the checkpoint which we need to count
-        let start = (i * self.k) + 1;
+        let start = (i * self.k as usize) + 1;
         let end = r + 1;
 
         // count all the matching bytes b/t the closest checkpoint and our desired lookup
-        let mut count = 0;
+        let mut count: u32 = 0;
         for &x in &bwt[start..end] {
             if x == a {
                 count += 1;
@@ -140,7 +162,7 @@ impl Occ {
         }
 
         // return the sampled checkpoint for this character + the manual count we just did
-        checkpoint + count
+        checkpoint + (count as usize)
     }
 }
 
