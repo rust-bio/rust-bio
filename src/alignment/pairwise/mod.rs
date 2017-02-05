@@ -42,8 +42,10 @@ use std::iter::repeat;
 use alignment::{Alignment, AlignmentOperation};
 use utils::TextSlice;
 
+pub mod banded;
+
 #[derive(Copy, Clone)]
-enum AlignmentType {
+pub enum AlignmentType {
     Local,
     Semiglobal,
     Global,
@@ -52,10 +54,10 @@ enum AlignmentType {
 
 /// Value to use as a 'negative infinity' score. Should be close to i32::MIN,
 /// but avoid underflow when used with reasonable scoring parameters. Use 0.9 * i32::MIN
-const MIN_SCORE: i32 = -1932735283;
+pub const MIN_SCORE: i32 = -1932735283;
 
 /// Current internal state of alignment.
-struct AlignmentState {
+pub struct AlignmentState {
     m: usize,
     n: usize,
     best: i32,
@@ -244,13 +246,12 @@ impl<'a, F> Aligner<'a, F>
 
         // set minimum score to -inf, and allow to add gap_extend
         // without overflow
-        let min_score = MIN_SCORE;
         for k in 0..2 {
             self.S[k].clear();
             self.I[k].clear();
             self.D[k].clear();
 
-            self.D[k].extend(repeat(min_score).take(m + 1));
+            self.D[k].extend(repeat(MIN_SCORE).take(m + 1));
 
             match alignment_type {
                 AlignmentType::Semiglobal |
@@ -258,7 +259,7 @@ impl<'a, F> Aligner<'a, F>
                     let mut i = &mut self.I[k];
 
                     // need one insertion to establish a gap
-                    i.push(min_score);
+                    i.push(MIN_SCORE);
 
                     // other cells are gaps
                     let mut score = self.gap_open;
@@ -269,12 +270,12 @@ impl<'a, F> Aligner<'a, F>
 
                     self.S[k].push(0);
                     // Impossible to reach S state after first position in first column
-                    self.S[k].extend(repeat(min_score).take(m));
+                    self.S[k].extend(repeat(MIN_SCORE).take(m));
                 },
 
                 AlignmentType::Local => {
                     self.S[k].extend(repeat(0).take(m + 1));
-                    self.I[k].extend(repeat(min_score).take(m + 1));
+                    self.I[k].extend(repeat(MIN_SCORE).take(m + 1));
                 },
             }
         }
@@ -362,6 +363,7 @@ impl<'a, F> Aligner<'a, F>
 
         let mut i = yend;
         let mut j = xend;
+        //self.print_traceback_matrices(i,j);
 
         let mut ops = Vec::with_capacity(x.len());
 
@@ -421,7 +423,9 @@ impl<'a, F> Aligner<'a, F>
     #[allow(dead_code)]
     fn print_traceback_matrices(&self, i: usize, j: usize)
     {
+        println!("--");
         for tb in &[TBSUBST, TBINS, TBDEL] {
+            println!("--");
             for jj in 0..(j+1) {
                 let mut s = String::new();
                 for ii in 0..(i+1) {
@@ -442,7 +446,7 @@ impl<'a, F> Aligner<'a, F>
 /// Packed representation of one cell of a Smith-Waterman traceback matrix.
 /// Stores the D, S, and I traceback matrix values in a single byte.
 #[derive(Copy, Clone)]
-struct TracebackCell {
+pub struct TracebackCell {
     v: u8,
 }
 

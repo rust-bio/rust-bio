@@ -10,7 +10,6 @@ use utils::TextSlice;
 pub mod pairwise;
 pub mod distance;
 pub mod sparse;
-pub mod banded;
 
 /// Alignment operations (Match, Subst, Del and Ins).
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]

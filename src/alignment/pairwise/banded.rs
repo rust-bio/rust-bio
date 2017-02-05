@@ -19,7 +19,7 @@
 //! # Example
 //!
 //! ```
-//! use bio::alignment::banded::*;
+//! use bio::alignment::pairwise::banded::*;
 //!
 //! let x = b"AGCACACGTGTGCGCTATACAGTAAGTAGTAGTACACGTGTCACAGTTGTACTAGCATGAC";
 //! let y = b"AGCACACGTGTGCGCTATACAGTACACGTGTCACAGTTGTACTAGCATGAC";
@@ -37,36 +37,17 @@ use std::iter::repeat;
 
 use std::collections::HashMap;
 use alignment::{Alignment, AlignmentOperation};
-use data_structures::bitenc::BitEnc;
 use utils::TextSlice;
 use std::cmp::min;
 use std::cmp::max;
 use std::ops::Range;
+
+use super::*;
 use alignment::sparse;
 use std::rc::Rc;
 
-#[derive(Copy, Clone)]
-enum AlignmentType {
-    Local,
-    Semiglobal,
-    Global,
-}
 
-/// Current internal state of alignment.
-struct AlignmentState {
-    m: usize,
-    n: usize,
-    best: i32,
-    best_i: usize,
-    best_j: usize,
-    i: usize,
-    j: usize,
-    score: i32,
-    col: usize,
-}
-
-
-macro_rules! align {
+macro_rules! align_banded {
     (
         $aligner:ident, $x:ident, $y:ident, $state:ident,
         $init:block, $inner:block, $outer:block, $ret:block
@@ -93,25 +74,27 @@ macro_rules! align {
                 let b = $y[$state.i - 1];
                 $state.j = max(1, band.ranges[$state.i].start);
 
-                for jj in band.ranges[$state.i].start.saturating_sub(10)..$state.j {
-                    $aligner.I[$state.col][jj] = i32::MIN + 200;
-                    $aligner.D[$state.col][jj] = i32::MIN + 200;
-                    $aligner.S[$state.col][jj] = i32::MIN + 200;
+                for jj in max(1, band.ranges[$state.i].start.saturating_sub(1))..$state.j {
+                    $aligner.I[$state.col][jj] = MIN_SCORE;
+                    $aligner.D[$state.col][jj] = MIN_SCORE;
+                    $aligner.S[$state.col][jj] = MIN_SCORE;
                 } 
 
                 while $state.j <= min($state.m, band.ranges[$state.i].end) {
                     // read next x symbol
                     let a = $x[$state.j - 1];
 
+                    let mut tb = TracebackCell::new();
+
                     // score for deletion
                     let d_open = $aligner.S[prev][$state.j] + $aligner.gap_open;
                     let d_extend = $aligner.D[prev][$state.j] + $aligner.gap_extend;
 
                     if d_open > d_extend {
-                        $aligner.D_traceback.subst($state.i, $state.j);
+                        tb.set_d(TBSUBST);
                         $aligner.D[$state.col][$state.j] = d_open;
                     } else {
-                        $aligner.D_traceback.del($state.i, $state.j);
+                        tb.set_d(TBDEL);
                         $aligner.D[$state.col][$state.j] = d_extend;
                     }
 
@@ -120,30 +103,33 @@ macro_rules! align {
                     let i_extend = $aligner.I[$state.col][$state.j-1] + $aligner.gap_extend;
 
                     if i_open > i_extend {
-                        $aligner.I_traceback.subst($state.i, $state.j);
+                        tb.set_i(TBSUBST);
                         $aligner.I[$state.col][$state.j] = i_open;
                     } else {
-                        $aligner.I_traceback.ins($state.i, $state.j);
+                        tb.set_i(TBINS);
                         $aligner.I[$state.col][$state.j] = i_extend;
                     };
+
 
                     // score for substitution
                     let match_score = ($aligner.score)(a, b);
                     $state.score = $aligner.S[prev][$state.j-1] + match_score;
-                    $aligner.S_traceback.subst($state.i, $state.j);
+                    tb.set_s(TBSUBST);
 
                     let from_d = $aligner.D[prev][$state.j-1] + match_score;
                     let from_i = $aligner.I[prev][$state.j-1] + match_score;
 
                     if from_d > $state.score {
                         $state.score = from_d;
-                        $aligner.S_traceback.del($state.i, $state.j);
+                        tb.set_s(TBDEL);
                     }
 
                     if from_i > $state.score {
                         $state.score = from_i;
-                        $aligner.S_traceback.ins($state.i, $state.j);
+                        tb.set_s(TBINS);
                     }
+
+                    $aligner.traceback.set($state.i, $state.j, tb);
 
                     // inner code
                     $inner
@@ -152,10 +138,10 @@ macro_rules! align {
                     $state.j += 1;
                 }
 
-                for jj in $state.j..min($state.m, band.ranges[$state.i].end + 100) {
-                    $aligner.I[$state.col][jj] = i32::MIN + 200;
-                    $aligner.D[$state.col][jj] = i32::MIN + 200;
-                    $aligner.S[$state.col][jj] = i32::MIN + 200;
+                for jj in $state.j..min($state.m, band.ranges[min($state.i+1, $state.n)].end) {
+                    $aligner.I[$state.col][jj] = MIN_SCORE;
+                    $aligner.D[$state.col][jj] = MIN_SCORE;
+                    $aligner.S[$state.col][jj] = MIN_SCORE;
                 }
 
                 // outer code
@@ -176,19 +162,19 @@ macro_rules! align {
 pub struct Aligner<'a, F>
     where F: 'a + Fn(u8, u8) -> i32
 {
-    band: Rc<Band>,
     S: [Vec<i32>; 2],
     I: [Vec<i32>; 2],
     D: [Vec<i32>; 2],
-    S_traceback: Traceback,
-    I_traceback: Traceback,
-    D_traceback: Traceback,
+    traceback: Traceback,
     gap_open: i32,
     gap_extend: i32,
     score: &'a F,
+
+    band: Rc<Band>,
     k: usize,
     w: usize,
 }
+
 
 const DEFAULT_ALIGNER_CAPACITY: usize = 200;
 
@@ -233,9 +219,7 @@ impl<'a, F> Aligner<'a, F>
             S: [get_vec(), get_vec()],
             I: [get_vec(), get_vec()],
             D: [get_vec(), get_vec()],
-            S_traceback: Traceback::with_capacity(0, 0, band.clone()),
-            I_traceback: Traceback::with_capacity(0, 0, band.clone()),
-            D_traceback: Traceback::with_capacity(0, 0, band.clone()),
+            traceback: Traceback::with_capacity(m,n),
             gap_open: gap_open,
             gap_extend: gap_extend,
             score: score,
@@ -262,29 +246,22 @@ impl<'a, F> Aligner<'a, F>
         let k = min(self.k, min(m, n));
         // Update the band.
         {
-            let _band = Band::create_local(x,y, k, self.w);
+            let _band = Band::create_local(x,y, k, self.w, self.gap_open, self.gap_extend);
             let band = Rc::new(_band);
             self.band = band.clone();
-            self.S_traceback = Traceback::with_capacity(m, n, band.clone());
-            self.I_traceback = Traceback::with_capacity(m, n, band.clone());
-            self.D_traceback = Traceback::with_capacity(m, n, band.clone());
+            self.traceback = Traceback::with_capacity(m, n);
         }
 
-
-        self.S_traceback.init(m, n, alignment_type);
-        self.I_traceback.init(m, n, alignment_type);
-        self.D_traceback.init(m, n, alignment_type);
-
+        self.traceback.init(m, n, alignment_type);
 
         // set minimum score to -inf, and allow to add gap_extend
         // without overflow
-        let min_score = i32::MIN - self.gap_open + 200;
         for k in 0..2 {
             self.S[k].clear();
             self.I[k].clear();
             self.D[k].clear();
 
-            self.D[k].extend(repeat(min_score).take(m + 1));
+            self.D[k].extend(repeat(MIN_SCORE).take(m + 1));
 
             match alignment_type {
                 AlignmentType::Semiglobal |
@@ -292,7 +269,7 @@ impl<'a, F> Aligner<'a, F>
                     let mut i = &mut self.I[k];
 
                     // need one insertion to establish a gap
-                    i.push(min_score);
+                    i.push(MIN_SCORE);
 
                     // other cells are gaps
                     let mut score = self.gap_open;
@@ -303,12 +280,12 @@ impl<'a, F> Aligner<'a, F>
 
                     self.S[k].push(0);
                     // Impossible to reach S state after first position in first column
-                    self.S[k].extend(repeat(min_score).take(m));
+                    self.S[k].extend(repeat(MIN_SCORE).take(m));
                 },
 
                 AlignmentType::Local => {
                     self.S[k].extend(repeat(0).take(m + 1));
-                    self.I[k].extend(repeat(min_score).take(m + 1));
+                    self.I[k].extend(repeat(MIN_SCORE).take(m + 1));
                 },
             }
         }
@@ -319,7 +296,7 @@ impl<'a, F> Aligner<'a, F>
     pub fn semiglobal(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
         self.init(x, y, AlignmentType::Semiglobal);
 
-        align!(self,
+        align_banded!(self,
                x,
                y,
                state,
@@ -346,7 +323,9 @@ impl<'a, F> Aligner<'a, F>
     pub fn local(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
         self.init(x, y, AlignmentType::Local);
 
-        align!(self,
+        println!("{:?}", self.band);
+
+        align_banded!(self,
                x,
                y,
                state,
@@ -355,7 +334,7 @@ impl<'a, F> Aligner<'a, F>
                },
                {
                    if state.score < 0 {
-                       self.S_traceback.start(state.i, state.j);
+                       self.traceback.get_mut(state.i, state.j).set_s(TBSTART);
                        state.score = 0;
                    } else if state.score > state.best {
                        state.best = state.score;
@@ -369,21 +348,19 @@ impl<'a, F> Aligner<'a, F>
                })
     }
 
-    fn alignment(&self, mut i: usize, mut j: usize, x: TextSlice, y: TextSlice, score: i32) -> Alignment {
-        let s_tb = &self.S_traceback;
-        let i_tb = &self.I_traceback;
-        let d_tb = &self.D_traceback;
+    fn alignment(&self, yend: usize, xend: usize, x: TextSlice, y: TextSlice, score: i32) -> Alignment {
 
-        let xend = j;
-        let yend = i;
+        let mut i = yend;
+        let mut j = xend;
+        //self.print_traceback_matrices(i,j);
 
         let mut ops = Vec::with_capacity(x.len());
 
-        let get = |i,j,ty| {
+        let get = move |i,j,ty| {
                 match ty {
-                    TBDEL => d_tb.get(i,j),
-                    TBINS => i_tb.get(i,j),
-                    _ => s_tb.get(i,j),
+                    TBDEL => self.traceback.get(i,j).get_d(),
+                    TBINS => self.traceback.get(i,j).get_i(),
+                    _ => self.traceback.get(i,j).get_s(),
                 }
         };
 
@@ -434,15 +411,13 @@ impl<'a, F> Aligner<'a, F>
     #[allow(dead_code)]
     fn print_traceback_matrices(&self, i: usize, j: usize)
     {
-        let s_tb = &self.S_traceback;
-        let i_tb = &self.I_traceback;
-        let d_tb = &self.D_traceback;
-
-        for tb in &[s_tb, i_tb, d_tb] {
+        println!("--");
+        for tb in &[TBSUBST, TBINS, TBDEL] {
+            println!("--");
             for jj in 0..(j+1) {
                 let mut s = String::new();
                 for ii in 0..(i+1) {
-                    match tb.get(ii,jj) {
+                    match self.traceback.get(ii,jj).get(*tb) {
                         TBSUBST => s.push_str(" M"),
                         TBDEL => s.push_str(" D"),
                         TBINS => s.push_str(" I"),
@@ -456,7 +431,7 @@ impl<'a, F> Aligner<'a, F>
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Band {
     ranges: Vec<Range<usize>>
 }
@@ -528,9 +503,9 @@ impl Band {
         matches
     }
 
-    pub fn create_local(x: TextSlice, y: TextSlice, k: usize, w: usize) -> Band {
+    pub fn create_local(x: TextSlice, y: TextSlice, k: usize, w: usize, gap_open: i32, gap_extend: i32) -> Band {
         let matches = Band::find_kmer_matches(&x,&y,k);
-        let res = sparse::lcskpp(&matches, k);
+        let res = sparse::sdpkpp(&matches, k, 1, gap_open, gap_extend);
         let ps = res.path[0];
         let pe = res.path[res.path.len()-1];
         println!("sparse: rstart:{} tstart:{} rend:{}, tend:{}, hits:{}", matches[ps].0, matches[ps].1, matches[pe].0, matches[pe].1, res.score);
@@ -545,12 +520,10 @@ impl Band {
         let mut _prev : Option<(usize, usize)> = None;
 
         let mut ranges: Vec<Range<usize>> = Vec::with_capacity(y.len()+1);
-        for i in 0 .. y.len()+1 {
+        for _ in 0 .. y.len()+1 {
             ranges.push(x.len()+1..0);
         }
 
-        let x_max = x.len() - 1;
-        let y_max = y.len() - 1;
         let ranges_len = ranges.len();
 
         { // borrow window of ranges 
@@ -636,96 +609,9 @@ impl Band {
 }
 
 
-/// Internal traceback.
-struct Traceback {
-    matrix: Vec<BitEnc>,
-    band: Rc<Band>,
-    default_value: u8,
-}
-
-
-const TBSTART: u8 = 0b00;
-const TBSUBST: u8 = 0b01;
-const TBINS: u8 = 0b10;
-const TBDEL: u8 = 0b11;
-
-impl Traceback {
-    fn with_capacity(m: usize, n: usize, band: Rc<Band>) -> Self {
-        let mut matrix = Vec::with_capacity(n + 1);
-        for i in 0..n + 1 {
-            let range = band.ranges.get(i).unwrap();
-            matrix.push(BitEnc::with_capacity(2, range.end - range.start));
-        }
-
-        Traceback { matrix: matrix, band: band, default_value: 0 }
-    }
-
-    fn init(&mut self, m: usize, n: usize, alignment_type: AlignmentType) {
-        match alignment_type {
-            AlignmentType::Global => {
-                // set the first cell to start, the rest to insertions
-                for i in 0..n + 1 {
-                    self.matrix[i].clear();
-                    self.matrix[i].push_values(m + 1, TBINS);
-                }
-                self.matrix[0].set(0, TBSTART);
-            }
-            AlignmentType::Semiglobal => {
-                // set the first cell of each column to start, the rest to insertions
-                for i in 0..n + 1 {
-                    self.matrix[i].clear();
-                    self.matrix[i].push_values(m + 1, TBINS);
-                    self.matrix[i].set(0, TBSTART);
-                }
-            }
-            AlignmentType::Local => {
-                // set every cell to start
-                for i in 0..n + 1 {
-                    self.matrix[i].clear();
-                    self.matrix[i].push_values(m + 1, TBSTART);
-                }
-            }
-        }
-    }
-
-    fn set(&mut self, i: usize, j: usize, value: u8) {
-        let range = self.band.ranges.get(i).unwrap();
-        if j >= range.start && j < range.end {
-            self.matrix[i].set(j-range.start, value);
-        }
-    }
-
-    fn start(&mut self, i: usize, j: usize) {
-        self.set(i, j, TBSTART);
-    }
-
-    fn subst(&mut self, i: usize, j: usize) {
-        self.set(i, j, TBSUBST);
-    }
-
-    fn del(&mut self, i: usize, j: usize) {
-        self.set(i, j, TBDEL);
-    }
-
-    fn ins(&mut self, i: usize, j: usize) {
-        self.set(i, j, TBINS);
-    }
-
-    fn get(&self, i: usize, j: usize) -> u8 {
-        let range = self.band.ranges.get(i).unwrap();
-        if j >= range.start && j < range.end {
-            self.matrix[i].get(j-range.start).unwrap()
-        } else {
-            self.default_value // on None
-        }
-    }
-}
-
-
 #[cfg(test)]
 mod banded {
-    use alignment::{pairwise, banded};
-    use alignment::{Alignment, AlignmentOperation};
+    use alignment::pairwise::{self, banded};
     use utils::TextSlice;
 
     // Check that the banded alignment is equivalent to the exhaustive SW alignment
