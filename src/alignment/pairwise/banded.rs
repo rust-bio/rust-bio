@@ -323,8 +323,6 @@ impl<'a, F> Aligner<'a, F>
     pub fn local(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
         self.init(x, y, AlignmentType::Local);
 
-        println!("{:?}", self.band);
-
         align_banded!(self,
                x,
                y,
@@ -505,7 +503,7 @@ impl Band {
 
     pub fn create_local(x: TextSlice, y: TextSlice, k: usize, w: usize, gap_open: i32, gap_extend: i32) -> Band {
         let matches = Band::find_kmer_matches(&x,&y,k);
-        let res = sparse::sdpkpp(&matches, k, 1, gap_open, gap_extend);
+        let res = sparse::sdpkpp(&matches, k, 2, gap_open, gap_extend);
         let ps = res.path[0];
         let pe = res.path[res.path.len()-1];
         println!("sparse: rstart:{} tstart:{} rend:{}, tend:{}, hits:{}", matches[ps].0, matches[ps].1, matches[pe].0, matches[pe].1, res.score);
