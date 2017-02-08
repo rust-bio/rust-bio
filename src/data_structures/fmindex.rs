@@ -13,7 +13,7 @@ use alphabets::dna;
 use std::mem::swap;
 
 /// A suffix array interval.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Interval {
     pub lower: usize,
     pub upper: usize,
@@ -142,7 +142,7 @@ impl<
 }
 
 /// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BiInterval {
     lower: usize,
     lower_rev: usize,
@@ -390,6 +390,24 @@ mod tests {
     use alphabets::dna;
     use data_structures::suffix_array::suffix_array;
     use data_structures::bwt::{bwt, less, Occ};
+
+    #[test]
+    fn test_fmindex() {
+        let text = b"GCCTTAACATTATTACGCCTA$";
+        let alphabet = dna::n_alphabet();
+        let sa = suffix_array(text);
+        let bwt = bwt(text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+        let fm = FMIndex::new(&bwt, &less, &occ);
+
+        let pattern = b"TTA";
+        let sai = fm.backward_search(pattern.iter());
+
+        let positions = sai.occ(&sa);
+
+        assert_eq!(positions, [3, 12, 9]);
+    }
 
     #[test]
     fn test_smems() {
