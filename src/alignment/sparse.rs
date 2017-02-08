@@ -29,8 +29,7 @@
 
 use std::cmp::max;
 use data_structures::bit_tree::MaxBitTree;
-use data_structures::qgram_index::QGramIndex;
-use alphabets::Alphabet;
+use std::collections::HashMap;
 
 /// Result of a sparse alignment
 #[derive(Debug, PartialEq, Eq)]
@@ -264,25 +263,27 @@ pub fn sdpkpp(matches: &Vec<(u32, u32)>, k: usize, match_score: u32, gap_open: i
 /// FMD index to generate the matches. Note that this method is mainly for 
 /// demonstration & testing purposes.  For aligning many query sequences
 /// against the same reference, you should reuse the QGramIndex of the reference.
-pub fn find_kmer_matches<T: AsRef<[u8]>>(query: &T, reference: &T, k: usize) -> Vec<(u32, u32)> {
+pub fn find_kmer_matches<T: AsRef<[u8]>>(seq1: &T, seq2: &T, k: usize) -> Vec<(u32, u32)> {
 
-    let slc1 = query.as_ref();
-    let slc2 = reference.as_ref();
+    let slc1 = seq1.as_ref();
+    let slc2 = seq2.as_ref();
 
-    let mut alphabet = Alphabet::new(slc2);
-    if !alphabet.is_word(slc1) {
-        for i in slc1 {
-            alphabet.insert(*i)
-        }
-    }
-
-    let qgram_index = QGramIndex::new(k as u32, slc2, &alphabet);
+    let mut set: HashMap<&[u8], Vec<u32>> = HashMap::new();
     let mut matches = Vec::new();
 
-    /// Generate all exact matches of length q
-    for (i, qgram) in qgram_index.qgrams(slc1).enumerate() {
-        for &p in qgram_index.qgram_matches(qgram) {
-            matches.push((i as u32, p as u32));
+    for i in 0 .. slc1.len() - k + 1 {
+        set.entry(&slc1[i..i+k]).or_insert_with(|| Vec::new()).push(i as u32);
+    }
+
+    for i in 0 .. slc2.len() - k + 1 {
+        let slc = &slc2[i..i+k];
+        match set.get(slc) {
+            Some(matches1) => {
+                for pos1 in matches1 {
+                    matches.push((*pos1, i as u32));
+                }
+            },
+            None => (),
         }
     }
 

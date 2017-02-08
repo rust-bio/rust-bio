@@ -11,8 +11,9 @@ pub mod pairwise;
 pub mod distance;
 pub mod sparse;
 
+
 /// Alignment operations (Match, Subst, Del and Ins).
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, RustcEncodable)]
 pub enum AlignmentOperation {
     Match,
     Subst,
@@ -242,6 +243,40 @@ impl Alignment {
 
         //format!("{}\n{}\n{}", x_pretty, inb_pretty, y_pretty)
         s
+    }
+
+    pub fn path(&self) -> Vec<(u32, u32, AlignmentOperation)> {
+        let mut path = Vec::new();
+
+        if !self.operations.is_empty() {
+            let mut x_i = self.xstart as u32;
+            let mut y_i = self.ystart as u32;
+
+            // Process the alignment.
+            for i in 0..self.operations.len() {
+                match self.operations[i] {
+                    AlignmentOperation::Match => {
+                        path.push((x_i, y_i, self.operations[i]));
+                        x_i += 1;
+                        y_i += 1;
+                    }
+                    AlignmentOperation::Subst => {
+                        path.push((x_i, y_i, self.operations[i]));
+                        x_i += 1;
+                        y_i += 1;
+                    }
+                    AlignmentOperation::Del => {
+                        path.push((x_i, y_i, self.operations[i]));
+                        y_i += 1;
+                    }
+                    AlignmentOperation::Ins => {
+                        path.push((x_i, y_i, self.operations[i]));
+                        x_i += 1;
+                    }
+                }
+            }
+        }
+        path
     }
 }
 
