@@ -872,6 +872,30 @@ mod tests {
 
 
     #[test]
+    fn test_global_right_del() {
+        let x = b"AACCACGTACGTGGGGGGA";
+        let y = b"CCACGTACGT";
+
+        let score = |a: u8, b: u8| {
+            if a == b {
+                1i32
+            } else {
+                -1i32
+            }
+        };
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let alignment = aligner.global(x, y);
+        println!("\naln:\n{}", alignment.pretty(x, y));
+
+        assert_eq!(alignment.ystart, 0);
+        assert_eq!(alignment.xstart, 0);
+        assert_eq!(alignment.operations,
+                   [Match, Match, Match, Del, Del, Del, Match, Match, Match, Match, Match, Match, Match, Match, Match]);
+    }
+
+
+
+    #[test]
     fn test_left_aligned_ins() {
 
         let x = b"GTGCATCATCATGTG";
