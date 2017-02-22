@@ -55,15 +55,19 @@ enum AlignmentType {
 const MIN_SCORE: i32 = -1932735283;
 
 /// Current internal state of alignment.
+#[derive(Debug)]
 struct AlignmentState {
     m: usize,
     n: usize,
     best: i32,
     best_i: usize,
     best_j: usize,
+    best_layer: u8,
     i: usize,
     j: usize,
     score: i32,
+    i_score: i32,
+    d_score: i32,
     col: usize,
 }
 
@@ -77,8 +81,9 @@ macro_rules! align {
             let mut $state = AlignmentState {
                 m: $x.len(), n: $y.len(),
                 best: 0, best_i: 0, best_j: 0,
+                best_layer: TBSUBST,
                 i: 1, j: 1,
-                score: 0,
+                score: 0, i_score: 0, d_score: 0,
                 col: 0
             };
 
@@ -106,9 +111,11 @@ macro_rules! align {
                     if d_open > d_extend {
                         tb.set_d(TBSUBST);
                         $aligner.D[$state.col][$state.j] = d_open;
+                        $state.d_score = d_open;
                     } else {
                         tb.set_d(TBDEL);
                         $aligner.D[$state.col][$state.j] = d_extend;
+                        $state.d_score = d_extend;
                     }
 
                     // score for insertion
@@ -118,9 +125,11 @@ macro_rules! align {
                     if i_open > i_extend {
                         tb.set_i(TBSUBST);
                         $aligner.I[$state.col][$state.j] = i_open;
+                        $state.i_score = i_open;
                     } else {
                         tb.set_i(TBINS);
                         $aligner.I[$state.col][$state.j] = i_extend;
+                        $state.i_score = i_extend;
                     };
 
 
@@ -296,10 +305,25 @@ impl<'a, F> Aligner<'a, F>
 
                    self.traceback.get_mut(state.i, 0).set_all(TBDEL);
                },
-               {},
+               {
+                    if state.i == state.n && state.j == state.m {
+                        state.best_layer = TBSUBST;
+
+                        if state.i_score > state.score {
+                            state.score = state.i_score;
+                            state.best_layer = TBINS;
+                        } 
+
+                        if state.d_score > state.score {
+                            state.score = state.d_score;
+                            state.best_layer = TBDEL;
+                        }
+                    }
+
+               },
                {},
                {
-                   self.alignment(state.n, state.m, x, y, state.score)
+                   self.alignment(state.n, state.m, x, y, state.score, state.best_layer)
                })
     }
 
@@ -326,7 +350,7 @@ impl<'a, F> Aligner<'a, F>
                    }
                },
                {
-                   self.alignment(state.best_i, state.best_j, x, y, state.best)
+                   self.alignment(state.best_i, state.best_j, x, y, state.best, state.best_layer)
                })
     }
 
@@ -354,11 +378,12 @@ impl<'a, F> Aligner<'a, F>
                },
                {},
                {
-                   self.alignment(state.best_i, state.best_j, x, y, state.best)
+                   self.alignment(state.best_i, state.best_j, x, y, state.best, state.best_layer)
                })
     }
 
-    fn alignment(&self, yend: usize, xend: usize, x: TextSlice, y: TextSlice, score: i32) -> Alignment {
+    fn alignment(&self, yend: usize, xend: usize, x: TextSlice, y: TextSlice, score: i32, best_layer: u8) -> Alignment {
+        self.print_traceback_matrices(yend, xend);
 
         let mut i = yend;
         let mut j = xend;
@@ -373,7 +398,7 @@ impl<'a, F> Aligner<'a, F>
                 }
         };
 
-        let mut which_mat = TBSUBST;
+        let mut which_mat = best_layer;
 
         loop {
             let tb = get(i, j, which_mat);
@@ -885,12 +910,15 @@ mod tests {
         };
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
         let alignment = aligner.global(x, y);
+
         println!("\naln:\n{}", alignment.pretty(x, y));
 
+        println!("score:{}", alignment.score);
+        assert_eq!(alignment.score, -7);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.operations,
-                   [Match, Match, Match, Del, Del, Del, Match, Match, Match, Match, Match, Match, Match, Match, Match]);
+            [Ins, Ins, Match, Match, Match, Match, Match, Match, Match, Match, Match, Match, Ins, Ins, Ins, Ins, Ins, Ins, Ins]);
     }
 
 
