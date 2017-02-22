@@ -56,8 +56,9 @@ macro_rules! align_banded {
             let mut $state = AlignmentState {
                 m: $x.len(), n: $y.len(),
                 best: 0, best_i: 0, best_j: 0,
+                best_layer: TBSUBST,
                 i: 1, j: 1,
-                score: 0,
+                score: 0, i_score: 0, d_score: 0,
                 col: 0
             };
 
