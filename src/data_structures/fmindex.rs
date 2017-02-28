@@ -4,6 +4,57 @@
 // except according to those terms.
 
 //! FM-Index and FMD-Index for finding suffix array intervals matching a given pattern in linear time.
+//!
+//! # Examples
+//!
+//! ## Generate
+//!
+//! ```
+//! use bio::data_structures::bwt::{bwt, less, Occ};
+//! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
+//! use bio::data_structures::suffix_array::suffix_array;
+//! use bio::alphabets::dna;
+//!
+//! let text = b"GCCTTAACATTATTACGCCTA$";
+//! let alphabet = dna::n_alphabet();
+//! let sa = suffix_array(text);
+//! let bwt = bwt(text, &sa);
+//! let less = less(&bwt, &alphabet);
+//! let occ = Occ::new(&bwt, 3, &alphabet);
+//! let fm = FMIndex::new(&bwt, &less, &occ);
+//! ```
+//!
+//! ## Enclose in struct
+//!
+//! `FMIndex` was designed to not forcibly own the BWT and auxiliary data structures.
+//! It can take a reference (`&`) or any of the more complex pointer types.
+//! This means that you need to use `Rc` (a reference counted pointer) if you want to
+//! put the `FMIndex` into a struct.
+//!
+//! ```
+//! use std::rc::Rc;
+//! use bio::data_structures::bwt::{BWT, Less, bwt, less, Occ};
+//! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
+//! use bio::data_structures::suffix_array::suffix_array;
+//! use bio::alphabets::dna;
+//! use bio::utils::TextSlice;
+//!
+//! pub struct Example {
+//!     fmindex: FMIndex<Rc<BWT>, Rc<Less>, Rc<Occ>>
+//! }
+//!
+//! impl Example {
+//!     pub fn new(text: TextSlice) -> Self {
+//!         let alphabet = dna::n_alphabet();
+//!         let sa = suffix_array(text);
+//!         let bwt = bwt(text, &sa);
+//!         let less = less(&bwt, &alphabet);
+//!         let occ = Occ::new(&bwt, 3, &alphabet);
+//!         let fm = FMIndex::new(Rc::new(bwt), Rc::new(less), Rc::new(occ));
+//!         Example { fmindex: fm }
+//!     }
+//! }
+//! ```
 
 use std::iter::DoubleEndedIterator;
 
