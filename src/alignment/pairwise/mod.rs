@@ -384,7 +384,6 @@ impl<'a, F> Aligner<'a, F>
     }
 
     fn alignment(&self, yend: usize, xend: usize, x: TextSlice, y: TextSlice, score: i32, best_layer: u8) -> Alignment {
-        self.print_traceback_matrices(yend, xend);
 
         let mut i = yend;
         let mut j = xend;
