@@ -321,7 +321,7 @@ impl<
         let prev = &mut Vec::new();
         let mut matches = Vec::new();
 
-        let mut interval = self.init_interval(pattern[i]);
+        let mut interval = self.init_interval_with(pattern[i]);
 
         for &a in pattern[i + 1..].iter() {
             // forward extend interval
@@ -383,7 +383,7 @@ impl<
     }
 
     /// Initialize interval with given start character.
-    pub fn init_interval(&self, a: u8) -> BiInterval {
+    pub fn init_interval_with(&self, a: u8) -> BiInterval {
         let comp_a = dna::complement(a);
         let lower = self.fmindex.less(a);
 
@@ -392,6 +392,16 @@ impl<
             lower_rev: self.fmindex.less(comp_a),
             size: self.fmindex.less(a + 1) - lower,
             match_size: 1,
+        }
+    }
+
+    /// Initialize interval for empty pattern. The interval points at the whole suffix array.
+    pub fn init_interval(&self) -> BiInterval {
+        BiInterval {
+            lower: 0,
+            lower_rev: 0,
+            size: self.fmindex.bwt.len(),
+            match_size: 0
         }
     }
 
@@ -407,7 +417,11 @@ impl<
         // symbols and updating from previous one.
         for &b in b"$TGCNAtgcna".iter() {
             l += s;
-            o = self.fmindex.occ(interval.lower - 1, b);
+            o = if interval.lower == 0 {
+                0
+            } else {
+                self.fmindex.occ(interval.lower - 1, b)
+            };
             // calculate size
             s = self.fmindex.occ(interval.lower + interval.size - 1, b) - o;
             if b == a {
@@ -506,11 +520,16 @@ mod tests {
         let fmindex = FMIndex::new(&bwt, &less, &occ);
         let fmdindex = FMDIndex::from(fmindex);
         let pattern = b"T";
-        let interval = fmdindex.init_interval(pattern[0]);
-
+        let interval = fmdindex.init_interval_with(pattern[0]);
 
         assert_eq!(interval.forward().occ(&sa), [3, 5]);
         assert_eq!(interval.revcomp().occ(&sa), [8, 0]);
+
+        let empty = fmdindex.init_interval();
+        let extended = fmdindex.backward_ext(&empty, pattern[0]);
+        assert_eq!(extended, interval);
+        let extended = fmdindex.forward_ext(&empty, pattern[0]);
+        assert_eq!(extended, interval);
     }
 
     #[test]
