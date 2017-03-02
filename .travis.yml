@@ -2,6 +2,7 @@ language: rust
 
 sudo: false
 
+# Dependencies of kcov, used for cargo-travis
 addons:
   apt:
     packages:
@@ -9,6 +10,9 @@ addons:
       - libelf-dev
       - libdw-dev
       - binutils-dev
+      - cmake
+    sources:
+      - kalakris-cmake
 
 before_script:
   - |
