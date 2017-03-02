@@ -11,26 +11,28 @@ addons:
       - binutils-dev
 
 before_script:
+  - |
+      cargo install cargo-travis &&
+      export PATH=$HOME/.cargo/bin:$PATH
 #- pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
-  - pip install git+https://github.com/johanneskoester/travis-cargo.git --user && export PATH=$HOME/.local/bin:$PATH
+#  - pip install git+https://github.com/johanneskoester/travis-cargo.git --user && export PATH=$HOME/.local/bin:$PATH
 
 matrix:
   include:
     - rust: stable
     - rust: beta
     - rust: nightly
-      env: TRAVIS_CARGO_NIGHTLY_FEATURE=""
-    - rust: nightly
-      env: TRAVIS_CARGO_NIGHTLY_FEATURE="nightly"
   allow_failures:
-  - rust: nightly
-  - rust: beta
+    - rust: nightly
+    - rust: beta
 
 script:
-  - travis-cargo build && travis-cargo test
+  - |
+      cargo build &&
+      cargo test
 
 after_success:
-  - travis-cargo coveralls --no-sudo --verify --exclude-pattern="benches/,CHANGELOG.md,README.md,LICENSE.md,Cargo.lock,Cargo.toml"
+  - cargo coveralls
 
 env:
   global:
