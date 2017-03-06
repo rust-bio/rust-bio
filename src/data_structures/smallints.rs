@@ -33,7 +33,7 @@ use num_integer::Integer;
 
 /// Data structure for storing a sequence of small integers with few big ones space efficiently
 /// while supporting classical vector operations.
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize)]
 pub struct SmallInts<F: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> {
     smallints: Vec<F>,
     bigints: BTreeMap<usize, B>,
@@ -173,7 +173,6 @@ impl<'a, S, B> Iterator for Iter<'a, S, B>
 #[cfg(tests)]
 mod tests {
     #[test]
-    #[cfg(feature = "nightly")]
     fn test_serde() {
         use serde::{Serialize, Deserialize};
         fn impls_serde_traits<S: Serialize + Deserialize>() {}
