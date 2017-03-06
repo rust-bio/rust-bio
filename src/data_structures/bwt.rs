@@ -86,7 +86,7 @@ pub fn invert_bwt(bwt: &BWTSlice) -> Vec<u8> {
 
 
 /// An occurence array implementation.
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize)]
 pub struct Occ {
     occ: Vec<Vec<usize>>,
     k: u32,
@@ -234,7 +234,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "nightly")]
     fn test_serde() {
         use serde::{Serialize, Deserialize};
         fn impls_serde_traits<S: Serialize + Deserialize>() {}

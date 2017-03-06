@@ -70,7 +70,7 @@ impl Alphabet {
 
 
 /// Tools based on transforming the alphabet symbols to their lexicographical ranks.
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize)]
 pub struct RankTransform {
     pub ranks: SymbolRanks,
 }
@@ -169,7 +169,6 @@ impl<'a, T: TextIterator<'a>> Iterator for QGrams<'a, T> {
 #[cfg(tests)]
 mod tests {
     #[test]
-    #[cfg(feature = "nightly")]
     fn test_serde() {
         use serde::{Serialize, Deserialize};
         fn impls_serde_traits<S: Serialize + Deserialize>() {}

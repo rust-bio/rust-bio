@@ -20,7 +20,7 @@
 
 
 /// A sequence of bitencoded values.
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize)]
 pub struct BitEnc {
     storage: Vec<u32>,
     width: usize,
@@ -220,7 +220,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "nightly")]
     fn test_serde() {
         use serde::{Serialize, Deserialize};
         fn impls_serde_traits<S: Serialize + Deserialize>() {}

@@ -28,7 +28,7 @@ use bit_vec::BitVec;
 
 
 /// A rank/select data structure.
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize)]
 pub struct RankSelect {
     n: usize,
     bits: Vec<u8>,
@@ -163,7 +163,6 @@ mod tests {
 
 
     #[test]
-    #[cfg(feature = "nightly")]
     fn test_serde() {
         use serde::{Serialize, Deserialize};
         fn impls_serde_traits<S: Serialize + Deserialize>() {}

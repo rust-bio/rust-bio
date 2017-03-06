@@ -17,8 +17,7 @@ use ordered_float::OrderedFloat;
 use stats::LogProb;
 
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entry<T: Ord> {
     pub value: T,
     pub prob: LogProb
@@ -34,8 +33,7 @@ impl<T: Ord> Entry<T> {
 
 
 /// Implementation of a cumulative distribution function.
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CDF<T: Ord> {
     inner: Vec<Entry<T>>
 }

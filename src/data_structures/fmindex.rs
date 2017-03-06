@@ -142,7 +142,7 @@ pub trait FMIndexable {
 /// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
 /// intervals matching a given pattern.
 
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize)]
 pub struct FMIndex<
         DBWT: DerefBWT + Clone,
         DLess: DerefLess + Clone,
@@ -228,7 +228,7 @@ impl BiInterval {
 
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize)]
 pub struct FMDIndex<
     DBWT: DerefBWT + Clone,
     DLess: DerefLess + Clone,
@@ -454,7 +454,8 @@ mod tests {
     use super::*;
     use alphabets::dna;
     use data_structures::suffix_array::suffix_array;
-    use data_structures::bwt::{bwt, less, Occ};
+    use data_structures::bwt::{bwt, less, Occ, Less, BWT};
+    use std::rc::Rc;
 
     #[test]
     fn test_fmindex() {
@@ -533,13 +534,12 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "nightly")]
     fn test_serde() {
         use serde::{Serialize, Deserialize};
         fn impls_serde_traits<S: Serialize + Deserialize>() {}
 
-        impls_serde_traits::<FMIndex>();
-        impls_serde_traits::<FMDIndex>();
+        impls_serde_traits::<FMIndex<Rc<BWT>, Rc<Less>, Rc<Occ>>>();
+        impls_serde_traits::<FMDIndex<Rc<BWT>, Rc<Less>, Rc<Occ>>>();
     }
 
     #[test]
