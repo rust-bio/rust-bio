@@ -22,7 +22,6 @@ use std::collections;
 use std::fs;
 use std::path::Path;
 use std::convert::AsRef;
-use std::cmp::min;
 
 use csv;
 
@@ -194,45 +193,44 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
                 stop: u64,
                 seq: &mut Text)
                 -> io::Result<()> {
-        match self.index.inner.get(seqname) {
-            Some(idx) => {
-                seq.clear();
+        if let Some(idx) = self.index.inner.get(seqname) {
+            seq.clear();
 
-                if stop > idx.len {
-                    return Err(io::Error::new(io::ErrorKind::Other, "FASTA read interval was out of bounds"));
-                }
-
-                if start > stop {
-                    return Err(io::Error::new(io::ErrorKind::Other, "Invalid query interval"));
-                }
-
-                let stop = min(stop, idx.len);
-                let length = stop - start as u64;
-                let mut buf = vec![0u8; idx.line_bases as usize];
-
-                loop {
-                    let current_start = start + seq.len() as u64;
-                    let line_start = current_start / idx.line_bases * idx.line_bytes;
-                    let line_offset = current_start % idx.line_bases;
-                    let offset = idx.offset + line_start + line_offset;
-
-                    let left_to_read = length - seq.len() as u64;
-                    let left_in_line = min(left_to_read, idx.line_bases - line_offset) as usize;
-
-                    try!(self.reader.seek(io::SeekFrom::Start(offset)));
-                    try!(self.reader.read_exact(&mut buf[..left_in_line]));
-
-                    seq.extend_from_slice(&buf[..left_in_line]);
-
-                    if seq.len() as u64 == length
-                    {
-                        break;
-                    }
-                }
-
-                Ok(())
+            if stop > idx.len {
+                return Err(io::Error::new(io::ErrorKind::Other, "FASTA read interval was out of bounds"));
             }
-            None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
+
+            if start > stop {
+                return Err(io::Error::new(io::ErrorKind::Other, "Invalid query interval"));
+            }
+
+            let mut line_offset = start % idx.line_bases;
+            let line_start = start / idx.line_bases * idx.line_bytes;
+            let offset = idx.offset + line_start + line_offset;
+            try!(self.reader.seek(io::SeekFrom::Start(offset)));
+
+            let length = stop - start as u64;
+            let mut buf = vec![0u8; idx.line_bytes as usize];
+
+            while (seq.len() as u64) < length {
+                let bases_left = length - seq.len() as u64;
+                let bases_on_line = idx.line_bases - line_offset;
+
+                let (bytes_to_read, bytes_to_keep) = if bases_on_line < bases_left {
+                    (idx.line_bytes - line_offset, bases_on_line)
+                } else {
+                    (bases_left, bases_left)
+                };
+
+                try!(self.reader.read_exact(&mut buf[..bytes_to_read as usize]));
+                seq.extend_from_slice(&buf[..bytes_to_keep as usize]);
+
+                line_offset = 0;
+            }
+
+            Ok(())
+        } else {
+            Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name."))
         }
     }
 }
@@ -399,6 +397,29 @@ GGGG
     const FAI_FILE: &'static [u8] = b"id\t52\t9\t12\t13
 id2\t40\t71\t12\t13
 ";
+
+    const FASTA_FILE_CRLF: &'static [u8] = b">id desc\r
+ACCGTAGGCTGA\r
+CCGTAGGCTGAA\r
+CGTAGGCTGAAA\r
+GTAGGCTGAAAA\r
+CCCC\r
+>id2\r
+ATTGTTGTTTTA\r
+ATTGTTGTTTTA\r
+ATTGTTGTTTTA\r
+GGGG\r
+";
+    const FAI_FILE_CRLF: &'static [u8] = b"id\t52\t10\t12\t14\r
+id2\t40\t78\t12\t14\r
+";
+
+    const FASTA_FILE_NO_TRAILING_LF : &'static [u8] = b">id desc
+GTAGGCTGAAAA
+CCCC";
+    const FAI_FILE_NO_TRAILING_LF: &'static [u8] = b"id\t16\t9\t12\t13";
+
+
     const WRITE_FASTA_FILE: &'static [u8] = b">id desc
 ACCGTAGGCTGA
 >id2
@@ -430,8 +451,21 @@ ATTGTTGTTTTA
         let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE), FAI_FILE)
                              .ok()
                              .expect("Error reading index");
-        let mut seq = Vec::new();
 
+        _test_indexed_reader(&mut reader)
+    }
+
+    #[test]
+    fn test_indexed_reader_crlf() {
+        let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE_CRLF), FAI_FILE_CRLF)
+                             .ok()
+                             .expect("Error reading index");
+
+        _test_indexed_reader(&mut reader)
+    }
+
+    fn _test_indexed_reader<T: Seek + Read>(reader: &mut IndexedReader<T>) {
+        let mut seq = Vec::new();
 
         // Test reading various substrings of the sequence
         reader.read("id", 1, 5, &mut seq).ok().expect("Error reading sequence.");
@@ -459,6 +493,17 @@ ATTGTTGTTTTA
         assert!(reader.read("id2", 12, 1000, &mut seq).is_err());
     }
 
+    #[test]
+    fn test_indexed_reader_no_trailing_lf() {
+        let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE_NO_TRAILING_LF),
+                                            FAI_FILE_NO_TRAILING_LF)
+                             .ok()
+                             .expect("Error reading index");
+        let mut seq = Vec::new();
+
+        reader.read("id", 0, 16, &mut seq).ok().expect("Error reading sequence.");
+        assert_eq!(seq, b"GTAGGCTGAAAACCCC");
+    }
 
     #[test]
     fn test_writer() {
