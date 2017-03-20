@@ -85,7 +85,11 @@ impl<R: io::Read> Reader<R> {
     /// Iterate over all records.
     pub fn records(&mut self) -> Records<R> {
         let (delim, term) = self.gff_type.separator();
-        let r = format!(r" *(?P<key>[^{delim}{term}\t]+){delim}(?P<value>[^{delim}{term}\t]+){term}?", delim=delim as char, term=term as char);
+        let r = format!(
+            r" *(?P<key>[^{delim}{term}\t]+){delim}(?P<value>[^{delim}{term}\t]+){term}?",
+            delim=delim as char,
+            term=term as char
+        );
         let attribute_re = Regex::new(&r).unwrap();
         Records {
             inner: self.inner.decode(),
