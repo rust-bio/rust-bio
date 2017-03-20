@@ -109,6 +109,7 @@ extern crate newtype_derive;
 extern crate ordered_float;
 #[macro_use]
 extern crate quick_error;
+extern crate regex;
 
 pub mod utils;
 pub mod alphabets;

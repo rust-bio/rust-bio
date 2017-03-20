@@ -24,6 +24,7 @@ use std::path::Path;
 use std::convert::AsRef;
 use std::collections::HashMap;
 use itertools::Itertools;
+use regex::Regex;
 
 use csv;
 
@@ -83,17 +84,25 @@ impl<R: io::Read> Reader<R> {
 
     /// Iterate over all records.
     pub fn records(&mut self) -> Records<R> {
+        let (delim, term) = self.gff_type.separator();
+        let r = format!(
+            r" *(?P<key>[^{delim}{term}\t]+){delim}(?P<value>[^{delim}{term}\t]+){term}?",
+            delim=delim as char,
+            term=term as char
+        );
+        let attribute_re = Regex::new(&r).unwrap();
         Records {
             inner: self.inner.decode(),
-            gff_type: self.gff_type
+            attribute_re: attribute_re
         }
     }
 }
 
+
 /// A GFF record.
 pub struct Records<'a, R: 'a + io::Read> {
     inner: csv::DecodedRecords<'a, R, (String, String, String, u64, u64, String, String, String, String)>,
-    gff_type: GffType,
+    attribute_re: Regex
 }
 
 
@@ -101,10 +110,16 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
     type Item = csv::Result<Record>;
 
     fn next(&mut self) -> Option<csv::Result<Record>> {
-        let (delim, termi) = self.gff_type.separator();
-
         self.inner.next().map(|res| {
-            res.map(|(seqname, source, feature_type, start, end, score, strand, frame, attributes)| {
+            res.map(|(seqname, source, feature_type, start, end, score, strand, frame, raw_attributes)| {
+                let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
+                let mut attrs = HashMap::new();
+                for caps in self.attribute_re.captures_iter(&raw_attributes) {
+                    attrs.insert(
+                        trim_quotes(&caps["key"]),
+                        trim_quotes(&caps["value"])
+                    );
+                }
                 Record {
                     seqname: seqname,
                     source: source,
@@ -114,13 +129,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                     score: score,
                     strand: strand,
                     frame: frame,
-                    attributes: csv::Reader::from_string(attributes)
-                        .delimiter(delim)
-                        .record_terminator(csv::RecordTerminator::Any(termi))
-                        .has_headers(false)
-                        .decode()
-                        .collect::<csv::Result<_>>()
-                        .unwrap(),
+                    attributes: attrs,
                 }
             })
         })
@@ -310,6 +319,11 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote ATP-dependent;ID PRO_0000148105
 ";
 
+    // Another variant of GTF file, modified from a published GENCODE GTF file.
+    const GTF_FILE_2: &'static [u8] = b"chr1\tHAVANA\tgene\t11869\t14409\t.\t+\t.\tgene_id \"ENSG00000223972.5\"; gene_type \"transcribed_unprocessed_pseudogene\";
+chr1\tHAVANA\ttranscript\t11869\t14409\t.\t+\t.\tgene_id \"ENSG00000223972.5\"; transcript_id \"ENST00000456328.2\"; gene_type \"transcribed_unprocessed_pseudogene\"";
+
+
     //required because HashMap iter on element randomly
     const GTF_FILE_ONE_ATTRIB: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
@@ -333,7 +347,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 
         let mut reader = Reader::new(GFF_FILE, GffType::GFF3);
         for (i, r) in reader.records().enumerate() {
-            let record = r.ok().expect("Error reading record");
+            let record = r.unwrap();
             assert_eq!(record.seqname(), seqname[i]);
             assert_eq!(record.source(), source[i]);
             assert_eq!(record.feature_type(), feature_type[i]);
@@ -364,7 +378,44 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 
         let mut reader = Reader::new(GTF_FILE, GffType::GTF2);
         for (i, r) in reader.records().enumerate() {
-            let record = r.ok().expect("Error reading record");
+            let record = r.unwrap();
+            assert_eq!(record.seqname(), seqname[i]);
+            assert_eq!(record.source(), source[i]);
+            assert_eq!(record.feature_type(), feature_type[i]);
+            assert_eq!(*record.start(), starts[i]);
+            assert_eq!(*record.end(), ends[i]);
+            assert_eq!(record.score(), scores[i]);
+            assert_eq!(record.strand(), strand[i]);
+            assert_eq!(record.frame(), frame[i]);
+            assert_eq!(record.attributes(), &attributes[i]);
+        }
+    }
+
+    #[test]
+    fn test_reader_gtf2_2() {
+        let seqname = ["chr1", "chr1"];
+        let source = ["HAVANA", "HAVANA"];
+        let feature_type = ["gene", "transcript"];
+        let starts = [11869, 11869];
+        let ends = [14409, 14409];
+        let scores = [None, None];
+        let strand = [Some(Strand::Forward), Some(Strand::Forward)];
+        let frame = [".", "."];
+        let mut attributes = [HashMap::new(), HashMap::new()];
+        attributes[0].insert("gene_id".to_owned(),
+                             "ENSG00000223972.5".to_owned());
+        attributes[0].insert("gene_type".to_owned(),
+                             "transcribed_unprocessed_pseudogene".to_owned());
+        attributes[1].insert("gene_id".to_owned(),
+                             "ENSG00000223972.5".to_owned());
+        attributes[1].insert("transcript_id".to_owned(),
+                             "ENST00000456328.2".to_owned());
+        attributes[1].insert("gene_type".to_owned(),
+                             "transcribed_unprocessed_pseudogene".to_owned());
+
+        let mut reader = Reader::new(GTF_FILE_2, GffType::GTF2);
+        for (i, r) in reader.records().enumerate() {
+            let record = r.unwrap();
             assert_eq!(record.seqname(), seqname[i]);
             assert_eq!(record.source(), source[i]);
             assert_eq!(record.feature_type(), feature_type[i]);
