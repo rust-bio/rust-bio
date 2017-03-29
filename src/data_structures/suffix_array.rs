@@ -286,11 +286,7 @@ pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray
             l += 1;
         }
         lcp.set(r, l as isize);
-        l = if l > 0 {
-            l - 1
-        } else {
-            0
-        };
+        l = if l > 0 { l - 1 } else { 0 };
     }
 
     lcp
@@ -357,15 +353,16 @@ fn sentinel_count(text: &[u8]) -> usize {
             "Expecting extra sentinel symbol being lexicographically smallest at the end of the \
              text.");
 
-    text.iter().fold(0, |count, &a| count + (a == sentinel) as usize)
+    text.iter()
+        .fold(0, |count, &a| count + (a == sentinel) as usize)
 }
 
 
 /// Transform the given text into integers for usage in `SAIS`.
 fn transform_text<T: Integer + Unsigned + NumCast + Copy + Debug>(text: &[u8],
-                                                          alphabet: &Alphabet,
-                                                          sentinel_count: usize)
-                                                          -> Vec<T> {
+                                                                  alphabet: &Alphabet,
+                                                                  sentinel_count: usize)
+                                                                  -> Vec<T> {
     let sentinel = sentinel(text);
     let transform = RankTransform::new(alphabet);
     let offset = sentinel_count - 1;
@@ -502,8 +499,7 @@ impl SAIS {
                 for &p in &self.pos {
                     self.lms_pos.push(lms_pos[p]);
                 }
-            }
-            else {
+            } else {
                 // otherwise, lms_pos is updated with the sorted suffixes from pos
                 // obtain sorted lms suffixes
                 self.lms_pos.clear();
@@ -675,7 +671,7 @@ mod tests {
     use super::*;
     use super::{PosTypes, SAIS, transform_text};
     use bit_vec::BitVec;
-    use alphabets::{Alphabet /*, dna*/};
+    use alphabets::Alphabet;
     //use data_structures::bwt::{bwt, less, Occ};
     use std::str;
 
@@ -762,8 +758,11 @@ mod tests {
     }
 
     fn str_from_pos(sa: &Vec<usize>, text: &[u8], index: usize) -> String {
-        String::from(str::from_utf8(&text[sa[index]..]).unwrap().split("$").next().unwrap_or("")) +
-        "$"
+        String::from(str::from_utf8(&text[sa[index]..])
+                         .unwrap()
+                         .split("$")
+                         .next()
+                         .unwrap_or("")) + "$"
     }
 
     #[test]

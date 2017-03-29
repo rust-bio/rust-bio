@@ -22,15 +22,14 @@ fn search_index_seeds(b: &mut Bencher) {
         let sequence = b"TCCAAAACAATAACGGAGGTGTCCAAAGGTCAGCTCAGCGTGTGGTTTCT";
         let seed_length = 20;
 
-        let seeds = (0..(sequence.len() + 1 - seed_length))
-            .map(|i| (i, &sequence[i..i + seed_length]));
+        let seeds =
+            (0..(sequence.len() + 1 - seed_length)).map(|i| (i, &sequence[i..i + seed_length]));
 
         let mut loc_temp = Vec::new();
         for (offset, seed) in seeds {
             let interval = fmindex.backward_search(seed.iter());
 
-            loc_temp.extend((interval.lower..interval.upper)
-                .map(|i| (sa[i], offset)));
+            loc_temp.extend((interval.lower..interval.upper).map(|i| (sa[i], offset)));
         }
     });
 }

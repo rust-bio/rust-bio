@@ -55,11 +55,7 @@ impl Alignment {
              op == AlignmentOperation::Ins) as usize
         };
 
-        let clip_str = if hard_clip {
-            "H"
-        } else {
-            "S"
-        };
+        let clip_str = if hard_clip { "H" } else { "S" };
 
         let mut cigar = String::new();
 

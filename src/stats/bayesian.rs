@@ -23,12 +23,18 @@ use stats::LogProb;
 /// A vector of expected FDRs in the same order as the given PEPs.
 pub fn expected_fdr(peps: &[LogProb]) -> Vec<LogProb> {
     // sort indices
-    let sorted_idx = (0..peps.len()).sorted_by(|&i, &j| OrderedFloat(*peps[i]).cmp(&OrderedFloat(*peps[j])));
+    let sorted_idx =
+        (0..peps.len()).sorted_by(|&i, &j| OrderedFloat(*peps[i]).cmp(&OrderedFloat(*peps[j])));
     // estimate FDR
     let mut expected_fdr = vec![LogProb::ln_zero(); peps.len()];
-    for (i, expected_fp) in LogProb::ln_cumsum_exp(sorted_idx.iter().map(|&i| peps[i])).enumerate() {
+    for (i, expected_fp) in LogProb::ln_cumsum_exp(sorted_idx.iter().map(|&i| peps[i]))
+            .enumerate() {
         let fdr = LogProb(*expected_fp / (i + 1) as f64);
-        expected_fdr[i] = if fdr <= LogProb::ln_one() { fdr } else { LogProb::ln_one() };
+        expected_fdr[i] = if fdr <= LogProb::ln_one() {
+            fdr
+        } else {
+            LogProb::ln_one()
+        };
     }
 
     expected_fdr

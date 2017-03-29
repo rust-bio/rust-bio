@@ -52,8 +52,10 @@ fn assert_intersections(tree: &IntervalTree<i64, Range<i64>>,
                         expected_results: &[Range<i64>]) {
     let mut actual_entries: Vec<_> = tree.find(target).collect();
     actual_entries.sort_by(|x1, x2| x1.data().start.cmp(&x2.data().start));
-    let mut expected_entries: Vec<_> =
-        expected_results.iter().map(|x| (x.clone(), Interval::from(x.clone()))).collect();
+    let mut expected_entries: Vec<_> = expected_results
+        .iter()
+        .map(|x| (x.clone(), Interval::from(x.clone())))
+        .collect();
     expected_entries.sort_by(|x1, x2| x1.0.start.cmp(&x2.0.start));
     assert_eq!(actual_entries.len(), expected_entries.len());
     for (actual, expected) in actual_entries.iter().zip(expected_entries.iter()) {

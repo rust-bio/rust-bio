@@ -77,13 +77,13 @@ CCAAAATTCTGCCCAGAAGCGTTTAAGTTCGCCCCACTAAAGTTGTCTAAAACGA";
 
 #[bench]
 fn bench_orf(b: &mut Bencher) {
-    let start_codons = vec!(b"ATG");
-    let stop_codons  = vec!(b"TGA", b"TAG", b"TAA");
+    let start_codons = vec![b"ATG"];
+    let stop_codons = vec![b"TGA", b"TAG", b"TAA"];
     let finder = Finder::new(start_codons, stop_codons, 100usize);
-    b.iter(|| { finder.find_all(STR_1).count() });
+    b.iter(|| finder.find_all(STR_1).count());
 }
 
 #[bench]
 fn bench_gc(b: &mut Bencher) {
-	b.iter(|| gc_content(STR_1));
+    b.iter(|| gc_content(STR_1));
 }

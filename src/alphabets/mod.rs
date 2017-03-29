@@ -49,7 +49,8 @@ impl Alphabet {
 
     /// Check if given text is a word over the alphabet.
     pub fn is_word<'a, T: IntoTextIterator<'a>>(&self, text: T) -> bool {
-        text.into_iter().all(|&c| self.symbols.contains(c as usize))
+        text.into_iter()
+            .all(|&c| self.symbols.contains(c as usize))
     }
 
     /// Return lexicographically maximal symbol.
@@ -89,13 +90,19 @@ impl RankTransform {
 
     /// Get the rank of symbol `a`.
     pub fn get(&self, a: u8) -> u8 {
-        *self.ranks.get(a as usize).expect("Unexpected character.")
+        *self.ranks
+             .get(a as usize)
+             .expect("Unexpected character.")
     }
 
     /// Transform a given `text`.
     pub fn transform<'a, T: IntoTextIterator<'a>>(&self, text: T) -> Vec<u8> {
         text.into_iter()
-            .map(|&c| *self.ranks.get(c as usize).expect("Unexpected character in text."))
+            .map(|&c| {
+                     *self.ranks
+                          .get(c as usize)
+                          .expect("Unexpected character in text.")
+                 })
             .collect()
     }
 

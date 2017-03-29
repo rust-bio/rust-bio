@@ -80,9 +80,9 @@ impl RankSelect {
             rank += (self.bits[b] >> (7 - i % 8)).count_ones();
             // add the popcounts of blocks in between
             rank += self.bits[s * 32 / 8..b]
-                        .iter()
-                        .map(|&a| a.count_ones())
-                        .fold(0, |a, b| a + b);
+                .iter()
+                .map(|&a| a.count_ones())
+                .fold(0, |a, b| a + b);
 
             Some(rank)
         }

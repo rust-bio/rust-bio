@@ -271,33 +271,29 @@ GCCGCGCGCGCGGGGCCGGGCCGCGCGCGCGCCGGGCCGCCGGCGGGGCGCGGCC";
 
 #[bench]
 fn bench_hamming_dist_equal_str_1000iter(b: &mut Bencher) {
-    b.iter(|| {
-        for _ in 0..1000 {
-            hamming(STR_1, STR_1).unwrap();
-        }
-    });
+    b.iter(|| for _ in 0..1000 {
+               hamming(STR_1, STR_1).unwrap();
+           });
 }
 
 #[bench]
 fn bench_hamming_dist_diverse_str_1000iter(b: &mut Bencher) {
-    b.iter(|| {
-        for _ in 0..1000 {
-            hamming(STR_1, STR_2).unwrap();
-        }
-        });
+    b.iter(|| for _ in 0..1000 {
+               hamming(STR_1, STR_2).unwrap();
+           });
 }
 
 #[bench]
 fn bench_levenshtein_dist_equal_str(b: &mut Bencher) {
-    b.iter(|| { levenshtein(STR_1, STR_1) });
+    b.iter(|| levenshtein(STR_1, STR_1));
 }
 
 #[bench]
 fn bench_levenshtein_dist_diverse_str(b: &mut Bencher) {
-    b.iter(|| { levenshtein(STR_1, STR_2) });
+    b.iter(|| levenshtein(STR_1, STR_2));
 }
 
 #[bench]
 fn bench_levenshtein_dist_worst_str(b: &mut Bencher) {
-    b.iter(|| { levenshtein(STR_3, STR_4) });
+    b.iter(|| levenshtein(STR_3, STR_4));
 }

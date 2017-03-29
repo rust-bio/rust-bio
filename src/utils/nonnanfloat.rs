@@ -41,4 +41,4 @@ mod tests {
         assert_eq!(v, [NonNaNFloat(1.3), NonNaNFloat(5.1)]);
     }
 
-}    
+}
