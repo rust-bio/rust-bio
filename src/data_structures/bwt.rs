@@ -47,7 +47,7 @@ impl<T: Deref<Target = Less>> DerefLess for T {}
 /// assert_eq!(bwt, b"ATTATTCAGGACCC$CTTTCAA");
 /// ```
 pub fn bwt(text: &[u8], pos: &RawSuffixArray) -> BWT {
-    assert!(text.len() == pos.len());
+    assert_eq!(text.len(), pos.len());
     let n = text.len();
     let mut bwt: BWT = repeat(0).take(n).collect();
     for r in 0..n {

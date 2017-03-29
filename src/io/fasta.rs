@@ -132,7 +132,7 @@ impl Index {
             .map(|name| {
                 Sequence {
                     name: name.clone(),
-                    len: self.inner.get(name).unwrap().len,
+                    len: self.inner[name].len,
                 }
             })
             .collect()
@@ -280,15 +280,15 @@ impl<W: io::Write> Writer<W> {
 
     /// Write a Fasta record with given id, optional description and sequence.
     pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice) -> io::Result<()> {
-        try!(self.writer.write(b">"));
-        try!(self.writer.write(id.as_bytes()));
+        try!(self.writer.write_all(b">"));
+        try!(self.writer.write_all(id.as_bytes()));
         if desc.is_some() {
-            try!(self.writer.write(b" "));
-            try!(self.writer.write(desc.unwrap().as_bytes()));
+            try!(self.writer.write_all(b" "));
+            try!(self.writer.write_all(desc.unwrap().as_bytes()));
         }
-        try!(self.writer.write(b"\n"));
-        try!(self.writer.write(seq));
-        try!(self.writer.write(b"\n"));
+        try!(self.writer.write_all(b"\n"));
+        try!(self.writer.write_all(seq));
+        try!(self.writer.write_all(b"\n"));
 
         Ok(())
     }
@@ -336,12 +336,12 @@ impl Record {
 
     /// Return the id of the record.
     pub fn id(&self) -> Option<&str> {
-        self.header[1..].trim_right().splitn(2, ' ').next()
+        self.header[1..].trim_right().splitn(2, ' ').nth(0)
     }
 
     /// Return descriptions if present.
     pub fn desc(&self) -> Option<&str> {
-        self.header[1..].trim_right().splitn(2, ' ').skip(1).next()
+        self.header[1..].trim_right().splitn(2, ' ').nth(1)
     }
 
     /// Return the sequence of the record.

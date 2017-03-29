@@ -30,6 +30,7 @@ pub type RawSuffixArray = Vec<usize>;
 pub trait SuffixArray {
     fn get(&self, index: usize) -> Option<usize>;
     fn len(&self) -> usize;
+    fn is_empty(&self) -> bool;
 
 
     // /// Sample the suffix array with the given sample rate.
@@ -106,6 +107,10 @@ impl SuffixArray for RawSuffixArray {
         Vec::len(self)
     }
 
+    fn is_empty(&self) -> bool {
+        Vec::is_empty(self)
+    }
+
     // fn sample<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc>
     //     (&self, bwt: DBWT, less: DLess, occ: DOcc, sampling_rate: usize) ->
     //     SampledSuffixArray<DBWT, DLess, DOcc> {
@@ -145,6 +150,10 @@ impl SuffixArray for RawSuffixArray {
 //
 //     fn len(&self) -> usize {
 //         self.bwt.len()
+//     }
+
+//     fn is_empty(&self) -> bool {
+//         self.bwt.is_empty()
 //     }
 // }
 //
@@ -258,7 +267,7 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
 /// )
 /// ```
 pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray {
-    assert!(text.len() == pos.len());
+    assert_eq!(text.len(), pos.len());
     let n = text.len();
 
     // provide the lexicographical rank for each suffix

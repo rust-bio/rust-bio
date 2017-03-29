@@ -277,7 +277,7 @@ impl LogProb {
         D: Fn(T) -> LogProb,
         f64: From<T>
     {
-        assert!(n % 2 == 1, "n must be odd");
+        assert_eq!(n % 2, 1, "n must be odd");
         let mut probs = linspace(a, b, n).enumerate().dropping(1).dropping_back(1).map(|(i, v)| {
             let weight = (2 + (i % 2) * 2) as f64;
             LogProb(*density(v) + weight.ln()) // factors alter between 2 and 4

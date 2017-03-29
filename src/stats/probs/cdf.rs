@@ -112,7 +112,7 @@ impl<T: Ord> CDF<T> {
     }
 
     /// Iterator over corresponding PMF.
-    pub fn iter_pmf<'a>(&'a self) -> CDFPMFIter<'a, T> {
+    pub fn iter_pmf(&self) -> CDFPMFIter<T> {
         fn cdf_to_pmf<'a, G: Ord>(last_prob: &mut LogProb, e: &'a Entry<G>) -> Option<Entry<&'a G>> {
             let prob = e.prob.ln_sub_exp(*last_prob);
             *last_prob = e.prob;
@@ -161,7 +161,7 @@ impl<T: Ord> CDF<T> {
                     max = e;
                 }
             }
-            Some(&max.value)
+            Some(max.value)
         } else {
             None
         }
@@ -183,6 +183,10 @@ impl<T: Ord> CDF<T> {
     /// Number of entries in the CDF.
     pub fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
     }
 }
 
