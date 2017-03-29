@@ -96,16 +96,18 @@ impl Index {
     pub fn new<R: io::Read>(fai: R) -> csv::Result<Self> {
         let mut inner = collections::HashMap::new();
         let mut seqs = vec![];
-        let mut fai_reader = csv::Reader::from_reader(fai).delimiter(b'\t').has_headers(false);
+        let mut fai_reader = csv::Reader::from_reader(fai)
+            .delimiter(b'\t')
+            .has_headers(false);
         for row in fai_reader.decode() {
             let (name, record): (String, IndexRecord) = try!(row);
             seqs.push(name.clone());
             inner.insert(name, record);
         }
         Ok(Index {
-            inner: inner,
-            seqs: seqs,
-        })
+               inner: inner,
+               seqs: seqs,
+           })
     }
 
     /// Open a FASTA index from a given file path.
@@ -118,7 +120,13 @@ impl Index {
 
     /// Open a FASTA index given the corresponding FASTA file path (e.g. for ref.fasta we expect ref.fasta.fai).
     pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> csv::Result<Self> {
-        let mut ext = fasta_path.as_ref().extension().unwrap().to_str().unwrap().to_owned();
+        let mut ext = fasta_path
+            .as_ref()
+            .extension()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_owned();
         ext.push_str(".fai");
         let fai_path = fasta_path.as_ref().with_extension(ext);
 
@@ -130,11 +138,11 @@ impl Index {
         self.seqs
             .iter()
             .map(|name| {
-                Sequence {
-                    name: name.clone(),
-                    len: self.inner[name].len,
-                }
-            })
+                     Sequence {
+                         name: name.clone(),
+                         len: self.inner[name].len,
+                     }
+                 })
             .collect()
     }
 }
@@ -165,9 +173,9 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     pub fn new<I: io::Read>(fasta: R, fai: I) -> csv::Result<Self> {
         let index = try!(Index::new(fai));
         Ok(IndexedReader {
-            reader: io::BufReader::new(fasta),
-            index: index,
-        })
+               reader: io::BufReader::new(fasta),
+               index: index,
+           })
     }
 
     /// Read from a FASTA and its index, the first given as `io::Read`, the second given as index object.
@@ -187,17 +195,13 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 
     /// Read the given interval of the given seqname into the given vector (stop position is exclusive).
-    pub fn read(&mut self,
-                seqname: &str,
-                start: u64,
-                stop: u64,
-                seq: &mut Text)
-                -> io::Result<()> {
+    pub fn read(&mut self, seqname: &str, start: u64, stop: u64, seq: &mut Text) -> io::Result<()> {
         if let Some(idx) = self.index.inner.get(seqname) {
             seq.clear();
 
             if stop > idx.len {
-                return Err(io::Error::new(io::ErrorKind::Other, "FASTA read interval was out of bounds"));
+                return Err(io::Error::new(io::ErrorKind::Other,
+                                          "FASTA read interval was out of bounds"));
             }
 
             if start > stop {
@@ -222,7 +226,8 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
                     (bases_left, bases_left)
                 };
 
-                try!(self.reader.read_exact(&mut buf[..bytes_to_read as usize]));
+                try!(self.reader
+                         .read_exact(&mut buf[..bytes_to_read as usize]));
                 seq.extend_from_slice(&buf[..bytes_to_keep as usize]);
 
                 line_offset = 0;
@@ -414,7 +419,7 @@ GGGG\r
 id2\t40\t78\t12\t14\r
 ";
 
-    const FASTA_FILE_NO_TRAILING_LF : &'static [u8] = b">id desc
+    const FASTA_FILE_NO_TRAILING_LF: &'static [u8] = b">id desc
 GTAGGCTGAAAA
 CCCC";
     const FAI_FILE_NO_TRAILING_LF: &'static [u8] = b"id\t16\t9\t12\t13";
@@ -449,8 +454,8 @@ ATTGTTGTTTTA
     #[test]
     fn test_indexed_reader() {
         let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE), FAI_FILE)
-                             .ok()
-                             .expect("Error reading index");
+            .ok()
+            .expect("Error reading index");
 
         _test_indexed_reader(&mut reader)
     }
@@ -458,8 +463,8 @@ ATTGTTGTTTTA
     #[test]
     fn test_indexed_reader_crlf() {
         let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE_CRLF), FAI_FILE_CRLF)
-                             .ok()
-                             .expect("Error reading index");
+            .ok()
+            .expect("Error reading index");
 
         _test_indexed_reader(&mut reader)
     }
@@ -468,25 +473,46 @@ ATTGTTGTTTTA
         let mut seq = Vec::new();
 
         // Test reading various substrings of the sequence
-        reader.read("id", 1, 5, &mut seq).ok().expect("Error reading sequence.");
+        reader
+            .read("id", 1, 5, &mut seq)
+            .ok()
+            .expect("Error reading sequence.");
         assert_eq!(seq, b"CCGT");
 
-        reader.read("id", 1, 31, &mut seq).ok().expect("Error reading sequence.");
+        reader
+            .read("id", 1, 31, &mut seq)
+            .ok()
+            .expect("Error reading sequence.");
         assert_eq!(seq, b"CCGTAGGCTGACCGTAGGCTGAACGTAGGC");
 
-        reader.read("id", 13, 23, &mut seq).ok().expect("Error reading sequence.");
+        reader
+            .read("id", 13, 23, &mut seq)
+            .ok()
+            .expect("Error reading sequence.");
         assert_eq!(seq, b"CGTAGGCTGA");
 
-        reader.read("id", 36, 52, &mut seq).ok().expect("Error reading sequence.");
+        reader
+            .read("id", 36, 52, &mut seq)
+            .ok()
+            .expect("Error reading sequence.");
         assert_eq!(seq, b"GTAGGCTGAAAACCCC");
 
-        reader.read("id2", 12, 40, &mut seq).ok().expect("Error reading sequence.");
+        reader
+            .read("id2", 12, 40, &mut seq)
+            .ok()
+            .expect("Error reading sequence.");
         assert_eq!(seq, b"ATTGTTGTTTTAATTGTTGTTTTAGGGG");
 
-        reader.read("id2", 12, 12, &mut seq).ok().expect("Error reading sequence.");
+        reader
+            .read("id2", 12, 12, &mut seq)
+            .ok()
+            .expect("Error reading sequence.");
         assert_eq!(seq, b"");
 
-        reader.read("id2", 12, 13, &mut seq).ok().expect("Error reading sequence.");
+        reader
+            .read("id2", 12, 13, &mut seq)
+            .ok()
+            .expect("Error reading sequence.");
         assert_eq!(seq, b"A");
 
         assert!(reader.read("id2", 12, 11, &mut seq).is_err());
@@ -497,19 +523,28 @@ ATTGTTGTTTTA
     fn test_indexed_reader_no_trailing_lf() {
         let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE_NO_TRAILING_LF),
                                             FAI_FILE_NO_TRAILING_LF)
-                             .ok()
-                             .expect("Error reading index");
+                .ok()
+                .expect("Error reading index");
         let mut seq = Vec::new();
 
-        reader.read("id", 0, 16, &mut seq).ok().expect("Error reading sequence.");
+        reader
+            .read("id", 0, 16, &mut seq)
+            .ok()
+            .expect("Error reading sequence.");
         assert_eq!(seq, b"GTAGGCTGAAAACCCC");
     }
 
     #[test]
     fn test_writer() {
         let mut writer = Writer::new(Vec::new());
-        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").ok().expect("Expected successful write");
-        writer.write("id2", None, b"ATTGTTGTTTTA").ok().expect("Expected successful write");
+        writer
+            .write("id", Some("desc"), b"ACCGTAGGCTGA")
+            .ok()
+            .expect("Expected successful write");
+        writer
+            .write("id2", None, b"ATTGTTGTTTTA")
+            .ok()
+            .expect("Expected successful write");
         writer.flush().ok().expect("Expected successful write");
         assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
     }

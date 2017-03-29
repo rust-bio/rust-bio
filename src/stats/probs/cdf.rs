@@ -20,13 +20,16 @@ use stats::LogProb;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entry<T: Ord> {
     pub value: T,
-    pub prob: LogProb
+    pub prob: LogProb,
 }
 
 
 impl<T: Ord> Entry<T> {
     pub fn new(value: T, prob: LogProb) -> Self {
-        Entry { value: value, prob: prob }
+        Entry {
+            value: value,
+            prob: prob,
+        }
     }
 }
 
@@ -35,7 +38,7 @@ impl<T: Ord> Entry<T> {
 /// Implementation of a cumulative distribution function.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CDF<T: Ord> {
-    inner: Vec<Entry<T>>
+    inner: Vec<Entry<T>>,
 }
 
 
@@ -50,20 +53,21 @@ impl<T: Ord> CDF<T> {
         entries.sort_by(|a, b| a.value.cmp(&b.value));
         let mut inner: Vec<Entry<T>> = Vec::new();
         for mut e in entries {
-            let p = inner.last().map_or(LogProb::ln_zero(), |e| e.prob).ln_add_exp(e.prob);
+            let p = inner
+                .last()
+                .map_or(LogProb::ln_zero(), |e| e.prob)
+                .ln_add_exp(e.prob);
             if !inner.is_empty() && inner.last().unwrap().value == e.value {
                 inner.last_mut().unwrap().prob = p;
-            }
-            else {
+            } else {
                 e.prob = p;
                 inner.push(e);
             }
         }
-        let mut cdf = CDF {
-            inner: inner
-        };
+        let mut cdf = CDF { inner: inner };
 
-        if relative_eq!(*cdf.total_prob(), *LogProb::ln_one()) && *cdf.total_prob() > *LogProb::ln_one() {
+        if relative_eq!(*cdf.total_prob(), *LogProb::ln_one()) &&
+           *cdf.total_prob() > *LogProb::ln_one() {
             cdf.inner.last_mut().unwrap().prob = LogProb::ln_one();
         }
 
@@ -94,26 +98,25 @@ impl<T: Ord> CDF<T> {
         assert!(n > 1);
         if self.inner.len() <= n {
             self
-        }
-        else {
+        } else {
             let s = self.inner.len() / (n - 1);
             let last = self.inner.pop().unwrap();
             let mut inner = self.inner.into_iter().step(s).collect_vec();
             inner.push(last);
-            CDF {
-                inner: inner
-            }
+            CDF { inner: inner }
         }
     }
 
     /// Provide iterator.
-    pub fn iter(&self) -> slice::Iter<Entry<T>>{
+    pub fn iter(&self) -> slice::Iter<Entry<T>> {
         self.inner.iter()
     }
 
     /// Iterator over corresponding PMF.
     pub fn iter_pmf(&self) -> CDFPMFIter<T> {
-        fn cdf_to_pmf<'a, G: Ord>(last_prob: &mut LogProb, e: &'a Entry<G>) -> Option<Entry<&'a G>> {
+        fn cdf_to_pmf<'a, G: Ord>(last_prob: &mut LogProb,
+                                  e: &'a Entry<G>)
+                                  -> Option<Entry<&'a G>> {
             let prob = e.prob.ln_sub_exp(*last_prob);
             *last_prob = e.prob;
             Some(Entry::new(&e.value, prob))
@@ -126,12 +129,17 @@ impl<T: Ord> CDF<T> {
     pub fn get(&self, value: &T) -> Option<LogProb> {
         if self.inner.is_empty() {
             None
-        }
-        else {
+        } else {
             Some(match self.inner.binary_search_by(|e| e.value.cmp(value)) {
-                Ok(i) => self.inner[i].prob,
-                Err(i) => if i > 0 { self.inner[i - 1].prob } else { LogProb::ln_zero() }
-            })
+                     Ok(i) => self.inner[i].prob,
+                     Err(i) => {
+                         if i > 0 {
+                             self.inner[i - 1].prob
+                         } else {
+                             LogProb::ln_zero()
+                         }
+                     }
+                 })
         }
     }
 
@@ -139,12 +147,23 @@ impl<T: Ord> CDF<T> {
     pub fn get_pmf(&self, value: &T) -> Option<LogProb> {
         if self.inner.is_empty() {
             None
-        }
-        else {
+        } else {
             Some(match self.inner.binary_search_by(|e| e.value.cmp(value)) {
-                Ok(i) => if i > 0 { self.inner[i].prob.ln_sub_exp(self.inner[i - 1].prob) } else { self.inner[0].prob },
-                Err(i) => if i > 0 { self.inner[i - 1].prob } else { LogProb::ln_zero() }
-            })
+                     Ok(i) => {
+                         if i > 0 {
+                             self.inner[i].prob.ln_sub_exp(self.inner[i - 1].prob)
+                         } else {
+                             self.inner[0].prob
+                         }
+                     }
+                     Err(i) => {
+                         if i > 0 {
+                             self.inner[i - 1].prob
+                         } else {
+                             LogProb::ln_zero()
+                         }
+                     }
+                 })
         }
     }
 
@@ -174,8 +193,12 @@ impl<T: Ord> CDF<T> {
         let margin = 1.0 - width;
         let p_lower = OrderedFloat((margin / 2.0).ln());
         let p_upper = OrderedFloat((1.0 - margin / 2.0).ln());
-        let lower = self.inner.binary_search_by(|e| OrderedFloat(*e.prob).cmp(&p_lower)).unwrap_or_else(|i| i);
-        let upper = self.inner.binary_search_by(|e| OrderedFloat(*e.prob).cmp(&p_upper)).unwrap_or_else(|i| i - 1);
+        let lower = self.inner
+            .binary_search_by(|e| OrderedFloat(*e.prob).cmp(&p_lower))
+            .unwrap_or_else(|i| i);
+        let upper = self.inner
+            .binary_search_by(|e| OrderedFloat(*e.prob).cmp(&p_upper))
+            .unwrap_or_else(|i| i - 1);
 
         &self.inner[lower].value..&self.inner[upper].value
     }
@@ -191,20 +214,22 @@ impl<T: Ord> CDF<T> {
 }
 
 
-impl<T: Clone + Ord> CDF<T> where f64: From<T> {
+impl<T: Clone + Ord> CDF<T>
+    where f64: From<T>
+{
     /// Calculate expected value.
     pub fn expected_value(&self) -> f64 {
-        self.iter_pmf().map(|e| {
-            f64::from(e.value.clone()) * e.prob.exp()
-        }).fold(0.0f64, |s, e| s + e)
+        self.iter_pmf()
+            .map(|e| f64::from(e.value.clone()) * e.prob.exp())
+            .fold(0.0f64, |s, e| s + e)
     }
 
     /// Calculate variance.
     pub fn variance(&self) -> f64 {
         let ev = self.expected_value();
-        self.iter_pmf().map(|e| {
-                (f64::from(e.value.clone()) - ev).powi(2) * e.prob.exp()
-        }).fold(0.0, |s, e| s + e)
+        self.iter_pmf()
+            .map(|e| (f64::from(e.value.clone()) - ev).powi(2) * e.prob.exp())
+            .fold(0.0, |s, e| s + e)
     }
 
     /// Calculate standard deviation.
@@ -213,7 +238,9 @@ impl<T: Clone + Ord> CDF<T> where f64: From<T> {
     }
 }
 
-pub type CDFPMFIter<'a, T> = iter::Scan<slice::Iter<'a, Entry<T>>, LogProb, fn(&mut LogProb, &'a Entry<T>) -> Option<Entry<&'a T>>>;
+pub type CDFPMFIter<'a, T> = iter::Scan<slice::Iter<'a, Entry<T>>,
+                                        LogProb,
+                                        fn(&mut LogProb, &'a Entry<T>) -> Option<Entry<&'a T>>>;
 
 
 #[cfg(test)]
@@ -234,10 +261,14 @@ mod test {
         let cdf = CDF::from_pmf(pmf.clone());
         println!("{:?}", cdf);
         for e in pmf.iter().skip(2) {
-            assert_ulps_eq!(*e.prob, *cdf.get_pmf(&e.value).unwrap(), epsilon = 0.0000000000001);
+            assert_ulps_eq!(*e.prob,
+                            *cdf.get_pmf(&e.value).unwrap(),
+                            epsilon = 0.0000000000001);
         }
         assert_relative_eq!(*cdf.total_prob(), 1.0f64.ln());
-        assert_relative_eq!(*cdf.get(&NotNaN::new(1.0).unwrap()).unwrap(), 0.3f64.ln(), epsilon = 0.00000001);
+        assert_relative_eq!(*cdf.get(&NotNaN::new(1.0).unwrap()).unwrap(),
+                            0.3f64.ln(),
+                            epsilon = 0.00000001);
         let ci = cdf.credible_interval(0.95);
         assert_relative_eq!(**ci.start, 0.0);
         assert_relative_eq!(**ci.end, 7.0);

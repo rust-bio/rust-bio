@@ -39,8 +39,10 @@ use std::result::Result;
 use utils::TextSlice;
 
 
-/// Compute the Hamming distance between two strings with `hamming`. If returns the `Result<u32, &str>` type
-/// with the first element corresponding to the distance between two strings (a number of mismatches) and the second one to the error message
+/// Compute the Hamming distance between two strings with `hamming`.
+/// It returns the `Result<u32, &str>` type
+/// with the first element corresponding to the distance between two strings
+/// (a number of mismatches) and the second one to the error message
 /// when two strings are not of equal sizes.
 ///
 /// # Example
@@ -122,11 +124,7 @@ pub fn levenshtein(alpha: TextSlice, beta: TextSlice) -> u32 {
         columns[i_cur][0] = 1 + j as u32;
         for i in 1..columns[0].len() {
             columns[i_cur][i] = min(columns[i_prev][i - 1] +
-                                    if alpha[i - 1] == *item {
-                                        0
-                                    } else {
-                                        1
-                                    },
+                                    if alpha[i - 1] == *item { 0 } else { 1 },
                                     min(columns[i_cur][i - 1] + 1, columns[i_prev][i] + 1));
         }
 

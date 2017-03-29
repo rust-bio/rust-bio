@@ -128,10 +128,7 @@ impl BitEnc {
 
     /// Iterate over stored values (values will be unpacked into bytes).
     pub fn iter(&self) -> BitEncIter {
-        BitEncIter {
-            bitenc: self,
-            i: 0,
-        }
+        BitEncIter { bitenc: self, i: 0 }
     }
 
     /// Clear the sequence.

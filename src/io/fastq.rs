@@ -151,9 +151,9 @@ impl Record {
 
 
 impl fmt::Display for Record {
-	fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-		write!(f, "@{}\n{}\n+\n{}", self.header, self.seq, self.qual)
-	}
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "@{}\n{}\n+\n{}", self.header, self.seq, self.qual)
+    }
 }
 
 
@@ -263,9 +263,10 @@ IIIIIIJJJJJJ
     #[test]
     fn test_writer() {
         let mut writer = Writer::new(Vec::new());
-        writer.write("id", Some("desc"), b"ACCGTAGGCTGA", b"IIIIIIJJJJJJ")
-              .ok()
-              .expect("Expected successful write");
+        writer
+            .write("id", Some("desc"), b"ACCGTAGGCTGA", b"IIIIIIJJJJJJ")
+            .ok()
+            .expect("Expected successful write");
         writer.flush().ok().expect("Expected successful write");
         assert_eq!(writer.writer.get_ref(), &FASTQ_FILE);
     }
