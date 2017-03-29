@@ -6,8 +6,8 @@ extern crate bio;
 use bio::alphabets;
 use bio::data_structures::bwt::{bwt, less, Occ};
 use bio::data_structures::fmindex::{FMIndex, FMIndexable};
-use bio::data_structures::suffix_array::{suffix_array, SuffixArray};
-use test::{Bencher, black_box};
+use bio::data_structures::suffix_array::suffix_array;
+use test::Bencher;
 
 #[bench]
 fn search_index_seeds(b: &mut Bencher) {
@@ -25,8 +25,6 @@ fn search_index_seeds(b: &mut Bencher) {
         let seeds = (0..(sequence.len() + 1 - seed_length))
             .map(|i| (i, &sequence[i..i + seed_length]));
 
-        let mut locations = black_box(Vec::new());
-
         let mut loc_temp = Vec::new();
         for (offset, seed) in seeds {
             let interval = fmindex.backward_search(seed.iter());
@@ -34,8 +32,6 @@ fn search_index_seeds(b: &mut Bencher) {
             loc_temp.extend((interval.lower..interval.upper)
                 .map(|i| (sa[i], offset)));
         }
-
-        locations = loc_temp;
     });
 }
 

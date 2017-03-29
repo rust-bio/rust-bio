@@ -191,7 +191,7 @@ impl QGramIndex {
                 }
             }
         }
-        for (_, m) in diagonals.into_iter() {
+        for (_, m) in diagonals {
             matches.push(m);
         }
 

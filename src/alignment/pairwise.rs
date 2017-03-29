@@ -568,11 +568,11 @@ impl Traceback {
     }
 
     fn get(&self, i: usize, j: usize) -> &TracebackCell  {
-        self.matrix[i].get(j).unwrap()
+        &self.matrix[i][j]
     }
 
     fn get_mut(&mut self, i: usize, j: usize) -> &mut TracebackCell  {
-        self.matrix[i].get_mut(j).unwrap()
+        &mut self.matrix[i][j]
     }
 }
 
