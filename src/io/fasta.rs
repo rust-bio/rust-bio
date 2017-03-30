@@ -588,16 +588,12 @@ ATTGTTGTTTTA
             assert_eq!(record.desc(), descs[i]);
             assert_eq!(record.seq(), seqs[i]);
         }
-
-
-        // let record = records.ok().nth(1).unwrap();
     }
 
     #[test]
     fn test_indexed_reader() {
         let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE), FAI_FILE)
-            .ok()
-            .expect("Error reading index");
+            .unwrap();
 
         _test_indexed_reader(&mut reader)
     }
@@ -605,8 +601,7 @@ ATTGTTGTTTTA
     #[test]
     fn test_indexed_reader_crlf() {
         let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE_CRLF), FAI_FILE_CRLF)
-            .ok()
-            .expect("Error reading index");
+            .unwrap();
 
         _test_indexed_reader(&mut reader)
     }
@@ -615,79 +610,49 @@ ATTGTTGTTTTA
         let mut seq = Vec::new();
 
         // Test reading various substrings of the sequence
-        reader
-            .read("id", 1, 5, &mut seq)
-            .ok()
-            .expect("Error reading sequence.");
+        reader.read("id", 1, 5, &mut seq).unwrap();
         assert_eq!(seq, b"CCGT");
 
-        reader
-            .read("id", 1, 31, &mut seq)
-            .ok()
-            .expect("Error reading sequence.");
+        reader.read("id", 1, 31, &mut seq).unwrap();
         assert_eq!(seq, b"CCGTAGGCTGACCGTAGGCTGAACGTAGGC");
 
-        reader
-            .read("id", 13, 23, &mut seq)
-            .ok()
-            .expect("Error reading sequence.");
+        reader.read("id", 13, 23, &mut seq).unwrap();
         assert_eq!(seq, b"CGTAGGCTGA");
 
-        reader
-            .read("id", 36, 52, &mut seq)
-            .ok()
-            .expect("Error reading sequence.");
+        reader.read("id", 36, 52, &mut seq).unwrap();
         assert_eq!(seq, b"GTAGGCTGAAAACCCC");
 
-        reader
-            .read("id2", 12, 40, &mut seq)
-            .ok()
-            .expect("Error reading sequence.");
+        reader.read("id2", 12, 40, &mut seq).unwrap();
         assert_eq!(seq, b"ATTGTTGTTTTAATTGTTGTTTTAGGGG");
 
-        reader
-            .read("id2", 12, 12, &mut seq)
-            .ok()
-            .expect("Error reading sequence.");
+        reader.read("id2", 12, 12, &mut seq).unwrap();
         assert_eq!(seq, b"");
 
-        reader
-            .read("id2", 12, 13, &mut seq)
-            .ok()
-            .expect("Error reading sequence.");
+        reader.read("id2", 12, 13, &mut seq).unwrap();
         assert_eq!(seq, b"A");
 
         assert!(reader.read("id2", 12, 11, &mut seq).is_err());
         assert!(reader.read("id2", 12, 1000, &mut seq).is_err());
+        assert!(reader.read("id3", 0, 1, &mut seq).is_err());
     }
 
     #[test]
     fn test_indexed_reader_no_trailing_lf() {
         let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE_NO_TRAILING_LF),
                                             FAI_FILE_NO_TRAILING_LF)
-                .ok()
-                .expect("Error reading index");
+                .unwrap();
         let mut seq = Vec::new();
 
-        reader
-            .read("id", 0, 16, &mut seq)
-            .ok()
-            .expect("Error reading sequence.");
+        reader.read("id", 0, 16, &mut seq).unwrap();
         assert_eq!(seq, b"GTAGGCTGAAAACCCC");
     }
 
     #[test]
     fn test_writer() {
         let mut writer = Writer::new(Vec::new());
-        writer
-            .write("id", Some("desc"), b"ACCGTAGGCTGA")
-            .ok()
-            .expect("Expected successful write");
-        writer
-            .write("id2", None, b"ATTGTTGTTTTA")
-            .ok()
-            .expect("Expected successful write");
-        writer.flush().ok().expect("Expected successful write");
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
+        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
+        writer.flush().unwrap();
         assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
     }
 }
