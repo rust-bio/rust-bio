@@ -28,7 +28,7 @@ use std::convert::AsRef;
 
 use csv;
 
-use io::Strand;
+use utils::Strand;
 
 /// A BED reader.
 pub struct Reader<R: io::Read> {

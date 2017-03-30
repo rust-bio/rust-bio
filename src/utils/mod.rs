@@ -15,6 +15,27 @@ mod interval;
 pub use self::interval::{Interval, IntervalError};
 
 
+/// Strand information.
+#[derive(Debug, Clone, Copy)]
+pub enum Strand {
+    Forward,
+    Reverse,
+    Unknown,
+}
+
+
+impl PartialEq for Strand {
+    /// Returns true if both are `Forward` or both are `Reverse`, otherwise returns false.
+    fn eq(&self, other: &Strand) -> bool {
+        match (self, other) {
+            (&Strand::Forward, &Strand::Forward) => true,
+            (&Strand::Reverse, &Strand::Reverse) => true,
+            _ => false
+        }
+    }
+}
+
+
 /// In place implementation of scan over a slice.
 pub fn scan<T: Copy, F: Fn(T, T) -> T>(a: &mut [T], op: F) {
     let mut s = a[0];
