@@ -28,7 +28,7 @@ use regex::Regex;
 
 use csv;
 
-use io::Strand;
+use utils::Strand;
 
 /// `GffType`
 ///
@@ -328,7 +328,7 @@ impl Record {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use io::Strand;
+    use utils::Strand;
     use std::collections::HashMap;
 
     const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed,ID=test
