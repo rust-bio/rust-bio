@@ -199,6 +199,23 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         self.read_into_buffer(&idx, start, stop, seq)
     }
 
+
+    /// For a given seqname, return an iterator yielding that sequence.
+    pub fn read_iter_all(&mut self, seqname: &str)
+                -> io::Result<IndexedReaderIterator<R>> {
+        let idx = self.idx(seqname)?;
+
+       self.read_into_iter(idx, 0, idx.len)
+     }
+
+    /// Read the given interval of the given seqname into the given vector (stop position is exclusive).
+    pub fn read_iter(&mut self, seqname: &str, start: u64, stop: u64)
+                -> io::Result<IndexedReaderIterator<R>> {
+        let idx = self.idx(seqname)?;
+
+        self.read_into_iter(idx, start, stop)
+    }
+
     fn read_into_buffer(&mut self, idx: &IndexRecord, start: u64, stop: u64, seq: &mut Text) -> io::Result<()> {
         if stop > idx.len {
             return Err(io::Error::new(io::ErrorKind::Other,
@@ -220,6 +237,28 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         }
 
         Ok(())
+    }
+
+    fn read_into_iter(&mut self, idx: IndexRecord, start: u64, stop: u64)
+                -> io::Result<IndexedReaderIterator<R>> {
+        if stop > idx.len {
+            return Err(io::Error::new(io::ErrorKind::Other,
+                                      "FASTA read interval was out of bounds"));
+        } else if start > stop {
+            return Err(io::Error::new(io::ErrorKind::Other, "Invalid query interval"));
+        }
+
+        let line_offset = self.seek_to(&idx, start)?;
+
+        Ok(IndexedReaderIterator {
+            reader: self,
+            record: idx,
+            bases_left: stop - start,
+            line_offset: line_offset,
+            buf: vec![0u8; Self::buffer_size(&idx, stop - start, line_offset)],
+            buf_len: 0,
+            buf_idx: 0,
+        })
     }
 
     /// Return the IndexRecord for the given sequence name or io::Result::Err
@@ -303,6 +342,61 @@ struct IndexRecord {
 pub struct Sequence {
     pub name: String,
     pub len: u64,
+}
+
+
+pub struct IndexedReaderIterator<'a, R: io::Read + io::Seek + 'a> {
+    reader: &'a mut IndexedReader<R>,
+    record: IndexRecord,
+    bases_left: u64,
+    line_offset: u64,
+    buf: Vec<u8>,
+    buf_idx: usize,
+    buf_len: usize,
+}
+
+
+impl<'a, R: io::Read + io::Seek + 'a> IndexedReaderIterator<'a, R> {
+    fn fill_buffer(&mut self) -> io::Result<()> {
+        while self.buf_idx == self.buf_len {
+            let bases_read = self.reader.read_line(&self.record, &mut self.line_offset, self.bases_left, &mut self.buf)?;
+
+            self.buf_idx = 0;
+            self.buf_len = bases_read as usize;
+            self.bases_left -= bases_read;
+        }
+
+        Ok(())
+    }
+}
+
+
+impl<'a, R: io::Read + io::Seek + 'a> Iterator for IndexedReaderIterator<'a, R> {
+    type Item = io::Result<u8>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.buf_idx < self.buf_len {
+            let item = Some(Ok(self.buf[self.buf_idx]));
+            self.buf_idx += 1;
+            item
+        } else if self.bases_left > 0 {
+            if let Err(e) = self.fill_buffer() {
+                return Some(Err(e));
+            }
+
+            let item = Some(Ok(self.buf[self.buf_idx]));
+            self.buf_idx += 1;
+            item
+        } else {
+            None
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let hint = self.bases_left as usize + (self.buf_len - self.buf_idx);
+
+        (hint, Some(hint))
+    }
 }
 
 
