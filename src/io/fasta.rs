@@ -22,10 +22,15 @@ use std::collections;
 use std::fs;
 use std::path::Path;
 use std::convert::AsRef;
+use std::cmp::min;
 
 use csv;
 
 use utils::{TextSlice, Text};
+
+
+/// Maximum size of temporary buffer used for reading indexed FASTA files.
+const MAX_FASTA_BUFFER_SIZE: usize = 512;
 
 
 /// A FASTA reader.
@@ -204,7 +209,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
         let mut bases_left = stop - start;
         let mut line_offset = self.seek_to(&idx, start)?;
-        let mut buf = vec![0u8; idx.line_bytes as usize];
+        let mut buf = vec![0u8; Self::buffer_size(&idx, bases_left, line_offset)];
 
         seq.clear();
         while bases_left > 0 {
@@ -241,18 +246,45 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     /// Reads the remaining bases on the current line, but no more than bases_left
     /// nor any more than buf.len(). The actual number of bases read is returned.
     fn read_line(&mut self, idx: &IndexRecord, line_offset: &mut u64, bases_left: u64, buf: &mut [u8]) -> io::Result<u64> {
-        let bases_on_line = idx.line_bases - *line_offset;
+        let bases_on_line = idx.line_bases - min(idx.line_bases, *line_offset);
 
         let (bytes_to_read, bytes_to_keep) = if bases_on_line < bases_left {
-            (idx.line_bytes - *line_offset, bases_on_line)
+            let bytes_to_read = min(buf.len() as u64, idx.line_bytes - *line_offset);
+            let bytes_to_keep = min(bytes_to_read, bases_on_line);
+
+            (bytes_to_read, bytes_to_keep)
         } else {
-            (bases_left, bases_left)
+            let bytes_to_read = min(buf.len(), bases_left as usize) as u64;
+
+            (bytes_to_read, bytes_to_read)
         };
 
         self.reader.read_exact(&mut buf[..bytes_to_read as usize])?;
 
-        *line_offset = 0;
+        *line_offset += bytes_to_read;
+        if *line_offset >= idx.line_bytes {
+            *line_offset = 0;
+        }
+
         Ok(bytes_to_keep)
+    }
+
+    /// Returns the buffer size to use. The calculation favors using up to the
+    /// maximum number of bytes allowed, in order to prevent having to perform
+    /// more than one read per line.
+    fn buffer_size(idx: &IndexRecord, length: u64, line_offset: u64) -> usize {
+        let buffer_size = if length < idx.line_bytes {
+            if length + line_offset > idx.line_bases && length + line_offset < idx.line_bytes {
+                // Ensure that we can read the first line in one go
+                idx.line_bytes - line_offset
+            } else {
+                length
+            }
+        } else {
+            idx.line_bytes
+        };
+
+        min(MAX_FASTA_BUFFER_SIZE, buffer_size as usize)
     }
 }
 
