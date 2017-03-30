@@ -27,6 +27,7 @@ use csv;
 
 use utils::{TextSlice, Text};
 
+
 /// A FASTA reader.
 pub struct Reader<R: io::Read> {
     reader: io::BufReader<R>,
@@ -181,55 +182,77 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
     /// For a given seqname, read the whole sequence into the given vector.
     pub fn read_all(&mut self, seqname: &str, seq: &mut Text) -> io::Result<()> {
-        match self.index.inner.get(seqname) {
-            Some(&idx) => self.read(seqname, 0, idx.len, seq),
-            None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
-        }
+        let idx = self.idx(seqname)?;
+
+        self.read_into_buffer(&idx, 0, idx.len, seq)
     }
 
     /// Read the given interval of the given seqname into the given vector (stop position is exclusive).
     pub fn read(&mut self, seqname: &str, start: u64, stop: u64, seq: &mut Text) -> io::Result<()> {
-        if let Some(idx) = self.index.inner.get(seqname) {
-            seq.clear();
+        let idx = self.idx(seqname)?;
 
-            if stop > idx.len {
-                return Err(io::Error::new(io::ErrorKind::Other,
-                                          "FASTA read interval was out of bounds"));
-            }
+        self.read_into_buffer(&idx, start, stop, seq)
+    }
 
-            if start > stop {
-                return Err(io::Error::new(io::ErrorKind::Other, "Invalid query interval"));
-            }
-
-            let mut line_offset = start % idx.line_bases;
-            let line_start = start / idx.line_bases * idx.line_bytes;
-            let offset = idx.offset + line_start + line_offset;
-            try!(self.reader.seek(io::SeekFrom::Start(offset)));
-
-            let length = stop - start as u64;
-            let mut buf = vec![0u8; idx.line_bytes as usize];
-
-            while (seq.len() as u64) < length {
-                let bases_left = length - seq.len() as u64;
-                let bases_on_line = idx.line_bases - line_offset;
-
-                let (bytes_to_read, bytes_to_keep) = if bases_on_line < bases_left {
-                    (idx.line_bytes - line_offset, bases_on_line)
-                } else {
-                    (bases_left, bases_left)
-                };
-
-                try!(self.reader
-                         .read_exact(&mut buf[..bytes_to_read as usize]));
-                seq.extend_from_slice(&buf[..bytes_to_keep as usize]);
-
-                line_offset = 0;
-            }
-
-            Ok(())
-        } else {
-            Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name."))
+    fn read_into_buffer(&mut self, idx: &IndexRecord, start: u64, stop: u64, seq: &mut Text) -> io::Result<()> {
+        if stop > idx.len {
+            return Err(io::Error::new(io::ErrorKind::Other,
+                                      "FASTA read interval was out of bounds"));
+        } else if start > stop {
+            return Err(io::Error::new(io::ErrorKind::Other, "Invalid query interval"));
         }
+
+        let mut bases_left = stop - start;
+        let mut line_offset = self.seek_to(&idx, start)?;
+        let mut buf = vec![0u8; idx.line_bytes as usize];
+
+        seq.clear();
+        while bases_left > 0 {
+            let bases_read = self.read_line(&idx, &mut line_offset, bases_left, &mut buf)?;
+
+            seq.extend_from_slice(&buf[..bases_read as usize]);
+            bases_left -= bases_read;
+        }
+
+        Ok(())
+    }
+
+    /// Return the IndexRecord for the given sequence name or io::Result::Err
+    fn idx(&self, seqname: &str) -> io::Result<IndexRecord> {
+        match self.index.inner.get(seqname) {
+            Some(idx) => Ok(idx.clone()),
+            None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
+        }
+    }
+
+    /// Seek to the given position in the specified FASTA record. The position
+    /// of the cursor on the line that the seek ended on is returned.
+    fn seek_to(&mut self, idx: &IndexRecord, start: u64) -> io::Result<u64> {
+        assert!(start <= idx.len);
+
+        let line_offset = start % idx.line_bases;
+        let line_start = start / idx.line_bases * idx.line_bytes;
+        let offset = idx.offset + line_start + line_offset;
+        try!(self.reader.seek(io::SeekFrom::Start(offset)));
+
+        Ok(line_offset)
+    }
+
+    /// Reads the remaining bases on the current line, but no more than bases_left
+    /// nor any more than buf.len(). The actual number of bases read is returned.
+    fn read_line(&mut self, idx: &IndexRecord, line_offset: &mut u64, bases_left: u64, buf: &mut [u8]) -> io::Result<u64> {
+        let bases_on_line = idx.line_bases - *line_offset;
+
+        let (bytes_to_read, bytes_to_keep) = if bases_on_line < bases_left {
+            (idx.line_bytes - *line_offset, bases_on_line)
+        } else {
+            (bases_left, bases_left)
+        };
+
+        self.reader.read_exact(&mut buf[..bytes_to_read as usize])?;
+
+        *line_offset = 0;
+        Ok(bytes_to_keep)
     }
 }
 
