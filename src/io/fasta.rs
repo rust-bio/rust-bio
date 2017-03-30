@@ -120,15 +120,8 @@ impl Index {
 
     /// Open a FASTA index given the corresponding FASTA file path (e.g. for ref.fasta we expect ref.fasta.fai).
     pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> csv::Result<Self> {
-        let mut ext = fasta_path
-            .as_ref()
-            .extension()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_owned();
-        ext.push_str(".fai");
-        let fai_path = fasta_path.as_ref().with_extension(ext);
+        let mut fai_path = fasta_path.as_ref().as_os_str().to_owned();
+        fai_path.push(".fai");
 
         Self::from_file(&fai_path)
     }
