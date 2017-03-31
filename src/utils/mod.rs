@@ -35,6 +35,41 @@ impl PartialEq for Strand {
     }
 }
 
+impl Strand {
+
+    /// Returns a `Strand` enum representing the given char.
+    ///
+    /// The mapping is as follows:
+    ///     * '+', 'f', or 'F' becomes `Strand::Forward`
+    ///     * '-', 'r', or 'R' becomes `Strand::Forward`
+    ///     * '.', '?' becomes `Strand::Forward`
+    ///     * Any other inputs will return an `Err(Error::InvalidStrandChar)`
+    pub fn from_char(strand_char: &char) -> Result<Strand, Error> {
+        match *strand_char {
+            '+' | 'f' | 'F' => Ok(Strand::Forward),
+            '-' | 'r' | 'R' => Ok(Strand::Reverse),
+            '.' | '?'  => Ok(Strand::Unknown),
+            invalid => Err(Error::InvalidStrandChar(invalid)),
+        }
+    }
+
+    pub fn is_unknown(&self) -> bool {
+        match self {
+            &Strand::Unknown => true,
+            _ => false,
+        }
+    }
+}
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum Error {
+        InvalidStrandChar(invalid_char: char) {
+            description("invalid character for strand conversion")
+            display("character {:?} can not be converted to a Strand", invalid_char)
+        }
+    }
+}
 
 /// In place implementation of scan over a slice.
 pub fn scan<T: Copy, F: Fn(T, T) -> T>(a: &mut [T], op: F) {
@@ -72,5 +107,13 @@ mod tests {
         let mut a = vec![1, 0, 0, 1];
         prescan(&mut a[..], 0, |a, b| a + b);
         assert_eq!(a, vec![0, 1, 1, 1]);
+    }
+
+    #[test]
+    fn test_strand() {
+        assert_eq!(Strand::from_char(&'+').unwrap(), Strand::Forward);
+        assert_eq!(Strand::from_char(&'-').unwrap(), Strand::Reverse);
+        assert!(Strand::from_char(&'.').unwrap().is_unknown());
+        assert!(Strand::from_char(&'o').is_err());
     }
 }
