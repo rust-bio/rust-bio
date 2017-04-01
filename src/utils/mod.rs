@@ -41,8 +41,8 @@ impl Strand {
     ///
     /// The mapping is as follows:
     ///     * '+', 'f', or 'F' becomes `Strand::Forward`
-    ///     * '-', 'r', or 'R' becomes `Strand::Forward`
-    ///     * '.', '?' becomes `Strand::Forward`
+    ///     * '-', 'r', or 'R' becomes `Strand::Reverse`
+    ///     * '.', '?' becomes `Strand::Unknown`
     ///     * Any other inputs will return an `Err(Error::InvalidStrandChar)`
     pub fn from_char(strand_char: &char) -> Result<Strand, Error> {
         match *strand_char {
