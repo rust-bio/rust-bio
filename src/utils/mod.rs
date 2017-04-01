@@ -43,13 +43,13 @@ impl Strand {
     ///     * '+', 'f', or 'F' becomes `Strand::Forward`
     ///     * '-', 'r', or 'R' becomes `Strand::Reverse`
     ///     * '.', '?' becomes `Strand::Unknown`
-    ///     * Any other inputs will return an `Err(Error::InvalidStrandChar)`
-    pub fn from_char(strand_char: &char) -> Result<Strand, Error> {
+    ///     * Any other inputs will return an `Err(StrandError::InvalidChar)`
+    pub fn from_char(strand_char: &char) -> Result<Strand, StrandError> {
         match *strand_char {
             '+' | 'f' | 'F' => Ok(Strand::Forward),
             '-' | 'r' | 'R' => Ok(Strand::Reverse),
             '.' | '?'  => Ok(Strand::Unknown),
-            invalid => Err(Error::InvalidStrandChar(invalid)),
+            invalid => Err(StrandError::InvalidChar(invalid)),
         }
     }
 
@@ -63,8 +63,8 @@ impl Strand {
 
 quick_error! {
     #[derive(Debug)]
-    pub enum Error {
-        InvalidStrandChar(invalid_char: char) {
+    pub enum StrandError {
+        InvalidChar(invalid_char: char) {
             description("invalid character for strand conversion")
             display("character {:?} can not be converted to a Strand", invalid_char)
         }
