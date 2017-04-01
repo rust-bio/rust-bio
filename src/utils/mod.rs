@@ -54,9 +54,10 @@ impl Strand {
     }
 
     pub fn is_unknown(&self) -> bool {
-        match self {
-            &Strand::Unknown => true,
-            _ => false,
+        if let &Strand::Unknown = self {
+            true
+        } else {
+            false
         }
     }
 }
