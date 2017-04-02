@@ -201,8 +201,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
 
     /// For a given seqname, return an iterator yielding that sequence.
-    pub fn read_iter_all(&mut self, seqname: &str)
-                -> io::Result<IndexedReaderIterator<R>> {
+    pub fn read_all_iter(&mut self, seqname: &str) -> io::Result<IndexedReaderIterator<R>> {
         let idx = self.idx(seqname)?;
 
        self.read_into_iter(idx, 0, idx.len)
