@@ -124,7 +124,8 @@ impl Index {
         }
     }
 
-    /// Open a FASTA index given the corresponding FASTA file path (e.g. for ref.fasta we expect ref.fasta.fai).
+    /// Open a FASTA index given the corresponding FASTA file path.
+    /// That is, for ref.fasta we expect ref.fasta.fai.
     pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> csv::Result<Self> {
         let mut fai_path = fasta_path.as_ref().as_os_str().to_owned();
         fai_path.push(".fai");
@@ -155,7 +156,8 @@ pub struct IndexedReader<R: io::Read + io::Seek> {
 
 
 impl IndexedReader<fs::File> {
-    /// Read from a given file path. This assumes the index ref.fasta.fai to be present for FASTA ref.fasta.
+    /// Read from a given file path. This assumes the index ref.fasta.fai to be
+    /// present for FASTA ref.fasta.
     pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
         let index = try!(Index::with_fasta_file(path));
 
@@ -168,7 +170,8 @@ impl IndexedReader<fs::File> {
 
 
 impl<R: io::Read + io::Seek> IndexedReader<R> {
-    /// Read from a FASTA and its index, both given as `io::Read`. FASTA has to be `io::Seek` in addition.
+    /// Read from a FASTA and its index, both given as `io::Read`. FASTA has to
+    /// be `io::Seek` in addition.
     pub fn new<I: io::Read>(fasta: R, fai: I) -> csv::Result<Self> {
         let index = try!(Index::new(fai));
         Ok(IndexedReader {
@@ -177,7 +180,8 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
            })
     }
 
-    /// Read from a FASTA and its index, the first given as `io::Read`, the second given as index object.
+    /// Read from a FASTA and its index, the first given as `io::Read`, the
+    /// second given as index object.
     pub fn with_index(fasta: R, index: Index) -> Self {
         IndexedReader {
             reader: io::BufReader::new(fasta),
@@ -189,14 +193,15 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     pub fn read_all(&mut self, seqname: &str, seq: &mut Text) -> io::Result<()> {
         let idx = self.idx(seqname)?;
 
-        self.read_into_buffer(&idx, 0, idx.len, seq)
+        self.read_into_buffer(idx, 0, idx.len, seq)
     }
 
-    /// Read the given interval of the given seqname into the given vector (stop position is exclusive).
+    /// Read the given interval of the given seqname into the given vector
+    /// (stop position is exclusive).
     pub fn read(&mut self, seqname: &str, start: u64, stop: u64, seq: &mut Text) -> io::Result<()> {
         let idx = self.idx(seqname)?;
 
-        self.read_into_buffer(&idx, start, stop, seq)
+        self.read_into_buffer(idx, start, stop, seq)
     }
 
 
@@ -204,18 +209,27 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     pub fn read_all_iter(&mut self, seqname: &str) -> io::Result<IndexedReaderIterator<R>> {
         let idx = self.idx(seqname)?;
 
-       self.read_into_iter(idx, 0, idx.len)
-     }
+        self.read_into_iter(idx, 0, idx.len)
+    }
 
-    /// Read the given interval of the given seqname into the given vector (stop position is exclusive).
-    pub fn read_iter(&mut self, seqname: &str, start: u64, stop: u64)
-                -> io::Result<IndexedReaderIterator<R>> {
+    /// For a given seqname and a given range in that sequence, return an
+    /// iterator yielding the corresponding sequence.
+    pub fn read_iter(&mut self,
+                     seqname: &str,
+                     start: u64,
+                     stop: u64)
+                     -> io::Result<IndexedReaderIterator<R>> {
         let idx = self.idx(seqname)?;
 
         self.read_into_iter(idx, start, stop)
     }
 
-    fn read_into_buffer(&mut self, idx: &IndexRecord, start: u64, stop: u64, seq: &mut Text) -> io::Result<()> {
+    fn read_into_buffer(&mut self,
+                        idx: IndexRecord,
+                        start: u64,
+                        stop: u64,
+                        seq: &mut Text)
+                        -> io::Result<()> {
         if stop > idx.len {
             return Err(io::Error::new(io::ErrorKind::Other,
                                       "FASTA read interval was out of bounds"));
@@ -238,8 +252,11 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         Ok(())
     }
 
-    fn read_into_iter(&mut self, idx: IndexRecord, start: u64, stop: u64)
-                -> io::Result<IndexedReaderIterator<R>> {
+    fn read_into_iter(&mut self,
+                      idx: IndexRecord,
+                      start: u64,
+                      stop: u64)
+                      -> io::Result<IndexedReaderIterator<R>> {
         if stop > idx.len {
             return Err(io::Error::new(io::ErrorKind::Other,
                                       "FASTA read interval was out of bounds"));
@@ -250,14 +267,14 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         let line_offset = self.seek_to(&idx, start)?;
 
         Ok(IndexedReaderIterator {
-            reader: self,
-            record: idx,
-            bases_left: stop - start,
-            line_offset: line_offset,
-            buf: vec![0u8; Self::buffer_size(&idx, stop - start, line_offset)],
-            buf_len: 0,
-            buf_idx: 0,
-        })
+               reader: self,
+               record: idx,
+               bases_left: stop - start,
+               line_offset: line_offset,
+               buf: vec![0u8; Self::buffer_size(&idx, stop - start, line_offset)],
+               buf_len: 0,
+               buf_idx: 0,
+           })
     }
 
     /// Return the IndexRecord for the given sequence name or io::Result::Err
@@ -283,7 +300,12 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
     /// Reads the remaining bases on the current line, but no more than bases_left
     /// nor any more than buf.len(). The actual number of bases read is returned.
-    fn read_line(&mut self, idx: &IndexRecord, line_offset: &mut u64, bases_left: u64, buf: &mut [u8]) -> io::Result<u64> {
+    fn read_line(&mut self,
+                 idx: &IndexRecord,
+                 line_offset: &mut u64,
+                 bases_left: u64,
+                 buf: &mut [u8])
+                 -> io::Result<u64> {
         let bases_on_line = idx.line_bases - min(idx.line_bases, *line_offset);
 
         let (bytes_to_read, bytes_to_keep) = if bases_on_line < bases_left {
@@ -297,7 +319,8 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
             (bytes_to_read, bytes_to_read)
         };
 
-        self.reader.read_exact(&mut buf[..bytes_to_read as usize])?;
+        self.reader
+            .read_exact(&mut buf[..bytes_to_read as usize])?;
 
         *line_offset += bytes_to_read;
         if *line_offset >= idx.line_bytes {
@@ -358,8 +381,14 @@ pub struct IndexedReaderIterator<'a, R: io::Read + io::Seek + 'a> {
 
 impl<'a, R: io::Read + io::Seek + 'a> IndexedReaderIterator<'a, R> {
     fn fill_buffer(&mut self) -> io::Result<()> {
-        while self.buf_idx == self.buf_len {
-            let bases_read = self.reader.read_line(&self.record, &mut self.line_offset, self.bases_left, &mut self.buf)?;
+        assert!(self.bases_left > 0);
+
+        while self.buf_idx >= self.buf_len {
+            let bases_read = self.reader
+                .read_line(&self.record,
+                           &mut self.line_offset,
+                           self.bases_left,
+                           &mut self.buf)?;
 
             self.buf_idx = 0;
             self.buf_len = bases_read as usize;
@@ -384,9 +413,8 @@ impl<'a, R: io::Read + io::Seek + 'a> Iterator for IndexedReaderIterator<'a, R> 
                 return Some(Err(e));
             }
 
-            let item = Some(Ok(self.buf[self.buf_idx]));
-            self.buf_idx += 1;
-            item
+            self.buf_idx = 1;
+            Some(Ok(self.buf[0]))
         } else {
             None
         }
@@ -611,7 +639,7 @@ ATTGTTGTTTTA
                                 b"ATTGTTGTTTTAATTGTTGTTTTAATTGTTGTTTTAGGGG"];
 
         for (i, r) in reader.records().enumerate() {
-            let record = r.ok().expect("Error reading record");
+            let record = r.expect("Error reading record");
             assert_eq!(record.check(), Ok(()));
             assert_eq!(record.id(), ids[i]);
             assert_eq!(record.desc(), descs[i]);
