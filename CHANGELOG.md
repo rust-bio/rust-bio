@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.12.0] - 2017-04-03
+### Changed
+- Improved distance API.
+- Moved Strand into utils.
+- More robust gff/gtf parsing.
+
+
 ## [0.11.0] - 2017-02-16
 ### Changed
 - Improved IntervalTree API.
