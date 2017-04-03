@@ -35,6 +35,7 @@ impl PartialEq for Strand {
     }
 }
 
+
 impl Strand {
 
     /// Returns a `Strand` enum representing the given char.
@@ -62,6 +63,7 @@ impl Strand {
     }
 }
 
+
 quick_error! {
     #[derive(Debug)]
     pub enum StrandError {
@@ -71,6 +73,7 @@ quick_error! {
         }
     }
 }
+
 
 /// In place implementation of scan over a slice.
 pub fn scan<T: Copy, F: Fn(T, T) -> T>(a: &mut [T], op: F) {
