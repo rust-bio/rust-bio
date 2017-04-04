@@ -304,6 +304,11 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
                  -> io::Result<u64> {
         let (bytes_to_read, bytes_to_keep) = {
             let src = self.reader.fill_buf()?;
+            if src.is_empty() {
+                return Err(io::Error::new(io::ErrorKind::UnexpectedEof,
+                                          "FASTA file is truncated."));
+            }
+
             let bases_on_line = idx.line_bases - min(idx.line_bases, *line_offset);
             let bases_in_buffer = min(src.len() as u64, bases_on_line);
 
