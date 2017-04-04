@@ -239,14 +239,10 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
         let mut bases_left = stop - start;
         let mut line_offset = self.seek_to(&idx, start)?;
-        let mut buf = vec![0u8; Self::buffer_size(&idx, bases_left, line_offset)];
 
         seq.clear();
         while bases_left > 0 {
-            let bases_read = self.read_line(&idx, &mut line_offset, bases_left, &mut buf)?;
-
-            seq.extend_from_slice(&buf[..bases_read as usize]);
-            bases_left -= bases_read;
+            bases_left -= self.read_line(&idx, &mut line_offset, bases_left, seq)?;
         }
 
         Ok(())
@@ -265,14 +261,14 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         }
 
         let line_offset = self.seek_to(&idx, start)?;
+        let capacity = Self::buffer_size(&idx, stop - start, line_offset);
 
         Ok(IndexedReaderIterator {
                reader: self,
                record: idx,
                bases_left: stop - start,
                line_offset: line_offset,
-               buf: vec![0u8; Self::buffer_size(&idx, stop - start, line_offset)],
-               buf_len: 0,
+               buf: Vec::with_capacity(capacity),
                buf_idx: 0,
            })
     }
@@ -304,23 +300,26 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
                  idx: &IndexRecord,
                  line_offset: &mut u64,
                  bases_left: u64,
-                 buf: &mut [u8])
+                 buf: &mut Vec<u8>)
                  -> io::Result<u64> {
-        let bases_on_line = idx.line_bases - min(idx.line_bases, *line_offset);
+        let (bytes_to_read, bytes_to_keep) = {
+            let src = self.reader.fill_buf()?;
+            let bases_on_line = idx.line_bases - min(idx.line_bases, *line_offset);
+            let bases_in_buffer = min(src.len() as u64, bases_on_line);
 
-        let (bytes_to_read, bytes_to_keep) = if bases_on_line < bases_left {
-            let bytes_to_read = min(buf.len() as u64, idx.line_bytes - *line_offset);
-            let bytes_to_keep = min(bytes_to_read, bases_on_line);
+            let (bytes_to_read, bytes_to_keep) = if bases_in_buffer < bases_left {
+                let bytes_to_read = min(src.len() as u64, idx.line_bytes - *line_offset);
 
+                (bytes_to_read, bases_in_buffer)
+            } else {
+                (bases_left, bases_left)
+            };
+
+            buf.extend_from_slice(&src[..bytes_to_keep as usize]);
             (bytes_to_read, bytes_to_keep)
-        } else {
-            let bytes_to_read = min(buf.len(), bases_left as usize) as u64;
-
-            (bytes_to_read, bytes_to_read)
         };
 
-        self.reader
-            .read_exact(&mut buf[..bytes_to_read as usize])?;
+        self.reader.consume(bytes_to_read as usize);
 
         *line_offset += bytes_to_read;
         if *line_offset >= idx.line_bytes {
@@ -375,7 +374,6 @@ pub struct IndexedReaderIterator<'a, R: io::Read + io::Seek + 'a> {
     line_offset: u64,
     buf: Vec<u8>,
     buf_idx: usize,
-    buf_len: usize,
 }
 
 
@@ -383,18 +381,19 @@ impl<'a, R: io::Read + io::Seek + 'a> IndexedReaderIterator<'a, R> {
     fn fill_buffer(&mut self) -> io::Result<()> {
         assert!(self.bases_left > 0);
 
-        while self.buf_idx >= self.buf_len {
-            let bases_read = self.reader
+        self.buf.clear();
+        let bases_to_read = min(self.buf.capacity() as u64, self.bases_left);
+
+        while self.buf.is_empty() {
+            self.bases_left -= self.reader
                 .read_line(&self.record,
                            &mut self.line_offset,
-                           self.bases_left,
+                           bases_to_read,
                            &mut self.buf)?;
 
-            self.buf_idx = 0;
-            self.buf_len = bases_read as usize;
-            self.bases_left -= bases_read;
         }
 
+        self.buf_idx = 0;
         Ok(())
     }
 }
@@ -404,7 +403,7 @@ impl<'a, R: io::Read + io::Seek + 'a> Iterator for IndexedReaderIterator<'a, R> 
     type Item = io::Result<u8>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.buf_idx < self.buf_len {
+        if self.buf_idx < self.buf.len() {
             let item = Some(Ok(self.buf[self.buf_idx]));
             self.buf_idx += 1;
             item
@@ -421,7 +420,7 @@ impl<'a, R: io::Read + io::Seek + 'a> Iterator for IndexedReaderIterator<'a, R> 
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let hint = self.bases_left as usize + (self.buf_len - self.buf_idx);
+        let hint = self.bases_left as usize + (self.buf.len() - self.buf_idx);
 
         (hint, Some(hint))
     }
