@@ -294,8 +294,11 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         Ok(line_offset)
     }
 
-    /// Reads the remaining bases on the current line, but no more than bases_left
-    /// nor any more than buf.len(). The actual number of bases read is returned.
+    /// Tries to read up to `bases_left` bases from the current line into `buf`,
+    /// returning the actual number of bases read. Depending on the amount of
+    /// whitespace per line, the current `line_offset`, and the amount of bytes
+    /// returned from `BufReader::fill_buf`, this function may return Ok(0)
+    /// multiple times in a row.
     fn read_line(&mut self,
                  idx: &IndexRecord,
                  line_offset: &mut u64,
@@ -390,13 +393,13 @@ impl<'a, R: io::Read + io::Seek + 'a> IndexedReaderIterator<'a, R> {
         self.buf.clear();
         let bases_to_read = min(self.buf.capacity() as u64, self.bases_left);
 
+        // May loop one or more times; see IndexedReader::read_line.
         while self.buf.is_empty() {
             self.bases_left -= self.reader
                 .read_line(&self.record,
                            &mut self.line_offset,
                            bases_to_read,
                            &mut self.buf)?;
-
         }
 
         self.buf_idx = 0;
