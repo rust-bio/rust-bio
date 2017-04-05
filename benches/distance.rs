@@ -272,14 +272,14 @@ GCCGCGCGCGCGGGGCCGGGCCGCGCGCGCGCCGGGCCGCCGGCGGGGCGCGGCC";
 #[bench]
 fn bench_hamming_dist_equal_str_1000iter(b: &mut Bencher) {
     b.iter(|| for _ in 0..1000 {
-               hamming(STR_1, STR_1).unwrap();
+               hamming(STR_1, STR_1);
            });
 }
 
 #[bench]
 fn bench_hamming_dist_diverse_str_1000iter(b: &mut Bencher) {
     b.iter(|| for _ in 0..1000 {
-               hamming(STR_1, STR_2).unwrap();
+               hamming(STR_1, STR_2);
            });
 }
 
