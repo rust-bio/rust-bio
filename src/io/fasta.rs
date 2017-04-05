@@ -260,13 +260,15 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
             return Err(io::Error::new(io::ErrorKind::Other, "Invalid query interval"));
         }
 
+        let bases_left = stop - start;
         let line_offset = self.seek_to(&idx, start)?;
-        let capacity = Self::buffer_size(&idx, stop - start, line_offset);
+        let capacity = min(MAX_FASTA_BUFFER_SIZE,
+                           min(bases_left, idx.line_bases) as usize);
 
         Ok(IndexedReaderIterator {
                reader: self,
                record: idx,
-               bases_left: stop - start,
+               bases_left: bases_left,
                line_offset: line_offset,
                buf: Vec::with_capacity(capacity),
                buf_idx: 0,
@@ -336,24 +338,6 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         }
 
         Ok(bytes_to_keep)
-    }
-
-    /// Returns the buffer size to use. The calculation favors using up to the
-    /// maximum number of bytes allowed, in order to prevent having to perform
-    /// more than one read per line.
-    fn buffer_size(idx: &IndexRecord, length: u64, line_offset: u64) -> usize {
-        let buffer_size = if length < idx.line_bytes {
-            if length + line_offset > idx.line_bases && length + line_offset < idx.line_bytes {
-                // Ensure that we can read the first line in one go
-                idx.line_bytes - line_offset
-            } else {
-                length
-            }
-        } else {
-            idx.line_bytes
-        };
-
-        min(MAX_FASTA_BUFFER_SIZE, buffer_size as usize)
     }
 }
 
