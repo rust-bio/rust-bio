@@ -317,7 +317,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
             let bases_on_line = idx.line_bases - min(idx.line_bases, *line_offset);
             let bases_in_buffer = min(src.len() as u64, bases_on_line);
 
-            let (bytes_to_read, bytes_to_keep) = if bases_in_buffer < bases_left {
+            let (bytes_to_read, bytes_to_keep) = if bases_in_buffer <= bases_left {
                 let bytes_to_read = min(src.len() as u64, idx.line_bytes - *line_offset);
 
                 (bytes_to_read, bases_in_buffer)
@@ -663,6 +663,7 @@ ATTGTTGTTTTA
     fn test_indexed_reader() {
         _test_indexed_reader(&FASTA_FILE, &FAI_FILE, _read_buffer);
         _test_indexed_reader_truncated(_read_buffer);
+        _test_indexed_reader_extreme_whitespace(_read_buffer);
     }
 
     #[test]
@@ -674,6 +675,7 @@ ATTGTTGTTTTA
     fn test_indexed_reader_iter() {
         _test_indexed_reader(&FASTA_FILE, &FAI_FILE, _read_iter);
         _test_indexed_reader_truncated(_read_iter);
+        _test_indexed_reader_extreme_whitespace(_read_iter);
     }
 
     #[test]
@@ -714,6 +716,24 @@ ATTGTTGTTTTA
         assert!(read(&mut reader, "id", 0, 13).is_err()); // read past EOF
         assert!(read(&mut reader, "id", 36, 52).is_err()); // seek and read past EOF
         assert!(read(&mut reader, "id2", 12, 40).is_err()); // seek and read past EOF
+    }
+
+    fn _test_indexed_reader_extreme_whitespace<'a, F>(read: F)
+        where F: Fn(&mut IndexedReader<io::Cursor<Vec<u8>>>, &str, u64, u64) -> io::Result<Vec<u8>>
+    {
+        // Test to exercise the case where we cannot consume all whitespace at once. More than
+        // DEFAULT_BUF_SIZE (a non-public constant set to 8 * 1024) whitespace is used to ensure
+        // that it can't all fit in the BufReader at once.
+        let mut seq = Vec::new();
+        seq.push(b'A');
+        seq.resize(10000, b' ');
+        seq.push(b'B');
+
+        let fasta = io::Cursor::new(seq);
+        let fai = io::Cursor::new(Vec::from(&b"id\t2\t0\t1\t10000"[..]));
+        let mut reader = IndexedReader::new(fasta, fai).unwrap();
+
+        assert_eq!(read(&mut reader, "id", 0, 2).unwrap(), b"AB");
     }
 
     fn _read_buffer<T>(reader: &mut IndexedReader<T>,
