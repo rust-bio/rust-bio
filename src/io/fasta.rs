@@ -326,6 +326,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
         self.reader.consume(bytes_to_read as usize);
 
+        assert!(bytes_to_read > 0);
         *line_offset += bytes_to_read;
         if *line_offset >= idx.line_bytes {
             *line_offset = 0;
@@ -577,6 +578,8 @@ GGGG
 id2\t40\t71\t12\t13
 ";
 
+    const TRUNCATED_FASTA: &'static [u8] = b">id desc\nACCGTAGGCTGA";
+
     const FASTA_FILE_CRLF: &'static [u8] = b">id desc\r
 ACCGTAGGCTGA\r
 CCGTAGGCTGAA\r
@@ -672,6 +675,7 @@ ATTGTTGTTTTA
     #[test]
     fn test_indexed_reader() {
         _test_indexed_reader(&FASTA_FILE, &FAI_FILE, _read_buffer);
+        _test_indexed_reader_truncated(_read_buffer);
     }
 
     #[test]
@@ -682,6 +686,7 @@ ATTGTTGTTTTA
     #[test]
     fn test_indexed_reader_iter() {
         _test_indexed_reader(&FASTA_FILE, &FAI_FILE, _read_iter);
+        _test_indexed_reader_truncated(_read_iter);
     }
 
     #[test]
@@ -711,6 +716,17 @@ ATTGTTGTTTTA
         assert!(read(&mut reader, "id2", 12, 11).is_err());
         assert!(read(&mut reader, "id2", 12, 1000).is_err());
         assert!(read(&mut reader, "id3", 0, 1).is_err());
+    }
+
+    fn _test_indexed_reader_truncated<'a, F>(read: F)
+        where F: Fn(&mut IndexedReader<io::Cursor<&'a [u8]>>, &str, u64, u64) -> io::Result<Vec<u8>>
+    {
+        let mut reader = IndexedReader::new(io::Cursor::new(TRUNCATED_FASTA), FAI_FILE).unwrap();
+
+        assert_eq!(read(&mut reader, "id", 0, 12).unwrap(), b"ACCGTAGGCTGA");
+        assert!(read(&mut reader, "id", 0, 13).is_err()); // read past EOF
+        assert!(read(&mut reader, "id", 36, 52).is_err()); // seek and read past EOF
+        assert!(read(&mut reader, "id2", 12, 40).is_err()); // seek and read past EOF
     }
 
     fn _read_buffer<T>(reader: &mut IndexedReader<T>,
