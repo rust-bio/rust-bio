@@ -101,7 +101,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D>
 }
 
 /// A `find_mut` query on the interval tree does not directly return references to the nodes in the tree, but
-/// wraps the fields `interval` and `data` in an `EntryMut`. Only the data part can be mutable accessed
+/// wraps the fields `interval` and `data` in an `EntryMut`. Only the data part can be mutably accessed
 /// using the `data` method
 #[derive(PartialEq, Eq, Debug)]
 pub struct EntryMut<'a, N: Ord + Clone + 'a, D: 'a> {
