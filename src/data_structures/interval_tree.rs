@@ -391,31 +391,20 @@ mod tests {
             reached_maximum = true;
         }
         if let Some(ref son) = node.left {
-            if !(son.max <= node.max) {
-                panic!("left max invariant violated:\n{:?} -> {:?}", node, son);
-            }
-            if !(son.interval.start <= node.interval.start) {
-                panic!("left ord invariant violated\n{:?} -> {:?}", node, son);
-            }
+            assert!(son.max <= node.max, "left max invariant violated:\n{:?} -> {:?}", node, son);
+            assert!(son.interval.start <= node.interval.start, "left ord invariant violated\n{:?} -> {:?}", node, son);
             if node.max == son.max {
                 reached_maximum = true;
             }
         }
         if let Some(ref son) = node.right {
-            if !(son.max <= node.max) {
-                panic!("right max invariant violated\n{:?} -> {:?}", node, son);
-            }
-
-            if !(son.interval.start >= node.interval.start) {
-                panic!("right ord invariant violated\n{:?} -> {:?}", node, son);
-            }
+            assert!(son.max <= node.max, "right max invariant violated\n{:?} -> {:?}", node, son);
+            assert!(son.interval.start >= node.interval.start, "right ord invariant violated\n{:?} -> {:?}", node, son);
             if node.max == son.max {
                 reached_maximum = true;
             }
         }
-        if !reached_maximum {
-            panic!("maximum invariant violated: {:?}", node);
-        }
+        assert!(reached_maximum, "maximum invariant violated: {:?}", node);
     }
 
     fn validate_string_metadata(node: &Node<i64, String>) {
@@ -577,6 +566,7 @@ mod tests {
             .map(|e| (e.interval().clone(), e.data().clone()))
             .collect();
         assert_eq!(tree2.find(&(0..1000)).count(), 2);
+        assert_eq!(tree2.find(1000..10000).count(), 0);
 
     }
 
@@ -586,9 +576,18 @@ mod tests {
             (10..100, 0),
             (10..20, 0),
             (1..8, 0)].into_iter().collect();
-         for mut e in tree.find_mut(11..30) {
+        let q = Interval::new(11..30).unwrap();
+        for mut e in tree.find_mut(q.clone()) {
             *e.data() += 1;
-         }
-         assert_eq!(tree.find(0..100).map(|e| e.data()).collect::<Vec<_>>(), vec![&1,&1,&0])
+        }
+        assert!(tree.find(0..100).all(|e| {
+            if super::intersect(e.interval(), &q) {
+                *e.data() == 1
+            } else {
+                *e.data() == 0
+            }
+        }));
+
+        assert_eq!(tree.find_mut(1000..10000).count(), 0);
     }
 }
