@@ -462,6 +462,8 @@ mod tests {
     #[test]
     fn test_insertion_and_intersection() {
         let mut tree: IntervalTree<i64, String> = IntervalTree::new();
+        assert_eq!(tree.find( 1..2).count(), 0);
+        assert_eq!(tree.find_mut( 1..2).count(), 0);
         tree.insert((50..51), "50:51".to_string());
         assert_not_found(&tree, (49..50));
         assert_intersections(&tree, (49..55), vec![(50..51)]);
@@ -566,8 +568,6 @@ mod tests {
             .map(|e| (e.interval().clone(), e.data().clone()))
             .collect();
         assert_eq!(tree2.find(&(0..1000)).count(), 2);
-        assert_eq!(tree2.find(1000..10000).count(), 0);
-
     }
 
     #[test]
@@ -587,7 +587,5 @@ mod tests {
                 *e.data() == 0
             }
         }));
-
-        assert_eq!(tree.find_mut(1000..10000).count(), 0);
     }
 }
