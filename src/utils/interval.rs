@@ -22,7 +22,7 @@ impl<N: Ord + Clone> From<Range<N>> for Interval<N> {
     fn from(r: Range<N>) -> Self {
         match Interval::new(r) {
             Ok(interval) => interval,
-            Err(_) => panic!("Cannot convert negative width range to interval")
+            Err(IntervalError::InvalidRange) => panic!("Cannot convert negative width range to interval")
         }
     }
 }
@@ -33,7 +33,7 @@ impl<'a, N: Ord + Clone> From<&'a Range<N>> for Interval<N> {
     fn from(r: &Range<N>) -> Self {
         match Interval::new(r.clone()) {
             Ok(interval) => interval,
-            Err(_) => panic!("Cannot convert negative width range to interval")
+            Err(IntervalError::InvalidRange) => panic!("Cannot convert negative width range to interval")
         }
     }
 }
