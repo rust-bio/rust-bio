@@ -412,9 +412,7 @@ mod tests {
         name.push_str(&node.interval.start.to_string());
         name.push_str(":");
         name.push_str(&node.interval.end.to_string());
-        if name != node.value {
-            panic!("Invalid metadata for node {:?}", node);
-        }
+        assert_eq!(name, node.value, "Invalid metadata for node {:?}", node);
     }
 
     fn insert_and_validate(tree: &mut IntervalTree<i64, String>, start: i64, end: i64) {
