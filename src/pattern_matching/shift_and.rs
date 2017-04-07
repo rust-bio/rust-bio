@@ -32,12 +32,12 @@ pub struct ShiftAnd {
 
 impl ShiftAnd {
     /// Create new ShiftAnd instance from a given pattern.
-    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self where
-        P::IntoIter: ExactSizeIterator {
+    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self
+        where P::IntoIter: ExactSizeIterator
+    {
         let pattern = pattern.into_iter();
         let m = pattern.len();
-        assert!(m <= 64,
-                "Expecting a pattern of at most 64 symbols.");
+        assert!(m <= 64, "Expecting a pattern of at most 64 symbols.");
         let (masks, accept) = masks(pattern);
 
         ShiftAnd {

@@ -22,7 +22,7 @@ impl<N: Ord + Clone> From<Range<N>> for Interval<N> {
     fn from(r: Range<N>) -> Self {
         match Interval::new(r) {
             Ok(interval) => interval,
-            Err(IntervalError::InvalidRange) => panic!("Cannot convert negative width range to interval")
+            Err(IntervalError::InvalidRange) => panic!("Cannot convert negative width range to interval"),
         }
     }
 }
@@ -33,7 +33,7 @@ impl<'a, N: Ord + Clone> From<&'a Range<N>> for Interval<N> {
     fn from(r: &Range<N>) -> Self {
         match Interval::new(r.clone()) {
             Ok(interval) => interval,
-            Err(IntervalError::InvalidRange) => panic!("Cannot convert negative width range to interval")
+            Err(IntervalError::InvalidRange) => panic!("Cannot convert negative width range to interval"),
         }
     }
 }
@@ -59,7 +59,7 @@ quick_error! {
 
 #[cfg(test)]
 mod tests {
-    use super::{Interval};
+    use super::Interval;
 
     #[test]
     #[should_panic]
@@ -70,7 +70,7 @@ mod tests {
     #[test]
     fn range_interval_conversions() {
         assert_eq!(Interval::new(1..10).unwrap(), (1..10).into());
-        assert_eq!(Interval::from(1..10),Interval::new(1..10).unwrap()) ;
+        assert_eq!(Interval::from(1..10), Interval::new(1..10).unwrap());
         //deref access
         let r = Interval::new(1..10).unwrap();
         assert_eq!(*r, (1..10));

@@ -90,9 +90,9 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D>
                     // overlap is only possible if both tests pass
                     if intersect(&self.interval, &candidate.interval) {
                         return Some(Entry {
-                            data: &candidate.value,
-                            interval: &candidate.interval,
-                        });
+                                        data: &candidate.value,
+                                        interval: &candidate.interval,
+                                    });
                     }
                 }
             }
@@ -212,7 +212,7 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
 }
 
 impl<N: Clone + Ord, D, R: Into<Interval<N>>> FromIterator<(R, D)> for IntervalTree<N, D> {
-    fn from_iter<I: IntoIterator<Item=(R, D)>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = (R, D)>>(iter: I) -> Self {
         let mut tree = IntervalTree::new();
         for r in iter {
             tree.insert(r.0, r.1);
@@ -290,8 +290,9 @@ impl<N: Ord + Clone, D> Node<N, D> {
             self.update_max();
         } else if right_h > left_h {
             {
-                let mut right =
-                    self.right.as_mut().expect("Invalid tree: leaf is taller than its sibling.");
+                let mut right = self.right
+                    .as_mut()
+                    .expect("Invalid tree: leaf is taller than its sibling.");
                 let right_left_h = right.left.as_ref().map_or(0, |n| n.height);
                 let right_right_h = right.right.as_ref().map_or(0, |n| n.height);
                 if right_left_h > right_right_h {
@@ -301,8 +302,9 @@ impl<N: Ord + Clone, D> Node<N, D> {
             self.rotate_left();
         } else {
             {
-                let mut left =
-                    self.left.as_mut().expect("Invalid tree: leaf is taller than its sibling.");
+                let mut left = self.left
+                    .as_mut()
+                    .expect("Invalid tree: leaf is taller than its sibling.");
                 let left_right_h = left.right.as_ref().map_or(0, |n| n.height);
                 let left_left_h = left.left.as_ref().map_or(0, |n| n.height);
                 if left_right_h > left_left_h {
@@ -356,8 +358,8 @@ fn swap_interval_data<N: Ord + Clone, D>(node_1: &mut Node<N, D>, node_2: &mut N
 }
 
 fn intersect<N: Ord + Clone>(range_1: &Interval<N>, range_2: &Interval<N>) -> bool {
-    range_1.start < range_1.end && range_2.start < range_2.end &&
-        range_1.end > range_2.start && range_1.start < range_2.end
+    range_1.start < range_1.end && range_2.start < range_2.end && range_1.end > range_2.start &&
+    range_1.start < range_2.end
 }
 
 #[cfg(test)]
@@ -549,9 +551,7 @@ mod tests {
             for j in smallest_start..largest_start {
                 expected_intersections.push(j..j + k);
             }
-            assert_intersections(&tree,
-                                 (lower_bound..upper_bound),
-                                 expected_intersections);
+            assert_intersections(&tree, (lower_bound..upper_bound), expected_intersections);
         }
     }
 
@@ -569,13 +569,13 @@ mod tests {
 
     #[test]
     fn from_iterator() {
-        let tree: IntervalTree<i64, ()> = vec![
-            (10..100, ()),
-            (10..20, ()),
-            (1..8, ())].into_iter().collect();
+        let tree: IntervalTree<i64, ()> = vec![(10..100, ()), (10..20, ()), (1..8, ())]
+            .into_iter()
+            .collect();
         assert_eq!(tree.find(&(0..1000)).count(), 3);
-        let tree2 : IntervalTree<_, _> = tree.find(&(11..30))
-            .map(|e| (e.interval().clone(), e.data().clone()) ).collect();
+        let tree2: IntervalTree<_, _> = tree.find(&(11..30))
+            .map(|e| (e.interval().clone(), e.data().clone()))
+            .collect();
         assert_eq!(tree2.find(&(0..1000)).count(), 2);
 
     }

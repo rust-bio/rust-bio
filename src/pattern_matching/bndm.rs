@@ -33,8 +33,9 @@ pub struct BNDM {
 
 impl BNDM {
     /// Create a new instance for a given pattern.
-    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self where
-        P::IntoIter: DoubleEndedIterator + ExactSizeIterator {
+    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self
+        where P::IntoIter: DoubleEndedIterator + ExactSizeIterator
+    {
 
         let pattern = pattern.into_iter();
         let m = pattern.len();

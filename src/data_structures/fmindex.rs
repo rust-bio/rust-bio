@@ -71,12 +71,14 @@ pub struct Interval {
 }
 
 impl Interval {
-  pub fn occ<SA: SuffixArray>(&self, sa: &SA) -> Vec<usize> {
-      (self.lower..self.upper)
-          .map(|pos| sa.get(pos)
-                        .expect("Interval out of range of suffix array"))
-          .collect()
-  }
+    pub fn occ<SA: SuffixArray>(&self, sa: &SA) -> Vec<usize> {
+        (self.lower..self.upper)
+            .map(|pos| {
+                     sa.get(pos)
+                         .expect("Interval out of range of suffix array")
+                 })
+            .collect()
+    }
 }
 
 pub trait FMIndexable {
@@ -117,16 +119,13 @@ pub trait FMIndexable {
     ///
     /// assert_eq!(positions, [3, 12, 9]);
     /// ```
-    fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator> (&self, pattern: P) -> Interval {
+    fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator>(&self,
+                                                                             pattern: P)
+                                                                             -> Interval {
         let (mut l, mut r) = (0, self.bwt().len() - 1);
         for &a in pattern.rev() {
             let less = self.less(a);
-            l = less +
-                if l > 0 {
-                self.occ(l - 1, a)
-            } else {
-                0
-            };
+            l = less + if l > 0 { self.occ(l - 1, a) } else { 0 };
             r = less + self.occ(r, a) - 1;
         }
 
@@ -135,28 +134,19 @@ pub trait FMIndexable {
             upper: r + 1,
         }
     }
-
-
 }
 
 /// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
 /// intervals matching a given pattern.
-
 #[derive(Serialize, Deserialize)]
-pub struct FMIndex<
-        DBWT: DerefBWT + Clone,
-        DLess: DerefLess + Clone,
-        DOcc: DerefOcc + Clone> {
+pub struct FMIndex<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone> {
     bwt: DBWT,
     less: DLess,
     occ: DOcc,
 }
 
-impl<
-    DBWT: DerefBWT + Clone,
-    DLess: DerefLess + Clone,
-    DOcc: DerefOcc + Clone> FMIndexable for FMIndex<DBWT, DLess, DOcc> {
-
+impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone> FMIndexable
+    for FMIndex<DBWT, DLess, DOcc> {
     fn occ(&self, r: usize, a: u8) -> usize {
         self.occ.get(&self.bwt, r, a)
     }
@@ -169,11 +159,9 @@ impl<
     }
 }
 
-impl<
-    DBWT: DerefBWT + Clone,
-    DLess: DerefLess + Clone,
-    DOcc: DerefOcc + Clone> FMIndex<DBWT, DLess, DOcc> {
-
+impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone> FMIndex<DBWT,
+                                                                                       DLess,
+                                                                                       DOcc> {
     /// Construct a new instance of the FM index.
     ///
     /// # Arguments
@@ -205,13 +193,13 @@ impl BiInterval {
     pub fn forward(&self) -> Interval {
         Interval {
             upper: self.lower + self.size,
-            lower: self.lower
+            lower: self.lower,
         }
     }
     pub fn revcomp(&self) -> Interval {
         Interval {
             upper: self.lower_rev + self.size,
-            lower: self.lower_rev
+            lower: self.lower_rev,
         }
     }
 
@@ -229,19 +217,12 @@ impl BiInterval {
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
 #[derive(Serialize, Deserialize)]
-pub struct FMDIndex<
-    DBWT: DerefBWT + Clone,
-    DLess: DerefLess + Clone,
-    DOcc: DerefOcc + Clone> {
-
+pub struct FMDIndex<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone> {
     fmindex: FMIndex<DBWT, DLess, DOcc>,
 }
 
-impl<
-    DBWT: DerefBWT + Clone,
-    DLess: DerefLess + Clone,
-    DOcc: DerefOcc + Clone> FMIndexable for FMDIndex<DBWT, DLess, DOcc> {
-
+impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone> FMIndexable
+    for FMDIndex<DBWT, DLess, DOcc> {
     fn occ(&self, r: usize, a: u8) -> usize {
         self.fmindex.occ(r, a)
     }
@@ -260,14 +241,14 @@ impl<
     DBWT: DerefBWT + Clone,
     DLess: DerefLess + Clone,
     DOcc: DerefOcc + Clone> From<FMIndex<DBWT, DLess, DOcc>> for FMDIndex<DBWT, DLess, DOcc> {
-    /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
-    /// This expects a BWT that was created from a text over the DNA alphabet with N
-    /// (`alphabets::dna::n_alphabet()`) consisting of the
-    /// concatenation with its reverse complement, separated by the sentinel symbol `$`.
-    /// I.e., let T be the original text and R be its reverse complement.
-    /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
-    /// T1$R1$T2$R2$T3$R3$.
-    ///
+/// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
+/// This expects a BWT that was created from a text over the DNA alphabet with N
+/// (`alphabets::dna::n_alphabet()`) consisting of the
+/// concatenation with its reverse complement, separated by the sentinel symbol `$`.
+/// I.e., let T be the original text and R be its reverse complement.
+/// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
+/// T1$R1$T2$R2$T3$R3$.
+///
     fn from(fmindex: FMIndex<DBWT, DLess, DOcc>) -> FMDIndex<DBWT, DLess, DOcc> {
         let mut alphabet = dna::n_alphabet();
         alphabet.insert(b'$');
@@ -280,11 +261,9 @@ impl<
     }
 }
 
-impl<
-    DBWT: DerefBWT + Clone,
-    DLess: DerefLess + Clone,
-    DOcc: DerefOcc + Clone>  FMDIndex<DBWT, DLess, DOcc> {
-
+impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone> FMDIndex<DBWT,
+                                                                                        DLess,
+                                                                                        DOcc> {
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
     /// Complexity O(m) with pattern of length m.
     ///
@@ -346,11 +325,7 @@ impl<
         let mut j = pattern.len() as isize;
 
         for k in (-1..i as isize).rev() {
-            let a = if k == -1 {
-                b'$'
-            } else {
-                pattern[k as usize]
-            };
+            let a = if k == -1 { b'$' } else { pattern[k as usize] };
             curr.clear();
             // size of the last confirmed interval
             let mut last_size = -1;
@@ -401,7 +376,7 @@ impl<
             lower: 0,
             lower_rev: 0,
             size: self.fmindex.bwt.len(),
-            match_size: 0
+            match_size: 0,
         }
     }
 
@@ -443,8 +418,7 @@ impl<
     pub fn forward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
         let comp_a = dna::complement(a);
 
-        self.backward_ext(&interval.swapped(), comp_a)
-            .swapped()
+        self.backward_ext(&interval.swapped(), comp_a).swapped()
     }
 }
 
@@ -610,9 +584,10 @@ mod tests {
             println!("i {}", i);
             let intervals = fmdindex.smems(read, i);
             println!("{:?}", intervals);
-            let matches = intervals.iter()
-                                   .flat_map(|interval| interval.forward().occ(&sa))
-                                   .collect::<Vec<usize>>();
+            let matches = intervals
+                .iter()
+                .flat_map(|interval| interval.forward().occ(&sa))
+                .collect::<Vec<usize>>();
             assert_eq!(matches, vec![read_pos]);
         }
     }

@@ -162,7 +162,9 @@ custom_derive! {
 
 
 /// Iterator returned by scans over logprobs.
-pub type ScanIter<I> = iter::Scan<<I as IntoIterator>::IntoIter, LogProb, fn(&mut LogProb, LogProb) -> Option<LogProb>>;
+pub type ScanIter<I> = iter::Scan<<I as IntoIterator>::IntoIter,
+                                  LogProb,
+                                  fn(&mut LogProb, LogProb) -> Option<LogProb>>;
 
 
 static LOGPROB_LN_ZERO: LogProb = LogProb(f64::NEG_INFINITY);
@@ -204,19 +206,17 @@ impl LogProb {
                 LogProb(f64::INFINITY)
             } else {
                 // TODO use sum() once it has been stabilized: .sum::<usize>()
-                pmax + LogProb(
-                    (probs.iter()
-                          .enumerate()
-                          .filter_map(|(i, p)| {
-                              if i == imax {
-                                  None
-                              } else {
-                                  Some((p - pmax).exp())
-                              }
-                          })
-                          .fold(0.0, |s, e| s + e)
-                     ).ln_1p()
-                 )
+                pmax +
+                LogProb((probs
+                             .iter()
+                             .enumerate()
+                             .filter_map(|(i, p)| if i == imax {
+                                             None
+                                         } else {
+                                             Some((p - pmax).exp())
+                                         })
+                             .fold(0.0, |s, e| s + e))
+                                .ln_1p())
             }
         }
     }
@@ -254,7 +254,9 @@ impl LogProb {
 
     /// Calculate the cumulative sum of the given probabilities in a numerically stable way (Durbin 1998).
     pub fn ln_cumsum_exp<I: IntoIterator<Item = LogProb>>(probs: I) -> ScanIter<I> {
-        probs.into_iter().scan(Self::ln_zero(), Self::scan_ln_add_exp)
+        probs
+            .into_iter()
+            .scan(Self::ln_zero(), Self::scan_ln_add_exp)
     }
 
     /// Integrate numerically stable over given log-space density in the interval [a, b]. Uses the trapezoidal rule with n grid points.
@@ -263,7 +265,11 @@ impl LogProb {
         D: Fn(T) -> LogProb,
         f64: From<T>
     {
-        let mut probs = linspace(a, b, n).dropping(1).dropping_back(1).map(|v| LogProb(*density(v) + 2.0f64.ln())).collect_vec();
+        let mut probs = linspace(a, b, n)
+            .dropping(1)
+            .dropping_back(1)
+            .map(|v| LogProb(*density(v) + 2.0f64.ln()))
+            .collect_vec();
         probs.push(density(a));
         probs.push(density(b));
         let width = f64::from(b - a);
@@ -277,11 +283,16 @@ impl LogProb {
         D: Fn(T) -> LogProb,
         f64: From<T>
     {
-        assert!(n % 2 == 1, "n must be odd");
-        let mut probs = linspace(a, b, n).enumerate().dropping(1).dropping_back(1).map(|(i, v)| {
-            let weight = (2 + (i % 2) * 2) as f64;
-            LogProb(*density(v) + weight.ln()) // factors alter between 2 and 4
-        }).collect_vec();
+        assert_eq!(n % 2, 1, "n must be odd");
+        let mut probs = linspace(a, b, n)
+            .enumerate()
+            .dropping(1)
+            .dropping_back(1)
+            .map(|(i, v)| {
+                     let weight = (2 + (i % 2) * 2) as f64;
+                     LogProb(*density(v) + weight.ln()) // factors alter between 2 and 4
+                 })
+            .collect_vec();
         probs.push(density(a));
         probs.push(density(b));
         let width = f64::from(b - a);
@@ -388,8 +399,10 @@ mod tests {
 
     #[test]
     fn test_sub() {
-        assert_eq!(LogProb::ln_one().ln_sub_exp(LogProb::ln_one()), LogProb::ln_zero());
-        assert_relative_eq!(*LogProb::ln_one().ln_sub_exp(LogProb(0.5f64.ln())), *LogProb(0.5f64.ln()));
+        assert_eq!(LogProb::ln_one().ln_sub_exp(LogProb::ln_one()),
+                   LogProb::ln_zero());
+        assert_relative_eq!(*LogProb::ln_one().ln_sub_exp(LogProb(0.5f64.ln())),
+                            *LogProb(0.5f64.ln()));
     }
 
     #[test]
@@ -402,13 +415,13 @@ mod tests {
     fn test_trapezoidal_integrate() {
         let density = |_| LogProb(0.1f64.ln());
         let prob = LogProb::ln_trapezoidal_integrate_exp(&density, 0.0, 10.0, 5);
-        assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon=0.0000001);
+        assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon = 0.0000001);
     }
 
     #[test]
     fn test_simpsons_integrate() {
         let density = |_| LogProb(0.1f64.ln());
         let prob = LogProb::ln_simpsons_integrate_exp(&density, 0.0, 10.0, 5);
-        assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon=0.0000001);
+        assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon = 0.0000001);
     }
 }

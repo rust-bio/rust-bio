@@ -28,7 +28,7 @@ use std::convert::AsRef;
 
 use csv;
 
-use io::Strand;
+use utils::Strand;
 
 /// A BED reader.
 pub struct Reader<R: io::Read> {
@@ -47,7 +47,11 @@ impl Reader<fs::File> {
 impl<R: io::Read> Reader<R> {
     /// Read from a given reader.
     pub fn new(reader: R) -> Self {
-        Reader { inner: csv::Reader::from_reader(reader).delimiter(b'\t').has_headers(false) }
+        Reader {
+            inner: csv::Reader::from_reader(reader)
+                .delimiter(b'\t')
+                .has_headers(false),
+        }
     }
 
     /// Iterate over all records.
@@ -67,16 +71,18 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
     type Item = csv::Result<Record>;
 
     fn next(&mut self) -> Option<csv::Result<Record>> {
-        self.inner.next().map(|res| {
-            res.map(|(chrom, start, end, aux)| {
-                Record {
-                    chrom: chrom,
-                    start: start,
-                    end: end,
-                    aux: aux,
-                }
+        self.inner
+            .next()
+            .map(|res| {
+                res.map(|(chrom, start, end, aux)| {
+                            Record {
+                                chrom: chrom,
+                                start: start,
+                                end: end,
+                                aux: aux,
+                            }
+                        })
             })
-        })
     }
 }
 
@@ -98,13 +104,18 @@ impl Writer<fs::File> {
 impl<W: io::Write> Writer<W> {
     /// Write to a given writer.
     pub fn new(writer: W) -> Self {
-        Writer { inner: csv::Writer::from_writer(writer).delimiter(b'\t').flexible(true) }
+        Writer {
+            inner: csv::Writer::from_writer(writer)
+                .delimiter(b'\t')
+                .flexible(true),
+        }
     }
 
     /// Write a given BED record.
     pub fn write(&mut self, record: &Record) -> csv::Result<()> {
         if record.aux.is_empty() {
-            self.inner.encode((&record.chrom, record.start, record.end))
+            self.inner
+                .encode((&record.chrom, record.start, record.end))
         } else {
             self.inner.encode(record)
         }
@@ -112,7 +123,8 @@ impl<W: io::Write> Writer<W> {
 }
 
 
-/// A BED record as defined by BEDtools (http://bedtools.readthedocs.org/en/latest/content/general-usage.html)
+/// A BED record as defined by BEDtools
+/// (http://bedtools.readthedocs.org/en/latest/content/general-usage.html)
 #[derive(RustcEncodable, Default)]
 pub struct Record {
     chrom: String,
@@ -167,7 +179,8 @@ impl Record {
         }
     }
 
-    /// Access auxilliary fields after the strand field by index (counting first field (chromosome) as 0).
+    /// Access auxilliary fields after the strand field by index
+    /// (counting first field (chromosome) as 0).
     pub fn aux(&self, i: usize) -> Option<&str> {
         let j = i - 3;
         if j < self.aux.len() {
@@ -251,7 +264,10 @@ mod tests {
         let mut reader = Reader::new(BED_FILE);
         let mut writer = Writer::new(vec![]);
         for r in reader.records() {
-            writer.write(&r.ok().expect("Error reading record")).ok().expect("Error writing record");
+            writer
+                .write(&r.ok().expect("Error reading record"))
+                .ok()
+                .expect("Error writing record");
         }
         assert_eq!(writer.inner.as_bytes(), BED_FILE);
     }
