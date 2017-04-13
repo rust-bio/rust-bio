@@ -22,7 +22,6 @@ use std::io;
 use std::fs;
 use std::path::Path;
 use std::convert::AsRef;
-use std::collections::HashMap;
 use itertools::Itertools;
 use regex::Regex;
 
@@ -125,9 +124,9 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                           frame,
                           raw_attributes)| {
                     let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
-                    let mut attrs = HashMap::new();
+                    let mut attrs = Vec::new();
                     for caps in self.attribute_re.captures_iter(&raw_attributes) {
-                        attrs.insert(trim_quotes(&caps["key"]), trim_quotes(&caps["value"]));
+                        attrs.push((trim_quotes(&caps["key"]), trim_quotes(&caps["value"])));
                     }
                     Record {
                         seqname: seqname,
@@ -182,7 +181,7 @@ impl<W: io::Write> Writer<W> {
             record
                 .attributes
                 .iter()
-                .map(|(a, b)| format!("{}{}{}", a, self.delimiter, b))
+                .map(|item| format!("{}{}{}", item.0, self.delimiter, item.1))
                 .join(&self.terminator)
         } else {
             "".to_owned()
@@ -213,7 +212,7 @@ pub struct Record {
     score: String,
     strand: String,
     frame: String,
-    attributes: HashMap<String, String>,
+    attributes: Vec<(String, String)>,
 }
 
 impl Record {
@@ -228,7 +227,7 @@ impl Record {
             score: ".".to_owned(),
             strand: ".".to_owned(),
             frame: "".to_owned(),
-            attributes: HashMap::<String, String>::new(),
+            attributes: Vec::<(String, String)>::new(),
         }
     }
 
@@ -280,7 +279,7 @@ impl Record {
     }
 
     /// Attribute of feature
-    pub fn attributes(&self) -> &HashMap<String, String> {
+    pub fn attributes(&self) -> &Vec<(String, String)> {
         &self.attributes
     }
 
@@ -320,7 +319,7 @@ impl Record {
     }
 
     /// Get mutable reference on attributes of feature.
-    pub fn attributes_mut(&mut self) -> &mut HashMap<String, String> {
+    pub fn attributes_mut(&mut self) -> &mut Vec<(String, String)> {
         &mut self.attributes
     }
 }
@@ -329,12 +328,10 @@ impl Record {
 mod tests {
     use super::*;
     use utils::Strand;
-    use std::collections::HashMap;
 
     const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed,ID=test
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV,ID=PRO_0000148105
 ";
-    //required because HashMap iter on element randomly
     const GFF_FILE_ONE_ATTRIB: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105
 ";
@@ -348,7 +345,6 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote ATP-dependent;ID PRO_0000148105
 chr1\tHAVANA\ttranscript\t11869\t14409\t.\t+\t.\tgene_id \"ENSG00000223972.5\"; transcript_id \"ENST00000456328.2\"; gene_type \"transcribed_unprocessed_pseudogene\"";
 
 
-    //required because HashMap iter on element randomly
     const GTF_FILE_ONE_ATTRIB: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 ";
@@ -363,12 +359,12 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let scores = [None, Some(50)];
         let strand = [None, Some(Strand::Forward)];
         let frame = [".", "."];
-        let mut attributes = [HashMap::new(), HashMap::new()];
-        attributes[0].insert("ID".to_owned(), "test".to_owned());
-        attributes[0].insert("Note".to_owned(), "Removed".to_owned());
-        attributes[1].insert("ID".to_owned(), "PRO_0000148105".to_owned());
-        attributes[1].insert("Note".to_owned(),
-                             "ATP-dependent protease subunit HslV".to_owned());
+        let mut attributes = [Vec::new(), Vec::new()];
+        attributes[0].push(("Note".to_owned(), "Removed".to_owned()));
+        attributes[0].push(("ID".to_owned(), "test".to_owned()));
+        attributes[1].push(("Note".to_owned(),
+                            "ATP-dependent protease subunit HslV".to_owned()));
+        attributes[1].push(("ID".to_owned(), "PRO_0000148105".to_owned()));
 
         let mut reader = Reader::new(GFF_FILE, GffType::GFF3);
         for (i, r) in reader.records().enumerate() {
@@ -395,11 +391,11 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let scores = [None, Some(50)];
         let strand = [None, Some(Strand::Forward)];
         let frame = [".", "."];
-        let mut attributes = [HashMap::new(), HashMap::new()];
-        attributes[0].insert("ID".to_owned(), "test".to_owned());
-        attributes[0].insert("Note".to_owned(), "Removed".to_owned());
-        attributes[1].insert("ID".to_owned(), "PRO_0000148105".to_owned());
-        attributes[1].insert("Note".to_owned(), "ATP-dependent".to_owned());
+        let mut attributes = [Vec::new(), Vec::new()];
+        attributes[0].push(("Note".to_owned(), "Removed".to_owned()));
+        attributes[0].push(("ID".to_owned(), "test".to_owned()));
+        attributes[1].push(("Note".to_owned(), "ATP-dependent".to_owned()));
+        attributes[1].push(("ID".to_owned(), "PRO_0000148105".to_owned()));
 
         let mut reader = Reader::new(GTF_FILE, GffType::GTF2);
         for (i, r) in reader.records().enumerate() {
@@ -426,14 +422,14 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let scores = [None, None];
         let strand = [Some(Strand::Forward), Some(Strand::Forward)];
         let frame = [".", "."];
-        let mut attributes = [HashMap::new(), HashMap::new()];
-        attributes[0].insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
-        attributes[0].insert("gene_type".to_owned(),
-                             "transcribed_unprocessed_pseudogene".to_owned());
-        attributes[1].insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
-        attributes[1].insert("transcript_id".to_owned(), "ENST00000456328.2".to_owned());
-        attributes[1].insert("gene_type".to_owned(),
-                             "transcribed_unprocessed_pseudogene".to_owned());
+        let mut attributes = [Vec::new(), Vec::new()];
+        attributes[0].push(("gene_id".to_owned(), "ENSG00000223972.5".to_owned()));
+        attributes[0].push(("gene_type".to_owned(),
+                            "transcribed_unprocessed_pseudogene".to_owned()));
+        attributes[1].push(("gene_id".to_owned(), "ENSG00000223972.5".to_owned()));
+        attributes[1].push(("transcript_id".to_owned(), "ENST00000456328.2".to_owned()));
+        attributes[1].push(("gene_type".to_owned(),
+                            "transcribed_unprocessed_pseudogene".to_owned()));
 
         let mut reader = Reader::new(GTF_FILE_2, GffType::GTF2);
         for (i, r) in reader.records().enumerate() {
