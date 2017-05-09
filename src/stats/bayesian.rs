@@ -29,7 +29,7 @@ pub fn expected_fdr(peps: &[LogProb]) -> Vec<LogProb> {
     let mut expected_fdr = vec![LogProb::ln_zero(); peps.len()];
     for (i, expected_fp) in LogProb::ln_cumsum_exp(sorted_idx.iter().map(|&i| peps[i]))
             .enumerate() {
-        let fdr = LogProb(*expected_fp / (i + 1) as f64);
+        let fdr = LogProb(*expected_fp - ((i + 1) as f64).ln());
         expected_fdr[i] = if fdr <= LogProb::ln_one() {
             fdr
         } else {
@@ -50,9 +50,10 @@ mod tests {
     fn test_expected_fdr() {
         let peps = [LogProb(0.1f64.ln()), LogProb::ln_zero(), LogProb(0.25f64.ln())];
         let fdrs = expected_fdr(&peps);
+        println!("{:?}", fdrs);
 
         assert_relative_eq!(*fdrs[1], *LogProb::ln_zero());
         assert_relative_eq!(*fdrs[0], *LogProb(0.05f64.ln()));
-        assert_relative_eq!(*fdrs[0], *LogProb(0.35 / 3.0f64.ln()));
+        assert_relative_eq!(*fdrs[2], *LogProb((0.35 / 3.0f64).ln()));
     }
 }
