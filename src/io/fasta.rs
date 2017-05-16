@@ -497,6 +497,19 @@ impl Record {
         }
     }
 
+    /// Create a new Fasta record from given attributes.
+    pub fn from_attrs(id: &str, desc: Option<&str>, seq: TextSlice) -> Self {
+        let desc = match desc {
+            Some(desc) => desc.to_owned(),
+            _ => String::new(),
+        };
+        Record {
+            id: id.to_owned(),
+            desc: desc,
+            seq: String::from_utf8(seq.to_vec()).unwrap(),
+        }
+    }
+
     /// Check if record is empty.
     pub fn is_empty(&self) -> bool {
         self.id.is_empty() && self.desc.is_empty() && self.seq.is_empty()
