@@ -504,7 +504,9 @@ impl TracebackCell {
 
 /// Internal traceback.
 struct Traceback {
-    matrix: Vec<Vec<TracebackCell>>,
+    rows: usize,
+    cols: usize,
+    matrix: Vec<TracebackCell>,
 }
 
 
@@ -515,39 +517,34 @@ const TBDEL: u8 = 0b11;
 
 impl Traceback {
     fn with_capacity(m: usize, n: usize) -> Self {
-        let mut matrix = Vec::with_capacity(n + 1);
-        for _ in 0..n + 1 {
-            matrix.push(Vec::with_capacity(m + 1));
+        let rows = m + 1;
+        let cols = n + 1;
+        let matrix = Vec::with_capacity(rows * cols);
+        Traceback {
+            rows: rows,
+            cols: cols,
+            matrix: matrix
         }
-        Traceback { matrix: matrix }
     }
 
     fn init(&mut self, m: usize, n: usize, alignment_type: AlignmentType) {
         let mut ins = TracebackCell::new();
         ins.set_all(TBINS);
+        let ins = ins;
+        self.resize(m, n, &ins);
 
         match alignment_type {
             AlignmentType::Global => {
                 // set the first cell to start, the rest to insertions
-                for i in 0..n + 1 {
-                    self.matrix[i].clear();
-                    for _ in 0..m + 1 {
-                        self.matrix[i].push(ins)
-                    }
-                }
-
-                self.matrix[0][0].set_all(TBSTART);
+                self.reset_entries(&ins);
+                self.get_mut(0, 0).set_all(TBSTART);
             }
 
             AlignmentType::Semiglobal => {
                 // set the first cell of each column to start, the rest to insertions
-                for i in 0..n + 1 {
-                    self.matrix[i].clear();
-                    for _ in 0..m + 1 {
-                        self.matrix[i].push(ins);
-                    }
-
-                    self.matrix[i][0].set_all(TBSTART);
+                self.reset_entries(&ins);
+                for i in 0..self.cols {
+                    self.get_mut(i, 0).set_all(TBSTART);
                 }
             }
 
@@ -555,27 +552,39 @@ impl Traceback {
                 // set every cell to start
                 let mut start = TracebackCell::new();
                 start.set_all(TBSTART);
-
-                for i in 0..n + 1 {
-                    self.matrix[i].clear();
-                    for _ in 0..m + 1 {
-                        self.matrix[i].push(start);
-                    }
-                }
+                self.reset_entries(&start);
             }
         }
     }
 
     fn set(&mut self, i: usize, j: usize, v: TracebackCell) {
-        self.matrix[i][j] = v;
+        debug_assert!(i < self.cols);
+        debug_assert!(j < self.rows);
+        self.matrix[i * self.rows + j] = v;
     }
 
     fn get(&self, i: usize, j: usize) -> &TracebackCell {
-        &self.matrix[i][j]
+        debug_assert!(i < self.cols);
+        debug_assert!(j < self.rows);
+        &self.matrix[i * self.rows + j]
     }
 
     fn get_mut(&mut self, i: usize, j: usize) -> &mut TracebackCell {
-        &mut self.matrix[i][j]
+        debug_assert!(i < self.cols);
+        debug_assert!(j < self.rows);
+        &mut self.matrix[i * self.rows + j]
+    }
+
+    fn resize(&mut self, m: usize, n: usize, v: &TracebackCell) {
+        self.rows = m + 1;
+        self.cols = n + 1;
+        self.matrix.resize(self.rows * self.cols, *v);
+    }
+
+    fn reset_entries(&mut self, v: &TracebackCell) {
+        for entry in &mut self.matrix {
+            *entry = *v;
+        }
     }
 }
 
