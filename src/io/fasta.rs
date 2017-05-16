@@ -740,6 +740,15 @@ ATTGTTGTTTTA
     }
 
     #[test]
+    fn test_record_from_attrs() {
+        let record = Record::from_attrs("id_str", Some("desc"), b"ATGCGGG");
+        assert_eq!(record.id(), Some("id_str"));
+        assert_eq!(record.desc(), Some("desc"));
+        assert_eq!(record.seq(), b"ATGCGGG");
+
+    }
+
+    #[test]
     fn test_index_sequences() {
         let reader = IndexedReader::new(io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
 
