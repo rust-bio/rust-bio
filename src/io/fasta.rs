@@ -70,7 +70,12 @@ impl<R: io::Read> Reader<R> {
         if !self.line.starts_with('>') {
             return Err(io::Error::new(io::ErrorKind::Other, "Expected > at record start."));
         }
-        record.header.push_str(&self.line);
+        record.id = match self.line[1..].trim_right().splitn(2, ' ').nth(0) {
+            Some("") => "".to_owned(),
+            None => "".to_owned(),
+            Some(id) => id.to_owned()
+        };
+        record.desc = self.line[1..].trim_right().splitn(2, ' ').nth(1).unwrap_or("").to_owned();
         loop {
             self.line.clear();
             try!(self.reader.read_line(&mut self.line));
@@ -476,8 +481,9 @@ impl<W: io::Write> Writer<W> {
 /// A FASTA record.
 #[derive(Default)]
 pub struct Record {
-    header: String,
-    seq: String,
+    pub id: String,
+    pub desc: String,
+    pub seq: String,
 }
 
 
@@ -485,14 +491,15 @@ impl Record {
     /// Create a new instance.
     pub fn new() -> Self {
         Record {
-            header: String::new(),
+            id: String::new(),
+            desc: String::new(),
             seq: String::new(),
         }
     }
 
     /// Check if record is empty.
     pub fn is_empty(&self) -> bool {
-        self.header.is_empty() && self.seq.is_empty()
+        self.id.is_empty() && self.desc.is_empty() && self.seq.is_empty()
     }
 
     /// Check validity of Fasta record.
@@ -509,15 +516,24 @@ impl Record {
 
     /// Return the id of the record.
     pub fn id(&self) -> Option<&str> {
-        match self.header[1..].trim_right().splitn(2, ' ').nth(0) {
-            Some("") => None,
-            value => value,
+        match self.id.as_ref() {
+            "" => None,
+            value => Some(value)
         }
+        // match self.header[1..].trim_right().splitn(2, ' ').nth(0) {
+        //     Some("") => None,
+        //     value => value,
+        // }
     }
 
     /// Return descriptions if present.
     pub fn desc(&self) -> Option<&str> {
-        self.header[1..].trim_right().splitn(2, ' ').nth(1)
+        match self.desc.as_ref() {
+            "" => None,
+            value => Some(value)
+        }
+        // Some(&self.desc)
+        // self.header[1..].trim_right().splitn(2, ' ').nth(1)
     }
 
     /// Return the sequence of the record.
@@ -527,7 +543,8 @@ impl Record {
 
     /// Clear the record.
     fn clear(&mut self) {
-        self.header.clear();
+        self.id.clear();
+        self.desc.clear();
         self.seq.clear();
     }
 }
