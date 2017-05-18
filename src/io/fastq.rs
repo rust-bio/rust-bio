@@ -114,7 +114,7 @@ impl Record {
     }
 
     /// Create a new FastQ record from given attributes.
-    pub fn from_attrs(id: &str, desc: Option<&str>, seq: TextSlice, qual: &[u8]) -> Self {
+    pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice, qual: &[u8]) -> Self {
         let desc = match desc {
             Some(desc) => Some(desc.to_owned()),
             _ => None,
@@ -300,8 +300,8 @@ IIIIIIJJJJJJ
     }
 
     #[test]
-    fn test_record_from_attrs() {
-        let record = Record::from_attrs("id_str", Some("desc"), b"ATGCGGG", b"QQQQQQQ");
+    fn test_record_with_attrs() {
+        let record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG", b"QQQQQQQ");
         assert_eq!(record.id(), Some("id_str"));
         assert_eq!(record.desc(), Some("desc"));
         assert_eq!(record.seq(), b"ATGCGGG");
