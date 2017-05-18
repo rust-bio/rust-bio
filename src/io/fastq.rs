@@ -66,12 +66,11 @@ impl<R: io::Read> Reader<R> {
                 .nth(0)
                 .unwrap_or_default()
                 .to_owned();
-            record.desc = header[1..]
-                .trim_right()
-                .splitn(2, ' ')
-                .nth(1)
-                .unwrap_or_default()
-                .to_owned();
+            record.desc = match header[1..].trim_right().splitn(2, ' ').nth(1) {
+                Some("") => None,
+                None => None,
+                Some(desc) => Some(desc.to_owned())
+            };
             try!(self.reader.read_line(&mut record.seq));
             try!(self.reader.read_line(&mut self.sep_line));
             try!(self.reader.read_line(&mut record.qual));
@@ -96,10 +95,10 @@ impl<R: io::Read> Reader<R> {
 /// A FastQ record.
 #[derive(Debug, Clone, Default)]
 pub struct Record {
-    pub id: String,
-    pub desc: String,
-    pub seq: String,
-    pub qual: String,
+    id: String,
+    desc: Option<String>,
+    seq: String,
+    qual: String,
 }
 
 
@@ -108,7 +107,7 @@ impl Record {
     pub fn new() -> Self {
         Record {
             id: String::new(),
-            desc: String::new(),
+            desc: None,
             seq: String::new(),
             qual: String::new(),
         }
@@ -117,8 +116,8 @@ impl Record {
     /// Create a new FastQ record from given attributes.
     pub fn from_attrs(id: &str, desc: Option<&str>, seq: TextSlice, qual: &[u8]) -> Self {
         let desc = match desc {
-            Some(desc) => desc.to_owned(),
-            _ => String::new(),
+            Some(desc) => Some(desc.to_owned()),
+            _ => None,
         };
         Record {
             id: id.to_owned(),
@@ -130,7 +129,7 @@ impl Record {
 
     /// Check if record is empty.
     pub fn is_empty(&self) -> bool {
-        self.id.is_empty() && self.desc.is_empty() && self.seq.is_empty() && self.qual.is_empty()
+        self.id.is_empty() && self.desc.is_none() && self.seq.is_empty() && self.qual.is_empty()
     }
 
     /// Check validity of FastQ record.
@@ -159,8 +158,10 @@ impl Record {
 
     /// Return descriptions if present.
     pub fn desc(&self) -> Option<&str> {
-        Some(&self.desc)
-        // self.header[1..].trim_right().splitn(2, ' ').nth(1)
+        match self.desc.as_ref() {
+            Some(desc) => Some(&desc),
+            None => None
+        }
     }
 
     /// Return the sequence of the record.
@@ -176,7 +177,7 @@ impl Record {
     /// Clear the record.
     fn clear(&mut self) {
         self.id.clear();
-        self.desc.clear();
+        self.desc = None;
         self.seq.clear();
         self.qual.clear();
     }
@@ -188,7 +189,7 @@ impl fmt::Display for Record {
         write!(f,
                "@{} {}\n{}\n+\n{}",
                self.id,
-               self.desc,
+               self.desc().unwrap_or_default(),
                self.seq,
                self.qual)
     }

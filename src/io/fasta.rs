@@ -75,7 +75,11 @@ impl<R: io::Read> Reader<R> {
             None => "".to_owned(),
             Some(id) => id.to_owned()
         };
-        record.desc = self.line[1..].trim_right().splitn(2, ' ').nth(1).unwrap_or("").to_owned();
+        record.desc = match self.line[1..].trim_right().splitn(2, ' ').nth(1) {
+            Some("") => None,
+            None => None,
+            Some(id) => Some(id.to_owned())
+        };
         loop {
             self.line.clear();
             try!(self.reader.read_line(&mut self.line));
@@ -481,9 +485,9 @@ impl<W: io::Write> Writer<W> {
 /// A FASTA record.
 #[derive(Default)]
 pub struct Record {
-    pub id: String,
-    pub desc: String,
-    pub seq: String,
+    id: String,
+    desc: Option<String>,
+    seq: String,
 }
 
 
@@ -492,7 +496,7 @@ impl Record {
     pub fn new() -> Self {
         Record {
             id: String::new(),
-            desc: String::new(),
+            desc: None,
             seq: String::new(),
         }
     }
@@ -500,8 +504,8 @@ impl Record {
     /// Create a new Fasta record from given attributes.
     pub fn from_attrs(id: &str, desc: Option<&str>, seq: TextSlice) -> Self {
         let desc = match desc {
-            Some(desc) => desc.to_owned(),
-            _ => String::new(),
+            Some(desc) => Some(desc.to_owned()),
+            _ => None,
         };
         Record {
             id: id.to_owned(),
@@ -512,7 +516,7 @@ impl Record {
 
     /// Check if record is empty.
     pub fn is_empty(&self) -> bool {
-        self.id.is_empty() && self.desc.is_empty() && self.seq.is_empty()
+        self.id.is_empty() && self.desc.is_none() && self.seq.is_empty()
     }
 
     /// Check validity of Fasta record.
@@ -533,20 +537,14 @@ impl Record {
             "" => None,
             value => Some(value)
         }
-        // match self.header[1..].trim_right().splitn(2, ' ').nth(0) {
-        //     Some("") => None,
-        //     value => value,
-        // }
     }
 
     /// Return descriptions if present.
     pub fn desc(&self) -> Option<&str> {
         match self.desc.as_ref() {
-            "" => None,
-            value => Some(value)
+            Some(desc) => Some(&desc),
+            None => None
         }
-        // Some(&self.desc)
-        // self.header[1..].trim_right().splitn(2, ' ').nth(1)
     }
 
     /// Return the sequence of the record.
@@ -557,7 +555,7 @@ impl Record {
     /// Clear the record.
     fn clear(&mut self) {
         self.id.clear();
-        self.desc.clear();
+        self.desc = None;
         self.seq.clear();
     }
 }
