@@ -71,7 +71,6 @@ impl<R: io::Read> Reader<R> {
             return Err(io::Error::new(io::ErrorKind::Other, "Expected > at record start."));
         }
         record.id = match self.line[1..].trim_right().splitn(2, ' ').nth(0) {
-            Some("") => "".to_owned(),
             None => "".to_owned(),
             Some(id) => id.to_owned()
         };
@@ -457,7 +456,7 @@ impl<W: io::Write> Writer<W> {
 
     /// Directly write a Fasta record.
     pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
-        self.write(record.id().unwrap_or(""), record.desc(), record.seq())
+        self.write(record.id(), record.desc(), record.seq())
     }
 
     /// Write a Fasta record with given id, optional description and sequence.
@@ -521,7 +520,7 @@ impl Record {
 
     /// Check validity of Fasta record.
     pub fn check(&self) -> Result<(), &str> {
-        if self.id().is_none() {
+        if self.id().is_empty() {
             return Err("Expecting id for Fasta record.");
         }
         if !self.seq.is_ascii() {
@@ -532,11 +531,8 @@ impl Record {
     }
 
     /// Return the id of the record.
-    pub fn id(&self) -> Option<&str> {
-        match self.id.as_ref() {
-            "" => None,
-            value => Some(value)
-        }
+    pub fn id(&self) -> &str {
+        self.id.as_ref()
     }
 
     /// Return descriptions if present.
@@ -672,7 +668,7 @@ ATTGTTGTTTTA
     #[test]
     fn test_reader() {
         let reader = Reader::new(FASTA_FILE);
-        let ids = [Some("id"), Some("id2")];
+        let ids = ["id", "id2"];
         let descs = [Some("desc"), None];
         let seqs: [&[u8]; 2] = [b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC",
                                 b"ATTGTTGTTTTAATTGTTGTTTTAATTGTTGTTTTAGGGG"];
@@ -740,7 +736,7 @@ ATTGTTGTTTTA
     #[test]
     fn test_record_with_attrs() {
         let record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG");
-        assert_eq!(record.id(), Some("id_str"));
+        assert_eq!(record.id(), "id_str");
         assert_eq!(record.desc(), Some("desc"));
         assert_eq!(record.seq(), b"ATGCGGG");
 

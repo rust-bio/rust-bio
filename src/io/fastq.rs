@@ -134,7 +134,7 @@ impl Record {
 
     /// Check validity of FastQ record.
     pub fn check(&self) -> Result<(), &str> {
-        if self.id().is_none() {
+        if self.id().is_empty() {
             return Err("Expecting id for FastQ record.");
         }
         if !self.seq.is_ascii() {
@@ -151,9 +151,8 @@ impl Record {
     }
 
     /// Return the id of the record.
-    pub fn id(&self) -> Option<&str> {
-        Some(&self.id)
-        // self.header[1..].trim_right().splitn(2, ' ').nth(0)
+    pub fn id(&self) -> &str {
+        self.id.as_ref()
     }
 
     /// Return descriptions if present.
@@ -238,7 +237,7 @@ impl<W: io::Write> Writer<W> {
 
     /// Directly write a FastQ record.
     pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
-        self.write(record.id().unwrap_or(""),
+        self.write(record.id(),
                    record.desc(),
                    record.seq(),
                    record.qual())
@@ -292,7 +291,7 @@ IIIIIIJJJJJJ
         for res in records {
             let record = res.ok().unwrap();
             assert_eq!(record.check(), Ok(()));
-            assert_eq!(record.id(), Some("id"));
+            assert_eq!(record.id(), "id");
             assert_eq!(record.desc(), Some("desc"));
             assert_eq!(record.seq(), b"ACCGTAGGCTGA");
             assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
@@ -302,7 +301,7 @@ IIIIIIJJJJJJ
     #[test]
     fn test_record_with_attrs() {
         let record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG", b"QQQQQQQ");
-        assert_eq!(record.id(), Some("id_str"));
+        assert_eq!(record.id(), "id_str");
         assert_eq!(record.desc(), Some("desc"));
         assert_eq!(record.seq(), b"ATGCGGG");
         assert_eq!(record.qual(), b"QQQQQQQ");
