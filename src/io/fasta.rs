@@ -70,15 +70,8 @@ impl<R: io::Read> Reader<R> {
         if !self.line.starts_with('>') {
             return Err(io::Error::new(io::ErrorKind::Other, "Expected > at record start."));
         }
-        record.id = match self.line[1..].trim_right().splitn(2, ' ').nth(0) {
-            None => "".to_owned(),
-            Some(id) => id.to_owned()
-        };
-        record.desc = match self.line[1..].trim_right().splitn(2, ' ').nth(1) {
-            Some("") => None,
-            None => None,
-            Some(id) => Some(id.to_owned())
-        };
+        record.id = self.line[1..].trim_right().splitn(2, ' ').nth(0).map(|s| s.to_owned()).unwrap();
+        record.desc = self.line[1..].trim_right().splitn(2, ' ').nth(1).map(|s| s.to_owned());
         loop {
             self.line.clear();
             try!(self.reader.read_line(&mut self.line));

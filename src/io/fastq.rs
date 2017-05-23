@@ -66,11 +66,7 @@ impl<R: io::Read> Reader<R> {
                 .nth(0)
                 .unwrap_or_default()
                 .to_owned();
-            record.desc = match header[1..].trim_right().splitn(2, ' ').nth(1) {
-                Some("") => None,
-                None => None,
-                Some(desc) => Some(desc.to_owned())
-            };
+            record.desc = header[1..].trim_right().splitn(2, ' ').nth(1).map(|s| s.to_owned());
             try!(self.reader.read_line(&mut record.seq));
             try!(self.reader.read_line(&mut self.sep_line));
             try!(self.reader.read_line(&mut record.qual));
