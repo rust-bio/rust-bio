@@ -52,12 +52,21 @@ impl<R: io::Read> Reader<R> {
     /// The content of the record can be checked via the record object.
     pub fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
-        try!(self.reader.read_line(&mut record.header));
 
-        if !record.header.is_empty() {
-            if !record.header.starts_with('@') {
+        let mut header = String::new();
+        try!(self.reader.read_line(&mut header));
+
+        if !header.is_empty() {
+            if !header.starts_with('@') {
                 return Err(io::Error::new(io::ErrorKind::Other, "Expected @ at record start."));
             }
+            record.id = header[1..]
+                .trim_right()
+                .splitn(2, ' ')
+                .nth(0)
+                .unwrap_or_default()
+                .to_owned();
+            record.desc = header[1..].trim_right().splitn(2, ' ').nth(1).map(|s| s.to_owned());
             try!(self.reader.read_line(&mut record.seq));
             try!(self.reader.read_line(&mut self.sep_line));
             try!(self.reader.read_line(&mut record.qual));
@@ -82,7 +91,8 @@ impl<R: io::Read> Reader<R> {
 /// A FastQ record.
 #[derive(Debug, Clone, Default)]
 pub struct Record {
-    header: String,
+    id: String,
+    desc: Option<String>,
     seq: String,
     qual: String,
 }
@@ -92,20 +102,35 @@ impl Record {
     /// Create a new, empty FastQ record.
     pub fn new() -> Self {
         Record {
-            header: String::new(),
+            id: String::new(),
+            desc: None,
             seq: String::new(),
             qual: String::new(),
         }
     }
 
+    /// Create a new FastQ record from given attributes.
+    pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice, qual: &[u8]) -> Self {
+        let desc = match desc {
+            Some(desc) => Some(desc.to_owned()),
+            _ => None,
+        };
+        Record {
+            id: id.to_owned(),
+            desc: desc,
+            seq: String::from_utf8(seq.to_vec()).unwrap(),
+            qual: String::from_utf8(qual.to_vec()).unwrap(),
+        }
+    }
+
     /// Check if record is empty.
     pub fn is_empty(&self) -> bool {
-        self.header.is_empty() && self.seq.is_empty() && self.qual.is_empty()
+        self.id.is_empty() && self.desc.is_none() && self.seq.is_empty() && self.qual.is_empty()
     }
 
     /// Check validity of FastQ record.
     pub fn check(&self) -> Result<(), &str> {
-        if self.id().is_none() {
+        if self.id().is_empty() {
             return Err("Expecting id for FastQ record.");
         }
         if !self.seq.is_ascii() {
@@ -122,13 +147,16 @@ impl Record {
     }
 
     /// Return the id of the record.
-    pub fn id(&self) -> Option<&str> {
-        self.header[1..].trim_right().splitn(2, ' ').nth(0)
+    pub fn id(&self) -> &str {
+        self.id.as_ref()
     }
 
     /// Return descriptions if present.
     pub fn desc(&self) -> Option<&str> {
-        self.header[1..].trim_right().splitn(2, ' ').nth(1)
+        match self.desc.as_ref() {
+            Some(desc) => Some(&desc),
+            None => None
+        }
     }
 
     /// Return the sequence of the record.
@@ -143,7 +171,8 @@ impl Record {
 
     /// Clear the record.
     fn clear(&mut self) {
-        self.header.clear();
+        self.id.clear();
+        self.desc = None;
         self.seq.clear();
         self.qual.clear();
     }
@@ -152,7 +181,12 @@ impl Record {
 
 impl fmt::Display for Record {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "@{}\n{}\n+\n{}", self.header, self.seq, self.qual)
+        write!(f,
+               "@{} {}\n{}\n+\n{}",
+               self.id,
+               self.desc().unwrap_or_default(),
+               self.seq,
+               self.qual)
     }
 }
 
@@ -199,7 +233,7 @@ impl<W: io::Write> Writer<W> {
 
     /// Directly write a FastQ record.
     pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
-        self.write(record.id().unwrap_or(""),
+        self.write(record.id(),
                    record.desc(),
                    record.seq(),
                    record.qual())
@@ -253,11 +287,21 @@ IIIIIIJJJJJJ
         for res in records {
             let record = res.ok().unwrap();
             assert_eq!(record.check(), Ok(()));
-            assert_eq!(record.id(), Some("id"));
+            assert_eq!(record.id(), "id");
             assert_eq!(record.desc(), Some("desc"));
             assert_eq!(record.seq(), b"ACCGTAGGCTGA");
             assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
         }
+    }
+
+    #[test]
+    fn test_record_with_attrs() {
+        let record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG", b"QQQQQQQ");
+        assert_eq!(record.id(), "id_str");
+        assert_eq!(record.desc(), Some("desc"));
+        assert_eq!(record.seq(), b"ATGCGGG");
+        assert_eq!(record.qual(), b"QQQQQQQ");
+
     }
 
     #[test]

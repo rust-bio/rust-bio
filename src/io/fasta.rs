@@ -70,7 +70,8 @@ impl<R: io::Read> Reader<R> {
         if !self.line.starts_with('>') {
             return Err(io::Error::new(io::ErrorKind::Other, "Expected > at record start."));
         }
-        record.header.push_str(&self.line);
+        record.id = self.line[1..].trim_right().splitn(2, ' ').nth(0).map(|s| s.to_owned()).unwrap();
+        record.desc = self.line[1..].trim_right().splitn(2, ' ').nth(1).map(|s| s.to_owned());
         loop {
             self.line.clear();
             try!(self.reader.read_line(&mut self.line));
@@ -448,7 +449,7 @@ impl<W: io::Write> Writer<W> {
 
     /// Directly write a Fasta record.
     pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
-        self.write(record.id().unwrap_or(""), record.desc(), record.seq())
+        self.write(record.id(), record.desc(), record.seq())
     }
 
     /// Write a Fasta record with given id, optional description and sequence.
@@ -476,7 +477,8 @@ impl<W: io::Write> Writer<W> {
 /// A FASTA record.
 #[derive(Default)]
 pub struct Record {
-    header: String,
+    id: String,
+    desc: Option<String>,
     seq: String,
 }
 
@@ -485,19 +487,33 @@ impl Record {
     /// Create a new instance.
     pub fn new() -> Self {
         Record {
-            header: String::new(),
+            id: String::new(),
+            desc: None,
             seq: String::new(),
+        }
+    }
+
+    /// Create a new Fasta record from given attributes.
+    pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice) -> Self {
+        let desc = match desc {
+            Some(desc) => Some(desc.to_owned()),
+            _ => None,
+        };
+        Record {
+            id: id.to_owned(),
+            desc: desc,
+            seq: String::from_utf8(seq.to_vec()).unwrap(),
         }
     }
 
     /// Check if record is empty.
     pub fn is_empty(&self) -> bool {
-        self.header.is_empty() && self.seq.is_empty()
+        self.id.is_empty() && self.desc.is_none() && self.seq.is_empty()
     }
 
     /// Check validity of Fasta record.
     pub fn check(&self) -> Result<(), &str> {
-        if self.id().is_none() {
+        if self.id().is_empty() {
             return Err("Expecting id for Fasta record.");
         }
         if !self.seq.is_ascii() {
@@ -508,16 +524,16 @@ impl Record {
     }
 
     /// Return the id of the record.
-    pub fn id(&self) -> Option<&str> {
-        match self.header[1..].trim_right().splitn(2, ' ').nth(0) {
-            Some("") => None,
-            value => value,
-        }
+    pub fn id(&self) -> &str {
+        self.id.as_ref()
     }
 
     /// Return descriptions if present.
     pub fn desc(&self) -> Option<&str> {
-        self.header[1..].trim_right().splitn(2, ' ').nth(1)
+        match self.desc.as_ref() {
+            Some(desc) => Some(&desc),
+            None => None
+        }
     }
 
     /// Return the sequence of the record.
@@ -527,7 +543,8 @@ impl Record {
 
     /// Clear the record.
     fn clear(&mut self) {
-        self.header.clear();
+        self.id.clear();
+        self.desc = None;
         self.seq.clear();
     }
 }
@@ -644,7 +661,7 @@ ATTGTTGTTTTA
     #[test]
     fn test_reader() {
         let reader = Reader::new(FASTA_FILE);
-        let ids = [Some("id"), Some("id2")];
+        let ids = ["id", "id2"];
         let descs = [Some("desc"), None];
         let seqs: [&[u8]; 2] = [b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC",
                                 b"ATTGTTGTTTTAATTGTTGTTTTAATTGTTGTTTTAGGGG"];
@@ -707,6 +724,15 @@ ATTGTTGTTTTA
                 "next() should return Err if Read::read fails");
         assert!(records.next().is_none(),
                 "next() should return None after error has occurred");
+    }
+
+    #[test]
+    fn test_record_with_attrs() {
+        let record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG");
+        assert_eq!(record.id(), "id_str");
+        assert_eq!(record.desc(), Some("desc"));
+        assert_eq!(record.seq(), b"ATGCGGG");
+
     }
 
     #[test]
