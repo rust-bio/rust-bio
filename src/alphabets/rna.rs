@@ -34,7 +34,7 @@ pub fn n_alphabet() -> Alphabet {
 
 /// The IUPAC RNA alphabet (uppercase and lowercase).
 pub fn iupac_alphabet() -> Alphabet {
-    Alphabet::new(b"ACGTURYSWKMBDHVNZacgturyswkmbdhvnz")
+    Alphabet::new(b"ACGURYSWKMBDHVNZacguryswkmbdhvnz")
 }
 
 
@@ -69,10 +69,30 @@ pub fn revcomp<'a, T: IntoTextIterator<'a>>(text: T) -> Vec<u8>
 
 #[cfg(test)]
 mod tests {
-    fn validate_height(node: &Node<i64, String>) {
-        let left_height = node.left.as_ref().map_or(0, |n| n.height);
-        let right_height = node.right.as_ref().map_or(0, |n| n.height);
-        assert!((left_height - right_height).abs() <= 1);
-        assert_eq!(node.height, cmp::max(left_height, right_height) + 1)
+    use super::*;
+
+    #[test]
+    fn is_word() {
+        assert!(alphabet().is_word(b"GAUUACA"));
+    }
+
+    #[test]
+    fn is_no_word() {
+        assert!(!alphabet().is_word(b"gaTTaca"));
+    }
+
+    #[test]
+    fn symbol_is_no_word() {
+        assert!(!alphabet().is_word(b"#"));
+    }
+
+    #[test]
+    fn number_is_no_word() {
+        assert!(!alphabet().is_word(b"42"));
+    }
+
+    #[test]
+    fn test_reverse_complement() {
+        assert_eq!(revcomp(b"GAUUACA"), b"UGUAAUC");
     }
 }
