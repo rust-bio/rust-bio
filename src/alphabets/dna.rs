@@ -34,7 +34,7 @@ pub fn n_alphabet() -> Alphabet {
 
 /// The IUPAC DNA alphabet (uppercase and lowercase).
 pub fn iupac_alphabet() -> Alphabet {
-    Alphabet::new(b"ACGTURYSWKMBDHVNacgturyswkmbdhvn")
+    Alphabet::new(b"ACGTRYSWKMBDHVNZacgtryswkmbdhvnz")
 }
 
 
