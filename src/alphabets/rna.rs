@@ -45,7 +45,7 @@ lazy_static! {
         for (v, mut a) in comp.iter_mut().enumerate() {
             *a = v as u8;
         }
-        for (&a, &b) in b"AGCUYRWSKMDVHBNZ".iter().zip(b"UCGARYSWMKHBDVNZ".iter()) {
+        for (&a, &b) in b"AGCUYRWSKMDVHBNZ".iter().zip(b"UCGARYWSMKHBDVNZ".iter()) {
             comp[a as usize] = b;
             comp[a as usize + 32] = b + 32;  // lowercase variants
         }
