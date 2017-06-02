@@ -64,8 +64,5 @@ pub fn complement(a: u8) -> u8 {
 pub fn revcomp<'a, T: IntoTextIterator<'a>>(text: T) -> Vec<u8>
     where T::IntoIter: DoubleEndedIterator
 {
-    text.into_iter()
-        .rev()
-        .map(|&a| complement(a))
-        .collect()
+    text.into_iter().rev().map(|&a| complement(a)).collect()
 }
