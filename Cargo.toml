@@ -32,5 +32,5 @@ regex = "0.2.*"
 multimap = "0.4.*"
 
 [dependencies.vec_map]
-version = "0.7.*"
+version = "0.8.*"
 features = ["eders"]
