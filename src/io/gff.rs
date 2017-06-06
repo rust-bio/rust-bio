@@ -319,6 +319,11 @@ impl Record {
         &mut self.strand
     }
 
+    /// Get mutable reference on frame of feature.
+    pub fn frame_mut(&mut self) -> &mut String {
+        &mut self.frame
+    }
+
     /// Get mutable reference on attributes of feature.
     pub fn attributes_mut(&mut self) -> &mut HashMap<String, String> {
         &mut self.attributes
