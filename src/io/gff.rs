@@ -183,7 +183,7 @@ impl<W: io::Write> Writer<W> {
             record
                 .attributes
                 .iter()
-                .map(|item| format!("{}{}{}", item.0, self.delimiter, item.1))
+                .map(|(a, b)| format!("{}{}{}", a, self.delimiter, b))
                 .join(&self.terminator)
         } else {
             "".to_owned()
