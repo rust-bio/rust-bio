@@ -29,6 +29,7 @@ newtype_derive = "0.1"
 ordered-float = "0.5"
 quick-error = "1.2"
 regex = "0.2"
+multimap = "0.4"
 
 [dependencies.vec_map]
 version = "0.8"
