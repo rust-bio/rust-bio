@@ -17,9 +17,8 @@ addons:
       - kalakris-cmake
 
 before_script:
-  - |
-      cargo install cargo-travis &&
-      export PATH=$HOME/.cargo/bin:$PATH
+  - cargo install --force cargo-travis
+  - export PATH=$HOME/.cargo/bin:$PATH
 
 matrix:
   include:
@@ -40,4 +39,5 @@ after_success:
 
 env:
   global:
-    secure: ujLBCE7iB7rMZaOSQQS0t7RjenxDnV/rtiMEB/aJnzbCBTo2RtJifyXkZci28YT0Sab8HeyCTsKafszgphj0BvSYUI8fwexPtRCXmgcLjouXRD0NWAr3dtEx0TPPXcwquer0BQzfeEZUmOnChKXDlcE3GSIdRSI+1Y8inbF4cRM=
+    - secure: ujLBCE7iB7rMZaOSQQS0t7RjenxDnV/rtiMEB/aJnzbCBTo2RtJifyXkZci28YT0Sab8HeyCTsKafszgphj0BvSYUI8fwexPtRCXmgcLjouXRD0NWAr3dtEx0TPPXcwquer0BQzfeEZUmOnChKXDlcE3GSIdRSI+1Y8inbF4cRM=
+    - RUST_BACKTRACE=1
