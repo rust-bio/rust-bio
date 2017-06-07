@@ -297,12 +297,4 @@ mod tests {
             assert_eq!(m.pattern.get(pattern), m.text.get(text));
         }
     }
-
-    #[test]
-    fn test_serde() {
-        use serde::{Serialize, Deserialize};
-        fn impls_serde_traits<S: Serialize + Deserialize>() {}
-
-        impls_serde_traits::<QGramIndex>();
-    }
 }

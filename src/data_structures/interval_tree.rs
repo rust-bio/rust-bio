@@ -33,7 +33,7 @@ use std::iter::FromIterator;
 use utils::Interval;
 
 /// An interval tree for storing intervals with data
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntervalTree<N: Ord + Clone, D> {
     root: Option<Node<N, D>>,
 }
@@ -221,7 +221,7 @@ impl<N: Clone + Ord, D, R: Into<Interval<N>>> FromIterator<(R, D)> for IntervalT
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Node<N: Ord + Clone, D> {
     // actual interval data
     interval: Interval<N>,

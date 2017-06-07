@@ -160,13 +160,4 @@ mod tests {
         assert!(rs.select(0).unwrap() == 0);
         assert!(rs.select(1).unwrap() == 5);
     }
-
-
-    #[test]
-    fn test_serde() {
-        use serde::{Serialize, Deserialize};
-        fn impls_serde_traits<S: Serialize + Deserialize>() {}
-
-        impls_serde_traits::<RankSelect>();
-    }
 }
