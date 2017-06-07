@@ -70,7 +70,8 @@ impl<R: io::Read> Reader<R> {
         if !self.line.starts_with('>') {
             return Err(io::Error::new(io::ErrorKind::Other, "Expected > at record start."));
         }
-        record.header.push_str(&self.line);
+        record.id = self.line[1..].trim_right().splitn(2, ' ').nth(0).map(|s| s.to_owned()).unwrap();
+        record.desc = self.line[1..].trim_right().splitn(2, ' ').nth(1).map(|s| s.to_owned());
         loop {
             self.line.clear();
             try!(self.reader.read_line(&mut self.line));
@@ -83,9 +84,12 @@ impl<R: io::Read> Reader<R> {
         Ok(())
     }
 
-    /// Return an iterator over the records of this FastQ file.
+    /// Return an iterator over the records of this Fasta file.
     pub fn records(self) -> Records<R> {
-        Records { reader: self }
+        Records {
+            reader: self,
+            error_has_occured: false,
+        }
     }
 }
 
@@ -278,7 +282,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     /// Return the IndexRecord for the given sequence name or io::Result::Err
     fn idx(&self, seqname: &str) -> io::Result<IndexRecord> {
         match self.index.inner.get(seqname) {
-            Some(idx) => Ok(idx.clone()),
+            Some(idx) => Ok(*idx),
             None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
         }
     }
@@ -402,6 +406,9 @@ impl<'a, R: io::Read + io::Seek + 'a> Iterator for IndexedReaderIterator<'a, R> 
             item
         } else if self.bases_left > 0 {
             if let Err(e) = self.fill_buffer() {
+                self.bases_left = 0;
+                self.buf_idx = self.buf.len();
+
                 return Some(Err(e));
             }
 
@@ -442,7 +449,7 @@ impl<W: io::Write> Writer<W> {
 
     /// Directly write a Fasta record.
     pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
-        self.write(record.id().unwrap_or(""), record.desc(), record.seq())
+        self.write(record.id(), record.desc(), record.seq())
     }
 
     /// Write a Fasta record with given id, optional description and sequence.
@@ -470,7 +477,8 @@ impl<W: io::Write> Writer<W> {
 /// A FASTA record.
 #[derive(Default)]
 pub struct Record {
-    header: String,
+    id: String,
+    desc: Option<String>,
     seq: String,
 }
 
@@ -479,20 +487,34 @@ impl Record {
     /// Create a new instance.
     pub fn new() -> Self {
         Record {
-            header: String::new(),
+            id: String::new(),
+            desc: None,
             seq: String::new(),
+        }
+    }
+
+    /// Create a new Fasta record from given attributes.
+    pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice) -> Self {
+        let desc = match desc {
+            Some(desc) => Some(desc.to_owned()),
+            _ => None,
+        };
+        Record {
+            id: id.to_owned(),
+            desc: desc,
+            seq: String::from_utf8(seq.to_vec()).unwrap(),
         }
     }
 
     /// Check if record is empty.
     pub fn is_empty(&self) -> bool {
-        self.header.is_empty() && self.seq.is_empty()
+        self.id.is_empty() && self.desc.is_none() && self.seq.is_empty()
     }
 
     /// Check validity of Fasta record.
     pub fn check(&self) -> Result<(), &str> {
-        if self.id().is_none() {
-            return Err("Expecting id for FastQ record.");
+        if self.id().is_empty() {
+            return Err("Expecting id for Fasta record.");
         }
         if !self.seq.is_ascii() {
             return Err("Non-ascii character found in sequence.");
@@ -502,13 +524,16 @@ impl Record {
     }
 
     /// Return the id of the record.
-    pub fn id(&self) -> Option<&str> {
-        self.header[1..].trim_right().splitn(2, ' ').nth(0)
+    pub fn id(&self) -> &str {
+        self.id.as_ref()
     }
 
     /// Return descriptions if present.
     pub fn desc(&self) -> Option<&str> {
-        self.header[1..].trim_right().splitn(2, ' ').nth(1)
+        match self.desc.as_ref() {
+            Some(desc) => Some(&desc),
+            None => None
+        }
     }
 
     /// Return the sequence of the record.
@@ -518,7 +543,8 @@ impl Record {
 
     /// Clear the record.
     fn clear(&mut self) {
-        self.header.clear();
+        self.id.clear();
+        self.desc = None;
         self.seq.clear();
     }
 }
@@ -527,6 +553,7 @@ impl Record {
 /// An iterator over the records of a Fasta file.
 pub struct Records<R: io::Read> {
     reader: Reader<R>,
+    error_has_occured: bool,
 }
 
 
@@ -534,11 +561,18 @@ impl<R: io::Read> Iterator for Records<R> {
     type Item = io::Result<Record>;
 
     fn next(&mut self) -> Option<io::Result<Record>> {
-        let mut record = Record::new();
-        match self.reader.read(&mut record) {
-            Ok(()) if record.is_empty() => None,
-            Ok(()) => Some(Ok(record)),
-            Err(err) => Some(Err(err)),
+        if self.error_has_occured {
+            None
+        } else {
+            let mut record = Record::new();
+            match self.reader.read(&mut record) {
+                Ok(()) if record.is_empty() => None,
+                Ok(()) => Some(Ok(record)),
+                Err(err) => {
+                    self.error_has_occured = true;
+                    Some(Err(err))
+                }
+            }
         }
     }
 }
@@ -627,7 +661,7 @@ ATTGTTGTTTTA
     #[test]
     fn test_reader() {
         let reader = Reader::new(FASTA_FILE);
-        let ids = [Some("id"), Some("id2")];
+        let ids = ["id", "id2"];
         let descs = [Some("desc"), None];
         let seqs: [&[u8]; 2] = [b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC",
                                 b"ATTGTTGTTTTAATTGTTGTTTTAATTGTTGTTTTAGGGG"];
@@ -639,6 +673,66 @@ ATTGTTGTTTTA
             assert_eq!(record.desc(), descs[i]);
             assert_eq!(record.seq(), seqs[i]);
         }
+    }
+
+    #[test]
+    fn test_reader_wrong_header() {
+        let mut reader = Reader::new(&b"!test\nACGTA\n"[..]);
+        let mut record = Record::new();
+        assert!(reader.read(&mut record).is_err(),
+                "read() should return Err if FASTA header is malformed");
+    }
+
+    #[test]
+    fn test_reader_no_id() {
+        let mut reader = Reader::new(&b">\nACGTA\n"[..]);
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+        assert!(record.check().is_err(),
+                "check() should return Err if FASTA header is empty");
+    }
+
+    #[test]
+    fn test_reader_non_ascii_sequence() {
+        let mut reader = Reader::new(&b">id\nACGTA\xE2\x98\xB9AT\n"[..]);
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+        assert!(record.check().is_err(),
+                "check() should return Err if FASTA sequence is not ASCII");
+    }
+
+    #[test]
+    fn test_reader_read_fails() {
+        let mut reader = Reader::new(ReaderMock {
+                                         seek_fails: false,
+                                         read_fails: true,
+                                     });
+        let mut record = Record::new();
+        assert!(reader.read(&mut record).is_err(),
+                "read() should return Err if Read::read fails");
+    }
+
+    #[test]
+    fn test_reader_read_fails_iter() {
+        let reader = Reader::new(ReaderMock {
+                                     seek_fails: false,
+                                     read_fails: true,
+                                 });
+        let mut records = reader.records();
+
+        assert!(records.next().unwrap().is_err(),
+                "next() should return Err if Read::read fails");
+        assert!(records.next().is_none(),
+                "next() should return None after error has occurred");
+    }
+
+    #[test]
+    fn test_record_with_attrs() {
+        let record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG");
+        assert_eq!(record.id(), "id_str");
+        assert_eq!(record.desc(), Some("desc"));
+        assert_eq!(record.seq(), b"ATGCGGG");
+
     }
 
     #[test]
@@ -904,6 +998,8 @@ ATTGTTGTTTTA
         let mut reader = IndexedReader::new(bad_reader, FAI_FILE).unwrap();
         let mut iterator = reader.read_iter("id", 0, 10).unwrap();
         assert!(iterator.next().unwrap().is_err());
+        assert!(iterator.next().is_none(),
+                "next() should return none after error has occurred");
     }
 
     #[test]
