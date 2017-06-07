@@ -110,6 +110,7 @@ extern crate ordered_float;
 #[macro_use]
 extern crate quick_error;
 extern crate regex;
+extern crate multimap;
 
 pub mod utils;
 pub mod alphabets;
