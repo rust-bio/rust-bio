@@ -428,8 +428,7 @@ mod tests {
     use super::*;
     use alphabets::dna;
     use data_structures::suffix_array::suffix_array;
-    use data_structures::bwt::{bwt, less, Occ, Less, BWT};
-    use std::rc::Rc;
+    use data_structures::bwt::{bwt, less, Occ};
 
     #[test]
     fn test_fmindex() {
@@ -505,15 +504,6 @@ mod tests {
         assert_eq!(extended, interval);
         let extended = fmdindex.forward_ext(&empty, pattern[0]);
         assert_eq!(extended, interval);
-    }
-
-    #[test]
-    fn test_serde() {
-        use serde::{Serialize, Deserialize};
-        fn impls_serde_traits<S: Serialize + Deserialize>() {}
-
-        impls_serde_traits::<FMIndex<Rc<BWT>, Rc<Less>, Rc<Occ>>>();
-        impls_serde_traits::<FMDIndex<Rc<BWT>, Rc<Less>, Rc<Occ>>>();
     }
 
     #[test]
