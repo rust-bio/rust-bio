@@ -28,7 +28,7 @@ use bit_vec::BitVec;
 
 
 /// A rank/select data structure.
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize)]
 pub struct RankSelect {
     n: usize,
     bits: Vec<u8>,
@@ -80,9 +80,9 @@ impl RankSelect {
             rank += (self.bits[b] >> (7 - i % 8)).count_ones();
             // add the popcounts of blocks in between
             rank += self.bits[s * 32 / 8..b]
-                        .iter()
-                        .map(|&a| a.count_ones())
-                        .fold(0, |a, b| a + b);
+                .iter()
+                .map(|&a| a.count_ones())
+                .fold(0, |a, b| a + b);
 
             Some(rank)
         }
@@ -159,15 +159,5 @@ mod tests {
         assert!(rs.rank(64) == None);
         assert!(rs.select(0).unwrap() == 0);
         assert!(rs.select(1).unwrap() == 5);
-    }
-
-
-    #[test]
-    #[cfg(feature = "nightly")]
-    fn test_serde() {
-        use serde::{Serialize, Deserialize};
-        fn impls_serde_traits<S: Serialize + Deserialize>() {}
-
-        impls_serde_traits::<RankSelect>();
     }
 }

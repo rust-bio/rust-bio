@@ -1,8 +1,9 @@
-[![Crates.io](https://img.shields.io/crates/d/bio.svg?style=flat-square)](https://crates.io/crates/bio)
-[![Crates.io](https://img.shields.io/crates/v/bio.svg?style=flat-square)](https://crates.io/crates/bio)
-[![Crates.io](https://img.shields.io/crates/l/bio.svg?style=flat-square)](https://crates.io/crates/bio)
-[![Travis](https://img.shields.io/travis/rust-bio/rust-bio/master.svg?style=flat-square)](https://travis-ci.org/rust-bio/rust-bio)
-[![Coveralls](https://img.shields.io/coveralls/rust-bio/rust-bio.svg?style=flat-square)](https://coveralls.io/github/rust-bio/rust-bio)
+[![Crates.io](https://img.shields.io/crates/d/bio.svg)](https://crates.io/crates/bio)
+[![Crates.io](https://img.shields.io/crates/v/bio.svg)](https://crates.io/crates/bio)
+[![Crates.io](https://img.shields.io/crates/l/bio.svg)](https://crates.io/crates/bio)
+[![Travis](https://img.shields.io/travis/rust-bio/rust-bio/master.svg)](https://travis-ci.org/rust-bio/rust-bio)
+[![Coveralls](https://img.shields.io/coveralls/rust-bio/rust-bio.svg)](https://coveralls.io/github/rust-bio/rust-bio)
+[![DOI](https://zenodo.org/badge/29821195.svg)](https://zenodo.org/badge/latestdoi/29821195)
 
 # Rust-Bio, a bioinformatics library for Rust.
 

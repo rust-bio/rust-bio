@@ -22,12 +22,14 @@ use std::io;
 use std::fs;
 use std::path::Path;
 use std::convert::AsRef;
-use std::collections::HashMap;
 use itertools::Itertools;
+use regex::Regex;
+use multimap::MultiMap;
+use serde::{Serialize, Deserialize};
 
 use csv;
 
-use io::Strand;
+use utils::Strand;
 
 /// `GffType`
 ///
@@ -76,24 +78,34 @@ impl<R: io::Read> Reader<R> {
     /// Create a new GFF reader given an instance of `io::Read`, in given format.
     pub fn new(reader: R, fileformat: GffType) -> Self {
         Reader {
-            inner: csv::Reader::from_reader(reader).delimiter(b'\t').has_headers(false),
+            inner: csv::Reader::from_reader(reader)
+                .delimiter(b'\t')
+                .has_headers(false),
             gff_type: fileformat,
         }
     }
 
     /// Iterate over all records.
     pub fn records(&mut self) -> Records<R> {
+        let (delim, term) = self.gff_type.separator();
+        let r = format!(r" *(?P<key>[^{delim}{term}\t]+){delim}(?P<value>[^{delim}{term}\t]+){term}?",
+                    delim = delim as char,
+                    term = term as char);
+        let attribute_re = Regex::new(&r).unwrap();
         Records {
             inner: self.inner.decode(),
-            gff_type: self.gff_type
+            attribute_re: attribute_re,
         }
     }
 }
 
+
 /// A GFF record.
 pub struct Records<'a, R: 'a + io::Read> {
-    inner: csv::DecodedRecords<'a, R, (String, String, String, u64, u64, String, String, String, String)>,
-    gff_type: GffType,
+    inner: csv::DecodedRecords<'a,
+                               R,
+                               (String, String, String, u64, u64, String, String, String, String)>,
+    attribute_re: Regex,
 }
 
 
@@ -101,29 +113,36 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
     type Item = csv::Result<Record>;
 
     fn next(&mut self) -> Option<csv::Result<Record>> {
-        let (delim, termi) = self.gff_type.separator();
-
-        self.inner.next().map(|res| {
-            res.map(|(seqname, source, feature_type, start, end, score, strand, frame, attributes)| {
-                Record {
-                    seqname: seqname,
-                    source: source,
-                    feature_type: feature_type,
-                    start: start,
-                    end: end,
-                    score: score,
-                    strand: strand,
-                    frame: frame,
-                    attributes: csv::Reader::from_string(attributes)
-                        .delimiter(delim)
-                        .record_terminator(csv::RecordTerminator::Any(termi))
-                        .has_headers(false)
-                        .decode()
-                        .collect::<csv::Result<_>>()
-                        .unwrap(),
-                }
+        self.inner
+            .next()
+            .map(|res| {
+                res.map(|(seqname,
+                          source,
+                          feature_type,
+                          start,
+                          end,
+                          score,
+                          strand,
+                          frame,
+                          raw_attributes)| {
+                    let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
+                    let mut attrs = MultiMap::new();
+                    for caps in self.attribute_re.captures_iter(&raw_attributes) {
+                        attrs.insert(trim_quotes(&caps["key"]), trim_quotes(&caps["value"]));
+                    }
+                    Record {
+                        seqname: seqname,
+                        source: source,
+                        feature_type: feature_type,
+                        start: start,
+                        end: end,
+                        score: score,
+                        strand: strand,
+                        frame: frame,
+                        attributes: attrs,
+                    }
+                })
             })
-        })
     }
 }
 
@@ -150,7 +169,9 @@ impl<W: io::Write> Writer<W> {
         let (delim, termi) = fileformat.separator();
 
         Writer {
-            inner: csv::Writer::from_writer(writer).delimiter(b'\t').flexible(true),
+            inner: csv::Writer::from_writer(writer)
+                .delimiter(b'\t')
+                .flexible(true),
             delimiter: delim as char,
             terminator: String::from_utf8(vec![termi]).unwrap(),
         }
@@ -159,18 +180,31 @@ impl<W: io::Write> Writer<W> {
     /// Write a given GFF record.
     pub fn write(&mut self, record: &Record) -> csv::Result<()> {
         let attributes = if !record.attributes.is_empty() {
-            record.attributes.iter().map(|(a, b)| format!("{}{}{}", a, self.delimiter, b)).join(&self.terminator)
+            record
+                .attributes
+                .iter()
+                .map(|(a, b)| format!("{}{}{}", a, self.delimiter, b))
+                .join(&self.terminator)
         } else {
             "".to_owned()
         };
 
-        self.inner.encode((&record.seqname, &record.source, &record.feature_type, record.start, record.end, &record.score, &record.strand, &record.frame, attributes))
+        self.inner
+            .encode((&record.seqname,
+                     &record.source,
+                     &record.feature_type,
+                     record.start,
+                     record.end,
+                     &record.score,
+                     &record.strand,
+                     &record.frame,
+                     attributes))
     }
 }
 
 
 /// A GFF record
-#[derive(RustcEncodable, Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Record {
     seqname: String,
     source: String,
@@ -180,7 +214,7 @@ pub struct Record {
     score: String,
     strand: String,
     frame: String,
-    attributes: HashMap<String, String>,
+    attributes: MultiMap<String, String>,
 }
 
 impl Record {
@@ -195,7 +229,7 @@ impl Record {
             score: ".".to_owned(),
             strand: ".".to_owned(),
             frame: "".to_owned(),
-            attributes: HashMap::<String, String>::new(),
+            attributes: MultiMap::<String, String>::new(),
         }
     }
 
@@ -247,7 +281,7 @@ impl Record {
     }
 
     /// Attribute of feature
-    pub fn attributes(&self) -> &HashMap<String, String> {
+    pub fn attributes(&self) -> &MultiMap<String, String> {
         &self.attributes
     }
 
@@ -286,8 +320,13 @@ impl Record {
         &mut self.strand
     }
 
+    /// Get mutable reference on frame of feature.
+    pub fn frame_mut(&mut self) -> &mut String {
+        &mut self.frame
+    }
+
     /// Get mutable reference on attributes of feature.
-    pub fn attributes_mut(&mut self) -> &mut HashMap<String, String> {
+    pub fn attributes_mut(&mut self) -> &mut MultiMap<String, String> {
         &mut self.attributes
     }
 }
@@ -295,13 +334,13 @@ impl Record {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use io::Strand;
-    use std::collections::HashMap;
+    use utils::Strand;
+    use multimap::MultiMap;
 
     const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed,ID=test
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV,ID=PRO_0000148105
 ";
-    //required because HashMap iter on element randomly
+    //required because MultiMap iter on element randomly
     const GFF_FILE_ONE_ATTRIB: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105
 ";
@@ -310,7 +349,14 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote ATP-dependent;ID PRO_0000148105
 ";
 
-    //required because HashMap iter on element randomly
+    // Another variant of GTF file, modified from a published GENCODE GTF file.
+    const GTF_FILE_2: &'static [u8] = b"chr1\tHAVANA\tgene\t11869\t14409\t.\t+\t.\tgene_id \"ENSG00000223972.5\"; gene_type \"transcribed_unprocessed_pseudogene\";
+chr1\tHAVANA\ttranscript\t11869\t14409\t.\t+\t.\tgene_id \"ENSG00000223972.5\"; transcript_id \"ENST00000456328.2\"; gene_type \"transcribed_unprocessed_pseudogene\"";
+
+    // GTF file with duplicate attribute keys, taken from a published GENCODE GTF file.
+    const GTF_FILE_DUP_ATTR_KEYS: &'static [u8] = b"chr1\tENSEMBL\ttranscript\t182393\t184158\t.\t+\t.\tgene_id \"ENSG00000279928.1\"; transcript_id \"ENST00000624431.1\"; gene_type \"protein_coding\"; gene_status \"KNOWN\"; gene_name \"FO538757.2\"; transcript_type \"protein_coding\"; transcript_status \"KNOWN\"; transcript_name \"FO538757.2-201\"; level 3; protein_id \"ENSP00000485457.1\"; transcript_support_level \"1\"; tag \"basic\"; tag \"appris_principal_1\";";
+
+    //required because MultiMap iter on element randomly
     const GTF_FILE_ONE_ATTRIB: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 ";
@@ -325,15 +371,16 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let scores = [None, Some(50)];
         let strand = [None, Some(Strand::Forward)];
         let frame = [".", "."];
-        let mut attributes = [HashMap::new(), HashMap::new()];
+        let mut attributes = [MultiMap::new(), MultiMap::new()];
         attributes[0].insert("ID".to_owned(), "test".to_owned());
         attributes[0].insert("Note".to_owned(), "Removed".to_owned());
         attributes[1].insert("ID".to_owned(), "PRO_0000148105".to_owned());
-        attributes[1].insert("Note".to_owned(), "ATP-dependent protease subunit HslV".to_owned());
+        attributes[1].insert("Note".to_owned(),
+                             "ATP-dependent protease subunit HslV".to_owned());
 
         let mut reader = Reader::new(GFF_FILE, GffType::GFF3);
         for (i, r) in reader.records().enumerate() {
-            let record = r.ok().expect("Error reading record");
+            let record = r.unwrap();
             assert_eq!(record.seqname(), seqname[i]);
             assert_eq!(record.source(), source[i]);
             assert_eq!(record.feature_type(), feature_type[i]);
@@ -356,7 +403,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let scores = [None, Some(50)];
         let strand = [None, Some(Strand::Forward)];
         let frame = [".", "."];
-        let mut attributes = [HashMap::new(), HashMap::new()];
+        let mut attributes = [MultiMap::new(), MultiMap::new()];
         attributes[0].insert("ID".to_owned(), "test".to_owned());
         attributes[0].insert("Note".to_owned(), "Removed".to_owned());
         attributes[1].insert("ID".to_owned(), "PRO_0000148105".to_owned());
@@ -364,7 +411,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 
         let mut reader = Reader::new(GTF_FILE, GffType::GTF2);
         for (i, r) in reader.records().enumerate() {
-            let record = r.ok().expect("Error reading record");
+            let record = r.unwrap();
             assert_eq!(record.seqname(), seqname[i]);
             assert_eq!(record.source(), source[i]);
             assert_eq!(record.feature_type(), feature_type[i]);
@@ -378,13 +425,63 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
     }
 
     #[test]
+    fn test_reader_gtf2_2() {
+        let seqname = ["chr1", "chr1"];
+        let source = ["HAVANA", "HAVANA"];
+        let feature_type = ["gene", "transcript"];
+        let starts = [11869, 11869];
+        let ends = [14409, 14409];
+        let scores = [None, None];
+        let strand = [Some(Strand::Forward), Some(Strand::Forward)];
+        let frame = [".", "."];
+        let mut attributes = [MultiMap::new(), MultiMap::new()];
+        attributes[0].insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
+        attributes[0].insert("gene_type".to_owned(),
+                             "transcribed_unprocessed_pseudogene".to_owned());
+        attributes[1].insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
+        attributes[1].insert("transcript_id".to_owned(), "ENST00000456328.2".to_owned());
+        attributes[1].insert("gene_type".to_owned(),
+                             "transcribed_unprocessed_pseudogene".to_owned());
+
+        let mut reader = Reader::new(GTF_FILE_2, GffType::GTF2);
+        for (i, r) in reader.records().enumerate() {
+            let record = r.unwrap();
+            assert_eq!(record.seqname(), seqname[i]);
+            assert_eq!(record.source(), source[i]);
+            assert_eq!(record.feature_type(), feature_type[i]);
+            assert_eq!(*record.start(), starts[i]);
+            assert_eq!(*record.end(), ends[i]);
+            assert_eq!(record.score(), scores[i]);
+            assert_eq!(record.strand(), strand[i]);
+            assert_eq!(record.frame(), frame[i]);
+            assert_eq!(record.attributes(), &attributes[i]);
+        }
+    }
+
+    #[test]
+    fn test_reader_gtf2_dup_attr_keys() {
+        let mut reader = Reader::new(GTF_FILE_DUP_ATTR_KEYS, GffType::GTF2);
+        let mut records = reader.records().collect::<Vec<_>>();
+        assert_eq!(records.len(), 1);
+        let record = records.pop().unwrap().expect("expected one record");
+        assert_eq!(record.attributes.get("tag"),
+                   Some(&"basic".to_owned()));
+        assert_eq!(record.attributes.get_vec("tag"),
+                   Some(&vec!["basic".to_owned(), "appris_principal_1".to_owned()]));
+    }
+
+    #[test]
     fn test_writer_gff3() {
         let mut reader = Reader::new(GFF_FILE_ONE_ATTRIB, GffType::GFF3);
         let mut writer = Writer::new(vec![], GffType::GFF3);
         for r in reader.records() {
-            writer.write(&r.ok().expect("Error reading record")).ok().expect("Error writing record");
+            writer
+                .write(&r.ok().expect("Error reading record"))
+                .ok()
+                .expect("Error writing record");
         }
-        assert_eq!(writer.inner.as_string(), String::from_utf8_lossy(GFF_FILE_ONE_ATTRIB))
+        assert_eq!(writer.inner.as_string(),
+                   String::from_utf8_lossy(GFF_FILE_ONE_ATTRIB))
     }
 
     #[test]
@@ -392,9 +489,13 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut reader = Reader::new(GTF_FILE_ONE_ATTRIB, GffType::GTF2);
         let mut writer = Writer::new(vec![], GffType::GTF2);
         for r in reader.records() {
-            writer.write(&r.ok().expect("Error reading record")).ok().expect("Error writing record");
+            writer
+                .write(&r.ok().expect("Error reading record"))
+                .ok()
+                .expect("Error writing record");
         }
-        assert_eq!(writer.inner.as_string(), String::from_utf8_lossy(GTF_FILE_ONE_ATTRIB))
+        assert_eq!(writer.inner.as_string(),
+                   String::from_utf8_lossy(GTF_FILE_ONE_ATTRIB))
     }
 
     #[test]
@@ -402,8 +503,12 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut reader = Reader::new(GTF_FILE_ONE_ATTRIB, GffType::GTF2);
         let mut writer = Writer::new(vec![], GffType::GFF3);
         for r in reader.records() {
-            writer.write(&r.ok().expect("Error reading record")).ok().expect("Error writing record");
+            writer
+                .write(&r.ok().expect("Error reading record"))
+                .ok()
+                .expect("Error writing record");
         }
-        assert_eq!(writer.inner.as_string(), String::from_utf8_lossy(GFF_FILE_ONE_ATTRIB))
+        assert_eq!(writer.inner.as_string(),
+                   String::from_utf8_lossy(GFF_FILE_ONE_ATTRIB))
     }
 }

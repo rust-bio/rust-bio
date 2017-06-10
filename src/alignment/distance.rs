@@ -1,47 +1,19 @@
-// Copyright 2015 Vadim Nazarov.
+// Copyright 2015-2017 Vadim Nazarov, Johannes Köster.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 //! Various subroutines for computing a distance between sequences.
-//! Complexity: O(n) for strings of length n for the Hamming distance;
-//! O(n * m) for strings of length n and m for the Levenshtein (or edit) distance.
-//!
-//! # Example
-//!
-//! ```
-//! use bio::alignment::distance::*;
-//!
-//! let x = b"GTCTGCATGCG";
-//! let y = b"TTTAGCTAGCG";
-//! // GTCTGCATGCG
-//! //  |  ||  |||
-//! // TTTAGCTAGCG
-//! match hamming(x, y) {
-//!     Ok(s)  => println!("Score is: {}", s),  // Score is 5
-//!     Err(e) => println!("Error: {}", e),     // No error in this example
-//! }
-//!
-//! let x = b"ACCGTGGAT";
-//! let y = b"AAAAACCGTTGAT";
-//! // ----ACCGTGGAT
-//! //     ||||| |||
-//! // AAAAACCGTTGAT
-//! let l_score = levenshtein(x, y);  // Score is 5
-//! assert_eq!(l_score, 5);
-//! ```
 
 
 use itertools::multizip;
 use std::cmp::min;
-use std::result::Result;
 
 use utils::TextSlice;
 
 
-/// Compute the Hamming distance between two strings with `hamming`. If returns the `Result<u32, &str>` type
-/// with the first element corresponding to the distance between two strings (a number of mismatches) and the second one to the error message
-/// when two strings are not of equal sizes.
+/// Compute the Hamming distance between two strings. Complexity: O(n).
 ///
 /// # Example
 ///
@@ -53,44 +25,26 @@ use utils::TextSlice;
 /// // GTCTGCATGCG
 /// //  |  ||  |||
 /// // TTTAGCTAGCG
-/// match hamming(x, y) {
-///     Ok(s)  => println!("Score is: {}", s),  // Score is 5
-///     Err(e) => println!("Error: {}", e),     // No error in this example
-/// }
-/// assert!(hamming(x, y).is_ok());
-/// assert_eq!(hamming(x, y).unwrap(), 5);
+/// assert_eq!(hamming(x, y), 5);
 /// ```
-///
-/// In case of the error:
-///
-/// ```
-/// use bio::alignment::distance::*;
-///
-/// let x = b"GACTATATCGA";
-/// let y = b"TTTAGCTC";
-/// match hamming(x, y) {
-///     Ok(s)  => println!("Score is: {}", s),  // No score because strings are of unequal sizes.
-///     Err(e) => println!("Error: {}", e),     // Will print "Error: hamming distance: strings are of unequal sizes!"
-/// }
-/// assert!(hamming(x, y).is_err());
-/// ```
-pub fn hamming(alpha: TextSlice, beta: TextSlice) -> Result<u32, &'static str> {
-    if alpha.len() == beta.len() {
-        let mut score: u32 = 0;
-        for (a, b) in multizip((alpha, beta)) {
-            if a != b {
-                score += 1;
-            }
+pub fn hamming(alpha: TextSlice, beta: TextSlice) -> u64 {
+    assert_eq!(
+        alpha.len(), beta.len(),
+        "hamming distance cannot be calculated for texts of different length ({}!={})",
+        alpha.len(), beta.len()
+    );
+    let mut dist = 0;
+    for (a, b) in multizip((alpha, beta)) {
+        if a != b {
+            dist += 1;
         }
-        Ok(score)
-    } else {
-        Err("hamming distance: strings are of unequal sizes!")
     }
+    dist
 }
 
 
-/// Compute the Levenshtein (or Edit) distance between two strings with `levenshtein`. It returns a distance between two strings,
-/// i.e. minimal number of mismatches, insertions and deletions between two strings.
+/// Compute the Levenshtein (or Edit) distance between two strings. Complexity: O(n * m) with
+/// n and m being the length of the given texts.
 ///
 /// # Example
 ///
@@ -102,8 +56,8 @@ pub fn hamming(alpha: TextSlice, beta: TextSlice) -> Result<u32, &'static str> {
 /// // ----ACCGTGGAT
 /// //     ||||| |||
 /// // AAAAACCGTTGAT
-/// let l_score = levenshtein(x, y);  // Score is 5
-/// assert_eq!(l_score, 5);
+/// let ldist = levenshtein(x, y);  // Distance is 5
+/// assert_eq!(ldist, 5);
 /// ```
 #[allow(unused_assignments)]
 pub fn levenshtein(alpha: TextSlice, beta: TextSlice) -> u32 {
@@ -122,11 +76,7 @@ pub fn levenshtein(alpha: TextSlice, beta: TextSlice) -> u32 {
         columns[i_cur][0] = 1 + j as u32;
         for i in 1..columns[0].len() {
             columns[i_cur][i] = min(columns[i_prev][i - 1] +
-                                    if alpha[i - 1] == *item {
-                                        0
-                                    } else {
-                                        1
-                                    },
+                                    if alpha[i - 1] == *item { 0 } else { 1 },
                                     min(columns[i_cur][i - 1] + 1, columns[i_prev][i] + 1));
         }
 
@@ -148,15 +98,15 @@ mod tests {
         // GTCTGCATGCG
         //  |  ||  |||
         // TTTAGCTAGCG
-        assert!(hamming(x, y).is_ok());
-        assert_eq!(hamming(x, y).unwrap(), 5);
+        assert_eq!(hamming(x, y), 5);
     }
 
     #[test]
+    #[should_panic(expected = "hamming distance cannot be calculated for texts of different length (11!=8)")]
     fn test_hamming_dist_bad() {
         let x = b"GACTATATCGA";
         let y = b"TTTAGCTC";
-        assert!(hamming(x, y).is_err());
+        hamming(x, y);
     }
 
     #[test]

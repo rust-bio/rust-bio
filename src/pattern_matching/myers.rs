@@ -44,8 +44,9 @@ pub struct Myers {
 
 impl Myers {
     /// Create a new instance of Myers algorithm for a given pattern.
-    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self where
-        P::IntoIter: ExactSizeIterator {
+    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self
+        where P::IntoIter: ExactSizeIterator
+    {
         let pattern = pattern.into_iter();
         let m = pattern.len();
         assert!(m <= 64 && m > 0);

@@ -85,12 +85,9 @@
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.
 
-#![cfg_attr(feature = "serde_macros", feature(const_fn, custom_derive, plugin))]
-#![cfg_attr(feature = "serde_macros", plugin(serde_macros))]
-
-#[cfg(feature = "serde_macros")]
+#[macro_use]
+extern crate serde_derive;
 extern crate serde;
-
 extern crate rustc_serialize;
 extern crate csv;
 extern crate num_traits;
@@ -112,6 +109,8 @@ extern crate newtype_derive;
 extern crate ordered_float;
 #[macro_use]
 extern crate quick_error;
+extern crate regex;
+extern crate multimap;
 
 pub mod utils;
 pub mod alphabets;

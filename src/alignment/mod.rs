@@ -13,7 +13,7 @@ pub mod sparse;
 
 
 /// Alignment operations (Match, Subst, Del and Ins).
-#[derive(Eq, PartialEq, Debug, Copy, Clone, RustcEncodable)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum AlignmentOperation {
     Match,
     Subst,
@@ -56,11 +56,7 @@ impl Alignment {
              op == AlignmentOperation::Ins) as usize
         };
 
-        let clip_str = if hard_clip {
-            "H"
-        } else {
-            "S"
-        };
+        let clip_str = if hard_clip { "H" } else { "S" };
 
         let mut cigar = String::new();
 

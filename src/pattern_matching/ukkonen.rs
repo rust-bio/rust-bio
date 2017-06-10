@@ -62,10 +62,10 @@ impl<F> Ukkonen<F>
     /// Find all matches between pattern and text with up to k errors.
     /// Matches are returned as an iterator over pairs of end position and distance.
     pub fn find_all_end<'a, T: IntoTextIterator<'a>>(&'a mut self,
-                            pattern: TextSlice<'a>,
-                            text: T,
-                            k: usize)
-                            -> Matches<F, T::IntoIter> {
+                                                     pattern: TextSlice<'a>,
+                                                     text: T,
+                                                     k: usize)
+                                                     -> Matches<F, T::IntoIter> {
         let m = pattern.len();
         self.D[1].clear();
         self.D[1].extend(repeat(k + 1).take(m + 1));
@@ -115,8 +115,7 @@ impl<'a, F, T: TextIterator<'a>> Iterator for Matches<'a, F, T>
             for j in 1..self.lastk + 1 {
                 self.ukkonen.D[col][j] =
                     min(min(self.ukkonen.D[prev][j] + 1, self.ukkonen.D[col][j - 1] + 1),
-                        self.ukkonen.D[prev][j - 1] +
-                        (cost)(self.pattern[j - 1], *c) as usize);
+                        self.ukkonen.D[prev][j - 1] + (cost)(self.pattern[j - 1], *c) as usize);
             }
 
             // reduce lastk as long as k is exceeded: while lastk can increase by at most 1, it can
