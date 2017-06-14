@@ -136,17 +136,17 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
                     if index + 1 - self.state.start_pos[offset].unwrap() > self.finder.min_len {
                         // build results
                         result = Some(Orf {
-                            start: self.state.start_pos[offset].unwrap() - 2,
-                            end: index + 1,
-                            offset: offset as i8,
-                        });
+                                          start: self.state.start_pos[offset].unwrap() - 2,
+                                          end: index + 1,
+                                          offset: offset as i8,
+                                      });
                     }
                     // reinitialize
                     self.state.start_pos[offset] = None;
                 }
-            // check if entering orf
+                // check if entering orf
             } else if self.finder.start_codons.contains(&self.state.codon) {
-                    self.state.start_pos[offset] = Some(index);
+                self.state.start_pos[offset] = Some(index);
             }
             if result.is_some() {
                 return result;
@@ -163,15 +163,15 @@ mod tests {
 
     #[test]
     fn test_orf() {
-        let start_codons = vec!(b"ATG");
-        let stop_codons  = vec!(b"TGA", b"TAG", b"TAA");
+        let start_codons = vec![b"ATG"];
+        let stop_codons = vec![b"TGA", b"TAG", b"TAA"];
         let min_len = 50;
         let finder = Finder::new(start_codons, stop_codons, min_len);
 
         let sequence = b"ACGGCTAGAAAAGGCTAGAAAA";
 
-        for Orf{start, end, ..} in finder.find_all(sequence) {
-           let _ = &sequence[start..end];
+        for Orf { start, end, .. } in finder.find_all(sequence) {
+            let _ = &sequence[start..end];
         }
     }
 }

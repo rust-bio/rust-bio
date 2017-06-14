@@ -2,6 +2,20 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.13.0] - 2017-05-09
+### Changed
+- fasta::IndexedReader now also provides an iterator.
+- IntervalTree provides a mutable iterator.
+- Various fixes to Fasta IO.
+- Fixed calculation of expected FDR.
+
+## [0.12.0] - 2017-04-03
+### Changed
+- Improved distance API.
+- Moved Strand into utils.
+- More robust gff/gtf parsing.
+
+
 ## [0.11.0] - 2017-02-16
 ### Changed
 - Improved IntervalTree API.

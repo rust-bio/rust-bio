@@ -1,7 +1,10 @@
 language: rust
 
+cache: cargo
+
 sudo: false
 
+# Dependencies of kcov, used for cargo-travis
 addons:
   apt:
     packages:
@@ -9,29 +12,32 @@ addons:
       - libelf-dev
       - libdw-dev
       - binutils-dev
+      - cmake
+    sources:
+      - kalakris-cmake
 
 before_script:
-#- pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
-  - pip install git+https://github.com/johanneskoester/travis-cargo.git --user && export PATH=$HOME/.local/bin:$PATH
+  - cargo install --force cargo-travis
+  - export PATH=$HOME/.cargo/bin:$PATH
 
 matrix:
   include:
     - rust: stable
     - rust: beta
     - rust: nightly
-      env: TRAVIS_CARGO_NIGHTLY_FEATURE=""
-    - rust: nightly
-      env: TRAVIS_CARGO_NIGHTLY_FEATURE="nightly"
   allow_failures:
-  - rust: nightly
-  - rust: beta
+    - rust: nightly
+    - rust: beta
 
 script:
-  - travis-cargo build && travis-cargo test
+  - |
+      cargo build &&
+      cargo test
 
 after_success:
-  - travis-cargo coveralls --no-sudo --verify --exclude-pattern="benches/,CHANGELOG.md,README.md,LICENSE.md,Cargo.lock,Cargo.toml"
+  - cargo coveralls
 
 env:
   global:
-    secure: ujLBCE7iB7rMZaOSQQS0t7RjenxDnV/rtiMEB/aJnzbCBTo2RtJifyXkZci28YT0Sab8HeyCTsKafszgphj0BvSYUI8fwexPtRCXmgcLjouXRD0NWAr3dtEx0TPPXcwquer0BQzfeEZUmOnChKXDlcE3GSIdRSI+1Y8inbF4cRM=
+    - secure: ujLBCE7iB7rMZaOSQQS0t7RjenxDnV/rtiMEB/aJnzbCBTo2RtJifyXkZci28YT0Sab8HeyCTsKafszgphj0BvSYUI8fwexPtRCXmgcLjouXRD0NWAr3dtEx0TPPXcwquer0BQzfeEZUmOnChKXDlcE3GSIdRSI+1Y8inbF4cRM=
+    - RUST_BACKTRACE=1

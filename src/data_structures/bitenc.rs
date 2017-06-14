@@ -20,7 +20,7 @@
 
 
 /// A sequence of bitencoded values.
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize)]
 pub struct BitEnc {
     storage: Vec<u32>,
     width: usize,
@@ -128,10 +128,7 @@ impl BitEnc {
 
     /// Iterate over stored values (values will be unpacked into bytes).
     pub fn iter(&self) -> BitEncIter {
-        BitEncIter {
-            bitenc: self,
-            i: 0,
-        }
+        BitEncIter { bitenc: self, i: 0 }
     }
 
     /// Clear the sequence.
@@ -217,14 +214,5 @@ mod tests {
                 vec.push(1);
             }
         }
-    }
-
-    #[test]
-    #[cfg(feature = "nightly")]
-    fn test_serde() {
-        use serde::{Serialize, Deserialize};
-        fn impls_serde_traits<S: Serialize + Deserialize>() {}
-
-        impls_serde_traits::<BitEnc>();
     }
 }

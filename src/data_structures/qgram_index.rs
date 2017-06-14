@@ -38,7 +38,7 @@ use utils;
 
 
 /// A classical, flexible, q-gram index implementation.
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize)]
 pub struct QGramIndex {
     q: u32,
     address: Vec<usize>,
@@ -124,16 +124,16 @@ impl QGramIndex {
                 match diagonals.entry(diagonal) {
                     Entry::Vacant(v) => {
                         v.insert(Match {
-                            pattern: Interval {
-                                start: i,
-                                stop: i + q,
-                            },
-                            text: Interval {
-                                start: p,
-                                stop: p + q,
-                            },
-                            count: 1,
-                        });
+                                     pattern: Interval {
+                                         start: i,
+                                         stop: i + q,
+                                     },
+                                     text: Interval {
+                                         start: p,
+                                         stop: p + q,
+                                     },
+                                     count: 1,
+                                 });
                     }
                     Entry::Occupied(mut o) => {
                         let m = o.get_mut();
@@ -144,15 +144,10 @@ impl QGramIndex {
                 }
             }
         }
-        diagonals.into_iter()
-                 .filter_map(|(_, m)| {
-                     if m.count >= min_count {
-                         Some(m)
-                     } else {
-                         None
-                     }
-                 })
-                 .collect()
+        diagonals
+            .into_iter()
+            .filter_map(|(_, m)| if m.count >= min_count { Some(m) } else { None })
+            .collect()
     }
 
     /// Return exact matches (substrings) of the given pattern.
@@ -168,15 +163,15 @@ impl QGramIndex {
                 match diagonals.entry(diagonal) {
                     Entry::Vacant(v) => {
                         v.insert(ExactMatch {
-                            pattern: Interval {
-                                start: i,
-                                stop: i + q,
-                            },
-                            text: Interval {
-                                start: p,
-                                stop: p + q,
-                            },
-                        });
+                                     pattern: Interval {
+                                         start: i,
+                                         stop: i + q,
+                                     },
+                                     text: Interval {
+                                         start: p,
+                                         stop: p + q,
+                                     },
+                                 });
                     }
                     Entry::Occupied(mut o) => {
                         let m = o.get_mut();
@@ -196,7 +191,7 @@ impl QGramIndex {
                 }
             }
         }
-        for (_, m) in diagonals.into_iter() {
+        for (_, m) in diagonals {
             matches.push(m);
         }
 
@@ -288,14 +283,8 @@ mod tests {
         let matches = qgram_index.matches(pattern, 1);
         assert_eq!(matches,
                    [Match {
-                        pattern: Interval {
-                            start: 0,
-                            stop: 4,
-                        },
-                        text: Interval {
-                            start: 3,
-                            stop: 7,
-                        },
+                        pattern: Interval { start: 0, stop: 4 },
+                        text: Interval { start: 3, stop: 7 },
                         count: 2,
                     }]);
     }
@@ -313,7 +302,6 @@ mod tests {
             assert_eq!(m.pattern.get(pattern), m.text.get(text));
         }
     }
-
 
     #[test]
     fn test_exact_matches_self() {

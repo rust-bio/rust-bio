@@ -47,16 +47,12 @@ impl<T: Deref<Target = Less>> DerefLess for T {}
 /// assert_eq!(bwt, b"ATTATTCAGGACCC$CTTTCAA");
 /// ```
 pub fn bwt(text: &[u8], pos: &RawSuffixArray) -> BWT {
-    assert!(text.len() == pos.len());
+    assert_eq!(text.len(), pos.len());
     let n = text.len();
     let mut bwt: BWT = repeat(0).take(n).collect();
     for r in 0..n {
         let p = pos[r];
-        bwt[r] = if p > 0 {
-            text[p - 1]
-        } else {
-            text[n - 1]
-        };
+        bwt[r] = if p > 0 { text[p - 1] } else { text[n - 1] };
     }
 
     bwt
@@ -86,7 +82,7 @@ pub fn invert_bwt(bwt: &BWTSlice) -> Vec<u8> {
 
 
 /// An occurence array implementation.
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize)]
 pub struct Occ {
     occ: Vec<Vec<usize>>,
     k: u32,
@@ -107,7 +103,9 @@ impl Occ {
     /// * `k` - the sampling rate: every k-th entry will be stored
     pub fn new(bwt: &BWTSlice, k: u32, alphabet: &Alphabet) -> Self {
         let n = bwt.len();
-        let m = alphabet.max_symbol().expect("Expecting non-empty alphabet.") as usize + 1;
+        let m = alphabet
+            .max_symbol()
+            .expect("Expecting non-empty alphabet.") as usize + 1;
         let mut occ = Vec::with_capacity(n / k as usize);
         let mut curr_occ: Vec<usize> = repeat(0).take(m).collect();
         for (i, &c) in bwt.iter().enumerate() {
@@ -169,10 +167,10 @@ impl Occ {
 
 /// Calculate the less array for a given BWT. Complexity O(n).
 pub fn less(bwt: &BWTSlice, alphabet: &Alphabet) -> Less {
-    let m = alphabet.max_symbol().expect("Expecting non-empty alphabet.") as usize + 2;
-    let mut less: Less = repeat(0)
-                             .take(m)
-                             .collect();
+    let m = alphabet
+        .max_symbol()
+        .expect("Expecting non-empty alphabet.") as usize + 2;
+    let mut less: Less = repeat(0).take(m).collect();
     for &c in bwt.iter() {
         less[c as usize] += 1;
     }
@@ -231,14 +229,5 @@ mod tests {
         assert_eq!(occ.occ, [[0, 1, 0, 0], [0, 2, 0, 2]]);
         assert_eq!(occ.get(&bwt, 4, 2u8), 1);
         assert_eq!(occ.get(&bwt, 4, 3u8), 2);
-    }
-
-    #[test]
-    #[cfg(feature = "nightly")]
-    fn test_serde() {
-        use serde::{Serialize, Deserialize};
-        fn impls_serde_traits<S: Serialize + Deserialize>() {}
-
-        impls_serde_traits::<Occ>();
     }
 }

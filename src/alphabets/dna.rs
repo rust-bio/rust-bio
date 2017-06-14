@@ -34,7 +34,7 @@ pub fn n_alphabet() -> Alphabet {
 
 /// The IUPAC DNA alphabet (uppercase and lowercase).
 pub fn iupac_alphabet() -> Alphabet {
-    Alphabet::new(b"ACGTURYSWKMBDHVNacgturyswkmbdhvn")
+    Alphabet::new(b"ACGTRYSWKMBDHVNZacgtryswkmbdhvnz")
 }
 
 
@@ -61,7 +61,8 @@ pub fn complement(a: u8) -> u8 {
 
 
 /// Calculate reverse complement of given text (IUPAC alphabet supported).
-pub fn revcomp<'a, T: IntoTextIterator<'a>>(text: T) -> Vec<u8> where
-    T::IntoIter: DoubleEndedIterator {
+pub fn revcomp<'a, T: IntoTextIterator<'a>>(text: T) -> Vec<u8>
+    where T::IntoIter: DoubleEndedIterator
+{
     text.into_iter().rev().map(|&a| complement(a)).collect()
 }

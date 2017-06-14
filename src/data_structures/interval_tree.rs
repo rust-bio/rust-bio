@@ -33,19 +33,19 @@ use std::iter::FromIterator;
 use utils::Interval;
 
 /// An interval tree for storing intervals with data
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntervalTree<N: Ord + Clone, D> {
     root: Option<Node<N, D>>,
 }
 
-/// An `Entry` is used by the `IntervalTreeIterator` to return references to the data in the tree
+/// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
+/// wraps the fields `interval` and `data` in an `Entry`.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Entry<'a, N: Ord + Clone + 'a, D: 'a> {
     data: &'a D,
     interval: &'a Interval<N>,
 }
 
-/// A find query on the interval tree returns a `Iterator<
 impl<'a, N: Ord + Clone + 'a, D: 'a> Entry<'a, N, D> {
     /// Get a reference to the data for this entry
     pub fn data(&self) -> &'a D {
@@ -90,7 +90,70 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D>
                     // overlap is only possible if both tests pass
                     if intersect(&self.interval, &candidate.interval) {
                         return Some(Entry {
-                            data: &candidate.value,
+                                        data: &candidate.value,
+                                        interval: &candidate.interval,
+                                    });
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A `find_mut` query on the interval tree does not directly return references to the nodes in the tree, but
+/// wraps the fields `interval` and `data` in an `EntryMut`. Only the data part can be mutably accessed
+/// using the `data` method
+#[derive(PartialEq, Eq, Debug)]
+pub struct EntryMut<'a, N: Ord + Clone + 'a, D: 'a> {
+    data: &'a mut D,
+    interval: &'a Interval<N>,
+}
+
+impl<'a, N: Ord + Clone + 'a, D: 'a> EntryMut<'a, N, D> {
+    /// Get a mutable reference to the data for this entry
+    pub fn data(&'a mut self) -> &'a mut D {
+        &mut self.data
+    }
+
+    /// Get a reference to the interval for this entry
+    pub fn interval(&self) -> &'a Interval<N> {
+        self.interval
+    }
+}
+
+/// An `IntervalTreeIteratorMut` is returned by `Intervaltree::find_mut` and iterates over the entries
+/// overlapping the query allowing mutable access to the data `D`, not the the `Interval`.
+pub struct IntervalTreeIteratorMut<'a, N: Ord + Clone + 'a, D: 'a> {
+    nodes: Vec<&'a mut Node<N, D>>,
+    interval: Interval<N>,
+}
+
+impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIteratorMut<'a, N, D> {
+    type Item = EntryMut<'a, N, D>;
+
+    fn next(&mut self) -> Option<EntryMut<'a, N, D>> {
+        loop {
+            let candidate = match self.nodes.pop() {
+                None => return None,
+                Some(node) => node,
+            };
+
+            // stop traversal if the query interval is beyond the current node and all children
+            if self.interval.start < candidate.max {
+                if let Some(ref mut left) = candidate.left {
+                    self.nodes.push(left);
+                }
+
+                // don't traverse right if the query interval is completely before the current interval
+                if self.interval.end > candidate.interval.start {
+                    if let Some(ref mut right) = candidate.right {
+                        self.nodes.push(right);
+                    }
+
+                    // overlap is only possible if both tests pass
+                    if intersect(&self.interval, &candidate.interval) {
+                        return Some(EntryMut {
+                            data: &mut candidate.value,
                             interval: &candidate.interval,
                         });
                     }
@@ -120,7 +183,7 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
     pub fn find<I: Into<Interval<N>>>(&self, interval: I) -> IntervalTreeIterator<N, D> {
         let interval = interval.into();
         match self.root {
-            Some(ref n) => n.find_iter(interval),
+            Some(ref n) => IntervalTreeIterator {nodes: vec![n], interval: interval},
             None => {
                 let empty_nodes = vec![];
                 IntervalTreeIterator {
@@ -130,10 +193,26 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
             }
         }
     }
+
+    /// Uses the provided `Interval` to find overlapping intervals in the tree and returns an
+    /// `IntervalTreeIteratorMut` that allows mutable access to the `data`
+    pub fn find_mut<I: Into<Interval<N>>>(&mut self, interval: I) -> IntervalTreeIteratorMut<N, D> {
+        let interval = interval.into();
+        match self.root {
+            Some(ref mut n) => IntervalTreeIteratorMut {nodes: vec![n], interval: interval},
+            None => {
+                let empty_nodes = vec![];
+                IntervalTreeIteratorMut {
+                    nodes: empty_nodes,
+                    interval: interval,
+                }
+            }
+        }
+    }
 }
 
 impl<N: Clone + Ord, D, R: Into<Interval<N>>> FromIterator<(R, D)> for IntervalTree<N, D> {
-    fn from_iter<I: IntoIterator<Item=(R, D)>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = (R, D)>>(iter: I) -> Self {
         let mut tree = IntervalTree::new();
         for r in iter {
             tree.insert(r.0, r.1);
@@ -142,7 +221,7 @@ impl<N: Clone + Ord, D, R: Into<Interval<N>>> FromIterator<(R, D)> for IntervalT
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Node<N: Ord + Clone, D> {
     // actual interval data
     interval: Interval<N>,
@@ -182,14 +261,6 @@ impl<N: Ord + Clone, D> Node<N, D> {
         self.repair();
     }
 
-    fn find_iter(&self, interval: Interval<N>) -> IntervalTreeIterator<N, D> {
-        let nodes = vec![self];
-        IntervalTreeIterator {
-            nodes: nodes,
-            interval: interval,
-        }
-    }
-
     fn update_height(&mut self) {
         let left_h = self.left.as_ref().map_or(0, |n| n.height);
         let right_h = self.right.as_ref().map_or(0, |n| n.height);
@@ -219,8 +290,9 @@ impl<N: Ord + Clone, D> Node<N, D> {
             self.update_max();
         } else if right_h > left_h {
             {
-                let mut right =
-                    self.right.as_mut().expect("Invalid tree: leaf is taller than its sibling.");
+                let mut right = self.right
+                    .as_mut()
+                    .expect("Invalid tree: leaf is taller than its sibling.");
                 let right_left_h = right.left.as_ref().map_or(0, |n| n.height);
                 let right_right_h = right.right.as_ref().map_or(0, |n| n.height);
                 if right_left_h > right_right_h {
@@ -230,8 +302,9 @@ impl<N: Ord + Clone, D> Node<N, D> {
             self.rotate_left();
         } else {
             {
-                let mut left =
-                    self.left.as_mut().expect("Invalid tree: leaf is taller than its sibling.");
+                let mut left = self.left
+                    .as_mut()
+                    .expect("Invalid tree: leaf is taller than its sibling.");
                 let left_right_h = left.right.as_ref().map_or(0, |n| n.height);
                 let left_left_h = left.left.as_ref().map_or(0, |n| n.height);
                 if left_right_h > left_left_h {
@@ -285,8 +358,8 @@ fn swap_interval_data<N: Ord + Clone, D>(node_1: &mut Node<N, D>, node_2: &mut N
 }
 
 fn intersect<N: Ord + Clone>(range_1: &Interval<N>, range_2: &Interval<N>) -> bool {
-    range_1.start < range_1.end && range_2.start < range_2.end &&
-        range_1.end > range_2.start && range_1.start < range_2.end
+    range_1.start < range_1.end && range_2.start < range_2.end && range_1.end > range_2.start &&
+    range_1.start < range_2.end
 }
 
 #[cfg(test)]
@@ -318,31 +391,20 @@ mod tests {
             reached_maximum = true;
         }
         if let Some(ref son) = node.left {
-            if !(son.max <= node.max) {
-                panic!("left max invariant violated:\n{:?} -> {:?}", node, son);
-            }
-            if !(son.interval.start <= node.interval.start) {
-                panic!("left ord invariant violated\n{:?} -> {:?}", node, son);
-            }
+            assert!(son.max <= node.max, "left max invariant violated:\n{:?} -> {:?}", node, son);
+            assert!(son.interval.start <= node.interval.start, "left ord invariant violated\n{:?} -> {:?}", node, son);
             if node.max == son.max {
                 reached_maximum = true;
             }
         }
         if let Some(ref son) = node.right {
-            if !(son.max <= node.max) {
-                panic!("right max invariant violated\n{:?} -> {:?}", node, son);
-            }
-
-            if !(son.interval.start >= node.interval.start) {
-                panic!("right ord invariant violated\n{:?} -> {:?}", node, son);
-            }
+            assert!(son.max <= node.max, "right max invariant violated\n{:?} -> {:?}", node, son);
+            assert!(son.interval.start >= node.interval.start, "right ord invariant violated\n{:?} -> {:?}", node, son);
             if node.max == son.max {
                 reached_maximum = true;
             }
         }
-        if !reached_maximum {
-            panic!("maximum invariant violated: {:?}", node);
-        }
+        assert!(reached_maximum, "maximum invariant violated: {:?}", node);
     }
 
     fn validate_string_metadata(node: &Node<i64, String>) {
@@ -350,9 +412,7 @@ mod tests {
         name.push_str(&node.interval.start.to_string());
         name.push_str(":");
         name.push_str(&node.interval.end.to_string());
-        if name != node.value {
-            panic!("Invalid metadata for node {:?}", node);
-        }
+        assert_eq!(name, node.value, "Invalid metadata for node {:?}", node);
     }
 
     fn insert_and_validate(tree: &mut IntervalTree<i64, String>, start: i64, end: i64) {
@@ -400,6 +460,8 @@ mod tests {
     #[test]
     fn test_insertion_and_intersection() {
         let mut tree: IntervalTree<i64, String> = IntervalTree::new();
+        assert_eq!(tree.find( 1..2).count(), 0);
+        assert_eq!(tree.find_mut( 1..2).count(), 0);
         tree.insert((50..51), "50:51".to_string());
         assert_not_found(&tree, (49..50));
         assert_intersections(&tree, (49..55), vec![(50..51)]);
@@ -478,9 +540,7 @@ mod tests {
             for j in smallest_start..largest_start {
                 expected_intersections.push(j..j + k);
             }
-            assert_intersections(&tree,
-                                 (lower_bound..upper_bound),
-                                 expected_intersections);
+            assert_intersections(&tree, (lower_bound..upper_bound), expected_intersections);
         }
     }
 
@@ -498,14 +558,32 @@ mod tests {
 
     #[test]
     fn from_iterator() {
-        let tree: IntervalTree<i64, ()> = vec![
-            (10..100, ()),
-            (10..20, ()),
-            (1..8, ())].into_iter().collect();
+        let tree: IntervalTree<i64, ()> = vec![(10..100, ()), (10..20, ()), (1..8, ())]
+            .into_iter()
+            .collect();
         assert_eq!(tree.find(&(0..1000)).count(), 3);
-        let tree2 : IntervalTree<_, _> = tree.find(&(11..30))
-            .map(|e| (e.interval().clone(), e.data().clone()) ).collect();
+        let tree2: IntervalTree<_, _> = tree.find(&(11..30))
+            .map(|e| (e.interval().clone(), e.data().clone()))
+            .collect();
         assert_eq!(tree2.find(&(0..1000)).count(), 2);
+    }
 
+    #[test]
+    fn iter_mut() {
+        let mut tree: IntervalTree<i64, usize> = vec![
+            (10..100, 0),
+            (10..20, 0),
+            (1..8, 0)].into_iter().collect();
+        let q = Interval::new(11..30).unwrap();
+        for mut e in tree.find_mut(q.clone()) {
+            *e.data() += 1;
+        }
+        assert!(tree.find(0..100).all(|e| {
+            if super::intersect(e.interval(), &q) {
+                *e.data() == 1
+            } else {
+                *e.data() == 0
+            }
+        }));
     }
 }

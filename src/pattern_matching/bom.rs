@@ -34,11 +34,15 @@ pub struct BOM {
 
 impl BOM {
     /// Create a new instance for a given pattern.
-    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self where
-        P::IntoIter: DoubleEndedIterator + ExactSizeIterator + Clone {
+    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self
+        where P::IntoIter: DoubleEndedIterator + ExactSizeIterator + Clone
+    {
         let pattern = pattern.into_iter();
         let m = pattern.len();
-        let maxsym = *pattern.clone().max().expect("Expecting non-empty pattern.") as usize;
+        let maxsym = *pattern
+                          .clone()
+                          .max()
+                          .expect("Expecting non-empty pattern.") as usize;
         let mut table: Vec<VecMap<usize>> = Vec::with_capacity(m);
         // init suffix table, initially all values unknown
         // suff[i] is the state in which the longest suffix of
@@ -67,17 +71,14 @@ impl BOM {
             // the longest suffix is either 0 or the state
             // reached by the edge labelled with a
             suff[i] = Some(match k {
-                Some(k) => *table[k].get(a).unwrap(),
-                None => 0,
-            });
+                               Some(k) => *table[k].get(a).unwrap(),
+                               None => 0,
+                           });
 
             table.push(delta);
         }
 
-        BOM {
-            m: m,
-            table: table,
-        }
+        BOM { m: m, table: table }
     }
 
     fn delta(&self, q: usize, a: u8) -> Option<usize> {

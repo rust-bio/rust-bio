@@ -22,6 +22,7 @@ use vec_map::VecMap;
 use utils::{IntoTextIterator, TextIterator};
 
 pub mod dna;
+pub mod rna;
 pub mod protein;
 
 pub type SymbolRanks = VecMap<u8>;
@@ -70,7 +71,7 @@ impl Alphabet {
 
 
 /// Tools based on transforming the alphabet symbols to their lexicographical ranks.
-#[cfg_attr(feature = "serde_macros", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize)]
 pub struct RankTransform {
     pub ranks: SymbolRanks,
 }
@@ -95,7 +96,11 @@ impl RankTransform {
     /// Transform a given `text`.
     pub fn transform<'a, T: IntoTextIterator<'a>>(&self, text: T) -> Vec<u8> {
         text.into_iter()
-            .map(|&c| *self.ranks.get(c as usize).expect("Unexpected character in text."))
+            .map(|&c| {
+                     *self.ranks
+                          .get(c as usize)
+                          .expect("Unexpected character in text.")
+                 })
             .collect()
     }
 
@@ -169,7 +174,6 @@ impl<'a, T: TextIterator<'a>> Iterator for QGrams<'a, T> {
 #[cfg(tests)]
 mod tests {
     #[test]
-    #[cfg(feature = "nightly")]
     fn test_serde() {
         use serde::{Serialize, Deserialize};
         fn impls_serde_traits<S: Serialize + Deserialize>() {}
