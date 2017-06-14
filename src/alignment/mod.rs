@@ -13,9 +13,9 @@ pub mod sparse;
 
 
 /// Alignment operations supported are match, substitution, insertion, deletion
-/// and clipping. Clipping is a special boundary condition where you are allowed 
+/// and clipping. Clipping is a special boundary condition where you are allowed
 /// to clip off the beginning/end of the sequence for a fixed clip penalty. The
-/// clip penalty could be different for the two sequences x and y, and the 
+/// clip penalty could be different for the two sequences x and y, and the
 /// clipping operations on both are distinguishable (Xclip and Yclip). The usize
 /// value associated with the clipping operations are the lengths clipped. In case
 /// of standard modes like Global, Semi-Global and Local alignment, the clip operations
@@ -31,23 +31,23 @@ pub enum AlignmentOperation {
 }
 
 /// The modes of alignment supported by the aligner include standard modes such as
-/// Global, Semi-Global and Local alignment. In addition to this, user can also invoke 
+/// Global, Semi-Global and Local alignment. In addition to this, user can also invoke
 /// the custom mode. In the custom mode, users can explicitly specify the clipping penalties
 /// for prefix and suffix of strings 'x' and 'y' independently. Under the hood the standard
 /// modes are implemented as special cases of the custom mode with the clipping penalties
-/// appropriately set 
+/// appropriately set
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum AlignmentMode {
     Local,
     Semiglobal,
     Global,
-    Custom
+    Custom,
 }
 
 /// We consider alignment between two sequences x and  y. x is the target or read sequence
-/// and y is the reference or template sequence. An alignment, consisting of a score, 
-/// the start and end position of the alignment on sequence x and sequence y, the 
-/// lengths of sequences x and y, and the alignment edit operations. The start position 
+/// and y is the reference or template sequence. An alignment, consisting of a score,
+/// the start and end position of the alignment on sequence x and sequence y, the
+/// lengths of sequences x and y, and the alignment edit operations. The start position
 /// and end position of the alignment does not include the clipped regions. The length
 /// of clipped regions are already encapsulated in the Alignment Operation.
 #[derive(Debug, Eq, PartialEq)]
@@ -60,7 +60,7 @@ pub struct Alignment {
     pub ylen: usize,
     pub xlen: usize,
     pub operations: Vec<AlignmentOperation>,
-    pub mode: AlignmentMode
+    pub mode: AlignmentMode,
 }
 
 
@@ -89,15 +89,15 @@ impl Alignment {
 
         let clip_str = if hard_clip { "H" } else { "S" };
 
-        let add_op = |op: AlignmentOperation, k, cigar: &mut String| {
-            match op {
-                AlignmentOperation::Match => cigar.push_str(&format!("{}{}",k,"=")),
-                AlignmentOperation::Subst => cigar.push_str(&format!("{}{}",k,"X")),
-                AlignmentOperation::Del => cigar.push_str(&format!("{}{}",k,"D")),
-                AlignmentOperation::Ins => cigar.push_str(&format!("{}{}",k,"I")),
-                AlignmentOperation::Xclip(len) if len > 0 => cigar.push_str(&format!("{}{}",len,clip_str)),
-                _ => {}
+        let add_op = |op: AlignmentOperation, k, cigar: &mut String| match op {
+            AlignmentOperation::Match => cigar.push_str(&format!("{}{}", k, "=")),
+            AlignmentOperation::Subst => cigar.push_str(&format!("{}{}", k, "X")),
+            AlignmentOperation::Del => cigar.push_str(&format!("{}{}", k, "D")),
+            AlignmentOperation::Ins => cigar.push_str(&format!("{}{}", k, "I")),
+            AlignmentOperation::Xclip(len) if len > 0 => {
+                cigar.push_str(&format!("{}{}", len, clip_str))
             }
+            _ => {}
         };
 
         let mut cigar = String::new();
@@ -105,8 +105,12 @@ impl Alignment {
         if !self.operations.is_empty() {
             let mut last = self.operations[0];
             match self.mode {
-                AlignmentMode::Custom => {},
-                _ => if self.xstart > 0 { cigar.push_str(&format!("{}{}", self.xstart, clip_str)) },
+                AlignmentMode::Custom => {}
+                _ => {
+                    if self.xstart > 0 {
+                        cigar.push_str(&format!("{}{}", self.xstart, clip_str))
+                    }
+                }
             }
             let mut k = 1;
             for &op in self.operations[1..].iter() {
@@ -120,15 +124,19 @@ impl Alignment {
             }
             add_op(last, k, &mut cigar);
             match self.mode {
-                AlignmentMode::Custom => {},
-                _ => if self.xlen > self.xend { cigar.push_str(&format!("{}{}", self.xlen-self.xend, clip_str)) }
+                AlignmentMode::Custom => {}
+                _ => {
+                    if self.xlen > self.xend {
+                        cigar.push_str(&format!("{}{}", self.xlen - self.xend, clip_str))
+                    }
+                }
             }
         }
         cigar
     }
 
     /// Return the pretty formatted alignment as a String. The string
-    /// contains sets of 3 lines of length 100. First line is for the 
+    /// contains sets of 3 lines of length 100. First line is for the
     /// sequence x, second line is for the alignment operation and the
     /// the third line is for the sequence y. A '-' in the sequence
     /// indicates a blank (insertion/deletion). The operations follow
@@ -178,10 +186,10 @@ impl Alignment {
             // If the alignment mode is one of the standard ones, the prefix clipping is
             // implicit so we need to process it here
             match self.mode {
-                AlignmentMode::Custom => { 
-                    x_i = 0; 
+                AlignmentMode::Custom => {
+                    x_i = 0;
                     y_i = 0;
-                },
+                }
                 _ => {
                     x_i = self.xstart;
                     y_i = self.ystart;
@@ -261,7 +269,7 @@ impl Alignment {
             // If the alignment mode is one of the standard ones, the suffix clipping is
             // implicit so we need to process it here
             match self.mode {
-                AlignmentMode::Custom => {},
+                AlignmentMode::Custom => {}
                 _ => {
                     for k in x_i..self.xlen {
                         x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[k]])));
@@ -287,7 +295,7 @@ impl Alignment {
 
         let ml = x_pretty.len();
 
-        while idx < ml{
+        while idx < ml {
             let rng = idx..min(idx + step, ml);
             s.push_str(&x_pretty[rng.clone()]);
             s.push_str("\n");
@@ -343,11 +351,12 @@ impl Alignment {
         path
     }
 
-    /// Filter out Xclip and Yclip operations from the list of operations. Useful 
+    /// Filter out Xclip and Yclip operations from the list of operations. Useful
     /// when invoking the standard modes.
     pub fn filter_clip_operations(&mut self) {
-        use self::AlignmentOperation::{Match,Subst,Ins,Del};
-        self.operations.retain(|&ref x| (*x==Match || *x==Subst || *x==Ins || *x==Del));
+        use self::AlignmentOperation::{Match, Subst, Ins, Del};
+        self.operations
+            .retain(|&ref x| (*x == Match || *x == Subst || *x == Ins || *x == Del));
     }
 }
 
@@ -367,7 +376,7 @@ mod tests {
             ylen: 10,
             xlen: 10,
             operations: vec![Match, Match, Match, Subst, Ins, Ins, Del, Del],
-            mode: AlignmentMode::Local
+            mode: AlignmentMode::Local,
         };
         assert_eq!(alignment.cigar(false), "3S3=1X2I2D1S");
     }
