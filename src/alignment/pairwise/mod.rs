@@ -818,36 +818,44 @@ impl TracebackCell {
 
 /// Internal traceback.
 struct Traceback {
-    matrix: Vec<Vec<TracebackCell>>, // Size (m+1) x (n+1)
+    rows: usize,
+    cols: usize,
+    matrix: Vec<TracebackCell>,
 }
 
 impl Traceback {
     fn with_capacity(m: usize, n: usize) -> Self {
-        let mut matrix = Vec::with_capacity(m + 1);
-        for _ in 0..m + 1 {
-            matrix.push(Vec::with_capacity(n + 1));
+        let rows = m + 1;
+        let cols = n + 1;
+        Traceback {
+            rows: rows,
+            cols: cols,
+            matrix: Vec::with_capacity(rows * cols)
         }
-        Traceback { matrix: matrix }
     }
 
     fn init(&mut self, m: usize, n: usize) {
         let mut start = TracebackCell::new();
         start.set_all(TB_START);
         // set every cell to start
-        for i in 0..m + 1 {
-            self.matrix[i].clear();
-            for _ in 0 .. n + 1 {
-                self.matrix[i].push(start);
-            }
-        }
+        self.resize(m, n, &start);
     }
 
     fn set(&mut self, i: usize, j: usize, v: TracebackCell) {
-        self.matrix[i][j] = v;
+        debug_assert!(i < self.rows);
+        debug_assert!(j < self.cols);
+        self.matrix[i * self.cols + j] = v;
     }
 
     fn get(&self, i: usize, j: usize) -> &TracebackCell  {
-        self.matrix[i].get(j).unwrap()
+        debug_assert!(i < self.rows);
+        debug_assert!(j < self.cols);
+        &self.matrix[i * self.cols + j]
+    }
+    fn resize(&mut self, m: usize, n: usize, v: &TracebackCell) {
+        self.rows = m + 1;
+        self.cols = n + 1;
+        self.matrix.resize(self.rows * self.cols, *v);
     }
 }
 
