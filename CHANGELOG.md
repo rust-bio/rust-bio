@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.14.0] - 2017-06-15
+### Changed
+- GTF/GFF reader can now handle duplicate keys.
+- Updated dependencies.
+- RNA alphabet.
+- Improved FASTQ reader.
+- Fixes in alignment algorithm.
+
+
 ## [0.13.0] - 2017-05-09
 ### Changed
 - fasta::IndexedReader now also provides an iterator.
