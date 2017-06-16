@@ -211,7 +211,8 @@ impl<'a, F> Scoring<'a, F>
 /// S(i,j) is the best score for prefixes x[0..i], y[0..j]
 ///
 /// To save space, only two columns of these matrices are stored at
-/// any point - the current column and the previous one.
+/// any point - the current column and the previous one. Moreover
+/// M(i,j) is not explicitly stored
 ///
 /// Lx is the optimal x suffix clipping lengths from each position of the
 /// sequence y
@@ -226,7 +227,6 @@ impl<'a, F> Scoring<'a, F>
 pub struct Aligner<'a, F>
     where F: 'a + Fn(u8, u8) -> i32
 {
-    M: [Vec<i32>; 2],
     I: [Vec<i32>; 2],
     D: [Vec<i32>; 2],
     S: [Vec<i32>; 2],
@@ -281,7 +281,6 @@ impl<'a, F> Aligner<'a, F>
         assert!(gap_extend <= 0, "gap_extend can't be positive");
 
         Aligner {
-            M: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
             I: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
             D: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
             S: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
@@ -328,7 +327,6 @@ impl<'a, F> Aligner<'a, F>
                 "Clipping penalty (y suffix) can't be positive");
 
         Aligner {
-            M: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
             I: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
             D: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
             S: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
@@ -355,12 +353,10 @@ impl<'a, F> Aligner<'a, F>
         // Set the initial conditions
         // We are repeating some work, but that's okay!
         for k in 0..2 {
-            self.M[k].clear();
             self.I[k].clear();
             self.D[k].clear();
             self.S[k].clear();
 
-            self.M[k].extend(repeat(MIN_SCORE).take(m + 1));
             self.D[k].extend(repeat(MIN_SCORE).take(m + 1));
             self.I[k].extend(repeat(MIN_SCORE).take(m + 1));
             self.S[k].extend(repeat(MIN_SCORE).take(m + 1));
@@ -434,12 +430,9 @@ impl<'a, F> Aligner<'a, F>
             let curr = j % 2;
             let prev = 1 - curr;
 
-            self.S[curr][m] = MIN_SCORE;
-
             {
                 // Handle i = 0 case
                 let mut tb = TracebackCell::new();
-                self.M[curr][0] = MIN_SCORE;
                 self.I[curr][0] = MIN_SCORE;
 
                 if j == 1 {
@@ -483,94 +476,117 @@ impl<'a, F> Aligner<'a, F>
                 self.traceback.set(0, j, tb);
             }
 
+            for i in 1..m+1 {
+                self.S[curr][i] = MIN_SCORE;
+            }
+
             let q = y[j - 1];
+            let xclip_score = self.scoring.xclip_prefix +
+                max(self.scoring.yclip_prefix,
+                    self.scoring.gap_open + self.scoring.gap_extend * (j as i32));
             for i in 1..m + 1 {
                 let p = x[i - 1];
                 let mut tb = TracebackCell::new();
 
-                self.M[curr][i] = self.S[prev][i - 1] + (self.scoring.match_score)(p, q);
-                tb.set_m_bits(self.traceback.get(i - 1, j - 1).get_s_bits());
+                let m_score = self.S[prev][i - 1] + (self.scoring.match_score)(p, q);
 
                 let i_score = self.I[curr][i - 1] + self.scoring.gap_extend;
                 let s_score = self.S[curr][i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
+                let best_i_score;
                 if i_score > s_score {
-                    self.I[curr][i] = i_score;
+                    best_i_score = i_score;
                     tb.set_i_bits(TB_INS);
                 } else {
-                    self.I[curr][i] = s_score;
+                    best_i_score = s_score;
                     tb.set_i_bits(self.traceback.get(i - 1, j).get_s_bits());
                 }
 
                 let d_score = self.D[prev][i] + self.scoring.gap_extend;
                 let s_score = self.S[prev][i] + self.scoring.gap_open + self.scoring.gap_extend;
+                let best_d_score;
                 if d_score > s_score {
-                    self.D[curr][i] = d_score;
+                    best_d_score = d_score;
                     tb.set_d_bits(TB_DEL);
                 } else {
-                    self.D[curr][i] = s_score;
+                    best_d_score = s_score;
                     tb.set_d_bits(self.traceback.get(i, j - 1).get_s_bits());
                 }
+                
+                tb.set_s_bits(TB_XCLIP_SUFFIX);
+                let mut best_s_score = self.S[curr][i];
 
-                if i == m {
-                    tb.set_s_bits(TB_XCLIP_SUFFIX);
-                } else {
-                    self.S[curr][i] = MIN_SCORE;
-                }
-
-                if self.M[curr][i] > self.S[curr][i] {
-                    self.S[curr][i] = self.M[curr][i];
+                if m_score > best_s_score {
+                    best_s_score = m_score;
                     tb.set_s_bits(if p == q { TB_MATCH } else { TB_SUBST });
                 }
 
-                if self.I[curr][i] > self.S[curr][i] {
-                    self.S[curr][i] = self.I[curr][i];
+                if best_i_score > best_s_score {
+                    best_s_score = best_i_score;
                     tb.set_s_bits(TB_INS);
                 }
 
-                if self.D[curr][i] > self.S[curr][i] {
-                    self.S[curr][i] = self.D[curr][i];
+                if best_d_score > best_s_score {
+                    best_s_score = best_d_score;
                     tb.set_s_bits(TB_DEL);
                 }
 
-                let xclip_score = self.scoring.xclip_prefix +
-                                  max(self.scoring.yclip_prefix,
-                                      self.scoring.gap_open + self.scoring.gap_extend * (j as i32));
-                if xclip_score > self.S[curr][i] {
-                    self.S[curr][i] = xclip_score;
+                if xclip_score > best_s_score {
+                    best_s_score = xclip_score;
                     tb.set_s_bits(TB_XCLIP_PREFIX);
                 }
 
                 let yclip_score = self.scoring.yclip_prefix +
-                                  max(self.scoring.xclip_prefix,
-                                      self.scoring.gap_open + self.scoring.gap_extend * (i as i32));
-                if yclip_score > self.S[curr][i] {
-                    self.S[curr][i] = yclip_score;
+                    self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
+                if yclip_score > best_s_score {
+                    best_s_score = yclip_score;
                     tb.set_s_bits(TB_YCLIP_PREFIX);
                 }
 
-                if i != m {
-                    // Track the score if we do suffix clip (x) from here
-                    if self.S[curr][i] + self.scoring.xclip_suffix > self.S[curr][m] {
-                        self.S[curr][m] = self.S[curr][i] + self.scoring.xclip_suffix;
-                        self.Lx[j] = m - i;
-                    }
+                self.S[curr][i] = best_s_score;
+                self.I[curr][i] = best_i_score;
+                self.D[curr][i] = best_d_score;
+
+                // Track the score if we do suffix clip (x) from here
+                if self.S[curr][i] + self.scoring.xclip_suffix > self.S[curr][m] {
+                    self.S[curr][m] = self.S[curr][i] + self.scoring.xclip_suffix;
+                    self.Lx[j] = m - i;
                 }
 
-                if j == n {
-                    // Check if the suffix clip score is better
-                    if self.Sn[i] > self.S[curr][i] {
-                        self.S[curr][i] = self.Sn[i];
-                        tb.set_s_bits(TB_YCLIP_SUFFIX);
-                    }
-                } else {
-                    // Track the score if we do suffix clip (y) from here
-                    if self.S[curr][i] + self.scoring.yclip_suffix > self.Sn[i] {
-                        self.Sn[i] = self.S[curr][i] + self.scoring.yclip_suffix;
-                        self.Ly[i] = n - j;
-                    }
+                // Track the score if we do suffix clip (y) from here
+                if self.S[curr][i] + self.scoring.yclip_suffix > self.Sn[i] {
+                    self.Sn[i] = self.S[curr][i] + self.scoring.yclip_suffix;
+                    self.Ly[i] = n - j;
                 }
 
                 self.traceback.set(i, j, tb);
+            }
+        }
+
+        // Handle suffix clipping in the j=n case
+        for i in 0..m+1 {
+            let j = n;
+            let curr = j % 2;
+            if self.Sn[i] > self.S[curr][i] {
+                self.S[curr][i] = self.Sn[i];
+                self.traceback.get_mut(i, j).set_s_bits(TB_YCLIP_SUFFIX);
+            }
+            if self.S[curr][i] + self.scoring.xclip_suffix > self.S[curr][m] {
+                self.S[curr][m] = self.S[curr][i] + self.scoring.xclip_suffix;
+                self.Lx[j] = m - i;
+                self.traceback.get_mut(m, j).set_s_bits(TB_XCLIP_SUFFIX);
+            }
+        }
+
+        // Since there could be a change in the last column of S,
+        // recompute the last colum of I as this could also change
+        for i in 1..m+1 {
+            let j = n;
+            let curr = j % 2;
+            let s_score = self.S[curr][i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
+            if s_score > self.I[curr][i] {
+                self.I[curr][i] = s_score;
+                let s_bit = self.traceback.get(i - 1, j).get_s_bits();
+                self.traceback.get_mut(i, j).set_i_bits(s_bit);
             }
         }
 
@@ -600,13 +616,13 @@ impl<'a, F> Aligner<'a, F>
                 }
                 TB_MATCH => {
                     ops.push(AlignmentOperation::Match);
-                    next_layer = self.traceback.get(i, j).get_m_bits();
+                    next_layer = self.traceback.get(i-1, j-1).get_s_bits();
                     i -= 1;
                     j -= 1;
                 }
                 TB_SUBST => {
                     ops.push(AlignmentOperation::Subst);
-                    next_layer = self.traceback.get(i, j).get_m_bits();
+                    next_layer = self.traceback.get(i-1, j-1).get_s_bits();
                     i -= 1;
                     j -= 1;
                 }
@@ -755,10 +771,9 @@ pub struct TracebackCell {
 }
 
 // Traceback bit positions (LSB)
-const M_POS: u8 = 0; // Meaning bits 0,1,2,3 corresponds to M and so on
-const I_POS: u8 = 4;
-const D_POS: u8 = 8;
-const S_POS: u8 = 12;
+const I_POS: u8 = 0; // Meaning bits 0,1,2,3 corresponds to M and so on
+const D_POS: u8 = 4;
+const S_POS: u8 = 8;
 
 // Traceback moves
 const TB_START: u16 = 0b0000;
@@ -779,6 +794,7 @@ const TB_MAX: u16 = 0b1000; // Useful in checking that the
 
 impl TracebackCell {
     /// Initialize a blank traceback cell
+    #[inline(always)]
     pub fn new() -> TracebackCell {
         TracebackCell { v: 0 }
     }
@@ -791,12 +807,6 @@ impl TracebackCell {
                 "Expected a value <= TB_MAX while setting traceback bits");
         self.v = (self.v & !bits) // First clear the bits
             | (value << pos) // And set the bits
-    }
-
-    #[inline(always)]
-    pub fn set_m_bits(&mut self, value: u16) {
-        // Traceback corresponding to matrix M
-        self.set_bits(M_POS, value);
     }
 
     #[inline(always)]
@@ -824,11 +834,6 @@ impl TracebackCell {
     }
 
     #[inline(always)]
-    pub fn get_m_bits(&self) -> u16 {
-        self.get_bits(M_POS)
-    }
-
-    #[inline(always)]
     pub fn get_i_bits(&self) -> u16 {
         self.get_bits(I_POS)
     }
@@ -845,7 +850,6 @@ impl TracebackCell {
 
     /// Set all matrices to the same value.
     pub fn set_all(&mut self, value: u16) {
-        self.set_m_bits(value);
         self.set_i_bits(value);
         self.set_d_bits(value);
         self.set_s_bits(value);
@@ -877,17 +881,26 @@ impl Traceback {
         self.resize(m, n, &start);
     }
 
+    #[inline(always)]
     fn set(&mut self, i: usize, j: usize, v: TracebackCell) {
         debug_assert!(i < self.rows);
         debug_assert!(j < self.cols);
         self.matrix[i * self.cols + j] = v;
     }
 
+    #[inline(always)]
     fn get(&self, i: usize, j: usize) -> &TracebackCell {
         debug_assert!(i < self.rows);
         debug_assert!(j < self.cols);
         &self.matrix[i * self.cols + j]
     }
+
+    fn get_mut(&mut self, i: usize, j: usize) -> &mut TracebackCell {
+        debug_assert!(i < self.rows);
+        debug_assert!(j < self.cols);
+        &mut self.matrix[i * self.cols + j]
+    }
+
     fn resize(&mut self, m: usize, n: usize, v: &TracebackCell) {
         self.rows = m + 1;
         self.cols = n + 1;
@@ -908,7 +921,6 @@ mod tests {
         let mut tb = TracebackCell::new();
 
         tb.set_all(TB_SUBST);
-        assert_eq!(tb.get_m_bits(), TB_SUBST);
         assert_eq!(tb.get_i_bits(), TB_SUBST);
         assert_eq!(tb.get_d_bits(), TB_SUBST);
         assert_eq!(tb.get_s_bits(), TB_SUBST);
@@ -921,15 +933,12 @@ mod tests {
         assert_eq!(tb.get_i_bits(), TB_XCLIP_PREFIX);
 
         tb.set_d_bits(TB_DEL);
-        tb.set_m_bits(TB_MATCH);
         assert_eq!(tb.get_d_bits(), TB_DEL);
         assert_eq!(tb.get_i_bits(), TB_XCLIP_PREFIX);
-        assert_eq!(tb.get_m_bits(), TB_MATCH);
 
         tb.set_s_bits(TB_YCLIP_SUFFIX);
         assert_eq!(tb.get_d_bits(), TB_DEL);
         assert_eq!(tb.get_i_bits(), TB_XCLIP_PREFIX);
-        assert_eq!(tb.get_m_bits(), TB_MATCH);
         assert_eq!(tb.get_s_bits(), TB_YCLIP_SUFFIX);
 
     }
