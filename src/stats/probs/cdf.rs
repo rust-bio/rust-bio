@@ -195,10 +195,13 @@ impl<T: Ord> CDF<T> {
         let p_upper = OrderedFloat((1.0 - margin / 2.0).ln());
         let lower = self.inner
             .binary_search_by(|e| OrderedFloat(*e.prob).cmp(&p_lower))
-            .unwrap_or_else(|i| i);
-        let upper = self.inner
+            .unwrap_or_else(|i| if i > 0 { i - 1 } else { 0 });
+        let mut upper = self.inner
             .binary_search_by(|e| OrderedFloat(*e.prob).cmp(&p_upper))
-            .unwrap_or_else(|i| i - 1);
+            .unwrap_or_else(|i| i);
+        if upper == self.inner.len() {
+            upper -= 1;
+        }
 
         &self.inner[lower].value..&self.inner[upper].value
     }
@@ -272,7 +275,7 @@ mod test {
         {
             let ci = cdf.credible_interval(0.95);
             assert_relative_eq!(**ci.start, 0.0);
-            assert_relative_eq!(**ci.end, 7.0);
+            assert_relative_eq!(**ci.end, 8.0);
         }
 
         {
