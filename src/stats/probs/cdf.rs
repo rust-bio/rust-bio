@@ -275,6 +275,15 @@ mod test {
             assert_relative_eq!(**ci.end, 7.0);
         }
 
+        {
+            for e in cdf.iter_pmf() {
+                assert_relative_eq!(
+                    e.prob.exp(),
+                    if **e.value == 0.0 { 0.2 } else { 0.1 }
+                );
+            }
+        }
+
         assert_relative_eq!(cdf.sample(5).total_prob().exp(), 1.0);
     }
 }

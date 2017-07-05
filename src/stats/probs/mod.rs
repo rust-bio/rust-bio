@@ -241,7 +241,9 @@ impl LogProb {
         let (p0, p1) = (self, other);
         assert!(p0 >= p1,
                 "Subtraction would lead to negative probability, which is undefined in log space.");
-        if relative_eq!(*p0, *p1) || p0 == Self::ln_zero() {
+        if *p1 == f64::NEG_INFINITY {
+            p0
+        } else if relative_eq!(*p0, *p1) || p0 == Self::ln_zero() {
             // the first case leads to zero,
             // in the second case p0 and p1 are -inf, which is fine
             Self::ln_zero()
@@ -399,10 +401,18 @@ mod tests {
 
     #[test]
     fn test_sub() {
-        assert_eq!(LogProb::ln_one().ln_sub_exp(LogProb::ln_one()),
-                   LogProb::ln_zero());
-        assert_relative_eq!(*LogProb::ln_one().ln_sub_exp(LogProb(0.5f64.ln())),
-                            *LogProb(0.5f64.ln()));
+        assert_eq!(
+            LogProb::ln_one().ln_sub_exp(LogProb::ln_one()),
+            LogProb::ln_zero()
+        );
+        assert_relative_eq!(
+            *LogProb::ln_one().ln_sub_exp(LogProb(0.5f64.ln())),
+            *LogProb(0.5f64.ln())
+        );
+        assert_relative_eq!(
+            *LogProb(-1.6094379124341).ln_sub_exp(LogProb::ln_zero()),
+            *LogProb(-1.6094379124341)
+        );
     }
 
     #[test]
