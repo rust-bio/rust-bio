@@ -112,6 +112,12 @@ impl<T: Ord> CDF<T> {
         self.inner.iter()
     }
 
+    /// Mutable iterator over entries. This does not check for consistency. In other words, you
+    /// should not change the order of the entries, nor the probabilities!
+    pub fn iter_mut(&mut self) -> slice::IterMut<Entry<T>> {
+        self.inner.iter_mut()
+    }
+
     /// Iterator over corresponding PMF.
     pub fn iter_pmf(&self) -> CDFPMFIter<T> {
         fn cdf_to_pmf<'a, G: Ord>(last_prob: &mut LogProb,
