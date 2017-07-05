@@ -269,8 +269,12 @@ mod test {
         assert_relative_eq!(*cdf.get(&NotNaN::new(1.0).unwrap()).unwrap(),
                             0.3f64.ln(),
                             epsilon = 0.00000001);
-        let ci = cdf.credible_interval(0.95);
-        assert_relative_eq!(**ci.start, 0.0);
-        assert_relative_eq!(**ci.end, 7.0);
+        {
+            let ci = cdf.credible_interval(0.95);
+            assert_relative_eq!(**ci.start, 0.0);
+            assert_relative_eq!(**ci.end, 7.0);
+        }
+
+        assert_relative_eq!(cdf.sample(5).total_prob().exp(), 1.0);
     }
 }
