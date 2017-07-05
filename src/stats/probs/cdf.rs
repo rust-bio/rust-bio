@@ -188,8 +188,13 @@ impl<T: Ord> CDF<T> {
 
     /// Return w%-credible interval. The width w is a float between 0 and 1. Panics otherwise.
     /// E.g. provide `width=0.95` for the 95% credible interval.
-    pub fn credible_interval(&self, width: f64) -> Range<&T> {
+    pub fn credible_interval(&self, width: f64) -> Option<Range<&T>> {
         assert!(width >= 0.0 && width <= 1.0);
+
+        if self.inner.is_empty() {
+            return None;
+        }
+
         let margin = 1.0 - width;
         let p_lower = OrderedFloat((margin / 2.0).ln());
         let p_upper = OrderedFloat((1.0 - margin / 2.0).ln());
@@ -203,7 +208,7 @@ impl<T: Ord> CDF<T> {
             upper -= 1;
         }
 
-        &self.inner[lower].value..&self.inner[upper].value
+        Some(&self.inner[lower].value..&self.inner[upper].value)
     }
 
     /// Number of entries in the CDF.
@@ -273,7 +278,7 @@ mod test {
                             0.3f64.ln(),
                             epsilon = 0.00000001);
         {
-            let ci = cdf.credible_interval(0.95);
+            let ci = cdf.credible_interval(0.95).unwrap();
             assert_relative_eq!(**ci.start, 0.0);
             assert_relative_eq!(**ci.end, 8.0);
         }
