@@ -30,6 +30,7 @@ ordered-float = "0.5"
 quick-error = "*"
 regex = "0.2"
 multimap = "0.4"
+fxhash = "0.1.2"
 
 [dependencies.vec_map]
 version = "0.8"

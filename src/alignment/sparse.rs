@@ -18,18 +18,24 @@
 //! ```
 //! use bio::alignment::sparse::*;
 //!
-//! let s1 =   "ACGTACGATAGGTA";
-//! let s2 = "TTACGTACGATAGGTATT";
+//! let s1 =   b"ACGTACGATAGGTA";
+//! let s2 = b"TTACGTACGATAGGTATT";
 //! let k = 8;
-//! let matches = find_kmer_matches(&s1, &s2, k);
+//! let matches = find_kmer_matches(s1, s2, k);
 //! let sparse_al = lcskpp(&matches, k);
 //! let match_path: Vec<(u32,u32)> = sparse_al.path.iter().map(|i| matches[*i]).collect();
 //! assert_eq!(match_path, vec![(0,2), (1,3), (2,4), (3,5), (4,6), (5,7), (6,8)]);
 //! assert_eq!(sparse_al.score, 14);
 
+extern crate fxhash; 
+
 use std::cmp::max;
 use data_structures::bit_tree::MaxBitTree;
 use std::collections::HashMap;
+use std::hash::BuildHasherDefault;
+use self::fxhash::FxHasher;
+
+pub type HashMapFx<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
 
 /// Result of a sparse alignment
 #[derive(Debug, PartialEq, Eq)]
@@ -59,6 +65,10 @@ pub struct SparseAlignmentResult {
 /// * `dp_vector` is the full DP vector, which can generally be ignored. (It may be useful for testing purposes).
 pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> SparseAlignmentResult {
 
+    if matches.len() == 0 {
+        return SparseAlignmentResult{ path: Vec::new(), score: 0, dp_vector: Vec::new()};
+    }
+
     let k = k as u32;
 
     // incoming matches must be sorted to let us find the predecssor kmers by binary search.
@@ -81,7 +91,7 @@ pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> SparseAlignmentResult {
 
     let mut max_col_dp: MaxBitTree<(u32, u32)> = MaxBitTree::new(n as usize);
     let mut dp: Vec<(u32, i32)> = Vec::with_capacity(events.len());
-    let mut best_dp = (0,-1);
+    let mut best_dp = (k, 0);
 
     for _ in 0 .. events.len() {
         dp.push((0,0));
@@ -171,6 +181,10 @@ impl PrevPtr {
 /// * `dp_vector` is the full DP vector, which can generally be ignored. (It may be useful for testing purposes).
 pub fn sdpkpp(matches: &Vec<(u32, u32)>, k: usize, match_score: u32, gap_open: i32, gap_extend: i32) -> SparseAlignmentResult {
 
+    if matches.len() == 0 {
+        return SparseAlignmentResult{ path: Vec::new(), score: 0, dp_vector: Vec::new()};
+    }
+
     let k = k as u32;
     if gap_open > 0 || gap_extend > 0 {
         panic!("gap parameters cannot be positive")
@@ -198,7 +212,7 @@ pub fn sdpkpp(matches: &Vec<(u32, u32)>, k: usize, match_score: u32, gap_open: i
 
     let mut max_col_dp: MaxBitTree<PrevPtr> = MaxBitTree::new(n as usize);
     let mut dp: Vec<(u32, i32)> = Vec::with_capacity(events.len());
-    let mut best_dp = (0,-1);
+    let mut best_dp = (k, 0);
 
     for _ in 0 .. events.len() {
         dp.push((0,0));
@@ -263,21 +277,38 @@ pub fn sdpkpp(matches: &Vec<(u32, u32)>, k: usize, match_score: u32, gap_open: i
 /// FMD index to generate the matches. Note that this method is mainly for 
 /// demonstration & testing purposes.  For aligning many query sequences
 /// against the same reference, you should reuse the QGramIndex of the reference.
-pub fn find_kmer_matches<T: AsRef<[u8]>>(seq1: &T, seq2: &T, k: usize) -> Vec<(u32, u32)> {
+pub fn find_kmer_matches(seq1: &[u8], seq2: &[u8], k: usize) -> Vec<(u32, u32)> {
+    if seq1.len() < seq2.len() {
+        let set = hash_kmers(seq1, k);
+        return find_kmer_matches_seq1_hashed(&set, seq2, k);
+    } else {
+        let set = hash_kmers(&seq2, k);
+        return find_kmer_matches_seq2_hashed(seq1, &set, k);
+    }
+}
 
-    let slc1 = seq1.as_ref();
-    let slc2 = seq2.as_ref();
+/// Creates a HashMap containing all the k-mers in the sequence. FxHasher is used
+/// as the hash function instead of the inbuilt one. A good rolling hash function
+/// should speed up the code.
+pub fn hash_kmers<'a>(seq: &'a [u8], k: usize) -> HashMapFx<&'a [u8], Vec<u32>> {
+    let slc = seq.as_ref();
+    let mut set: HashMapFx<&[u8], Vec<u32>> = HashMapFx::default();
+    for i in 0 .. (slc.len() + 1).saturating_sub(k) {
+        set.entry(&slc[i..i+k]).or_insert_with(|| Vec::new()).push(i as u32);
+    }
+    set
+}
 
-    let mut set: HashMap<&[u8], Vec<u32>> = HashMap::new();
+// Find all matches of length k between two strings where the first string is
+// already hashed by using the function sparse::hash_kmers
+pub fn find_kmer_matches_seq1_hashed(seq1_set: &HashMapFx<&[u8], Vec<u32>>, 
+    seq2: &[u8], k: usize) -> Vec<(u32, u32)> {
+
     let mut matches = Vec::new();
 
-    for i in 0 .. slc1.len() - k + 1 {
-        set.entry(&slc1[i..i+k]).or_insert_with(|| Vec::new()).push(i as u32);
-    }
-
-    for i in 0 .. slc2.len() - k + 1 {
-        let slc = &slc2[i..i+k];
-        match set.get(slc) {
+    for i in 0 .. (seq2.len() + 1).saturating_sub(k) {
+        let slc = &seq2[i..i+k];
+        match seq1_set.get(slc) {
             Some(matches1) => {
                 for pos1 in matches1 {
                     matches.push((*pos1, i as u32));
@@ -291,6 +322,29 @@ pub fn find_kmer_matches<T: AsRef<[u8]>>(seq1: &T, seq2: &T, k: usize) -> Vec<(u
     matches
 }
 
+// Find all matches of length k between two strings where the second string is
+// already hashed by using the function sparse::hash_kmers
+pub fn find_kmer_matches_seq2_hashed(seq1: &[u8],
+    seq2_set: &HashMapFx<&[u8], Vec<u32>>, 
+    k: usize) -> Vec<(u32, u32)> {
+
+    let mut matches = Vec::new();
+
+    for i in 0 .. (seq1.len() + 1).saturating_sub(k) {
+        let slc = &seq1[i..i+k];
+        match seq2_set.get(slc) {
+            Some(matches1) => {
+                for pos1 in matches1 {
+                    matches.push((i as u32, *pos1));
+                }
+            },
+            None => (),
+        }
+    }
+
+    matches.sort();
+    matches
+}
 
 #[cfg(test)]
 mod sparse_alignment {
@@ -298,32 +352,32 @@ mod sparse_alignment {
 
     #[test]
     pub fn test_find_kmer_matches() {
-        let s1 = "ACGTACGATAGATCCGTACGTAACAGTACAGTATATCAGTTATATGCGATA";
-        let s2 = "TTACGTACGATAGATCCGTACGTAACATTTTTGTACAGTATATCAGTTATATGCGA";
+        let s1 = b"ACGTACGATAGATCCGTACGTAACAGTACAGTATATCAGTTATATGCGATA";
+        let s2 = b"TTACGTACGATAGATCCGTACGTAACATTTTTGTACAGTATATCAGTTATATGCGA";
         let k = 8;
         //let s1 = "  ACGTACGATAGATCCGTACGTAACA     GTACAGTATATCAGTTATATGCGATA";
         //let s2 = "TTACGTACGATAGATCCGTACGTAACATTTTTGTACAGTATATCAGTTATATGCGA";
 
-        let hits = find_kmer_matches(&s1, &s2, k);
+        let hits = find_kmer_matches(s1, s2, k);
         assert_eq!(hits.len(), (25-k+1) + (24-k+1));
         //println!("hits: {:?}", hits);
     }
 
     #[test]
     pub fn test_lcskpp0() {
-        let s1 =   "ACGTACGATAGGTA";
-        let s2 = "TTACGTACGATAGGTATT";
+        let s1 =   b"ACGTACGATAGGTA";
+        let s2 = b"TTACGTACGATAGGTATT";
         let k = 8;
-        let matches = super::find_kmer_matches(&s1, &s2, k);
+        let matches = super::find_kmer_matches(s1, s2, k);
         let res = super::lcskpp(&matches, k);
         let match_path: Vec<(u32,u32)> = res.path.iter().map(|i| matches[*i]).collect();
         assert_eq!(match_path, vec![(0,2), (1,3), (2,4), (3,5), (4,6), (5,7), (6,8)]);
         assert_eq!(res.score, 14);
      }
 
-     pub fn strict_compare_lcskpp_sdpkpp(s1: &str, s2: &str) {
+     pub fn strict_compare_lcskpp_sdpkpp(s1: &[u8], s2: &[u8]) {
         let k = 8;
-        let matches = super::find_kmer_matches(&s1, &s2, k);
+        let matches = super::find_kmer_matches(s1, s2, k);
         let res1 = super::lcskpp(&matches, k);
         let res2 = super::sdpkpp(&matches, k, 1, 0, 0);
 
@@ -332,19 +386,19 @@ mod sparse_alignment {
 
     #[test]
     pub fn test_sdp() {
-        let s1 =   "ACGTACGATAGGTA";
-        let s2 = "TTACGTACGATAGGTATT";
+        let s1 =   b"ACGTACGATAGGTA";
+        let s2 = b"TTACGTACGATAGGTATT";
         strict_compare_lcskpp_sdpkpp(s1, s2);
      }
 
 
     #[test]
     pub fn test_lcskpp1() {
-        let s1 = "ACGTACGATAGATCCGTACGTAACAGTACAGTATATCAGTTATATGCGATA";
-        let s2 = "TTACGTACGATAGATCCGTACGTAACATTTTTGTACAGTATATCAGTTATATGCGA";
+        let s1 = b"ACGTACGATAGATCCGTACGTAACAGTACAGTATATCAGTTATATGCGATA";
+        let s2 = b"TTACGTACGATAGATCCGTACGTAACATTTTTGTACAGTATATCAGTTATATGCGA";
         let k = 8;
 
-        let matches = super::find_kmer_matches(&s1, &s2, k);
+        let matches = super::find_kmer_matches(s1, s2, k);
         let res = super::lcskpp(&matches, k);
         
         // For debugging: 
@@ -359,8 +413,8 @@ mod sparse_alignment {
 
      #[test]
      pub fn test_sdp1() {
-         let s1 = "ACGTACGATAGATCCGTACGTAACAGTACAGTATATCAGTTATATGCGATA";
-         let s2 = "TTACGTACGATAGATCCGTACGTAACATTTTTGTACAGTATATCAGTTATATGCGA";
+         let s1 = b"ACGTACGATAGATCCGTACGTAACAGTACAGTATATCAGTTATATGCGATA";
+         let s2 = b"TTACGTACGATAGATCCGTACGTAACATTTTTGTACAGTATATCAGTTATATGCGA";
          strict_compare_lcskpp_sdpkpp(s1, s2);
      }
 
@@ -368,10 +422,10 @@ mod sparse_alignment {
     #[test]
     pub fn test_lcskpp2() {
         // Match the same string -- should get a diagonal traceback, despite lots of off-diagonal homology
-        let s1 = "ACGTACGATAGATCCGACGTACGTACGTTCAGTTATATGACGTACGTACGTAACATTTTTGTA";
+        let s1 = b"ACGTACGATAGATCCGACGTACGTACGTTCAGTTATATGACGTACGTACGTAACATTTTTGTA";
         let k = 5;
 
-        let matches = super::find_kmer_matches(&s1, &s1, k);
+        let matches = super::find_kmer_matches(s1, s1, k);
         let res = super::lcskpp(&matches, k);
 
         // For debugging: 
@@ -389,7 +443,7 @@ mod sparse_alignment {
 
      #[test]
      pub fn test_sdp2() {
-         let s1 = "ACGTACGATAGATCCGACGTACGTACGTTCAGTTATATGACGTACGTACGTAACATTTTTGTA";
+         let s1 = b"ACGTACGATAGATCCGACGTACGTACGTTCAGTTATATGACGTACGTACGTAACATTTTTGTA";
          strict_compare_lcskpp_sdpkpp(s1, s1);
      }
 
@@ -401,14 +455,14 @@ mod sparse_alignment {
      // TRs is arbitrary, and way the implementation breaks ties may introduce
      // a gap while maintaining the same score.
      // The SDP code with gap open & extend penalties should resolve this.
-     const QUERY_REPEAT: &'static str = "CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCATGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGCAGAACAGGAGGCCCCATCTCCCGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTCCCCAGCTCTTGCTTCAGGGCCTCACGTTTCGCCCCCTGAGGCCTGGGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTG";
+     const QUERY_REPEAT: &'static [u8] = b"CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCATGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGCAGAACAGGAGGCCCCATCTCCCGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTCCCCAGCTCTTGCTTCAGGGCCTCACGTTTCGCCCCCTGAGGCCTGGGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTG";
 
-    const TARGET_REPEAT: &'static str = "CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCATGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGCAGAACAGGAGGCCCCATCTCCCGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTCCCCAGCTCTTGCTTCAGGGCCTCACGTTTCGCCCCCTGAGGCCTGGGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGCACGGCTCCCAACTCTCTTCCGGCCAAGGATCCCGTGTTCCTGAAATGTCTTTCTACCAAACACAGTTGCTGTGTAACCACTCATTTCATTTTCCTAATTTGTGTTGATCCAGGACACGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
+    const TARGET_REPEAT: &'static [u8] = b"CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCATGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGCAGAACAGGAGGCCCCATCTCCCGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTCCCCAGCTCTTGCTTCAGGGCCTCACGTTTCGCCCCCTGAGGCCTGGGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGCACGGCTCCCAACTCTCTTCCGGCCAAGGATCCCGTGTTCCTGAAATGTCTTTCTACCAAACACAGTTGCTGTGTAACCACTCATTTCATTTTCCTAATTTGTGTTGATCCAGGACACGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
 
     #[test]
     fn test_lcskpp_tandem_repeat() {
         let k = 8;
-        let matches = super::find_kmer_matches(&QUERY_REPEAT, &TARGET_REPEAT, k);
+        let matches = super::find_kmer_matches(QUERY_REPEAT, TARGET_REPEAT, k);
         let res = super::lcskpp(&matches, k);
 
         // For debugging: 
@@ -448,5 +502,53 @@ mod sparse_alignment {
         for i in 0..res.path.len() {
             assert_eq!(matches[res.path[i] as usize], (i as u32, i as u32));
         }
+    }
+
+    #[test]
+    fn test_sdpkpp_same() {
+        let x = b"ACGTACGTAC";
+        let y = b"ACGTACGTAC";
+        let matches = super::find_kmer_matches(x, y, 10);
+        let res = super::sdpkpp(&matches, 10, 1, -1, -1);
+        assert_eq!(res.path, [0]);
+        assert_eq!(res.score, 10);
+
+        let x = b"ACGTACGTACA";
+        let y = b"ACGTACGTACA";
+        let matches = super::find_kmer_matches(x, y, 10);
+        let res = super::sdpkpp(&matches, 10, 1, -1, -1);
+        assert_eq!(res.path, [0, 1]);
+        assert_eq!(res.score, 11);
+
+        let x = b"ACGTACGTACACGTACGTAC";
+        let y = b"ACGTACGTAC";
+        let matches = super::find_kmer_matches(x, y, 10);
+        let res = super::sdpkpp(&matches, 10, 1, -1, -1);
+        assert_eq!(res.path, [0]);
+        assert_eq!(res.score, 10);
+    }
+
+    #[test]
+    fn test_lcskpp_same() {
+        let x = b"ACGTACGTAC";
+        let y = b"ACGTACGTAC";
+        let matches = super::find_kmer_matches(x, y, 10);
+        let res = super::lcskpp(&matches, 10);
+        assert_eq!(res.path, [0]);
+        assert_eq!(res.score, 10);
+
+        let x = b"ACGTACGTACA";
+        let y = b"ACGTACGTACA";
+        let matches = super::find_kmer_matches(x, y, 10);
+        let res = super::lcskpp(&matches, 10);
+        assert_eq!(res.path, [0, 1]);
+        assert_eq!(res.score, 11);
+
+        let x = b"ACGTACGTACACGTACGTAC";
+        let y = b"ACGTACGTAC";
+        let matches = super::find_kmer_matches(x, y, 10);
+        let res = super::lcskpp(&matches, 10);
+        assert_eq!(res.path, [0]);
+        assert_eq!(res.score, 10);
     }
  }

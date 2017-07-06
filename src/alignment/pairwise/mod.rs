@@ -103,6 +103,7 @@ use std::iter::repeat;
 use alignment::{Alignment, AlignmentOperation, AlignmentMode};
 use utils::TextSlice;
 
+pub mod banded;
 
 /// Value to use as a 'negative infinity' score. Should be close to i32::MIN,
 /// but avoid underflow when used with reasonable scoring parameters or even
@@ -343,7 +344,7 @@ impl<'a, F> Aligner<'a, F>
     /// # Arguments
     ///
     /// * `x` - Textslice
-    /// * `n` - Textslice
+    /// * `y` - Textslice
     ///
     pub fn custom(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
 
@@ -588,6 +589,15 @@ impl<'a, F> Aligner<'a, F>
                 let s_bit = self.traceback.get(i - 1, j).get_s_bits();
                 self.traceback.get_mut(i, j).set_i_bits(s_bit);
             }
+            if s_score > self.S[curr][i] {
+                self.S[curr][i] = s_score;
+                self.traceback.get_mut(i, j).set_s_bits(TB_INS);
+                if self.S[curr][i] + self.scoring.xclip_suffix > self.S[curr][m] {
+                    self.S[curr][m] = self.S[curr][i] + self.scoring.xclip_suffix;
+                    self.Lx[j] = m - i;
+                    self.traceback.get_mut(m, j).set_s_bits(TB_XCLIP_SUFFIX);
+                }
+            }
         }
 
         let mut i = m;
@@ -761,9 +771,9 @@ impl<'a, F> Aligner<'a, F>
 }
 
 /// Packed representation of one cell of a Smith-Waterman traceback matrix.
-/// Stores the M, I, D and S traceback matrix values in two bytes.
+/// Stores the I, D and S traceback matrix values in two bytes.
 /// Possible traceback moves include : start, insert, delete, match, substitute,
-/// prefix clip and suffix clip for x & y. So we need 4 bits each for matrices M, I, D, S
+/// prefix clip and suffix clip for x & y. So we need 4 bits each for matrices I, D, S
 /// to keep track of these 9 moves.
 #[derive(Copy, Clone)]
 pub struct TracebackCell {
@@ -771,7 +781,7 @@ pub struct TracebackCell {
 }
 
 // Traceback bit positions (LSB)
-const I_POS: u8 = 0; // Meaning bits 0,1,2,3 corresponds to M and so on
+const I_POS: u8 = 0; // Meaning bits 0,1,2,3 corresponds to I and so on
 const D_POS: u8 = 4;
 const S_POS: u8 = 8;
 

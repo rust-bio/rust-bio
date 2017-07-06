@@ -81,11 +81,16 @@ impl Alignment {
     ///     ylen: 10,
     ///     xlen: 10,
     ///     operations: vec![Match, Match, Match, Subst, Ins, Ins, Del, Del],
-    ///     mode: AlignmentMode::Local
+    ///     mode: AlignmentMode::Semiglobal
     /// };
     /// assert_eq!(alignment.cigar(false), "3S3=1X2I2D1S");
     /// ```
     pub fn cigar(&self, hard_clip: bool) -> String {
+
+        match self.mode {
+            AlignmentMode::Semiglobal => {},
+            _ => panic!(" Cigar fn is only supported for semiglobal Alignment mode"),
+        }
 
         let clip_str = if hard_clip { "H" } else { "S" };
 
@@ -104,13 +109,8 @@ impl Alignment {
 
         if !self.operations.is_empty() {
             let mut last = self.operations[0];
-            match self.mode {
-                AlignmentMode::Custom => {}
-                _ => {
-                    if self.xstart > 0 {
-                        cigar.push_str(&format!("{}{}", self.xstart, clip_str))
-                    }
-                }
+            if self.xstart > 0 {
+                cigar.push_str(&format!("{}{}", self.xstart, clip_str))
             }
             let mut k = 1;
             for &op in self.operations[1..].iter() {
@@ -123,14 +123,10 @@ impl Alignment {
                 last = op;
             }
             add_op(last, k, &mut cigar);
-            match self.mode {
-                AlignmentMode::Custom => {}
-                _ => {
-                    if self.xlen > self.xend {
-                        cigar.push_str(&format!("{}{}", self.xlen - self.xend, clip_str))
-                    }
-                }
+            if self.xlen > self.xend {
+                cigar.push_str(&format!("{}{}", self.xlen - self.xend, clip_str))
             }
+
         }
         cigar
     }
@@ -318,36 +314,44 @@ impl Alignment {
         let mut path = Vec::new();
 
         if !self.operations.is_empty() {
-            let mut x_i = 0usize;
-            let mut y_i = 0usize;
+            let last = match self.mode {
+                AlignmentMode::Custom => (self.xlen, self.ylen),
+                _ => (self.xend, self.yend),
+            };
+            let mut x_i = last.0;
+            let mut y_i = last.1;
+
+            let mut ops = self.operations.clone();
+            ops.reverse();
 
             // Process the alignment.
-            for i in 0..self.operations.len() {
-                path.push((x_i, y_i, self.operations[i]));
-                match self.operations[i] {
+            for i in 0..ops.len() {
+                path.push((x_i, y_i, ops[i]));
+                match ops[i] {
                     AlignmentOperation::Match => {
-                        x_i += 1;
-                        y_i += 1;
+                        x_i -= 1;
+                        y_i -= 1;
                     }
                     AlignmentOperation::Subst => {
-                        x_i += 1;
-                        y_i += 1;
+                        x_i -= 1;
+                        y_i -= 1;
                     }
                     AlignmentOperation::Del => {
-                        y_i += 1;
+                        y_i -= 1;
                     }
                     AlignmentOperation::Ins => {
-                        x_i += 1;
+                        x_i -= 1;
                     }
                     AlignmentOperation::Xclip(len) => {
-                        x_i += len;
+                        x_i -= len;
                     }
                     AlignmentOperation::Yclip(len) => {
-                        y_i += len;
+                        y_i -= len;
                     }
                 }
             }
         }
+        path.reverse();
         path
     }
 
@@ -376,7 +380,7 @@ mod tests {
             ylen: 10,
             xlen: 10,
             operations: vec![Match, Match, Match, Subst, Ins, Ins, Del, Del],
-            mode: AlignmentMode::Local,
+            mode: AlignmentMode::Semiglobal,
         };
         assert_eq!(alignment.cigar(false), "3S3=1X2I2D1S");
     }
