@@ -51,7 +51,7 @@ impl GffType {
     #[inline]
     fn separator(&self) -> (u8, u8) {
         match *self {
-            GffType::GFF3 => (b'=', b','),
+            GffType::GFF3 => (b'=', b';'),
             GffType::GFF2 => (b' ', b';'),
             GffType::GTF2 => (b' ', b';'),
             GffType::Any(x, y) => (x, y),
@@ -336,8 +336,8 @@ mod tests {
     use utils::Strand;
     use multimap::MultiMap;
 
-    const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed,ID=test
-P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV,ID=PRO_0000148105
+    const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed;ID=test
+P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV;ID=PRO_0000148105
 ";
     //required because MultiMap iter on element randomly
     const GFF_FILE_ONE_ATTRIB: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed
