@@ -37,24 +37,29 @@ use utils::Strand;
 /// For each type we have key value separator and field separator
 #[derive(Clone, Copy)]
 pub enum GffType {
-    /// Attribute format is key1=value; key2=value
+    /// Attribute format is: key1=value; key2=value1,value2
     GFF3,
-    /// Attribute format is key1 value; key2 value
+    /// Attribute format is: key1 value; key2 value1; key2 value2
     GFF2,
     /// Same as GFF2 just possible keyword and possible value change
     GTF2,
-    /// Any, first field of tuple is key value separator, second is field separator
-    Any(u8, u8),
+    /// Any, first field of tuple separates key from value,
+    /// second field separates multiple key value pairs, and
+    /// third field separates multiple values for the same key
+    Any(u8, u8, u8),
 }
 
 impl GffType {
     #[inline]
-    fn separator(&self) -> (u8, u8) {
+    /// First field is key value separator.
+    /// Second field terminates a key value pair.
+    /// Third field 
+    fn separator(&self) -> (u8, u8, u8) {
         match *self {
-            GffType::GFF3 => (b'=', b';'),
-            GffType::GFF2 => (b' ', b';'),
-            GffType::GTF2 => (b' ', b';'),
-            GffType::Any(x, y) => (x, y),
+            GffType::GFF3 => (b'=', b';', b','),
+            GffType::GFF2 => (b' ', b';', 0u8),
+            GffType::GTF2 => (b' ', b';', 0u8),
+            GffType::Any(x, y, z) => (x, y, z),
         }
     }
 }
@@ -86,7 +91,7 @@ impl<R: io::Read> Reader<R> {
 
     /// Iterate over all records.
     pub fn records(&mut self) -> Records<R> {
-        let (delim, term) = self.gff_type.separator();
+        let (delim, term, vdelim) = self.gff_type.separator();
         let r = format!(r" *(?P<key>[^{delim}{term}\t]+){delim}(?P<value>[^{delim}{term}\t]+){term}?",
                     delim = delim as char,
                     term = term as char);
@@ -94,6 +99,7 @@ impl<R: io::Read> Reader<R> {
         Records {
             inner: self.inner.decode(),
             attribute_re: attribute_re,
+            value_delim: vdelim as char
         }
     }
 }
@@ -105,6 +111,7 @@ pub struct Records<'a, R: 'a + io::Read> {
                                R,
                                (String, String, String, u64, u64, String, String, String, String)>,
     attribute_re: Regex,
+    value_delim: char
 }
 
 
@@ -127,7 +134,9 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                     let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
                     let mut attrs = MultiMap::new();
                     for caps in self.attribute_re.captures_iter(&raw_attributes) {
-                        attrs.insert(trim_quotes(&caps["key"]), trim_quotes(&caps["value"]));
+                        for value in caps["value"].split(self.value_delim) {
+                            attrs.insert(trim_quotes(&caps["key"]), trim_quotes(value));
+                        }
                     }
                     Record {
                         seqname: seqname,
@@ -165,7 +174,7 @@ impl Writer<fs::File> {
 impl<W: io::Write> Writer<W> {
     /// Write to a given writer.
     pub fn new(writer: W, fileformat: GffType) -> Self {
-        let (delim, termi) = fileformat.separator();
+        let (delim, termi, _) = fileformat.separator();
 
         Writer {
             inner: csv::Writer::from_writer(writer)
@@ -336,7 +345,7 @@ mod tests {
     use utils::Strand;
     use multimap::MultiMap;
 
-    const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed;ID=test
+    const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed,Obsolete;ID=test
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV;ID=PRO_0000148105
 ";
     //required because MultiMap iter on element randomly
@@ -373,6 +382,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut attributes = [MultiMap::new(), MultiMap::new()];
         attributes[0].insert("ID".to_owned(), "test".to_owned());
         attributes[0].insert("Note".to_owned(), "Removed".to_owned());
+        attributes[0].insert("Note".to_owned(), "Obsolete".to_owned());
         attributes[1].insert("ID".to_owned(), "PRO_0000148105".to_owned());
         attributes[1].insert("Note".to_owned(),
                              "ATP-dependent protease subunit HslV".to_owned());
