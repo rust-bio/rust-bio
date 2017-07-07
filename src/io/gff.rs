@@ -37,7 +37,7 @@ use utils::Strand;
 /// For each type we have key value separator and field separator
 #[derive(Clone, Copy)]
 pub enum GffType {
-    /// Attribute format is key1=value, key2=value
+    /// Attribute format is key1=value; key2=value
     GFF3,
     /// Attribute format is key1 value; key2 value
     GFF2,
