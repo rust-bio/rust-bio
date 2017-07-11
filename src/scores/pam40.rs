@@ -3,12 +3,13 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use nalgebra::DMatrix;
+
+use ndarray;
+
 
 lazy_static! {
-
-// taken from https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h#L806
-    static ref ARRAY: [i32;729]=[
+    // taken from https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h#L806
+    static ref MAT: ndarray::Array2<i32> = ndarray::Array::from_shape_vec((27, 27), vec![
          6,  -3,  -6,  -3,  -2,  -7,  -1,  -6,  -4,  -5,  -6,  -5,  -4,  -3,  -3,  -1,  -3,  -6,   0,   0,  -3,  -2, -12,  -7,  -2,  -3, -15,
         -3,   6, -11,   6,   2,  -9,  -2,  -1,  -5,  -7,  -2,  -8,  -8,   6,  -4,  -6,  -2,  -6,  -1,  -2,  -4,  -7,  -9,  -6,   1,  -4, -15,
         -6, -11,   9, -12, -12, -11,  -8,  -7,  -5,  -9, -12, -13, -12,  -9,  -8,  -7, -12,  -7,  -2,  -7,  -8,  -5, -14,  -3, -12,  -8, -15,
@@ -36,9 +37,7 @@ lazy_static! {
         -2,   1, -12,   2,   6, -12,  -4,   0,  -5,  -6,  -3,  -6,  -4,  -2,  -4,  -3,   6,  -3,  -4,  -5,  -4,  -6, -13,  -8,   6,  -4, -15,
         -3,  -4,  -8,  -5,  -4,  -7,  -4,  -4,  -4,  -5,  -4,  -5,  -4,  -3,  -4,  -4,  -4,  -5,  -2,  -3,  -4,  -4,  -9,  -7,  -4,  -4, -15,
        -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15, -15,   1
-    ];
-
-    static ref MAT: DMatrix<i32> = DMatrix::from_column_vector(27, 27, &*ARRAY);
+    ]).unwrap();
 }
 
 #[inline]

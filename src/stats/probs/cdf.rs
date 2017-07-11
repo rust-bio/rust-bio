@@ -112,6 +112,12 @@ impl<T: Ord> CDF<T> {
         self.inner.iter()
     }
 
+    /// Mutable iterator over entries. This does not check for consistency. In other words, you
+    /// should not change the order of the entries, nor the probabilities!
+    pub fn iter_mut(&mut self) -> slice::IterMut<Entry<T>> {
+        self.inner.iter_mut()
+    }
+
     /// Iterator over corresponding PMF.
     pub fn iter_pmf(&self) -> CDFPMFIter<T> {
         fn cdf_to_pmf<'a, G: Ord>(last_prob: &mut LogProb,
@@ -188,19 +194,27 @@ impl<T: Ord> CDF<T> {
 
     /// Return w%-credible interval. The width w is a float between 0 and 1. Panics otherwise.
     /// E.g. provide `width=0.95` for the 95% credible interval.
-    pub fn credible_interval(&self, width: f64) -> Range<&T> {
+    pub fn credible_interval(&self, width: f64) -> Option<Range<&T>> {
         assert!(width >= 0.0 && width <= 1.0);
+
+        if self.inner.is_empty() {
+            return None;
+        }
+
         let margin = 1.0 - width;
         let p_lower = OrderedFloat((margin / 2.0).ln());
         let p_upper = OrderedFloat((1.0 - margin / 2.0).ln());
         let lower = self.inner
             .binary_search_by(|e| OrderedFloat(*e.prob).cmp(&p_lower))
-            .unwrap_or_else(|i| i);
-        let upper = self.inner
+            .unwrap_or_else(|i| if i > 0 { i - 1 } else { 0 });
+        let mut upper = self.inner
             .binary_search_by(|e| OrderedFloat(*e.prob).cmp(&p_upper))
-            .unwrap_or_else(|i| i - 1);
+            .unwrap_or_else(|i| i);
+        if upper == self.inner.len() {
+            upper -= 1;
+        }
 
-        &self.inner[lower].value..&self.inner[upper].value
+        Some(&self.inner[lower].value..&self.inner[upper].value)
     }
 
     /// Number of entries in the CDF.
@@ -269,8 +283,21 @@ mod test {
         assert_relative_eq!(*cdf.get(&NotNaN::new(1.0).unwrap()).unwrap(),
                             0.3f64.ln(),
                             epsilon = 0.00000001);
-        let ci = cdf.credible_interval(0.95);
-        assert_relative_eq!(**ci.start, 0.0);
-        assert_relative_eq!(**ci.end, 7.0);
+        {
+            let ci = cdf.credible_interval(0.95).unwrap();
+            assert_relative_eq!(**ci.start, 0.0);
+            assert_relative_eq!(**ci.end, 8.0);
+        }
+
+        {
+            for e in cdf.iter_pmf() {
+                assert_relative_eq!(
+                    e.prob.exp(),
+                    if **e.value == 0.0 { 0.2 } else { 0.1 }
+                );
+            }
+        }
+
+        assert_relative_eq!(cdf.sample(5).total_prob().exp(), 1.0);
     }
 }

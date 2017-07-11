@@ -25,7 +25,6 @@ use std::convert::AsRef;
 use itertools::Itertools;
 use regex::Regex;
 use multimap::MultiMap;
-use serde::{Serialize, Deserialize};
 
 use csv;
 

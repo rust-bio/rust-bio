@@ -1,7 +1,7 @@
 [package]
 
 name = "bio"
-version = "0.13.0"
+version = "0.14.2-pre"
 authors = ["Johannes Köster <johannes.koester@tu-dortmund.de>"]
 description = "A bioinformatics library for Rust. This library provides implementations of many algorithms and data structures that are useful for bioinformatics, but also in other fields."
 homepage = "https://rust-bio.github.io"
@@ -19,7 +19,7 @@ itertools = "0.6"
 itertools-num = "0.1"
 bit-vec = "0.4"
 bit-set = "0.4"
-nalgebra= "0.10"
+ndarray= "0.9"
 lazy_static = "0.2"
 serde = "1.0"
 serde_derive = "1.0"
@@ -35,3 +35,7 @@ fxhash = "0.1.2"
 [dependencies.vec_map]
 version = "0.8"
 features = ["eders"]
+
+[package.metadata.release]
+pre-release-commit-message = "release version {{version}}"
+tag-message = "Version {{version}} of Rust-Bio."
