@@ -115,13 +115,13 @@ pub trait MatchFunc {
 }
 
 pub struct MatchParams {
-    match_score: i32,
-    mismatch_score: i32,
+    pub match_score: i32,
+    pub mismatch_score: i32,
 }
 
 impl MatchParams {
     pub fn new(match_score: i32, mismatch_score: i32) -> Self {
-        assert!(match_score <= 0, "match_score can't be negative");
+        assert!(match_score >= 0, "match_score can't be negative");
         assert!(mismatch_score <= 0, "mismatch_score can't be positive");
         MatchParams {
             match_score: match_score,
@@ -1375,6 +1375,19 @@ mod tests {
         println!("{}", alignment.pretty(x, y));
         assert_eq!(alignment.score, 7);
 
+    }
+
+    #[test]
+    fn test_scoring_from_scores() {
+        let y = b"GGGGGGATG";
+        let x = b"ATG";
+
+        let scoring = Scoring::from_scores(-5, -1, 1, -1).yclip(-5);
+
+        let mut aligner = Aligner::with_scoring(scoring);
+        let alignment = aligner.custom(x, y);
+
+        assert_eq!(alignment.operations, [Yclip(6), Match, Match, Match]);
     }
 
 
