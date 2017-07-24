@@ -55,7 +55,8 @@
 //!     [Yclip(4), Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
 //!
 //! // scoring for global mode
-//! let scoring = Scoring::new( -5, -1, &score) // Gap open, gap extend and match score function
+//! // scoring can also be created usinf from_scores if the match and mismatch scores are constants
+//! let scoring = Scoring::from_scores( -5, -1, 1, -1) // Gap open, extend, match, mismatch score
 //!     .xclip(MIN_SCORE)  // Clipping penalty for x set to 'negative infinity', hence global in x
 //!     .yclip(MIN_SCORE); // Clipping penalty for y set to 'negative infinity', hence global in y
 //! let mut aligner = Aligner::with_scoring(scoring);
@@ -110,16 +111,26 @@ pub mod banded;
 /// adding two negative infinities. Use ~ 0.4 * i32::MIN
 pub const MIN_SCORE: i32 = -858993459;
 
+/// Trait required to instantiate a Scoring instance
 pub trait MatchFunc {
     fn score(&self, a: u8, b: u8) -> i32;
 }
 
+/// A concrete data structure which implements trait MatchFunc with constant
+/// match and mismatch scores
 pub struct MatchParams {
     pub match_score: i32,
     pub mismatch_score: i32,
 }
 
 impl MatchParams {
+    /// Create new MatchParams instance with given match and mismatch scores
+    ///
+    /// # Arguments
+    ///
+    /// * `match_score` - the score for a match (should not be negative)
+    /// * `mismatch_score` - the score for a mismatch (should not be positive)
+    ///
     pub fn new(match_score: i32, mismatch_score: i32) -> Self {
         assert!(match_score >= 0, "match_score can't be negative");
         assert!(mismatch_score <= 0, "mismatch_score can't be positive");
@@ -140,6 +151,8 @@ impl MatchFunc for MatchParams {
     }
 }
 
+/// The trait Matchfunc is also implemented for Fn(u8, u8) -> i32 so that Scoring
+/// can be instantiated using closures and custom user defined functions
 impl<F> MatchFunc for F
     where F: Fn(u8, u8) -> i32
 {
@@ -163,6 +176,16 @@ pub struct Scoring<F: MatchFunc> {
 }
 
 impl Scoring<MatchParams> {
+    /// Create new Scoring instance with given gap open, gap extend penalties
+    /// match and mismatch scores. The clip penalties are set to MIN_SCORE by default
+    ///
+    /// # Arguments
+    ///
+    /// * `gap_open` - the score for opening a gap (should not be positive)
+    /// * `gap_extend` - the score for extending a gap (should not be positive)
+    /// * `match_score` - the score for a match
+    /// * `mismatch_score` - the score for a mismatch
+    ///
     pub fn from_scores(gap_open: i32,
                        gap_extend: i32,
                        match_score: i32,
