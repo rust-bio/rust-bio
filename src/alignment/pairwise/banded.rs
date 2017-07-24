@@ -12,24 +12,24 @@
 //! between the sequences, and b) the width parameter w is larger than the
 //! excursion of the alignment path from diagonal between successive kmer
 //! matches.  This technique is employed in long-read aligners (e.g. BLASR and BWA)
-//! to drastically reduce runtime compared to Smith Waterman. 
+//! to drastically reduce runtime compared to Smith Waterman.
 //! Complexity roughly O(min(m,n) * w)
 //!
 //! # Example
 //!
 //! ```
 //! use bio::alignment::pairwise::banded::*;
-//! use bio::alignment::sparse::hash_kmers; 
+//! use bio::alignment::sparse::hash_kmers;
 //! use bio::alignment::pairwise::{MIN_SCORE, Scoring};
 //! use bio::alignment::AlignmentOperation::*;
 //! use std::iter::repeat;
-//! 
+//!
 //! let x = b"AGCACACGTGTGCGCTATACAGTAAGTAGTAGTACACGTGTCACAGTTGTACTAGCATGAC";
 //! let y = b"AGCACACGTGTGCGCTATACAGTACACGTGTCACAGTTGTACTAGCATGAC";
 //! let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
 //! let k = 8;  // kmer match length
 //! let w = 6;  // Window size for creating the band
-//! let mut aligner = Aligner::new(-5, -1, &score, k, w);
+//! let mut aligner = Aligner::new(-5, -1, score, k, w);
 //! let alignment = aligner.local(x, y);
 //! // aligner.global(x, y), aligner.semiglobal(x, y) are also supported
 //! assert_eq!(alignment.ystart, 0);
@@ -49,7 +49,7 @@
 //! // special boundary condition where you are allowed to clip off the beginning/end of
 //! // the sequence for a fixed penalty. See bio::alignment::pairwise for a more detailed
 //! // explanation
-//! 
+//!
 //! // The following example considers a modification of the semiglobal mode where you are allowed
 //! // to skip a prefix of the target sequence x, for a penalty of -10, but you have to consume
 //! // the rest of the string in the alignment
@@ -57,7 +57,7 @@
 //! let scoring = Scoring {
 //!     gap_open: -5,
 //!     gap_extend: -1,
-//!     match_score: &|a: u8, b: u8| if a == b {1i32} else {-3i32},
+//!     match_fn: |a: u8, b: u8| if a == b {1i32} else {-3i32},
 //!     xclip_prefix: -10,
 //!     xclip_suffix: MIN_SCORE,
 //!     yclip_prefix: 0,
@@ -75,8 +75,8 @@
 //! correct_ops.extend(repeat(Match).take(59));
 //! correct_ops.push(Yclip(4));
 //! assert_eq!(alignment.operations, correct_ops);
-//! 
-//! // aligner.custom_with_prehash(x, y, &y_kmers_hash) is also supported 
+//!
+//! // aligner.custom_with_prehash(x, y, &y_kmers_hash) is also supported
 //! ```
 
 use std::i32;
@@ -107,9 +107,7 @@ const MAX_CELLS: usize = 10000000;
 /// in the band is less than MAX_CELLS (currently set to 10 million), otherwise it returns an
 /// empty alignment
 #[allow(non_snake_case)]
-pub struct Aligner<'a, F>
-    where F: 'a + Fn(u8, u8) -> i32
-{
+pub struct Aligner<F: MatchFunc> {
     S: [Vec<i32>; 2],
     I: [Vec<i32>; 2],
     D: [Vec<i32>; 2],
@@ -117,7 +115,7 @@ pub struct Aligner<'a, F>
     Ly: Vec<usize>,
     Sn: Vec<i32>,
     traceback: Traceback,
-    scoring: Scoring<'a, F>,
+    scoring: Scoring<F>,
 
     band: Band,
     k: usize,
@@ -127,9 +125,7 @@ pub struct Aligner<'a, F>
 
 const DEFAULT_ALIGNER_CAPACITY: usize = 200;
 
-impl<'a, F> Aligner<'a, F>
-    where F: Fn(u8, u8) -> i32
-{
+impl<F: MatchFunc> Aligner<F> {
     /// Create new aligner instance with given gap open and gap extend penalties
     /// and the score function.
     ///
@@ -137,16 +133,16 @@ impl<'a, F> Aligner<'a, F>
     ///
     /// * `gap_open` - the score for opening a gap (should be negative)
     /// * `gap_extend` - the score for extending a gap (should be negative)
-    /// * `match_score` - function that returns the score for substitutions (also see bio::scores)
+    /// * `match_fn` - function that returns the score for substitutions (also see bio::scores)
     /// * `k` - kmer length used in constructing the band
     /// * `w` - width of the band
     ///
-    pub fn new(gap_open: i32, gap_extend: i32, match_score: &'a F, k: usize, w: usize) -> Self {
+    pub fn new(gap_open: i32, gap_extend: i32, match_fn: F, k: usize, w: usize) -> Self {
         Aligner::with_capacity(DEFAULT_ALIGNER_CAPACITY,
                                DEFAULT_ALIGNER_CAPACITY,
                                gap_open,
                                gap_extend,
-                               match_score,
+                               match_fn,
                                k,
                                w)
     }
@@ -160,7 +156,7 @@ impl<'a, F> Aligner<'a, F>
     /// * `n` - the expected size of y
     /// * `gap_open` - the score for opening a gap (should be negative)
     /// * `gap_extend` - the score for extending a gap (should be negative)
-    /// * `match_score` - function that returns the score for substitutions (also see bio::scores)
+    /// * `match_fn` - function that returns the score for substitutions (also see bio::scores)
     /// * `k` - kmer length used in constructing the band
     /// * `w` - width of the band
     ///
@@ -168,7 +164,7 @@ impl<'a, F> Aligner<'a, F>
                          n: usize,
                          gap_open: i32,
                          gap_extend: i32,
-                         match_score: &'a F,
+                         match_fn: F,
                          k: usize,
                          w: usize)
                          -> Self {
@@ -182,7 +178,7 @@ impl<'a, F> Aligner<'a, F>
             Ly: Vec::with_capacity(m + 1),
             Sn: Vec::with_capacity(m + 1),
             traceback: Traceback::with_capacity(m, n),
-            scoring: Scoring::new(gap_open, gap_extend, match_score),
+            scoring: Scoring::new(gap_open, gap_extend, match_fn),
             k: k,
             w: w,
         }
@@ -201,7 +197,7 @@ impl<'a, F> Aligner<'a, F>
     ///
     pub fn with_capacity_and_scoring(m: usize,
                                      n: usize,
-                                     scoring: Scoring<'a, F>,
+                                     scoring: Scoring<F>,
                                      k: usize,
                                      w: usize)
                                      -> Self {
@@ -243,10 +239,7 @@ impl<'a, F> Aligner<'a, F>
     /// * `k` - kmer length used in constructing the band
     /// * `w` - width of the band
     ///
-    pub fn with_scoring(scoring: Scoring<'a, F>,
-                        k: usize,
-                        w: usize)
-                        -> Self {
+    pub fn with_scoring(scoring: Scoring<F>, k: usize, w: usize) -> Self {
 
         Aligner::with_capacity_and_scoring(DEFAULT_ALIGNER_CAPACITY,
                                            DEFAULT_ALIGNER_CAPACITY,
@@ -445,7 +438,7 @@ impl<'a, F> Aligner<'a, F>
                 let p = x[i - 1];
                 let mut tb = TracebackCell::new();
 
-                let m_score = self.S[prev][i - 1] + (self.scoring.match_score)(p, q);
+                let m_score = self.S[prev][i - 1] + self.scoring.match_fn.score(p, q);
 
                 let i_score = self.I[curr][i - 1] + self.scoring.gap_extend;
                 let s_score = self.S[curr][i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
@@ -952,12 +945,12 @@ impl Band {
     // start - the index of the first matching kmer in LCSk++
     // end - the index of the last matching kmer in LCSk++
     //
-    fn set_boundaries<F: Fn(u8, u8) -> i32>(&mut self,
-                                            start: (u32, u32),
-                                            end: (u32, u32),
-                                            k: usize,
-                                            w: usize,
-                                            scoring: &Scoring<F>) {
+    fn set_boundaries<F: MatchFunc>(&mut self,
+                                    start: (u32, u32),
+                                    end: (u32, u32),
+                                    k: usize,
+                                    w: usize,
+                                    scoring: &Scoring<F>) {
 
         let lazy_extend: usize = 2 * k;
 
@@ -1084,36 +1077,36 @@ impl Band {
     }
 
 
-    fn create<F: Fn(u8, u8) -> i32>(x: TextSlice,
-                                    y: TextSlice,
-                                    k: usize,
-                                    w: usize,
-                                    scoring: &Scoring<F>)
-                                    -> Band {
+    fn create<F: MatchFunc>(x: TextSlice,
+                            y: TextSlice,
+                            k: usize,
+                            w: usize,
+                            scoring: &Scoring<F>)
+                            -> Band {
 
         let matches = sparse::find_kmer_matches(x, y, k);
         Band::create_with_matches(x, y, k, w, scoring, matches)
     }
 
-    fn create_with_prehash<F: Fn(u8, u8) -> i32>(x: TextSlice,
-                                                 y: TextSlice,
-                                                 k: usize,
-                                                 w: usize,
-                                                 scoring: &Scoring<F>,
-                                                 y_kmer_hash: &HashMapFx<&[u8], Vec<u32>>)
-                                                 -> Band {
+    fn create_with_prehash<F: MatchFunc>(x: TextSlice,
+                                         y: TextSlice,
+                                         k: usize,
+                                         w: usize,
+                                         scoring: &Scoring<F>,
+                                         y_kmer_hash: &HashMapFx<&[u8], Vec<u32>>)
+                                         -> Band {
 
         let matches = sparse::find_kmer_matches_seq2_hashed(x, y_kmer_hash, k);
         Band::create_with_matches(x, y, k, w, scoring, matches)
     }
 
-    fn create_with_matches<F: Fn(u8, u8) -> i32>(x: TextSlice,
-                                                 y: TextSlice,
-                                                 k: usize,
-                                                 w: usize,
-                                                 scoring: &Scoring<F>,
-                                                 matches: Vec<(u32, u32)>)
-                                                 -> Band {
+    fn create_with_matches<F: MatchFunc>(x: TextSlice,
+                                         y: TextSlice,
+                                         k: usize,
+                                         w: usize,
+                                         scoring: &Scoring<F>,
+                                         matches: Vec<(u32, u32)>)
+                                         -> Band {
 
         let mut band = Band::new(x.len(), y.len());
 

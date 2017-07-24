@@ -88,7 +88,7 @@ impl Alignment {
     pub fn cigar(&self, hard_clip: bool) -> String {
 
         match self.mode {
-            AlignmentMode::Semiglobal => {},
+            AlignmentMode::Semiglobal => {}
             _ => panic!(" Cigar fn is only supported for semiglobal Alignment mode"),
         }
 

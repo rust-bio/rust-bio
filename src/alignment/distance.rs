@@ -28,11 +28,11 @@ use utils::TextSlice;
 /// assert_eq!(hamming(x, y), 5);
 /// ```
 pub fn hamming(alpha: TextSlice, beta: TextSlice) -> u64 {
-    assert_eq!(
-        alpha.len(), beta.len(),
-        "hamming distance cannot be calculated for texts of different length ({}!={})",
-        alpha.len(), beta.len()
-    );
+    assert_eq!(alpha.len(),
+               beta.len(),
+               "hamming distance cannot be calculated for texts of different length ({}!={})",
+               alpha.len(),
+               beta.len());
     let mut dist = 0;
     for (a, b) in multizip((alpha, beta)) {
         if a != b {
