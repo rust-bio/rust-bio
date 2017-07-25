@@ -118,6 +118,7 @@ pub trait MatchFunc {
 
 /// A concrete data structure which implements trait MatchFunc with constant
 /// match and mismatch scores
+#[derive(Debug, Clone)]
 pub struct MatchParams {
     pub match_score: i32,
     pub mismatch_score: i32,
