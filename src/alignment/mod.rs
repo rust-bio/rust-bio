@@ -7,6 +7,9 @@
 
 use utils::TextSlice;
 
+extern crate rust_htslib;
+use self::rust_htslib::bam;
+
 pub mod pairwise;
 pub mod distance;
 pub mod sparse;
@@ -88,8 +91,9 @@ impl Alignment {
     pub fn cigar(&self, hard_clip: bool) -> String {
 
         match self.mode {
-            AlignmentMode::Semiglobal => {}
-            _ => panic!(" Cigar fn is only supported for semiglobal Alignment mode"),
+            AlignmentMode::Global => panic!(" Cigar fn not supported for Global Alignment mode"),
+            AlignmentMode::Local => panic!(" Cigar fn not supported for Local Alignment mode"),
+            _ => {}
         }
 
         let clip_str = if hard_clip { "H" } else { "S" };
@@ -99,36 +103,94 @@ impl Alignment {
             AlignmentOperation::Subst => cigar.push_str(&format!("{}{}", k, "X")),
             AlignmentOperation::Del => cigar.push_str(&format!("{}{}", k, "D")),
             AlignmentOperation::Ins => cigar.push_str(&format!("{}{}", k, "I")),
-            AlignmentOperation::Xclip(len) if len > 0 => {
-                cigar.push_str(&format!("{}{}", len, clip_str))
-            }
             _ => {}
         };
 
-        let mut cigar = String::new();
-
-        if !self.operations.is_empty() {
-            let mut last = self.operations[0];
-            if self.xstart > 0 {
-                cigar.push_str(&format!("{}{}", self.xstart, clip_str))
-            }
-            let mut k = 1;
-            for &op in self.operations[1..].iter() {
-                if op == last {
-                    k += 1;
-                } else {
-                    add_op(last, k, &mut cigar);
-                    k = 1;
-                }
-                last = op;
-            }
-            add_op(last, k, &mut cigar);
-            if self.xlen > self.xend {
-                cigar.push_str(&format!("{}{}", self.xlen - self.xend, clip_str))
-            }
-
+        let mut cigar = "".to_owned();
+        if self.operations.is_empty() {
+            return cigar;
         }
+
+        let mut last = self.operations[0];
+        if self.xstart > 0 {
+            cigar.push_str(&format!("{}{}", self.xstart, clip_str))
+        }
+        let mut k = 1;
+        for &op in self.operations[1..].iter() {
+            if op == last {
+                k += 1;
+            } else {
+                add_op(last, k, &mut cigar);
+                k = 1;
+            }
+            last = op;
+        }
+        add_op(last, k, &mut cigar);
+        if self.xlen > self.xend {
+            cigar.push_str(&format!("{}{}", self.xlen - self.xend, clip_str))
+        }
+
         cigar
+    }
+
+    /// Calculate the bam cigar from the alignment struct. x is the target string
+    /// and y is the reference.
+    pub fn bam_cigar(&self, hard_clip: bool) -> Vec<bam::record::Cigar> {
+
+        use self::bam::record::Cigar;
+
+        match self.mode {
+            AlignmentMode::Global => panic!(" Bam cigar fn not supported for Global Alignment mode"),
+            AlignmentMode::Local => panic!(" Bam cigar fn not supported for Local Alignment mode"),
+            _ => {}
+        }
+
+        let mut cigar = Vec::new();
+        if self.operations.is_empty() {
+            return cigar;
+        }
+
+        let add_op = |op: AlignmentOperation, length: u32, cigar: &mut Vec<Cigar>| {
+            match op {
+                AlignmentOperation::Del => cigar.push(Cigar::Del(length)),
+                AlignmentOperation::Ins => cigar.push(Cigar::Ins(length)),
+                AlignmentOperation::Subst => cigar.push(Cigar::Diff(length)),
+                AlignmentOperation::Match => cigar.push(Cigar::Equal(length)),
+                _ => {}
+            }
+        };
+        
+        
+        if self.xstart > 0 {
+            cigar.push(if hard_clip { 
+                    Cigar::HardClip(self.xstart as u32) 
+                } else { 
+                    Cigar::SoftClip(self.xstart as u32)
+                });
+        }
+
+        let mut last = self.operations[0];
+        let mut k = 1u32;
+        for &op in self.operations[1..].iter() {
+            if op == last {
+                k += 1;
+            } else {
+                add_op(last, k, &mut cigar);
+                k = 1;
+            }
+            last = op;
+        }
+        add_op(last, k, &mut cigar);
+        if self.xlen > self.xend {
+            cigar.push(if hard_clip { 
+                    Cigar::HardClip((self.xlen - self.xend) as u32) 
+                } else { 
+                    Cigar::SoftClip((self.xlen - self.xend) as u32)
+                });
+        }
+
+        cigar
+
     }
 
     /// Return the pretty formatted alignment as a String. The string
@@ -383,5 +445,72 @@ mod tests {
             mode: AlignmentMode::Semiglobal,
         };
         assert_eq!(alignment.cigar(false), "3S3=1X2I2D1S");
+        assert_eq!(alignment.bam_cigar(false),
+                       vec![bam::record::Cigar::SoftClip(3),
+                            bam::record::Cigar::Equal(3),
+                            bam::record::Cigar::Diff(1),
+                            bam::record::Cigar::Ins(2),
+                            bam::record::Cigar::Del(2),
+                            bam::record::Cigar::SoftClip(1)]);
+
+        let alignment = Alignment {
+            score: 5,
+            xstart: 0,
+            ystart: 5,
+            xend: 4,
+            yend: 10,
+            ylen: 10,
+            xlen: 5,
+            operations: vec![Yclip(5), Match, Subst, Subst, Ins, Del, Del, Xclip(1)],
+            mode: AlignmentMode::Custom,
+        };
+        assert_eq!(alignment.cigar(false), "1=2X1I2D1S");
+        assert_eq!(alignment.cigar(true), "1=2X1I2D1H");
+        assert_eq!(alignment.bam_cigar(false),
+                       vec![bam::record::Cigar::Equal(1),
+                            bam::record::Cigar::Diff(2),
+                            bam::record::Cigar::Ins(1),
+                            bam::record::Cigar::Del(2),
+                            bam::record::Cigar::SoftClip(1)]);
+        assert_eq!(alignment.bam_cigar(true),
+                       vec![bam::record::Cigar::Equal(1),
+                            bam::record::Cigar::Diff(2),
+                            bam::record::Cigar::Ins(1),
+                            bam::record::Cigar::Del(2),
+                            bam::record::Cigar::HardClip(1)]);
+
+        let alignment = Alignment {
+            score: 5,
+            xstart: 0,
+            ystart: 5,
+            xend: 3,
+            yend: 8,
+            ylen: 10,
+            xlen: 3,
+            operations: vec![Yclip(5), Subst, Match, Subst, Yclip(2)],
+            mode: AlignmentMode::Custom,
+        };
+        assert_eq!(alignment.cigar(false), "1X1=1X");
+        assert_eq!(alignment.bam_cigar(false),
+                       vec![bam::record::Cigar::Diff(1),
+                            bam::record::Cigar::Equal(1),
+                            bam::record::Cigar::Diff(1)]);
+
+        let alignment = Alignment {
+            score: 5,
+            xstart: 0,
+            ystart: 5,
+            xend: 3,
+            yend: 8,
+            ylen: 10,
+            xlen: 3,
+            operations: vec![Subst, Match, Subst],
+            mode: AlignmentMode::Semiglobal,
+        };
+        assert_eq!(alignment.cigar(false), "1X1=1X");
+        assert_eq!(alignment.bam_cigar(false),
+                       vec![bam::record::Cigar::Diff(1),
+                            bam::record::Cigar::Equal(1),
+                            bam::record::Cigar::Diff(1)]);
     }
 }
