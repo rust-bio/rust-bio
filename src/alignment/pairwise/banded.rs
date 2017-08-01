@@ -91,7 +91,7 @@ use alignment::sparse;
 use alignment::sparse::HashMapFx;
 use alignment::pairwise::Scoring;
 
-const MAX_CELLS: usize = 10000000;
+const MAX_CELLS: usize = 100000;
 
 /// A banded implementation of Smith-Waterman aligner (SWA).
 /// Unlike the full SWA, this implementation computes the alignment between a pair of sequences
@@ -1213,7 +1213,7 @@ mod banded {
         let mut banded_aligner =
             banded::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score, 10, 10);
         let banded_alignment = banded_aligner.local(x, y);
-        banded_aligner.visualize(&banded_alignment);
+        // banded_aligner.visualize(&banded_alignment);
 
         let mut full_aligner = pairwise::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
         let full_alignment = full_aligner.local(x, y);

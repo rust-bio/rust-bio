@@ -946,6 +946,7 @@ impl Traceback {
     }
 
     fn init(&mut self, m: usize, n: usize) {
+        self.matrix.clear();
         let mut start = TracebackCell::new();
         start.set_all(TB_START);
         // set every cell to start
