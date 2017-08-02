@@ -277,6 +277,24 @@ impl<F: MatchFunc> Aligner<F> {
         self.compute_alignment(x, y)
     }
 
+    /// Compute the alignment with custom clip penalties with the kmer matches
+    /// between x and y being pre-computed as a Vector of pairs (xpos, ypos)
+    /// and sorted.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - Textslice
+    /// * `y` - Textslice
+    ///
+    pub fn custom_with_matches(&mut self,
+                               x: TextSlice,
+                               y: TextSlice,
+                               matches: Vec<(u32, u32)>)
+                               -> Alignment {
+        self.band = Band::create_with_matches(x, y, self.k, self.w, &self.scoring, matches);
+        self.compute_alignment(x, y)
+    }
+
     // Computes the alignment. The band needs to be populated prior
     // to calling this function
     fn compute_alignment(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
