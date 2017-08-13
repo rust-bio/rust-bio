@@ -672,8 +672,8 @@ impl<F: MatchFunc> Aligner<F> {
             xstart: xstart,
             yend: yend,
             xend: xend,
-            ylen: n,
-            xlen: m,
+            ylen: yend - ystart,
+            xlen: xend - xstart,
             operations: ops,
             mode: AlignmentMode::Custom,
         }
@@ -1514,6 +1514,21 @@ mod banded {
         assert_eq!(alignment.operations,
                    [Match, Match, Match, Ins, Ins, Ins, Match, Match, Match]);
     }
+
+
+    #[test]
+    fn test_local_empty() {
+        let x = b"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN";
+        let y = b"AACGTACGATACGTGGGTTGTCACACGTGTCGCGCGGCAACACATCAGACTCTAACAGCATCATCAGCACGTGACA";
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -3i32 };
+        let mut aligner = banded::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score, 10, 10);
+        let alignment = aligner.local(x, y);
+
+        println!("aln:\n{}", alignment.pretty(x, y));
+        assert_eq!(alignment.xlen, 0);
+        assert_eq!(alignment.ylen, 0);
+    }
+
 
     #[test]
     fn test_global_affine_ins2() {

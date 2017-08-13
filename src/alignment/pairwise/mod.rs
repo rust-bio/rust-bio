@@ -733,8 +733,8 @@ impl<F: MatchFunc> Aligner<F> {
             xstart: xstart,
             yend: yend,
             xend: xend,
-            ylen: n,
-            xlen: m,
+            ylen: yend - ystart,
+            xlen: xend - xstart,
             operations: ops,
             mode: AlignmentMode::Custom,
         }
