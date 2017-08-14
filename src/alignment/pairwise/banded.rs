@@ -1525,8 +1525,8 @@ mod banded {
         let alignment = aligner.local(x, y);
 
         println!("aln:\n{}", alignment.pretty(x, y));
-        assert_eq!(alignment.xlen, 0);
-        assert_eq!(alignment.ylen, 0);
+        assert_eq!(alignment.x_aln_len(), 0);
+        assert_eq!(alignment.y_aln_len(), 0);
     }
 
 
