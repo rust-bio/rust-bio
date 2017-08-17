@@ -13,6 +13,7 @@ use utils::prescan;
 use alphabets::Alphabet;
 use data_structures::suffix_array::RawSuffixArray;
 use std::ops::Deref;
+use bytecount;
 
 pub type BWT = Vec<u8>;
 pub type BWTSlice = [u8];
@@ -152,12 +153,7 @@ impl Occ {
         let end = r + 1;
 
         // count all the matching bytes b/t the closest checkpoint and our desired lookup
-        let mut count: u32 = 0;
-        for &x in &bwt[start..end] {
-            if x == a {
-                count += 1;
-            }
-        }
+        let count = bytecount::count(&bwt[start..end], a);
 
         // return the sampled checkpoint for this character + the manual count we just did
         checkpoint + (count as usize)
