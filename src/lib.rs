@@ -111,6 +111,7 @@ extern crate ordered_float;
 extern crate quick_error;
 extern crate regex;
 extern crate multimap;
+extern crate bytecount;
 
 pub mod utils;
 pub mod alphabets;
