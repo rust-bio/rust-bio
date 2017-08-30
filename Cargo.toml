@@ -10,7 +10,12 @@ documentation = "https://docs.rs/bio"
 readme = "README.md"
 license = "MIT"
 
+[features]
+avx-accel = ["bytecount/avx-accel"]
+simd-accel = ["bytecount/simd-accel"]
+
 [dependencies]
+bytecount = "0.1.7"
 csv = "0.15"
 rustc-serialize = "0.3.*"
 num-traits = "0.1.*"
