@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.14.2] - 2017-08-30
+- Improved numerical stability of CDF construction.
+- Speed improvements to occurrence array lookups in FM-index.
+- Improved GFF/GTF variant format handling.
+- Improved robustness of credible interval calculating in CDF.
+- Bug fixes for log probability implementation.
+
 ## [0.14.1] - 2017-06-23
 ### Changed
 - Replace nalgebra dependency with ndarray crate.
