@@ -58,6 +58,7 @@
 //!     gap_open: -5,
 //!     gap_extend: -1,
 //!     match_fn: |a: u8, b: u8| if a == b {1i32} else {-3i32},
+//!     match_scores: Some((1, -3)),
 //!     xclip_prefix: -10,
 //!     xclip_suffix: MIN_SCORE,
 //!     yclip_prefix: 0,
@@ -91,7 +92,7 @@ use alignment::sparse;
 use alignment::sparse::HashMapFx;
 use alignment::pairwise::Scoring;
 
-const MAX_CELLS: usize = 100000;
+const MAX_CELLS: usize = 5000000;
 
 /// A banded implementation of Smith-Waterman aligner (SWA).
 /// Unlike the full SWA, this implementation computes the alignment between a pair of sequences
@@ -1132,10 +1133,16 @@ impl Band {
             band.full_matrix();
             return band;
         }
-        let res = sparse::sdpkpp(&matches, k, 2, scoring.gap_open, scoring.gap_extend);
+
+        let match_score = match scoring.match_scores {
+            Some((m, _)) => m,
+            None => 2,
+        };
+
+        let res = sparse::sdpkpp(&matches, k, match_score as u32, scoring.gap_open, scoring.gap_extend);
         let ps = res.path[0];
         let pe = res.path[res.path.len() - 1];
-
+        println!("ps: {:?}, pe: {:?}", matches[ps], matches[pe]);
         // Set the boundaries
         band.set_boundaries(matches[ps], matches[pe], k, w, scoring);
 

@@ -170,7 +170,7 @@ impl PrevPtr {
 
 
 
-/// Sparse DP routine generalizing LCSk++ method above penalize alignment gaps.
+/// Sparse DP routine generalizing LCSk++ method above to penalize alignment gaps.
 /// A gap is an unknown combination of mismatch, insertion and deletions, and incurs
 /// a penalty of gap_open + d * gap_extend, where d is the distance along the diagonal of the gap.
 /// # Arguments
