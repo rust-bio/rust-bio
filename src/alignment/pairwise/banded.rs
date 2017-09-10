@@ -1142,7 +1142,7 @@ impl Band {
         let res = sparse::sdpkpp(&matches, k, match_score as u32, scoring.gap_open, scoring.gap_extend);
         let ps = res.path[0];
         let pe = res.path[res.path.len() - 1];
-        println!("ps: {:?}, pe: {:?}", matches[ps], matches[pe]);
+
         // Set the boundaries
         band.set_boundaries(matches[ps], matches[pe], k, w, scoring);
 
