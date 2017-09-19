@@ -298,6 +298,7 @@ impl<F: MatchFunc> Aligner<F> {
 
     // Computes the alignment. The band needs to be populated prior
     // to calling this function
+    #[inline(never)]
     fn compute_alignment(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
 
         if self.band.num_cells() > MAX_CELLS {

@@ -144,6 +144,8 @@ impl MatchParams {
 }
 
 impl MatchFunc for MatchParams {
+    
+    #[inline]
     fn score(&self, a: u8, b: u8) -> i32 {
         if a == b {
             self.match_score
