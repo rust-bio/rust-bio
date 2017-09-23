@@ -47,7 +47,7 @@ pub enum AlignmentMode {
     Custom,
 }
 
-/// We consider alignment between two sequences x and  y. x is the target or read sequence
+/// We consider alignment between two sequences x and  y. x is the query or read sequence
 /// and y is the reference or template sequence. An alignment, consisting of a score,
 /// the start and end position of the alignment on sequence x and sequence y, the
 /// lengths of sequences x and y, and the alignment edit operations. The start position
@@ -55,13 +55,28 @@ pub enum AlignmentMode {
 /// of clipped regions are already encapsulated in the Alignment Operation.
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Alignment {
+    /// Smith-Waterman alignment score
     pub score: i32,
+
+    /// Start position of alignment in reference
     pub ystart: usize,
+
+    /// Start position of alignment in query
     pub xstart: usize,
+
+    /// End position of alignment in reference
     pub yend: usize,
+
+    /// End position of alignment in query
     pub xend: usize,
+
+    /// Length of the reference sequence
     pub ylen: usize,
+
+    /// Length of the query sequence
     pub xlen: usize,
+
+    /// Vector of alignment operations
     pub operations: Vec<AlignmentOperation>,
     pub mode: AlignmentMode,
 }
@@ -423,6 +438,16 @@ impl Alignment {
         use self::AlignmentOperation::{Match, Subst, Ins, Del};
         self.operations
             .retain(|&ref x| (*x == Match || *x == Subst || *x == Ins || *x == Del));
+    }
+
+    /// Number of bases in reference sequence that are aligned
+    pub fn y_aln_len(&self) -> usize {
+        self.yend - self.ystart
+    }
+
+    /// Number of bases in query sequence that are aigned
+    pub fn x_aln_len(&self) -> usize {
+        self.xend - self.xstart
     }
 }
 

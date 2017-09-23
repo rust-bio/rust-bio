@@ -81,6 +81,7 @@
 //!     gap_open: -5,
 //!     gap_extend: -1,
 //!     match_fn: |a: u8, b: u8| if a == b {1i32} else {-3i32},
+//!     match_scores: Some((1, -3)),
 //!     xclip_prefix: -10,
 //!     xclip_suffix: MIN_SCORE,
 //!     yclip_prefix: 0,
@@ -143,6 +144,8 @@ impl MatchParams {
 }
 
 impl MatchFunc for MatchParams {
+    
+    #[inline]
     fn score(&self, a: u8, b: u8) -> i32 {
         if a == b {
             self.match_score
@@ -170,6 +173,7 @@ pub struct Scoring<F: MatchFunc> {
     pub gap_open: i32,
     pub gap_extend: i32,
     pub match_fn: F,
+    pub match_scores: Option<(i32, i32)>,
     pub xclip_prefix: i32,
     pub xclip_suffix: i32,
     pub yclip_prefix: i32,
@@ -192,9 +196,20 @@ impl Scoring<MatchParams> {
                        match_score: i32,
                        mismatch_score: i32)
                        -> Self {
-        Scoring::new(gap_open,
-                     gap_extend,
-                     MatchParams::new(match_score, mismatch_score))
+
+        assert!(gap_open <= 0, "gap_open can't be positive");
+        assert!(gap_extend <= 0, "gap_extend can't be positive");
+
+        Scoring {
+            gap_open: gap_open,
+            gap_extend: gap_extend,
+            match_fn:  MatchParams::new(match_score, mismatch_score),
+            match_scores: Some((match_score, mismatch_score)),
+            xclip_prefix: MIN_SCORE,
+            xclip_suffix: MIN_SCORE,
+            yclip_prefix: MIN_SCORE,
+            yclip_suffix: MIN_SCORE,
+        }
     }
 }
 
@@ -217,6 +232,7 @@ impl<F: MatchFunc> Scoring<F> {
             gap_open: gap_open,
             gap_extend: gap_extend,
             match_fn: match_fn,
+            match_scores: None,
             xclip_prefix: MIN_SCORE,
             xclip_suffix: MIN_SCORE,
             yclip_prefix: MIN_SCORE,
@@ -236,6 +252,7 @@ impl<F: MatchFunc> Scoring<F> {
             gap_open: self.gap_open,
             gap_extend: self.gap_extend,
             match_fn: self.match_fn,
+            match_scores: None,
             xclip_prefix: penalty,
             xclip_suffix: penalty,
             yclip_prefix: self.yclip_prefix,
@@ -255,6 +272,7 @@ impl<F: MatchFunc> Scoring<F> {
             gap_open: self.gap_open,
             gap_extend: self.gap_extend,
             match_fn: self.match_fn,
+            match_scores: None,
             xclip_prefix: self.xclip_prefix,
             xclip_suffix: self.xclip_suffix,
             yclip_prefix: penalty,

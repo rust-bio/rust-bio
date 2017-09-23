@@ -58,6 +58,7 @@
 //!     gap_open: -5,
 //!     gap_extend: -1,
 //!     match_fn: |a: u8, b: u8| if a == b {1i32} else {-3i32},
+//!     match_scores: Some((1, -3)),
 //!     xclip_prefix: -10,
 //!     xclip_suffix: MIN_SCORE,
 //!     yclip_prefix: 0,
@@ -91,7 +92,7 @@ use alignment::sparse;
 use alignment::sparse::HashMapFx;
 use alignment::pairwise::Scoring;
 
-const MAX_CELLS: usize = 100000;
+const MAX_CELLS: usize = 5000000;
 
 /// A banded implementation of Smith-Waterman aligner (SWA).
 /// Unlike the full SWA, this implementation computes the alignment between a pair of sequences
@@ -297,6 +298,7 @@ impl<F: MatchFunc> Aligner<F> {
 
     // Computes the alignment. The band needs to be populated prior
     // to calling this function
+    #[inline(never)]
     fn compute_alignment(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
 
         if self.band.num_cells() > MAX_CELLS {
@@ -1150,7 +1152,13 @@ impl Band {
             band.full_matrix();
             return band;
         }
-        let res = sparse::sdpkpp(&matches, k, 2, scoring.gap_open, scoring.gap_extend);
+
+        let match_score = match scoring.match_scores {
+            Some((m, _)) => m,
+            None => 2,
+        };
+
+        let res = sparse::sdpkpp(&matches, k, match_score as u32, scoring.gap_open, scoring.gap_extend);
         let ps = res.path[0];
         let pe = res.path[res.path.len() - 1];
 
@@ -1532,6 +1540,21 @@ mod banded {
         assert_eq!(alignment.operations,
                    [Match, Match, Match, Ins, Ins, Ins, Match, Match, Match]);
     }
+
+
+    #[test]
+    fn test_local_empty() {
+        let x = b"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN";
+        let y = b"AACGTACGATACGTGGGTTGTCACACGTGTCGCGCGGCAACACATCAGACTCTAACAGCATCATCAGCACGTGACA";
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -3i32 };
+        let mut aligner = banded::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score, 10, 10);
+        let alignment = aligner.local(x, y);
+
+        println!("aln:\n{}", alignment.pretty(x, y));
+        assert_eq!(alignment.x_aln_len(), 0);
+        assert_eq!(alignment.y_aln_len(), 0);
+    }
+
 
     #[test]
     fn test_global_affine_ins2() {

@@ -66,9 +66,12 @@ impl<T: Ord> CDF<T> {
         }
         let mut cdf = CDF { inner: inner };
 
-        if relative_eq!(*cdf.total_prob(), *LogProb::ln_one()) &&
-           *cdf.total_prob() > *LogProb::ln_one() {
-            cdf.inner.last_mut().unwrap().prob = LogProb::ln_one();
+        // cap at prob=1.0 if there are slightly exceeding values due to numerical issues.
+        for e in cdf.inner.iter_mut() {
+            if relative_eq!(*e.prob, *LogProb::ln_one()) &&
+               *e.prob > *LogProb::ln_one() {
+                e.prob = LogProb::ln_one();
+            }
         }
 
         cdf
