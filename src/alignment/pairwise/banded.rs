@@ -657,12 +657,30 @@ impl<F: MatchFunc> Aligner<F> {
 
         // Handle the case when the traceback ends outside the band other than at (0, 0)
         if i != 0 {
-            ops.push(AlignmentOperation::Xclip(i));
-            xstart = i;
+            // Insert all i characters
+            let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
+            if i_score > self.scoring.xclip_prefix {
+                for _ in 0..i {
+                    ops.push(AlignmentOperation::Ins);
+                }
+                xstart = 0;
+            } else {
+                ops.push(AlignmentOperation::Xclip(i));
+                xstart = i;
+            }
         }
         if j != 0 {
-            ops.push(AlignmentOperation::Yclip(j));
-            ystart = j;
+            // Delete all j characters
+            let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
+            if d_score > self.scoring.xclip_prefix {
+                for _ in 0..j {
+                    ops.push(AlignmentOperation::Del);
+                }
+                ystart = 0;
+            } else {
+                ops.push(AlignmentOperation::Yclip(j));
+                ystart = j;
+            }
         }
 
         ops.reverse();
