@@ -76,7 +76,7 @@ impl Myers {
     fn step(&self, state: &mut State, a: u8) {
         let eq = self.peq[a as usize];
         let xv = eq | state.mv;
-        let xh = (((eq & state.pv).saturating_add(state.pv)) ^ state.pv) | eq;
+        let xh = ((eq & state.pv).saturating_add(state.pv) ^ state.pv) | eq;
 
         let mut ph = state.mv | !(xh | state.pv);
         let mut mh = state.pv & xh;
