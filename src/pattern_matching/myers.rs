@@ -76,7 +76,7 @@ impl Myers {
     fn step(&self, state: &mut State, a: u8) {
         let eq = self.peq[a as usize];
         let xv = eq | state.mv;
-        let xh = (((eq & state.pv) + state.pv) ^ state.pv) | eq;
+        let xh = ((eq & state.pv).wrapping_add(state.pv) ^ state.pv) | eq;
 
         let mut ph = state.mv | !(xh | state.pv);
         let mut mh = state.pv & xh;
@@ -188,5 +188,12 @@ mod tests {
         assert_eq!(myers_wildcard.distance(text), 0);
     }
 
-
+    #[test]
+    fn test_long() {
+        let text = b"ACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAG";
+        let pattern = b"TGAGCGTTGAGCGTTGAGCGTTGAGCGTTGAGCGTTGAGCGT";
+        let myers = Myers::new(&pattern[..]);
+        let occ = myers.find_all_end(&text[..], 1).collect_vec();
+        println!("{:?}", occ);
+    }
 }
