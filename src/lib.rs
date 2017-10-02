@@ -120,5 +120,6 @@ pub mod data_structures;
 pub mod alignment;
 pub mod io;
 pub mod seq_analysis;
+pub mod seq_loc;
 pub mod stats;
 pub mod scores;
