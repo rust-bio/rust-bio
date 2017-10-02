@@ -24,6 +24,9 @@ pub enum AlignmentOperation {
 /// An alignment, consisting of a score, the start and end position of the alignment on
 /// sequence x and sequence y, the length of sequence x,
 /// and the alignment edit operations (see `alignment::pairwise` for meaning of x and y).
+///
+/// The `Del` edit operation corresponds to a gap in the sequence x, while the `Ins`
+/// edit operation corresponds to a gap in the sequence y.
 #[derive(Debug)]
 pub struct Alignment {
     pub score: i32,
