@@ -154,7 +154,7 @@ struct PrevPtr {
     d: u32,
     id: usize,
     x: u32,
-    y: u32
+    y: u32,
 }
 
 impl PrevPtr {
@@ -166,7 +166,7 @@ impl PrevPtr {
             d: d,
             id: id,
             x: x,
-            y: y
+            y: y,
         }
     }
 }
@@ -258,7 +258,11 @@ pub fn sdpkpp(matches: &Vec<(u32, u32)>,
                 let cur_x = ev.0;
                 let cur_y = ev.1;
                 let gap = max(cur_x - prev_x, cur_y - prev_y);
-                let gap_penalty = if gap > 0 { _gap_open + gap * _gap_extend } else { 0 };
+                let gap_penalty = if gap > 0 {
+                    _gap_open + gap * _gap_extend
+                } else {
+                    0
+                };
 
                 let reward = k * match_score;
                 let new_score = (best_prev.score + reward).saturating_sub(gap_penalty);
@@ -300,11 +304,11 @@ pub fn sdpkpp(matches: &Vec<(u32, u32)>,
 }
 
 pub fn sdpkpp_union_lcskpp_path(matches: &Vec<(u32, u32)>,
-              k: usize,
-              match_score: u32,
-              gap_open: i32,
-              gap_extend: i32)
-              -> Vec<usize> {
+                                k: usize,
+                                match_score: u32,
+                                gap_open: i32,
+                                gap_extend: i32)
+                                -> Vec<usize> {
     if matches.is_empty() {
         return Vec::new();
     }
@@ -314,8 +318,10 @@ pub fn sdpkpp_union_lcskpp_path(matches: &Vec<(u32, u32)>,
         Ok(ind) => ind,
         Err(_) => 0,
     };
-    let post_lcskpp = match lcskpp_al.path.binary_search(&sdpkpp_al.path.last().unwrap()) {
-        Ok(ind) => ind+1,
+    let post_lcskpp = match lcskpp_al
+              .path
+              .binary_search(&sdpkpp_al.path.last().unwrap()) {
+        Ok(ind) => ind + 1,
         Err(_) => lcskpp_al.path.len(),
     };
 
@@ -413,26 +419,30 @@ pub fn find_kmer_matches_seq2_hashed(seq1: &[u8],
     matches
 }
 
-pub fn expand_kmer_matches(seq1: &[u8], 
-    seq2: &[u8], 
-    k: usize, 
-    sorted_matches: &Vec<(u32, u32)>, 
-    allowed_mismatches: usize) -> Vec<(u32, u32)> {
+pub fn expand_kmer_matches(seq1: &[u8],
+                           seq2: &[u8],
+                           k: usize,
+                           sorted_matches: &Vec<(u32, u32)>,
+                           allowed_mismatches: usize)
+                           -> Vec<(u32, u32)> {
 
     // incoming matches must be sorted.
     for i in 1..sorted_matches.len() {
         assert!(sorted_matches[i - 1] < sorted_matches[i]);
     }
 
-    let mut last_match_along_diagonal: HashMapFx<i32, (i32, i32)>= HashMapFx::default();
+    let mut last_match_along_diagonal: HashMapFx<i32, (i32, i32)> = HashMapFx::default();
     let mut left_expanded_matches: Vec<(u32, u32)> = sorted_matches.clone();
 
     for &this_match in sorted_matches.iter() {
 
         let diag = (this_match.0 as i32) - (this_match.1 as i32);
         let min_xy = min(this_match.0, this_match.1) as i32;
-        let default_last_match = (this_match.0 as i32 - min_xy - 1, this_match.1 as i32 - min_xy - 1);
-        let last_match = last_match_along_diagonal.get(&diag).cloned()
+        let default_last_match = (this_match.0 as i32 - min_xy - 1,
+                                  this_match.1 as i32 - min_xy - 1);
+        let last_match = last_match_along_diagonal
+            .get(&diag)
+            .cloned()
             .unwrap_or(default_last_match);
 
         let mut n_mismatches = 0;
@@ -441,16 +451,20 @@ pub fn expand_kmer_matches(seq1: &[u8],
             if last_match >= curr_pos {
                 break;
             }
-            n_mismatches += if seq1[curr_pos.0 as usize]==seq2[curr_pos.1 as usize] { 0 } else { 1 };
+            n_mismatches += if seq1[curr_pos.0 as usize] == seq2[curr_pos.1 as usize] {
+                0
+            } else {
+                1
+            };
             if n_mismatches > allowed_mismatches {
                 break;
             }
             // println!(" This : ({},{}), Current : ({},{}), Last : ({}, {}), Miss : {}",
-                // this_match.0, this_match.1, curr_pos.0, curr_pos.1, last_match.0, last_match.1, n_mismatches);
+            // this_match.0, this_match.1, curr_pos.0, curr_pos.1, last_match.0, last_match.1, n_mismatches);
             left_expanded_matches.push((curr_pos.0 as u32, curr_pos.1 as u32));
             curr_pos = (curr_pos.0 - 1, curr_pos.1 - 1);
         }
-        // We need to check until 1 position after this match, when we start our search from 
+        // We need to check until 1 position after this match, when we start our search from
         // the next kmer match along this diagonal
         last_match_along_diagonal.insert(diag, (this_match.0 as i32, this_match.1 as i32));
     }
@@ -459,23 +473,32 @@ pub fn expand_kmer_matches(seq1: &[u8],
     let mut expanded_matches = left_expanded_matches.clone();
     left_expanded_matches.reverse();
 
-    let mut next_match_along_diagonal: HashMapFx<i32, (u32, u32)>= HashMapFx::default();
+    let mut next_match_along_diagonal: HashMapFx<i32, (u32, u32)> = HashMapFx::default();
 
     for &this_match in left_expanded_matches.iter() {
         let diag = (this_match.0 as i32) - (this_match.1 as i32);
-        let max_inc = (min( seq1.len() as u32 - this_match.0, seq2.len() as u32 - this_match.1) as u32).saturating_sub(k as u32-1);
-        let next_match = next_match_along_diagonal.get(&diag).cloned()
+        let max_inc = (min(seq1.len() as u32 - this_match.0,
+                           seq2.len() as u32 - this_match.1) as u32)
+                .saturating_sub(k as u32 - 1);
+        let next_match = next_match_along_diagonal
+            .get(&diag)
+            .cloned()
             .unwrap_or((this_match.0 + max_inc, this_match.1 + max_inc));
 
         let mut n_mismatches = 0;
         let mut curr_pos = (this_match.0 + 1, this_match.1 + 1);
         loop {
             // println!(" This : ({},{}), Current : ({},{}), Next : ({}, {}), Miss : {}",
-                // this_match.0, this_match.1, curr_pos.0, curr_pos.1, next_match.0, next_match.1, n_mismatches);
+            // this_match.0, this_match.1, curr_pos.0, curr_pos.1, next_match.0, next_match.1, n_mismatches);
             if curr_pos >= next_match {
                 break;
             }
-            n_mismatches += if seq1[curr_pos.0 as usize + k - 1]==seq2[curr_pos.1 as usize + k - 1] { 0 } else { 1 };
+            n_mismatches += if seq1[curr_pos.0 as usize + k - 1] ==
+                               seq2[curr_pos.1 as usize + k - 1] {
+                0
+            } else {
+                1
+            };
             if n_mismatches > allowed_mismatches {
                 break;
             }
@@ -625,6 +648,7 @@ mod sparse_alignment {
         }
         */
 
+
     }
 
 
@@ -641,6 +665,7 @@ mod sparse_alignment {
         }
         println!("tb: {:?}", tb);
         */
+
 
 
         assert_eq!(res.score, QUERY_REPEAT.len() as u32);
@@ -703,41 +728,55 @@ mod sparse_alignment {
         let x = b"GGGCAAAAAA";
         let y = b"GGGGAAAAAA";
         let matches = super::find_kmer_matches(x, y, 6);
-        assert_eq!(matches, vec![(4,4)]);
+        assert_eq!(matches, vec![(4, 4)]);
 
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
-        assert_eq!(expanded_matches, (0..5).into_iter().map(|x| (x, x)).collect::<Vec<(u32, u32)>>() );
+        assert_eq!(expanded_matches,
+                   (0..5)
+                       .into_iter()
+                       .map(|x| (x, x))
+                       .collect::<Vec<(u32, u32)>>());
 
         let x = b"TTTTTTGGGCAAAAAA";
         let y = b"TTTTTTGGGGAAAAAA";
         let matches = super::find_kmer_matches(x, y, 6);
-        assert_eq!(matches, vec![(0,0),(1,1),(2,2),(3,3),(10,10)]);
+        assert_eq!(matches, vec![(0, 0), (1, 1), (2, 2), (3, 3), (10, 10)]);
 
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
-        assert_eq!(expanded_matches, (0..11).into_iter().map(|x| (x, x)).collect::<Vec<(u32, u32)>>() );
+        assert_eq!(expanded_matches,
+                   (0..11)
+                       .into_iter()
+                       .map(|x| (x, x))
+                       .collect::<Vec<(u32, u32)>>());
 
         let x = b"TTTTTTCCGCAAAAAA";
         let y = b"TTTTTTGGGGAAAAAA";
         let matches = super::find_kmer_matches(x, y, 6);
-        assert_eq!(matches, vec![(0,0),(10,10)]);
+        assert_eq!(matches, vec![(0, 0), (10, 10)]);
 
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
-        assert_eq!(expanded_matches, vec![(0,0), (1,1), (8,8), (9,9), (10,10)] );
+        assert_eq!(expanded_matches,
+                   vec![(0, 0), (1, 1), (8, 8), (9, 9), (10, 10)]);
 
         let x = b"TTTTTTCGGCAAAAAA";
         let y = b"TTTTTTGGGGAAAAAA";
         let matches = super::find_kmer_matches(x, y, 6);
-        assert_eq!(matches, vec![(0,0),(10,10)]);
+        assert_eq!(matches, vec![(0, 0), (10, 10)]);
 
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
-        assert_eq!(expanded_matches,  vec![(0,0), (1,1),(2,2), (3,3), (7,7), (8,8), (9,9), (10,10)]);
+        assert_eq!(expanded_matches,
+                   vec![(0, 0), (1, 1), (2, 2), (3, 3), (7, 7), (8, 8), (9, 9), (10, 10)]);
 
         let x = b"AAAAAACGGG";
         let y = b"AAAAAAGGGG";
         let matches = super::find_kmer_matches(x, y, 6);
-        assert_eq!(matches, vec![(0,0)]);
+        assert_eq!(matches, vec![(0, 0)]);
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
-        assert_eq!(expanded_matches, (0..5).into_iter().map(|x| (x, x)).collect::<Vec<(u32, u32)>>() );
-        
+        assert_eq!(expanded_matches,
+                   (0..5)
+                       .into_iter()
+                       .map(|x| (x, x))
+                       .collect::<Vec<(u32, u32)>>());
+
     }
 }

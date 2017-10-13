@@ -303,7 +303,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// and sorted. The matches are expanded diagonally in both directions
     /// allowing upto a user specified number of mismatches. This is useful
     /// in constructing the band correctly, particularly when a higher frequency
-    /// of mismatches are expected. 
+    /// of mismatches are expected.
     ///
     /// # Arguments
     ///
@@ -315,25 +315,34 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `use_lcskpp_union` - Extend the results from sdpkpp using lcskpp
     ///
     pub fn custom_with_expanded_matches(&mut self,
-                               x: TextSlice,
-                               y: TextSlice,
-                               matches: Vec<(u32, u32)>,
-                               allowed_mismatches: Option<usize>,
-                               use_lcskpp_union: bool)
-                               -> Alignment {
+                                        x: TextSlice,
+                                        y: TextSlice,
+                                        matches: Vec<(u32, u32)>,
+                                        allowed_mismatches: Option<usize>,
+                                        use_lcskpp_union: bool)
+                                        -> Alignment {
         let expanded_matches = match allowed_mismatches {
             Some(m) => sparse::expand_kmer_matches(x, y, self.k, &matches, m),
-            None => matches
+            None => matches,
         };
-        
+
         self.band = if use_lcskpp_union {
             let match_score = match self.scoring.match_scores {
                 Some((m, _)) => m,
                 None => DEFAULT_MATCH_SCORE,
             };
-            let path = sparse::sdpkpp_union_lcskpp_path(&expanded_matches, self.k, match_score as u32, 
-                self.scoring.gap_open, self.scoring.gap_extend);
-            Band::create_from_match_path(x, y, self.k, self.w, &self.scoring, &path, expanded_matches)
+            let path = sparse::sdpkpp_union_lcskpp_path(&expanded_matches,
+                                                        self.k,
+                                                        match_score as u32,
+                                                        self.scoring.gap_open,
+                                                        self.scoring.gap_extend);
+            Band::create_from_match_path(x,
+                                         y,
+                                         self.k,
+                                         self.w,
+                                         &self.scoring,
+                                         &path,
+                                         expanded_matches)
         } else {
             Band::create_with_matches(x, y, self.k, self.w, &self.scoring, expanded_matches)
         };
@@ -1202,7 +1211,11 @@ impl Band {
             None => DEFAULT_MATCH_SCORE,
         };
 
-        let res = sparse::sdpkpp(&matches, k, match_score as u32, scoring.gap_open, scoring.gap_extend);
+        let res = sparse::sdpkpp(&matches,
+                                 k,
+                                 match_score as u32,
+                                 scoring.gap_open,
+                                 scoring.gap_extend);
         Band::create_from_match_path(x, y, k, w, scoring, &res.path, matches)
     }
 
@@ -1212,7 +1225,8 @@ impl Band {
                                             w: usize,
                                             scoring: &Scoring<F>,
                                             path: &Vec<usize>,
-                                            matches: Vec<(u32, u32)>) -> Band {
+                                            matches: Vec<(u32, u32)>)
+                                            -> Band {
 
         let mut band = Band::new(x.len(), y.len());
 
@@ -1242,7 +1256,7 @@ impl Band {
             }
             prev = Some(curr);
         }
-        band        
+        band
     }
 
     fn full_matrix(&mut self) {
