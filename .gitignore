@@ -3,6 +3,3 @@
 *~
 pybind/target
 .vscode/
-.DS_Store
-src/main.rs
-src/.DS_Store
