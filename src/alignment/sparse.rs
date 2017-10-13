@@ -299,6 +299,40 @@ pub fn sdpkpp(matches: &Vec<(u32, u32)>,
     }
 }
 
+pub fn sdpkpp_union_lcskpp_path(matches: &Vec<(u32, u32)>,
+              k: usize,
+              match_score: u32,
+              gap_open: i32,
+              gap_extend: i32)
+              -> Vec<usize> {
+    if matches.is_empty() {
+        return Vec::new();
+    }
+    let lcskpp_al = lcskpp(matches, k);
+    let sdpkpp_al = sdpkpp(matches, k, match_score, gap_open, gap_extend);
+    let pre_lcskpp = match lcskpp_al.path.binary_search(&sdpkpp_al.path[0]) {
+        Ok(ind) => ind,
+        Err(_) => 0,
+    };
+    let post_lcskpp = match lcskpp_al.path.binary_search(&sdpkpp_al.path.last().unwrap()) {
+        Ok(ind) => ind+1,
+        Err(_) => lcskpp_al.path.len(),
+    };
+
+    let mut path_union = Vec::new();
+    for i in 0..pre_lcskpp {
+        path_union.push(lcskpp_al.path[i]);
+    }
+    for i in 0..sdpkpp_al.path.len() {
+        path_union.push(sdpkpp_al.path[i]);
+    }
+    for i in post_lcskpp..lcskpp_al.path.len() {
+        path_union.push(lcskpp_al.path[i]);
+    }
+
+    path_union
+}
+
 
 /// Find all matches of length k between two strings, using a q-gram
 /// index. For very long reference strings, it may be more efficient to use and

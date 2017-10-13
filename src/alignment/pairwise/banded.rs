@@ -93,6 +93,7 @@ use alignment::sparse::HashMapFx;
 use alignment::pairwise::Scoring;
 
 const MAX_CELLS: usize = 5000000;
+const DEFAULT_MATCH_SCORE: i32 = 2;
 
 /// A banded implementation of Smith-Waterman aligner (SWA).
 /// Unlike the full SWA, this implementation computes the alignment between a pair of sequences
@@ -286,6 +287,7 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     /// * `x` - Textslice
     /// * `y` - Textslice
+    /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
     ///
     pub fn custom_with_matches(&mut self,
                                x: TextSlice,
@@ -293,6 +295,49 @@ impl<F: MatchFunc> Aligner<F> {
                                matches: Vec<(u32, u32)>)
                                -> Alignment {
         self.band = Band::create_with_matches(x, y, self.k, self.w, &self.scoring, matches);
+        self.compute_alignment(x, y)
+    }
+
+    /// Compute the alignment with custom clip penalties with the kmer matches
+    /// between x and y being pre-computed as a Vector of pairs (xpos, ypos)
+    /// and sorted. The matches are expanded diagonally in both directions
+    /// allowing upto a user specified number of mismatches. This is useful
+    /// in constructing the band correctly, particularly when a higher frequency
+    /// of mismatches are expected. 
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - Textslice
+    /// * `y` - Textslice
+    /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
+    /// * `allowed_mismatches` - Extend the matches diagonally allowing upto
+    /// the specified number of mismatches (Option<usize>)
+    /// * `use_lcskpp_union` - Extend the results from sdpkpp using lcskpp
+    ///
+    pub fn custom_with_expanded_matches(&mut self,
+                               x: TextSlice,
+                               y: TextSlice,
+                               matches: Vec<(u32, u32)>,
+                               allowed_mismatches: Option<usize>,
+                               use_lcskpp_union: bool)
+                               -> Alignment {
+        let expanded_matches = match allowed_mismatches {
+            Some(m) => sparse::expand_kmer_matches(x, y, self.k, &matches, m),
+            None => matches
+        };
+        
+        self.band = if use_lcskpp_union {
+            let match_score = match self.scoring.match_scores {
+                Some((m, _)) => m,
+                None => DEFAULT_MATCH_SCORE,
+            };
+            let path = sparse::sdpkpp_union_lcskpp_path(&expanded_matches, self.k, match_score as u32, 
+                self.scoring.gap_open, self.scoring.gap_extend);
+            Band::create_from_match_path(x, y, self.k, self.w, &self.scoring, &path, expanded_matches)
+        } else {
+            Band::create_with_matches(x, y, self.k, self.w, &self.scoring, expanded_matches)
+        };
+
         self.compute_alignment(x, y)
     }
 
@@ -830,7 +875,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     #[allow(dead_code)]
-    fn visualize(&self, alignment: &Alignment) {
+    pub fn visualize(&self, alignment: &Alignment) {
         // First populate the band
         let mut view = vec!['.'; self.band.rows * self.band.cols];
         let index = |i, j| i * self.band.cols + j;
@@ -1146,6 +1191,29 @@ impl Band {
                                          matches: Vec<(u32, u32)>)
                                          -> Band {
 
+        if matches.len() == 0 {
+            let mut band = Band::new(x.len(), y.len());
+            band.full_matrix();
+            return band;
+        }
+
+        let match_score = match scoring.match_scores {
+            Some((m, _)) => m,
+            None => DEFAULT_MATCH_SCORE,
+        };
+
+        let res = sparse::sdpkpp(&matches, k, match_score as u32, scoring.gap_open, scoring.gap_extend);
+        Band::create_from_match_path(x, y, k, w, scoring, &res.path, matches)
+    }
+
+    fn create_from_match_path<F: MatchFunc>(x: TextSlice,
+                                            y: TextSlice,
+                                            k: usize,
+                                            w: usize,
+                                            scoring: &Scoring<F>,
+                                            path: &Vec<usize>,
+                                            matches: Vec<(u32, u32)>) -> Band {
+
         let mut band = Band::new(x.len(), y.len());
 
         if matches.len() == 0 {
@@ -1153,32 +1221,14 @@ impl Band {
             return band;
         }
 
-        let match_score = match scoring.match_scores {
-            Some((m, _)) => m,
-            None => 2,
-        };
-
-        let res = sparse::sdpkpp(&matches, k, match_score as u32, scoring.gap_open, scoring.gap_extend);
-        let ps = res.path[0];
-        let pe = res.path[res.path.len() - 1];
+        let ps = path[0];
+        let pe = path[path.len() - 1];
 
         // Set the boundaries
         band.set_boundaries(matches[ps], matches[pe], k, w, scoring);
-
-        // for idx in &res.path {
-        //     println!("{:?}", matches[*idx]);
-        // }
-
-        // println!("sparse: rstart:{} tstart:{} rend:{}, tend:{}, hits:{}",
-        //          matches[ps].0,
-        //          matches[ps].1,
-        //          matches[pe].0,
-        //          matches[pe].1,
-        //          res.score);
-
         let mut prev: Option<(u32, u32)> = None;
 
-        for idx in res.path {
+        for &idx in path {
             let curr = matches[idx];
             if curr.continues(prev) {
                 let p = prev.unwrap();
@@ -1192,7 +1242,7 @@ impl Band {
             }
             prev = Some(curr);
         }
-        band
+        band        
     }
 
     fn full_matrix(&mut self) {
