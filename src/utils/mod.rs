@@ -16,7 +16,7 @@ pub use self::interval::{Interval, IntervalError};
 
 
 /// Strand information.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash)]
 pub enum Strand {
     Forward,
     Reverse,
