@@ -66,9 +66,7 @@ custom_derive! {
         Copy,
         Clone,
         Debug,
-        Default,
-        RustcDecodable,
-        RustcEncodable
+        Default
     )]
     #[derive(Serialize, Deserialize)]
     pub struct Prob(pub f64);
@@ -117,9 +115,7 @@ custom_derive! {
         PartialOrd,
         Copy,
         Clone,
-        Debug,
-        RustcDecodable,
-        RustcEncodable
+        Debug
     )]
     #[derive(Serialize, Deserialize)]
     pub struct LogProb(pub f64);
@@ -152,9 +148,7 @@ custom_derive! {
         PartialOrd,
         Copy,
         Clone,
-        Debug,
-        RustcDecodable,
-        RustcEncodable
+        Debug
     )]
     #[derive(Serialize, Deserialize)]
     pub struct PHREDProb(pub f64);

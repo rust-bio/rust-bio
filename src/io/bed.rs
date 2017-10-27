@@ -48,22 +48,23 @@ impl<R: io::Read> Reader<R> {
     /// Read from a given reader.
     pub fn new(reader: R) -> Self {
         Reader {
-            inner: csv::Reader::from_reader(reader)
+            inner: csv::ReaderBuilder::new()
                 .delimiter(b'\t')
-                .has_headers(false),
+                .has_headers(false)
+                .from_reader(reader),
         }
     }
 
     /// Iterate over all records.
     pub fn records(&mut self) -> Records<R> {
-        Records { inner: self.inner.decode() }
+        Records { inner: self.inner.deserialize() }
     }
 }
 
 
 /// A BED record.
 pub struct Records<'a, R: 'a + io::Read> {
-    inner: csv::DecodedRecords<'a, R, (String, u64, u64, Vec<String>)>,
+    inner: csv::DeserializeRecordsIter<'a, R, (String, u64, u64, Vec<String>)>,
 }
 
 
@@ -105,9 +106,10 @@ impl<W: io::Write> Writer<W> {
     /// Write to a given writer.
     pub fn new(writer: W) -> Self {
         Writer {
-            inner: csv::Writer::from_writer(writer)
+            inner: csv::WriterBuilder::new()
                 .delimiter(b'\t')
-                .flexible(true),
+                .flexible(true)
+                .from_writer(writer),
         }
     }
 
@@ -115,9 +117,12 @@ impl<W: io::Write> Writer<W> {
     pub fn write(&mut self, record: &Record) -> csv::Result<()> {
         if record.aux.is_empty() {
             self.inner
-                .encode((&record.chrom, record.start, record.end))
+                .serialize(&(&record.chrom, record.start, record.end))
         } else {
-            self.inner.encode(record)
+            self.inner.serialize(&(&record.chrom,
+                                   record.start,
+                                   record.end,
+                                   &record.aux))
         }
     }
 }
@@ -125,7 +130,7 @@ impl<W: io::Write> Writer<W> {
 
 /// A BED record as defined by BEDtools
 /// (http://bedtools.readthedocs.org/en/latest/content/general-usage.html)
-#[derive(RustcEncodable, Default)]
+#[derive(Debug, Serialize, Default)]
 pub struct Record {
     chrom: String,
     start: u64,
@@ -264,11 +269,9 @@ mod tests {
         let mut reader = Reader::new(BED_FILE);
         let mut writer = Writer::new(vec![]);
         for r in reader.records() {
-            writer
-                .write(&r.ok().expect("Error reading record"))
-                .ok()
-                .expect("Error writing record");
+            writer.write(&r.expect("Error reading record"))
+                  .expect("Error writing record");
         }
-        assert_eq!(writer.inner.as_bytes(), BED_FILE);
+        assert_eq!(writer.inner.into_inner().unwrap(), BED_FILE);
     }
 }
