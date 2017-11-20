@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.15.0] - 2017-11-20
+### Added
+- a pair HMM implementation that allows to calculate the probability two sequences are related
+### Changed
+- Serialization ported to serde.
+- Various minor bug fixes.
+
 ## [0.14.2] - 2017-08-30
 - Improved numerical stability of CDF construction.
 - Speed improvements to occurrence array lookups in FM-index.
