@@ -63,6 +63,9 @@ pub fn bwt(text: &[u8], pos: &RawSuffixArray) -> BWT {
 /// Calculate the inverse of a BWT of length n, which is the original text.
 /// Complexity: O(n).
 ///
+/// This only works if the last sentinel in the original text is unique 
+/// and lexicographically the smallest.
+///
 /// # Arguments
 ///
 /// * `bwt` - the BWT
