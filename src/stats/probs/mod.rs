@@ -176,6 +176,24 @@ impl LogProb {
         LOGPROB_LN_ONE
     }
 
+    /// sums of LogProbs, e.g. with `ln_sum_exp()` can end up
+    /// slightly above the maximum of `LogProb <= 0` due to
+    /// numerical imprecisions -- this function can rescue such
+    /// values before panics due to asserts in other functions
+    /// handling LogProbs, e.g. `ln_1m_exp`
+    pub fn cap_numerical_overshoot(&self, epsilon: f64) -> LogProb {
+        if *self <= LogProb::ln_one() {
+            return *self
+        } else {
+            let capped = **self - epsilon;
+        if capped <= 0.0 {
+                return LogProb::ln_one()
+            } else {
+                panic!("Cannot correct LogProb {:} -- not within given epsilon of 0.0 ({})", **self, epsilon);
+            }
+        }
+    }
+
     /// Numerically stable calculation of 1 - p in log-space.
     pub fn ln_one_minus_exp(&self) -> LogProb {
         LogProb(ln_1m_exp(**self))
@@ -369,7 +387,6 @@ quick_error! {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -428,4 +445,20 @@ mod tests {
         let prob = LogProb::ln_simpsons_integrate_exp(&density, 0.0, 10.0, 5);
         assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon = 0.0000001);
     }
+
+    #[test]
+    fn test_cap_numerical_overshoot() {
+        let under_top = LogProb(-0.00000005);
+        assert_eq!(under_top, under_top.cap_numerical_overshoot(0.0000001) );
+        let over_top = LogProb(0.00000005);
+        assert_eq!(LogProb::ln_one(), over_top.cap_numerical_overshoot(0.0000001) );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_cap_numerical_overshoot_panic() {
+        let over_top = LogProb(0.00000005);
+        over_top.cap_numerical_overshoot(0.00000001);
+    }
+
 }
