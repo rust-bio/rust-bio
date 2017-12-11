@@ -80,6 +80,71 @@ pub struct Alignment {
 
 
 impl Alignment {
+    /// Calculate the cigar string from the alignment struct. x is the target string
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::alignment::{Alignment,AlignmentMode};
+    /// use bio::alignment::AlignmentOperation::{Match, Subst, Ins, Del};
+    /// let alignment = Alignment {
+    ///     score: 5,
+    ///     xstart: 3,
+    ///     ystart: 0,
+    ///     xend: 9,
+    ///     yend: 10,
+    ///     ylen: 10,
+    ///     xlen: 10,
+    ///     operations: vec![Match, Match, Match, Subst, Ins, Ins, Del, Del],
+    ///     mode: AlignmentMode::Semiglobal
+    /// };
+    /// assert_eq!(alignment.cigar(false), "3S3=1X2I2D1S");
+    /// ```
+    pub fn cigar(&self, hard_clip: bool) -> String {
+
+        match self.mode {
+            AlignmentMode::Global => panic!(" Cigar fn not supported for Global Alignment mode"),
+            AlignmentMode::Local => panic!(" Cigar fn not supported for Local Alignment mode"),
+            _ => {}
+        }
+
+        let clip_str = if hard_clip { "H" } else { "S" };
+
+        let add_op = |op: AlignmentOperation, k, cigar: &mut String| match op {
+            AlignmentOperation::Match => cigar.push_str(&format!("{}{}", k, "=")),
+            AlignmentOperation::Subst => cigar.push_str(&format!("{}{}", k, "X")),
+            AlignmentOperation::Del => cigar.push_str(&format!("{}{}", k, "D")),
+            AlignmentOperation::Ins => cigar.push_str(&format!("{}{}", k, "I")),
+            _ => {}
+        };
+
+        let mut cigar = "".to_owned();
+        if self.operations.is_empty() {
+            return cigar;
+        }
+
+        let mut last = self.operations[0];
+        if self.xstart > 0 {
+            cigar.push_str(&format!("{}{}", self.xstart, clip_str))
+        }
+        let mut k = 1;
+        for &op in self.operations[1..].iter() {
+            if op == last {
+                k += 1;
+            } else {
+                add_op(last, k, &mut cigar);
+                k = 1;
+            }
+            last = op;
+        }
+        add_op(last, k, &mut cigar);
+        if self.xlen > self.xend {
+            cigar.push_str(&format!("{}{}", self.xlen - self.xend, clip_str))
+        }
+
+        cigar
+    }
+
     /// Return the pretty formatted alignment as a String. The string
     /// contains sets of 3 lines of length 100. First line is for the
     /// sequence x, second line is for the alignment operation and the
@@ -320,5 +385,68 @@ impl Alignment {
     /// Number of bases in query sequence that are aigned
     pub fn x_aln_len(&self) -> usize {
         self.xend - self.xstart
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::AlignmentOperation::*;
+
+    #[test]
+    fn test_cigar() {
+        let alignment = Alignment {
+            score: 5,
+            xstart: 3,
+            ystart: 0,
+            xend: 9,
+            yend: 10,
+            ylen: 10,
+            xlen: 10,
+            operations: vec![Match, Match, Match, Subst, Ins, Ins, Del, Del],
+            mode: AlignmentMode::Semiglobal,
+        };
+        assert_eq!(alignment.cigar(false), "3S3=1X2I2D1S");
+
+        let alignment = Alignment {
+            score: 5,
+            xstart: 0,
+            ystart: 5,
+            xend: 4,
+            yend: 10,
+            ylen: 10,
+            xlen: 5,
+            operations: vec![Yclip(5), Match, Subst, Subst, Ins, Del, Del, Xclip(1)],
+            mode: AlignmentMode::Custom,
+        };
+        assert_eq!(alignment.cigar(false), "1=2X1I2D1S");
+        assert_eq!(alignment.cigar(true), "1=2X1I2D1H");
+
+        let alignment = Alignment {
+            score: 5,
+            xstart: 0,
+            ystart: 5,
+            xend: 3,
+            yend: 8,
+            ylen: 10,
+            xlen: 3,
+            operations: vec![Yclip(5), Subst, Match, Subst, Yclip(2)],
+            mode: AlignmentMode::Custom,
+        };
+        assert_eq!(alignment.cigar(false), "1X1=1X");
+
+        let alignment = Alignment {
+            score: 5,
+            xstart: 0,
+            ystart: 5,
+            xend: 3,
+            yend: 8,
+            ylen: 10,
+            xlen: 3,
+            operations: vec![Subst, Match, Subst],
+            mode: AlignmentMode::Semiglobal,
+        };
+        assert_eq!(alignment.cigar(false), "1X1=1X");
     }
 }
