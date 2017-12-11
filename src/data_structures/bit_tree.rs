@@ -25,18 +25,26 @@
 //! assert_eq!(bit.get(4), (4, 3));
 
 use std::cmp::max;
+use std::ops::Add;
+use std::marker::PhantomData;
+
+/// Fenwick tree prefix operator
+pub trait PrefixOp<T> {
+    fn operation(t: T, t: T) -> T;
+}
 
 /// Max Bit Tree. get(i) will return the largest element e that has been added
 /// to the bit tree with set(j, e), where j <= i. Initially all positions have
 /// the value T::default(). Note that a set cannot be 'undone' by inserting
 /// a smaller element at the same index.
-pub struct MaxBitTree<T: Default + Ord> {
+pub struct FenwickTree<T: Default + Ord, Op: PrefixOp<T>> {
     tree: Vec<T>,
+    phantom: PhantomData<Op>,
 }
 
-impl<T: Ord + Default + Copy> MaxBitTree<T> {
+impl<T: Ord + Default + Copy, Op: PrefixOp<T>> FenwickTree<T, Op> {
     /// Create a new bit tree with len elements
-    pub fn new(len: usize) -> MaxBitTree<T> {
+    pub fn new(len: usize) -> FenwickTree<T,Op> {
         let mut tree = Vec::new();
 
         // Pad length by one. The first element is unused.  
@@ -45,7 +53,7 @@ impl<T: Ord + Default + Copy> MaxBitTree<T> {
             tree.push(T::default());
         }
 
-        MaxBitTree { tree: tree }
+        FenwickTree { tree: tree, phantom: PhantomData }
     }
 
     /// get(i) returns the largest element e that has been added
@@ -54,7 +62,7 @@ impl<T: Ord + Default + Copy> MaxBitTree<T> {
         let mut idx = idx + 1;
         let mut sum = T::default();
         while idx > 0 {
-            sum = max(sum, self.tree[idx].clone());
+            sum = Op::operation(sum, self.tree[idx].clone());
             idx -= (idx as isize & -(idx as isize)) as usize;
         }
 
@@ -75,6 +83,28 @@ impl<T: Ord + Default + Copy> MaxBitTree<T> {
         }
     }
 }
+
+
+pub struct MaxOp;
+impl<T: Copy + Ord> PrefixOp<T> for MaxOp {
+    fn operation(t1: T, t2: T) -> T {
+        max(t1, t2)
+    }
+}
+
+/// Fenwick tree specialized for prefix-max
+pub type MaxBitTree<T> = FenwickTree<T, MaxOp>;
+
+pub struct SumOp;
+impl<T: Copy + Add> PrefixOp<T> for SumOp where T: Add<Output=T> {
+    fn operation(t1: T, t2: T) -> T {
+        t1 + t2
+    }
+}
+
+/// Fenwick tree specialized for prefix-sum
+pub type SumBitTree<T> = FenwickTree<T, SumOp>;
+
 
 #[cfg(test)]
 mod test_bit_tree {

@@ -1424,9 +1424,9 @@ mod banded {
         let x = b"ACGTATCATAGACCCTAGATAGGGTTGTGTAGATGATCCACAGACGTATCATAGATTAGATAGGGTTGTGTAGATGATTCC\
         ACAG";
         let y = x.clone();
-        compare_to_full_alignment_local(x, y);
-        compare_to_full_alignment_global(x, y);
-        compare_to_full_alignment_semiglobal(x, y);
+        compare_to_full_alignment_local(x, &y);
+        compare_to_full_alignment_global(x, &y);
+        compare_to_full_alignment_semiglobal(x, &y);
     }
 
     #[test]
