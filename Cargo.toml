@@ -31,9 +31,10 @@ approx = "0.1"
 custom_derive = "0.1"
 newtype_derive = "0.1"
 ordered-float = "0.5"
-quick-error = "1.2"
+quick-error = "*"
 regex = "0.2"
 multimap = "0.4"
+fxhash = "0.1.2"
 
 [dependencies.vec_map]
 version = "0.8"

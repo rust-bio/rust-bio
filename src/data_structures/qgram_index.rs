@@ -154,7 +154,7 @@ impl QGramIndex {
 
         for (i, qgram) in self.ranks.qgrams(self.q, pattern).enumerate() {
             for &p in self.qgram_matches(qgram) {
-                let diagonal = p - i;
+                let diagonal = p as i32 - i as i32;
                 match diagonals.entry(diagonal) {
                     Entry::Vacant(v) => {
                         v.insert(ExactMatch {
@@ -192,7 +192,7 @@ impl QGramIndex {
 
         matches
     }
-}
+}    
 
 
 /// An interval, consisting of start and stop position (the latter exclusive).
@@ -296,5 +296,25 @@ mod tests {
         for m in exact_matches {
             assert_eq!(m.pattern.get(pattern), m.text.get(text));
         }
+    }
+
+    #[test]
+    fn test_exact_matches_self() {
+        let (text, alphabet) = setup();
+        let q = 3;
+        let qgram_index = QGramIndex::new(q, text, &alphabet);
+
+        let exact_matches = qgram_index.exact_matches(text);
+        assert!(exact_matches.len() >= 1);
+    }
+
+
+    #[test]
+    #[cfg(feature = "nightly")]
+    fn test_serde() {
+        use serde::{Serialize, Deserialize};
+        fn impls_serde_traits<S: Serialize + Deserialize>() {}
+
+        impls_serde_traits::<QGramIndex>();
     }
 }
