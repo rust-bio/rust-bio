@@ -186,10 +186,10 @@ impl LogProb {
             return *self
         } else {
             let capped = **self - epsilon;
-        if capped <= 0.0 {
+            if capped <= 0.0 {
                 return LogProb::ln_one()
             } else {
-                panic!("Cannot correct LogProb {:} -- not within given epsilon of 0.0 ({})", **self, epsilon);
+                panic!("Cannot correct LogProb {:?} -- not within given epsilon of 0.0 ({})", **self, epsilon);
             }
         }
     }
