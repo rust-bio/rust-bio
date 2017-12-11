@@ -106,11 +106,12 @@ impl Index {
     pub fn new<R: io::Read>(fai: R) -> csv::Result<Self> {
         let mut inner = collections::HashMap::new();
         let mut seqs = vec![];
-        let mut fai_reader = csv::Reader::from_reader(fai)
+        let mut fai_reader = csv::ReaderBuilder::new()
             .delimiter(b'\t')
-            .has_headers(false);
-        for row in fai_reader.decode() {
-            let (name, record): (String, IndexRecord) = try!(row);
+            .has_headers(false)
+            .from_reader(fai);
+        for row in fai_reader.deserialize() {
+            let (name, record): (String, IndexRecord) = row?;
             seqs.push(name.clone());
             inner.insert(name, record);
         }
@@ -122,10 +123,9 @@ impl Index {
 
     /// Open a FASTA index from a given file path.
     pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
-        match fs::File::open(path) {
-            Ok(fai) => Self::new(fai),
-            Err(e) => Err(csv::Error::Io(e)),
-        }
+        fs::File::open(path)
+           .map_err(csv::Error::from)
+           .and_then(Self::new)
     }
 
     /// Open a FASTA index given the corresponding FASTA file path.
@@ -163,12 +163,10 @@ impl IndexedReader<fs::File> {
     /// Read from a given file path. This assumes the index ref.fasta.fai to be
     /// present for FASTA ref.fasta.
     pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
-        let index = try!(Index::with_fasta_file(path));
-
-        match fs::File::open(path) {
-            Ok(fasta) => Ok(IndexedReader::with_index(fasta, index)),
-            Err(e) => Err(csv::Error::Io(e)),
-        }
+        let index = Index::with_fasta_file(path)?;
+        fs::File::open(path)
+           .map(|f| Self::with_index(f, index))
+           .map_err(csv::Error::from)
     }
 }
 
@@ -347,7 +345,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
 
 /// Record of a FASTA index.
-#[derive(RustcDecodable, Debug, Copy, Clone)]
+#[derive(Deserialize, Debug, Copy, Clone)]
 struct IndexRecord {
     len: u64,
     offset: u64,

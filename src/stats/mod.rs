@@ -9,5 +9,6 @@
 pub mod combinatorics;
 pub mod probs;
 pub mod bayesian;
+pub mod pairhmm;
 
 pub use stats::probs::{Prob, LogProb, PHREDProb};

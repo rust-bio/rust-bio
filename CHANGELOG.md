@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.15.0] - 2017-11-20
+- Add pair hidden markov model implementation to calculate the probability of two sequences being related.
+- Various minor bug fixes and usability improvements.
+
 ## [0.14.2] - 2017-08-30
 - Improved numerical stability of CDF construction.
 - Speed improvements to occurrence array lookups in FM-index.
