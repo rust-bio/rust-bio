@@ -64,7 +64,7 @@ impl<R: io::Read> Reader<R> {
 
 /// A BED record.
 pub struct Records<'a, R: 'a + io::Read> {
-    inner: csv::DeserializeRecordsIter<'a, R, (String, u64, u64, Vec<String>)>,
+    inner: csv::DeserializeRecordsIter<'a, R, (String, u64, u64, Option<Vec<String>>)>,
 }
 
 
@@ -80,7 +80,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                                 chrom: chrom,
                                 start: start,
                                 end: end,
-                                aux: aux,
+                                aux: aux.unwrap_or(Vec::new()),
                             }
                         })
             })
@@ -244,6 +244,8 @@ mod tests {
     const BED_FILE: &'static [u8] = b"1\t5\t5000\tname1\tup
 2\t3\t5005\tname2\tup
 ";
+    const BED_FILE_COMPACT: &'static [u8] = b"1\t5\t5000\n2\t3\t5005\n";
+
 
     #[test]
     fn test_reader() {
@@ -263,6 +265,23 @@ mod tests {
             assert_eq!(record.score().expect("Error reading score"), scores[i]);
         }
     }
+
+    #[test]
+    /// Test for 'compact' BED files which only have chrom, start, and stop fields.
+    fn test_reader_compact() {
+        let chroms = ["1", "2"];
+        let starts = [5, 3];
+        let ends = [5000, 5005];
+
+        let mut reader = Reader::new(BED_FILE);
+        for (i, r) in reader.records().enumerate() {
+            let record = r.ok().expect("Error reading record");
+            assert_eq!(record.chrom(), chroms[i]);
+            assert_eq!(record.start(), starts[i]);
+            assert_eq!(record.end(), ends[i]);
+        }
+    }
+
 
     #[test]
     fn test_writer() {
