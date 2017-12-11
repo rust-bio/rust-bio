@@ -33,7 +33,7 @@ use std::collections::hash_map::Entry;
 use std;
 use std::cmp;
 
-use alphabets::{Alphabet, RankTransform, QGrams};
+use alphabets::{Alphabet, RankTransform};
 use utils;
 
 
@@ -106,11 +106,6 @@ impl QGramIndex {
     /// Return text positions with matching q-gram. Complexity O(1).
     pub fn qgram_matches(&self, qgram: usize) -> &[usize] {
         &self.pos[self.address[qgram]..self.address[qgram + 1]]
-    }
-
-    /// Iterate over the q-gram ranks of pattern
-    pub fn qgrams<'a>(&'a self, pattern: &'a [u8]) -> QGrams<std::slice::Iter<u8>> {
-        self.ranks.qgrams(self.q, pattern)
     }
 
     /// Return matches of the given pattern.
