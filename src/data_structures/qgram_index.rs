@@ -69,7 +69,7 @@ impl QGramIndex {
             address[qgram] += 1;
         }
 
-        for mut a in address.iter_mut().skip(1) {
+        for a in address.iter_mut().skip(1) {
             if *a > max_count {
                 // mask qgram
                 *a = 0;
@@ -192,7 +192,7 @@ impl QGramIndex {
 
         matches
     }
-}    
+}
 
 
 /// An interval, consisting of start and stop position (the latter exclusive).

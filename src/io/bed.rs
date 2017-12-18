@@ -273,9 +273,9 @@ mod tests {
         let starts = [5, 3];
         let ends = [5000, 5005];
 
-        let mut reader = Reader::new(BED_FILE);
+        let mut reader = Reader::new(BED_FILE_COMPACT);
         for (i, r) in reader.records().enumerate() {
-            let record = r.ok().expect("Error reading record");
+            let record = r.unwrap();
             assert_eq!(record.chrom(), chroms[i]);
             assert_eq!(record.start(), starts[i]);
             assert_eq!(record.end(), ends[i]);
