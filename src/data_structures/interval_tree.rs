@@ -290,7 +290,7 @@ impl<N: Ord + Clone, D> Node<N, D> {
             self.update_max();
         } else if right_h > left_h {
             {
-                let mut right = self.right
+                let right = self.right
                     .as_mut()
                     .expect("Invalid tree: leaf is taller than its sibling.");
                 let right_left_h = right.left.as_ref().map_or(0, |n| n.height);
@@ -302,7 +302,7 @@ impl<N: Ord + Clone, D> Node<N, D> {
             self.rotate_left();
         } else {
             {
-                let mut left = self.left
+                let left = self.left
                     .as_mut()
                     .expect("Invalid tree: leaf is taller than its sibling.");
                 let left_right_h = left.right.as_ref().map_or(0, |n| n.height);

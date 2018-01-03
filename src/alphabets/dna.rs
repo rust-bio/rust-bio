@@ -42,7 +42,7 @@ lazy_static! {
     static ref COMPLEMENT: Vec<u8> = {
         let mut comp = Vec::new();
         comp.resize(256, 0);
-        for (v, mut a) in comp.iter_mut().enumerate() {
+        for (v, a) in comp.iter_mut().enumerate() {
             *a = v as u8;
         }
         for (&a, &b) in b"AGCTYRWSKMDVHBN".iter().zip(b"TCGARYWSMKHBDVN".iter()) {
