@@ -17,8 +17,8 @@ simd-accel = ["bytecount/simd-accel"]
 [dependencies]
 bytecount = "0.1.7"
 csv = "1.0.0-beta.5"
-num-traits = "0.1.*"
-num-integer = "0.1.*"
+num-traits = "0.1"
+num-integer = "0.1"
 itertools = "0.6"
 itertools-num = "0.1"
 bit-vec = "0.4"
@@ -31,10 +31,10 @@ approx = "0.1"
 custom_derive = "0.1"
 newtype_derive = "0.1"
 ordered-float = "0.5"
-quick-error = "*"
+quick-error = "1.2"
 regex = "0.2"
 multimap = "0.4"
-fxhash = "0.1.2"
+fxhash = "0.2"
 
 [dependencies.vec_map]
 version = "0.8"
