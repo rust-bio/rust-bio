@@ -20,7 +20,6 @@
 //! For a reference implementation that inspired this code, see poapy:
 //! https://github.com/ljdursi/poapy.get
 
-use std::env;
 use std::str;
 use std::error::Error;
 use std::fs::File;
@@ -28,24 +27,21 @@ use std::io::Write;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-extern crate bio;
-use bio::io::fasta;
-use bio::utils::TextSlice;
-use bio::alignment::Alignment;
-use bio::alignment::AlignmentOperation;
-use bio::alignment::pairwise::*;
+use alignment::Alignment;
+use alignment::AlignmentOperation;
+use alignment::pairwise::banded;
+use utils::TextSlice;
 
-extern crate petgraph;
+use petgraph;
 use petgraph::Graph;
-use petgraph::graph::NodeIndex;
-use petgraph::graph::EdgeIndex;
+use petgraph::graph::{NodeIndex, EdgeIndex};
 use petgraph::visit::EdgeRef;
 use petgraph::dot::Dot;
 
 /// A Partial-Order Alignment Graph
 #[derive(Default)]
 pub struct POAGraph {
-    graph: Graph<char, u16, petgraph::Directed>,
+    graph: Graph<u8, u16, petgraph::Directed>,
     cns: Vec<u8>,
     cns_path: Vec<NodeIndex>,
     node_idx: Vec<NodeIndex>,
@@ -100,7 +96,7 @@ impl POAGraph {
     /// * `weight` - The character or nucleotide for this position
     ///
     pub fn add_node(&mut self, weight: u8) -> NodeIndex {
-        let new_node = self.graph.add_node(weight as char);
+        let new_node = self.graph.add_node(weight);
         self.needs_sort = true;
 
         new_node
@@ -232,7 +228,7 @@ impl POAGraph {
     ///
     pub fn align_sequence(&self, seq: &[u8]) -> Alignment {
         let score_fn = |a: u8, b: u8| if a == b { 4i32 } else { -2i32 };
-        let mut aligner = Aligner::new(-4, -2, &score_fn);
+        let mut aligner = banded::Aligner::new(-4, -2, &score_fn, 8, 10);
 
         aligner.local(seq, &self.cns)
     }
@@ -326,6 +322,7 @@ impl POAGraph {
                     }
                     xpos += 1;
                 }
+                _ => ()  // Skip any clipped bases
             }
 
             // Finally, if the sequence had an unmatched suffix, connect it to the alignment's end
@@ -345,7 +342,7 @@ impl POAGraph {
         let mut completed: HashSet<NodeIndex> = HashSet::new();
 
         // Depth-first search for unsorted nodes from some defined start-point
-        let dfs = |graph: &Graph<char, u16, petgraph::Directed>,
+        let dfs = |graph: &Graph<u8, u16, petgraph::Directed>,
                    start: NodeIndex,
                    completed: &mut HashSet<NodeIndex>,
                    sorted_indices: &mut Vec<NodeIndex>|
@@ -420,55 +417,11 @@ impl POAGraph {
             Err(why) => panic!("couldn't open file {}: {}", filename, why.description()),
             Ok(file) => file,
         };
-        match file.write_all(Dot::new(&self.graph).to_string().as_bytes()) {
+        let g = self.graph.map(|ni, nw| *nw as char,
+                               |ni, ew| ew);
+        match file.write_all(Dot::new(&g).to_string().as_bytes()) {
             Err(why) => panic!("couldn't write to file {}: {}", filename, why.description()),
             _ => (),
         }
     }
-}
-
-fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    let filename = &args[1];
-
-    // obtain reader or fail with error (via ahe unwrap method)
-
-    let file = File::open(filename).unwrap();
-    let reader = fasta::Reader::new(file);
-    let mut records = reader.records();
-
-    // Initialize the POA Graph
-    let first = records.next().unwrap().unwrap();
-    let mut poa = POAGraph::new_from_sequence(Some(first.id()), Some(first.seq()));
-
-    for (i, result) in records.enumerate() {
-        let cns = poa.consensus().to_vec().clone();
-        println!("As vec {:?}", cns);
-        println!("As str {}", String::from_utf8(cns.to_vec()).unwrap());
-        println!(
-            "Graph has {} nodes and {} edges",
-            poa.node_count(),
-            poa.edge_count()
-        );
-
-        // obtain record or fail with error
-        let record = result.unwrap();
-        println!("\n{}: {}", i, record.id());
-
-        let alignment = poa.align_sequence(record.seq());
-        println!("{}", alignment.pretty(record.seq(), &cns));
-        poa.incorporate_alignment(alignment, record.id(), record.seq());
-    }
-
-    let cns = poa.consensus().to_vec().clone();
-    println!("As vec {:?}", cns);
-    println!("As str {}", String::from_utf8(cns.to_vec()).unwrap());
-    println!(
-        "Graph has {} nodes and {} edges",
-        poa.node_count(),
-        poa.edge_count()
-    );
-
-    poa.write_dot("test.dot".to_string());
 }
