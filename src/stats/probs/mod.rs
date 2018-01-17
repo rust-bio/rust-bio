@@ -166,6 +166,10 @@ static LOGPROB_LN_ONE: LogProb = LogProb(0.0);
 
 
 impl LogProb {
+    pub fn is_valid(&self) -> bool {
+        !self.is_nan() && **self < 0.0
+    }
+
     /// Log-space representation of Pr=0
     pub fn ln_zero() -> LogProb {
         LOGPROB_LN_ZERO
