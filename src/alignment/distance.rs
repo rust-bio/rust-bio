@@ -7,7 +7,6 @@
 //! Various subroutines for computing a distance between sequences.
 
 
-use itertools::multizip;
 use std::cmp::min;
 
 use utils::TextSlice;
@@ -34,7 +33,7 @@ pub fn hamming(alpha: TextSlice, beta: TextSlice) -> u64 {
                alpha.len(),
                beta.len());
     let mut dist = 0;
-    for (a, b) in multizip((alpha, beta)) {
+    for (a, b) in alpha.iter().zip(beta) {
         if a != b {
             dist += 1;
         }
