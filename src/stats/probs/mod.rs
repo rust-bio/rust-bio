@@ -15,6 +15,7 @@ use std::ops::{Add, Sub, Mul, Div};
 use itertools_num::linspace;
 use itertools::Itertools;
 use num_traits::Float;
+use ordered_float::{NotNaN, FloatIsNaN};
 
 
 /// A factor to convert log-probabilities to PHRED-scale (phred = p * `LOG_TO_PHRED_FACTOR`).
@@ -321,6 +322,21 @@ impl LogProb {
     fn scan_ln_add_exp(s: &mut LogProb, p: LogProb) -> Option<LogProb> {
         *s = s.ln_add_exp(p);
         Some(*s)
+    }
+}
+
+
+
+impl From<NotNaN<f64>> for LogProb {
+    fn from(p: NotNaN<f64>) -> LogProb {
+        LogProb(*p)
+    }
+}
+
+
+impl From<LogProb> for Result<NotNaN<f64>, FloatIsNaN> {
+    fn from(p: LogProb) -> Result<NotNaN<f64>, FloatIsNaN> {
+        NotNaN::new(*p)
     }
 }
 
