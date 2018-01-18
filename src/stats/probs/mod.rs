@@ -481,4 +481,12 @@ mod tests {
         over_top.cap_numerical_overshoot(0.00000001);
     }
 
+
+    #[test]
+    fn test_sum_one_zero() {
+        assert_eq!(
+            LogProb::ln_one().ln_add_exp(LogProb::ln_zero()), 
+            LogProb::ln_one()
+        );
+    }
 }
