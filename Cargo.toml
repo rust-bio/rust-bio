@@ -15,7 +15,7 @@ avx-accel = ["bytecount/avx-accel"]
 simd-accel = ["bytecount/simd-accel"]
 
 [dependencies]
-bytecount = "0.1.7"
+bytecount = "0.3.1"
 csv = "1.0.0-beta.5"
 num-traits = "0.1"
 num-integer = "0.1"
