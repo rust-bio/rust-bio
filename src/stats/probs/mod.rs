@@ -10,7 +10,7 @@ pub mod cdf;
 use std::mem;
 use std::f64;
 use std::iter;
-use std::ops::{Add, Sub, Mul, Div};
+use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign};
 
 use itertools_num::linspace;
 use itertools::Itertools;
@@ -326,6 +326,34 @@ impl LogProb {
 }
 
 
+impl<'a> iter::Sum<&'a LogProb> for LogProb {
+    fn sum<I: Iterator<Item=&'a LogProb>>(iter: I) -> Self {
+        iter.fold(LogProb(0.0), |a, b| a + *b)
+    }
+}
+
+
+impl<'a> iter::Sum<LogProb> for LogProb {
+    fn sum<I: Iterator<Item=LogProb>>(iter: I) -> Self {
+        iter.fold(LogProb(0.0), |a, b| a + b)
+    }
+}
+
+
+impl AddAssign for LogProb {
+    fn add_assign(&mut self, other: LogProb) {
+        *self = *self + other;
+    }
+}
+
+
+impl SubAssign for LogProb {
+    fn sub_assign(&mut self, other: LogProb) {
+        *self = *self - other;
+    }
+}
+
+
 
 impl From<NotNaN<f64>> for LogProb {
     fn from(p: NotNaN<f64>) -> LogProb {
@@ -485,7 +513,7 @@ mod tests {
     #[test]
     fn test_sum_one_zero() {
         assert_eq!(
-            LogProb::ln_one().ln_add_exp(LogProb::ln_zero()), 
+            LogProb::ln_one().ln_add_exp(LogProb::ln_zero()),
             LogProb::ln_one()
         );
     }
