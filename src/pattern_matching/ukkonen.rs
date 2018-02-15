@@ -67,10 +67,10 @@ impl<F> Ukkonen<F>
                                                      k: usize)
                                                      -> Matches<F, T::IntoIter> {
         let m = pattern.len();
-        self.D[1].clear();
-        self.D[1].extend(repeat(k + 1).take(m + 1));
         self.D[0].clear();
-        self.D[0].extend(0..m + 1);
+        self.D[0].extend(repeat(k + 1).take(m + 1));
+        self.D[1].clear();
+        self.D[1].extend(0..m + 1);
         Matches {
             ukkonen: self,
             pattern: pattern,
@@ -144,5 +144,22 @@ mod tests {
         let pattern = b"TGAGCGT";
         let occ: Vec<(usize, usize)> = ukkonen.find_all_end(pattern, text, 1).collect();
         assert_eq!(occ, [(13, 1), (14, 1)]);
+    }
+
+
+    #[test]
+    fn test_find_start() {
+        let mut u = Ukkonen::with_capacity(10, unit_cost);
+
+        let pattern = b"ACCGT";
+        // hit begins at 1st position
+        let text1 =   b"ACCGTGGATGAGCGCCATAG";
+        // hit begins at 2nd position
+        let text2 =  b"AACCGTGGATGAGCGCCATAG";
+
+        let occ: Vec<(usize, usize)> = u.find_all_end(pattern, text1, 1).collect();
+        assert_eq!(occ, [(3, 1), (4, 0), (5, 1)]);
+        let occ: Vec<(usize, usize)> = u.find_all_end(pattern, text2, 1).collect();
+        assert_eq!(occ, [(4, 1), (5, 0), (6, 1)]);
     }
 }
