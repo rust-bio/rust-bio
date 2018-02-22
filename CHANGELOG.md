@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.17.0] - 2018-02-22
+- Bug fix in Ukkonen algorithm
+- Convenience improvements to API
+
 ## [0.16.0] - 2018-01-05
 - Pairwise alignment has been rewritten to support banded alignment and clips.
 - Various minor API additions and improvements.
