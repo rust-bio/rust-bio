@@ -106,6 +106,8 @@ impl Index {
     pub fn new<R: io::Read>(fai: R) -> csv::Result<Self> {
         let mut inner = collections::HashMap::new();
         let mut seqs = vec![];
+        // Note: the by_index methods assume that the names in the seqs vector
+        // are in the same order as the names in the fasta file.
         let mut fai_reader = csv::ReaderBuilder::new()
             .delimiter(b'\t')
             .has_headers(false)
@@ -198,6 +200,13 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         self.read_into_buffer(idx, 0, idx.len, seq)
     }
 
+    /// For a given sequence index, read the whole sequence into the given vector.
+    pub fn read_all_by_index(&mut self, seq_index: usize, seq: &mut Text) -> io::Result<()> {
+        let idx = self.idx_by_index(seq_index)?;
+
+        self.read_into_buffer(idx, 0, idx.len, seq)
+    }
+
     /// Read the given interval of the given seqname into the given vector
     /// (stop position is exclusive).
     pub fn read(&mut self, seqname: &str, start: u64, stop: u64, seq: &mut Text) -> io::Result<()> {
@@ -206,10 +215,24 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         self.read_into_buffer(idx, start, stop, seq)
     }
 
+    /// Read the given interval of the sequence at the given index into the given vector
+    /// (stop position is exclusive).
+    pub fn read_by_index(&mut self, seq_index: usize, start: u64, stop: u64, seq: &mut Text) -> io::Result<()> {
+        let idx = self.idx_by_index(seq_index)?;
+
+        self.read_into_buffer(idx, start, stop, seq)
+    }
 
     /// For a given seqname, return an iterator yielding that sequence.
     pub fn read_all_iter(&mut self, seqname: &str) -> io::Result<IndexedReaderIterator<R>> {
         let idx = self.idx(seqname)?;
+
+        self.read_into_iter(idx, 0, idx.len)
+    }
+
+    /// For a given seqname, return an iterator yielding that sequence.
+    pub fn read_all_by_index_iter(&mut self, seq_index: usize) -> io::Result<IndexedReaderIterator<R>> {
+        let idx = self.idx_by_index(seq_index)?;
 
         self.read_into_iter(idx, 0, idx.len)
     }
@@ -222,6 +245,18 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
                      stop: u64)
                      -> io::Result<IndexedReaderIterator<R>> {
         let idx = self.idx(seqname)?;
+
+        self.read_into_iter(idx, start, stop)
+    }
+
+    /// For a given sequence index and a given range in that sequence, return an
+    /// iterator yielding the corresponding sequence.
+    pub fn read_iter_by_index(&mut self,
+                     seq_index: usize,
+                     start: u64,
+                     stop: u64)
+                     -> io::Result<IndexedReaderIterator<R>> {
+        let idx = self.idx_by_index(seq_index)?;
 
         self.read_into_iter(idx, start, stop)
     }
@@ -282,6 +317,14 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         match self.index.inner.get(seqname) {
             Some(idx) => Ok(*idx),
             None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
+        }
+    }
+
+    /// Return the IndexRecord for the given sequence name or io::Result::Err
+    fn idx_by_index(&self, seq_index: usize) -> io::Result<IndexRecord> {
+        match self.index.seqs.get(seq_index) {
+            Some(name) => self.idx(&name),
+            None => Err(io::Error::new(io::ErrorKind::Other, "Invalid index in fasta file.")),
         }
     }
 
@@ -730,7 +773,6 @@ ATTGTTGTTTTA
         assert_eq!(record.id(), "id_str");
         assert_eq!(record.desc(), Some("desc"));
         assert_eq!(record.seq(), b"ATGCGGG");
-
     }
 
     #[test]
@@ -907,6 +949,57 @@ ATTGTTGTTTTA
         Ok(seq)
     }
 
+    #[test]
+    fn test_indexed_reader_by_index_all() {
+        _test_indexed_reader_by_index_all(&FASTA_FILE, &FAI_FILE, _read_buffer_by_index_all);
+    }
+
+    #[test]
+    fn test_indexed_reader_crlf_by_index_all() {
+        _test_indexed_reader_by_index_all(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_buffer_by_index_all);
+    }
+
+    #[test]
+    fn test_indexed_reader_iter_by_index_all() {
+        _test_indexed_reader_by_index_all(&FASTA_FILE, &FAI_FILE, _read_iter_by_index_all);
+    }
+
+    #[test]
+    fn test_indexed_reader_iter_crlf_by_index_all() {
+        _test_indexed_reader_by_index_all(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_iter_by_index_all);
+    }
+
+    fn _test_indexed_reader_by_index_all<'a, F>(fasta: &'a [u8], fai: &'a [u8], read: F)
+        where F: Fn(&mut IndexedReader<io::Cursor<&'a [u8]>>, usize) -> io::Result<Vec<u8>>
+    {
+        let mut reader = IndexedReader::new(io::Cursor::new(fasta), fai).unwrap();
+
+        assert_eq!(read(&mut reader, 0).unwrap(),
+                   &b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC"[..]);
+        assert_eq!(read(&mut reader, 1).unwrap(),
+                   &b"ATTGTTGTTTTAATTGTTGTTTTAATTGTTGTTTTAGGGG"[..]);
+    }
+
+    fn _read_buffer_by_index_all<T>(reader: &mut IndexedReader<T>, seq_index: usize) -> io::Result<Vec<u8>>
+        where T: Seek + Read
+    {
+        let mut seq = vec![];
+        reader.read_all_by_index(seq_index, &mut seq)?;
+
+        Ok(seq)
+    }
+
+    fn _read_iter_by_index_all<T>(reader: &mut IndexedReader<T>,  seq_index: usize) -> io::Result<Vec<u8>>
+        where T: Seek + Read
+    {
+        let mut seq = vec![];
+        for nuc in reader.read_all_by_index_iter(seq_index)? {
+            seq.push(nuc?);
+        }
+
+        Ok(seq)
+    }
+    
     #[test]
     fn test_indexed_reader_iter_size_hint() {
         let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
