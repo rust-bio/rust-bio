@@ -23,6 +23,7 @@ use std::fs;
 use std::path::Path;
 use std::convert::AsRef;
 use std::cmp::min;
+use itertools::Itertools;
 
 use csv;
 
@@ -96,31 +97,30 @@ impl<R: io::Read> Reader<R> {
 
 /// A FASTA index as created by SAMtools (.fai).
 pub struct Index {
-    inner: collections::HashMap<String, IndexRecord>,
-    seqs: Vec<String>,
+    inner: Vec<IndexRecord>,
+    name_to_rid: collections::HashMap<String, usize>,
 }
 
 
 impl Index {
     /// Open a FASTA index from a given `io::Read` instance.
     pub fn new<R: io::Read>(fai: R) -> csv::Result<Self> {
-        let mut inner = collections::HashMap::new();
-        let mut seqs = vec![];
-        // Note: the by_rid methods assume that the names in the seqs vector
-        // are in the same order as the names in the fasta file.
+        let mut inner = vec![];
+        let mut name_to_rid = collections::HashMap::new();
+
         let mut fai_reader = csv::ReaderBuilder::new()
             .delimiter(b'\t')
             .has_headers(false)
             .from_reader(fai);
-        for row in fai_reader.deserialize() {
+        for (rid, row) in fai_reader.deserialize().enumerate() {
             let (name, record): (String, IndexRecord) = row?;
-            seqs.push(name.clone());
-            inner.insert(name, record);
+            inner.push(record);
+            name_to_rid.insert(name, rid);
         }
         Ok(Index {
-               inner: inner,
-               seqs: seqs,
-           })
+            inner: inner,
+            name_to_rid: name_to_rid,
+        })
     }
 
     /// Open a FASTA index from a given file path.
@@ -141,14 +141,17 @@ impl Index {
 
     /// Return a vector of sequences described in the index.
     pub fn sequences(&self) -> Vec<Sequence> {
-        self.seqs
+        // sort kv pairs by rid to preserve order
+        self.name_to_rid
             .iter()
-            .map(|name| {
-                     Sequence {
-                         name: name.clone(),
-                         len: self.inner[name].len,
-                     }
-                 })
+            .sorted_by(|a,b| Ord::cmp(&a.1, &b.1))
+            .iter()
+            .map(|&(name, rid)| {
+                Sequence {
+                    name: name.clone(),
+                    len: self.inner[*rid].len,
+                }
+            })
             .collect()
     }
 }
@@ -309,16 +312,16 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
     /// Return the IndexRecord for the given sequence name or io::Result::Err
     fn idx(&self, seqname: &str) -> io::Result<IndexRecord> {
-        match self.index.inner.get(seqname) {
-            Some(idx) => Ok(*idx),
+        match self.index.name_to_rid.get(seqname) {
+            Some(rid) => self.idx_by_rid(*rid),
             None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
         }
     }
 
-    /// Return the IndexRecord for the given sequence index () or io::Result::Err
+    /// Return the IndexRecord for the given record index or io::Result::Err
     fn idx_by_rid(&self, rid: usize) -> io::Result<IndexRecord> {
-        match self.index.seqs.get(rid) {
-            Some(name) => self.idx(&name),
+        match self.index.inner.get(rid) {
+            Some(record) => Ok(*record),
             None => Err(io::Error::new(io::ErrorKind::Other, "Invalid record index in fasta file.")),
         }
     }
