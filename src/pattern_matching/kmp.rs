@@ -106,7 +106,7 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
         for (i, &c) in self.text.by_ref() {
             self.q = self.kmp.delta(self.q, c);
             if self.q == self.kmp.m {
-                return Some(i - self.kmp.m + 1);
+                return Some(1 + i - self.kmp.m);
             }
         }
 
@@ -125,6 +125,14 @@ mod tests {
         let pattern = b"qnnnannan";
         let kmp = KMP::new(pattern);
         assert_eq!(kmp.find_all(text).collect_vec(), [8]);
+    }
+
+    #[test]
+    fn test_find_all_at_start() {
+        let text = b"dhjalkjwqnnnannanaflkjdklfj";
+        let pattern = b"dhjalk";
+        let kmp = KMP::new(pattern);
+        assert_eq!(kmp.find_all(text).collect_vec(), [0]);
     }
 
     #[test]
