@@ -23,7 +23,6 @@ use std::fs;
 use std::path::Path;
 use std::convert::AsRef;
 use std::cmp::min;
-use itertools::Itertools;
 
 use csv;
 
@@ -113,9 +112,9 @@ impl Index {
             .has_headers(false)
             .from_reader(fai);
         for (rid, row) in fai_reader.deserialize().enumerate() {
-            let (name, record): (String, IndexRecord) = row?;
+            let record: IndexRecord = row?;
+            name_to_rid.insert(record.name.clone(), rid);
             inner.push(record);
-            name_to_rid.insert(name, rid);
         }
         Ok(Index {
             inner: inner,
@@ -142,14 +141,12 @@ impl Index {
     /// Return a vector of sequences described in the index.
     pub fn sequences(&self) -> Vec<Sequence> {
         // sort kv pairs by rid to preserve order
-        self.name_to_rid
+        self.inner
             .iter()
-            .sorted_by(|a,b| Ord::cmp(&a.1, &b.1))
-            .iter()
-            .map(|&(name, rid)| {
+            .map(|record| {
                 Sequence {
-                    name: name.clone(),
-                    len: self.inner[*rid].len,
+                    name: record.name.clone(),
+                    len: record.len,
                 }
             })
             .collect()
@@ -245,7 +242,8 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
     /// Read the fetched sequence into the given vector.
     pub fn read(&mut self, seq: &mut Text) -> io::Result<()> {
-        match (self.fetched_idx, self.start, self.stop) {
+        let idx = self.fetched_idx.clone();
+        match (idx, self.start, self.stop) {
             (Some(idx), Some(start), Some(stop)) => self.read_into_buffer(idx, start, stop, seq),
             _ => Err(io::Error::new(io::ErrorKind::Other, "No sequence fetched for reading.")),
         }
@@ -253,7 +251,8 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
     /// Return an iterator yielding the fetched sequence.
     pub fn read_iter(&mut self) -> io::Result<IndexedReaderIterator<R>> {
-        match (self.fetched_idx, self.start, self.stop) {
+        let idx = self.fetched_idx.clone();
+        match (idx, self.start, self.stop) {
             (Some(idx), Some(start), Some(stop)) => self.read_into_iter(idx, start, stop),
             _ => Err(io::Error::new(io::ErrorKind::Other, "No sequence fetched for reading.")),
         }
@@ -321,7 +320,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     /// Return the IndexRecord for the given record index or io::Result::Err
     fn idx_by_rid(&self, rid: usize) -> io::Result<IndexRecord> {
         match self.index.inner.get(rid) {
-            Some(record) => Ok(*record),
+            Some(record) => Ok(record.clone()),
             None => Err(io::Error::new(io::ErrorKind::Other, "Invalid record index in fasta file.")),
         }
     }
@@ -386,8 +385,9 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 
 
 /// Record of a FASTA index.
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 struct IndexRecord {
+    name: String,
     len: u64,
     offset: u64,
     line_bases: u64,
