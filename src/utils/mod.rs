@@ -8,9 +8,6 @@
 mod text;
 pub use self::text::{Text, TextSlice, TextIterator, IntoTextIterator, trim_newline};
 
-mod nonnanfloat;
-pub use self::nonnanfloat::NonNaNFloat;
-
 mod interval;
 pub use self::interval::{Interval, IntervalError};
 
