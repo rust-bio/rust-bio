@@ -181,11 +181,11 @@ impl LogProb {
     /// handling LogProbs, e.g. `ln_1m_exp`
     pub fn cap_numerical_overshoot(&self, epsilon: f64) -> LogProb {
         if *self <= LogProb::ln_one() {
-            return *self;
+            *self
         } else {
             let capped = **self - epsilon;
             if capped <= 0.0 {
-                return LogProb::ln_one();
+                LogProb::ln_one()
             } else {
                 panic!(
                     "Cannot correct LogProb {:?} -- not within given epsilon of 0.0 ({})",
