@@ -498,12 +498,10 @@ impl<F: MatchFunc> Aligner<F> {
                     tb.set_s_bits(TB_XCLIP_PREFIX);
                 }
 
-                if i != m {
-                    // Track the score if we do a suffix clip (x) after this character
-                    if self.S[k][i] + self.scoring.xclip_suffix > self.S[k][m] {
-                        self.S[k][m] = self.S[k][i] + self.scoring.xclip_suffix;
-                        self.Lx[0] = m - i;
-                    }
+                // Track the score if we do a suffix clip (x) after this character
+                if i != m && self.S[k][i] + self.scoring.xclip_suffix > self.S[k][m] {
+                    self.S[k][m] = self.S[k][i] + self.scoring.xclip_suffix;
+                    self.Lx[0] = m - i;
                 }
 
                 if k == 0 {
@@ -545,18 +543,14 @@ impl<F: MatchFunc> Aligner<F> {
                     tb.set_s_bits(TB_YCLIP_PREFIX);
                 }
 
-                if j == n {
+                if j == n && self.Sn[0] > self.S[curr][0] {
                     // Check if the suffix clip score is better
-                    if self.Sn[0] > self.S[curr][0] {
-                        self.S[curr][0] = self.Sn[0];
-                        tb.set_s_bits(TB_YCLIP_SUFFIX);
-                    }
-                } else {
-                    // Track the score if we do suffix clip (y) from here
-                    if self.S[curr][0] + self.scoring.yclip_suffix > self.Sn[0] {
-                        self.Sn[0] = self.S[curr][0] + self.scoring.yclip_suffix;
-                        self.Ly[0] = n - j;
-                    }
+                    self.S[curr][0] = self.Sn[0];
+                    tb.set_s_bits(TB_YCLIP_SUFFIX);
+                // Track the score if we do suffix clip (y) from here
+                } else if self.S[curr][0] + self.scoring.yclip_suffix > self.Sn[0] {
+                    self.Sn[0] = self.S[curr][0] + self.scoring.yclip_suffix;
+                    self.Ly[0] = n - j;
                 }
 
                 self.traceback.set(0, j, tb);
