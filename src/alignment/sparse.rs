@@ -64,7 +64,7 @@ pub struct SparseAlignmentResult {
 /// * `score` is the score of the path, which is the number of bases covered by the matched kmers.
 /// * `dp_vector` is the full DP vector, which can generally be ignored. (It may be useful for testing purposes).
 pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> SparseAlignmentResult {
-    if matches.len() == 0 {
+    if matches.is_empty() {
         return SparseAlignmentResult {
             path: Vec::new(),
             score: 0,
@@ -114,14 +114,11 @@ pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> SparseAlignmentResult {
         } else {
             // See if this kmer continues a diffent kmer
             if ev.0 >= k + 1 && ev.1 >= k + 1 {
-                match matches.binary_search(&(ev.0 - k - 1, ev.1 - k - 1)) {
-                    Ok(cont_idx) => {
-                        let prev_score = dp[cont_idx].0;
-                        let candidate = (prev_score + 1, cont_idx as i32);
-                        dp[p] = max(dp[p], candidate);
-                        best_dp = max(best_dp, (dp[p].0, p as i32));
-                    }
-                    _ => (),
+                if let Ok(cont_idx) = matches.binary_search(&(ev.0 - k - 1, ev.1 - k - 1)) {
+                    let prev_score = dp[cont_idx].0;
+                    let candidate = (prev_score + 1, cont_idx as i32);
+                    dp[p] = max(dp[p], candidate);
+                    best_dp = max(best_dp, (dp[p].0, p as i32));
                 }
             }
 
@@ -263,14 +260,11 @@ pub fn sdpkpp(
         } else {
             // See if this kmer continues a diffent kmer
             if ev.0 >= k + 1 && ev.1 >= k + 1 {
-                match matches.binary_search(&(ev.0 - k - 1, ev.1 - k - 1)) {
-                    Ok(cont_idx) => {
-                        let prev_score = dp[cont_idx].0;
-                        let candidate = (prev_score + match_score, cont_idx as i32);
-                        dp[p] = max(dp[p], candidate);
-                        best_dp = max(best_dp, (dp[p].0, p as i32));
-                    }
-                    _ => (),
+                if let Ok(cont_idx) = matches.binary_search(&(ev.0 - k - 1, ev.1 - k - 1)) {
+                    let prev_score = dp[cont_idx].0;
+                    let candidate = (prev_score + match_score, cont_idx as i32);
+                    dp[p] = max(dp[p], candidate);
+                    best_dp = max(best_dp, (dp[p].0, p as i32));
                 }
             }
 
@@ -371,13 +365,10 @@ pub fn find_kmer_matches_seq1_hashed(
 
     for i in 0..(seq2.len() + 1).saturating_sub(k) {
         let slc = &seq2[i..i + k];
-        match seq1_set.get(slc) {
-            Some(matches1) => {
-                for pos1 in matches1 {
-                    matches.push((*pos1, i as u32));
-                }
+        if let Some(matches1) = seq1_set.get(slc) {
+            for pos1 in matches1 {
+                matches.push((*pos1, i as u32));
             }
-            None => (),
         }
     }
 
@@ -396,13 +387,11 @@ pub fn find_kmer_matches_seq2_hashed(
 
     for i in 0..(seq1.len() + 1).saturating_sub(k) {
         let slc = &seq1[i..i + k];
-        match seq2_set.get(slc) {
-            Some(matches1) => {
-                for pos1 in matches1 {
-                    matches.push((i as u32, *pos1));
-                }
+
+        if let Some(matches1) = seq2_set.get(slc) {
+            for pos1 in matches1 {
+                matches.push((i as u32, *pos1));
             }
-            None => (),
         }
     }
 
@@ -647,7 +636,7 @@ mod sparse_alignment {
         let matches = super::find_kmer_matches(&QUERY_REPEAT, &TARGET_REPEAT, k);
         let res = super::sdpkpp(&matches, k, 1, -1, -1);
 
-        // For debugging: 
+        // For debugging:
         /*
         for (idx, (ev, (score, prev))) in evs.iter().zip(dps.clone()).enumerate() {
             println!("idx: {:?}\tev: {:?}\tscore: {:?}\t prev: {:?}", idx, ev, score, prev);

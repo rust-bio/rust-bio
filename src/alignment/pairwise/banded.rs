@@ -1267,9 +1267,8 @@ impl Band {
                 let p = prev.unwrap();
                 band.add_entry((p.0 + k as u32, p.1 + k as u32), w);
             } else {
-                match prev {
-                    Some(p) => band.add_gap((p.0 + (k - 1) as u32, p.1 + (k - 1) as u32), curr, w),
-                    _ => {}
+                if let Some(p) = prev {
+                    band.add_gap((p.0 + (k - 1) as u32, p.1 + (k - 1) as u32), curr, w)
                 }
                 band.add_kmer(curr, k, w);
             }
