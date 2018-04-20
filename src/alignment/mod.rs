@@ -371,7 +371,7 @@ impl Alignment {
     pub fn filter_clip_operations(&mut self) {
         use self::AlignmentOperation::{Del, Ins, Match, Subst};
         self.operations
-            .retain(|&ref x| (*x == Match || *x == Subst || *x == Ins || *x == Del));
+            .retain(|x| (*x == Match || *x == Subst || *x == Ins || *x == Del));
     }
 
     /// Number of bases in reference sequence that are aligned
