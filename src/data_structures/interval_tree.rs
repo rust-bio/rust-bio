@@ -38,6 +38,12 @@ pub struct IntervalTree<N: Ord + Clone, D> {
     root: Option<Node<N, D>>,
 }
 
+impl<N: Ord + Clone, D> Default for IntervalTree<N, D> {
+    fn default() -> Self {
+        Self { root: None }
+    }
+}
+
 /// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
 /// wraps the fields `interval` and `data` in an `Entry`.
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -166,7 +172,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIteratorMut<'a, N,
 impl<N: Clone + Ord, D> IntervalTree<N, D> {
     /// Creates a new empty `IntervalTree`
     pub fn new() -> Self {
-        IntervalTree { root: None }
+        Default::default()
     }
 
     /// Inserts an `Interval` into the tree and associates it with `data`

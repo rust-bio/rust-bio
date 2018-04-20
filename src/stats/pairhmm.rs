@@ -78,14 +78,20 @@ pub struct PairHMM {
     prob_cols: Vec<LogProb>,
 }
 
-impl PairHMM {
-    pub fn new() -> Self {
+impl Default for PairHMM {
+    fn default() -> Self {
         PairHMM {
             fm: [Vec::new(), Vec::new()],
             fx: [Vec::new(), Vec::new()],
             fy: [Vec::new(), Vec::new()],
             prob_cols: Vec::new(),
         }
+    }
+}
+
+impl PairHMM {
+    pub fn new() -> Self {
+        Default::default()
     }
 
     /// Calculate the probability of sequence x being related to y via any alignment.

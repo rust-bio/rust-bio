@@ -864,6 +864,12 @@ pub struct TracebackCell {
     v: u16,
 }
 
+impl Default for TracebackCell {
+    fn default() -> Self {
+        TracebackCell { v: 0 }
+    }
+}
+
 // Traceback bit positions (LSB)
 const I_POS: u8 = 0; // Meaning bits 0,1,2,3 corresponds to I and so on
 const D_POS: u8 = 4;
@@ -888,7 +894,7 @@ impl TracebackCell {
     /// Initialize a blank traceback cell
     #[inline(always)]
     pub fn new() -> TracebackCell {
-        TracebackCell { v: 0 }
+        Default::default()
     }
 
     /// Sets 4 bits [pos, pos+4) with the 4 LSBs of value

@@ -39,9 +39,8 @@ pub struct SmallInts<F: Integer + Bounded + NumCast + Copy, B: Integer + NumCast
     bigints: BTreeMap<usize, B>,
 }
 
-impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallInts<S, B> {
-    /// Create a new instance.
-    pub fn new() -> Self {
+impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> Default for SmallInts<S, B> {
+    fn default() -> Self {
         assert!(
             size_of::<S>() < size_of::<B>(),
             "S has to be smaller than B"
@@ -50,6 +49,13 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
             smallints: Vec::new(),
             bigints: BTreeMap::new(),
         }
+    }
+}
+
+impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallInts<S, B> {
+    /// Create a new instance.
+    pub fn new() -> Self {
+        Default::default()
     }
 
     /// Create a new instance with a given capacity.
