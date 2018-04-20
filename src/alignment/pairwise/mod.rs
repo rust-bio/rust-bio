@@ -109,7 +109,7 @@ pub mod banded;
 /// Value to use as a 'negative infinity' score. Should be close to i32::MIN,
 /// but avoid underflow when used with reasonable scoring parameters or even
 /// adding two negative infinities. Use ~ 0.4 * i32::MIN
-pub const MIN_SCORE: i32 = -858993459;
+pub const MIN_SCORE: i32 = -858_993_459;
 
 /// Trait required to instantiate a Scoring instance
 pub trait MatchFunc {

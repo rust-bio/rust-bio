@@ -92,7 +92,7 @@ use alignment::pairwise::Scoring;
 use alignment::sparse;
 use alignment::sparse::HashMapFx;
 
-const MAX_CELLS: usize = 5000000;
+const MAX_CELLS: usize = 5_000_000;
 const DEFAULT_MATCH_SCORE: i32 = 2;
 
 /// A banded implementation of Smith-Waterman aligner (SWA).

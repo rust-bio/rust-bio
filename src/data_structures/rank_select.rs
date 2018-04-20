@@ -104,7 +104,7 @@ impl RankSelect {
         for (block, &b) in self.bits[first_block..].iter().enumerate() {
             let p = b.count_ones();
             if rank + p >= j {
-                let mut bit = 0b10000000;
+                let mut bit = 0b1000_0000;
                 for i in 0..8usize {
                     rank += (b & bit > 0) as u32;
                     if rank == j {
