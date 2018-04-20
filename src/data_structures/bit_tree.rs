@@ -65,7 +65,7 @@ impl<T: Ord + Default + Copy, Op: PrefixOp<T>> FenwickTree<T, Op> {
         let mut idx = idx + 1;
         let mut sum = T::default();
         while idx > 0 {
-            sum = Op::operation(sum, self.tree[idx].clone());
+            sum = Op::operation(sum, self.tree[idx]);
             idx -= (idx as isize & -(idx as isize)) as usize;
         }
 
@@ -80,7 +80,7 @@ impl<T: Ord + Default + Copy, Op: PrefixOp<T>> FenwickTree<T, Op> {
     pub fn set(&mut self, idx: usize, val: T) {
         let mut idx = idx + 1;
         while idx < self.tree.len() {
-            self.tree[idx] = max(self.tree[idx].clone(), val);
+            self.tree[idx] = max(self.tree[idx], val);
             idx += (idx as isize & -(idx as isize)) as usize;
         }
     }

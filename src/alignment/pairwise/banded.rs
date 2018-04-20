@@ -304,9 +304,9 @@ impl<F: MatchFunc> Aligner<F> {
         &mut self,
         x: TextSlice,
         y: TextSlice,
-        matches: Vec<(u32, u32)>,
+        matches: &[(u32, u32)],
     ) -> Alignment {
-        self.band = Band::create_with_matches(x, y, self.k, self.w, &self.scoring, matches);
+        self.band = Band::create_with_matches(x, y, self.k, self.w, &self.scoring, &matches);
         self.compute_alignment(x, y)
     }
 
@@ -358,10 +358,10 @@ impl<F: MatchFunc> Aligner<F> {
                 self.w,
                 &self.scoring,
                 &path,
-                expanded_matches,
+                &expanded_matches,
             )
         } else {
-            Band::create_with_matches(x, y, self.k, self.w, &self.scoring, expanded_matches)
+            Band::create_with_matches(x, y, self.k, self.w, &self.scoring, &expanded_matches)
         };
 
         self.compute_alignment(x, y)
@@ -925,7 +925,7 @@ impl<F: MatchFunc> Aligner<F> {
             for j in 0..self.band.cols {
                 print!("{}", view[index(i, j)]);
             }
-            println!("");
+            println!();
         }
     }
 }
@@ -1194,7 +1194,7 @@ impl Band {
         scoring: &Scoring<F>,
     ) -> Band {
         let matches = sparse::find_kmer_matches(x, y, k);
-        Band::create_with_matches(x, y, k, w, scoring, matches)
+        Band::create_with_matches(x, y, k, w, scoring, &matches)
     }
 
     fn create_with_prehash<F: MatchFunc>(
@@ -1206,7 +1206,7 @@ impl Band {
         y_kmer_hash: &HashMapFx<&[u8], Vec<u32>>,
     ) -> Band {
         let matches = sparse::find_kmer_matches_seq2_hashed(x, y_kmer_hash, k);
-        Band::create_with_matches(x, y, k, w, scoring, matches)
+        Band::create_with_matches(x, y, k, w, scoring, &matches)
     }
 
     fn create_with_matches<F: MatchFunc>(
@@ -1215,9 +1215,9 @@ impl Band {
         k: usize,
         w: usize,
         scoring: &Scoring<F>,
-        matches: Vec<(u32, u32)>,
+        matches: &[(u32, u32)],
     ) -> Band {
-        if matches.len() == 0 {
+        if matches.is_empty() {
             let mut band = Band::new(x.len(), y.len());
             band.full_matrix();
             return band;
@@ -1229,13 +1229,13 @@ impl Band {
         };
 
         let res = sparse::sdpkpp(
-            &matches,
+            matches,
             k,
             match_score as u32,
             scoring.gap_open,
             scoring.gap_extend,
         );
-        Band::create_from_match_path(x, y, k, w, scoring, &res.path, matches)
+        Band::create_from_match_path(x, y, k, w, scoring, &res.path, &matches)
     }
 
     fn create_from_match_path<F: MatchFunc>(
@@ -1244,12 +1244,12 @@ impl Band {
         k: usize,
         w: usize,
         scoring: &Scoring<F>,
-        path: &Vec<usize>,
-        matches: Vec<(u32, u32)>,
+        path: &[usize],
+        matches: &[(u32, u32)],
     ) -> Band {
         let mut band = Band::new(x.len(), y.len());
 
-        if matches.len() == 0 {
+        if matches.is_empty() {
             band.full_matrix();
             return band;
         }
@@ -1307,7 +1307,7 @@ impl Band {
             for j in 0..self.cols {
                 print!("{}", view[index(i, j)]);
             }
-            println!("");
+            println!();
         }
     }
 

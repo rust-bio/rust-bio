@@ -654,7 +654,7 @@ impl PosTypes {
 
     /// Check if p is LMS-position.
     fn is_lms_pos(&self, p: usize) -> bool {
-        !(p == 0) && self.is_s_pos(p) && self.is_l_pos(p - 1)
+        p != 0 && self.is_s_pos(p) && self.is_l_pos(p - 1)
     }
 }
 

@@ -63,7 +63,7 @@ pub struct SparseAlignmentResult {
 /// * `path` is the LCSk++ path, represented as vector of indices into the input matches vector.
 /// * `score` is the score of the path, which is the number of bases covered by the matched kmers.
 /// * `dp_vector` is the full DP vector, which can generally be ignored. (It may be useful for testing purposes).
-pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> SparseAlignmentResult {
+pub fn lcskpp(matches: &[(u32, u32)], k: usize) -> SparseAlignmentResult {
     if matches.is_empty() {
         return SparseAlignmentResult {
             path: Vec::new(),
@@ -113,7 +113,7 @@ pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> SparseAlignmentResult {
             }
         } else {
             // See if this kmer continues a diffent kmer
-            if ev.0 >= k + 1 && ev.1 >= k + 1 {
+            if ev.0 > k && ev.1 > k {
                 if let Ok(cont_idx) = matches.binary_search(&(ev.0 - k - 1, ev.1 - k - 1)) {
                     let prev_score = dp[cont_idx].0;
                     let candidate = (prev_score + 1, cont_idx as i32);
@@ -182,13 +182,13 @@ impl PrevPtr {
 /// * `score` is the score of the path, which is the number of bases covered by the matched kmers.
 /// * `dp_vector` is the full DP vector, which can generally be ignored. (It may be useful for testing purposes).
 pub fn sdpkpp(
-    matches: &Vec<(u32, u32)>,
+    matches: &[(u32, u32)],
     k: usize,
     match_score: u32,
     gap_open: i32,
     gap_extend: i32,
 ) -> SparseAlignmentResult {
-    if matches.len() == 0 {
+    if matches.is_empty() {
         return SparseAlignmentResult {
             path: Vec::new(),
             score: 0,
@@ -259,7 +259,7 @@ pub fn sdpkpp(
             }
         } else {
             // See if this kmer continues a diffent kmer
-            if ev.0 >= k + 1 && ev.1 >= k + 1 {
+            if ev.0 > k && ev.1 > k {
                 if let Ok(cont_idx) = matches.binary_search(&(ev.0 - k - 1, ev.1 - k - 1)) {
                     let prev_score = dp[cont_idx].0;
                     let candidate = (prev_score + match_score, cont_idx as i32);
@@ -288,7 +288,7 @@ pub fn sdpkpp(
 }
 
 pub fn sdpkpp_union_lcskpp_path(
-    matches: &Vec<(u32, u32)>,
+    matches: &[(u32, u32)],
     k: usize,
     match_score: u32,
     gap_open: i32,
@@ -343,8 +343,8 @@ pub fn find_kmer_matches(seq1: &[u8], seq2: &[u8], k: usize) -> Vec<(u32, u32)> 
 /// Creates a HashMap containing all the k-mers in the sequence. FxHasher is used
 /// as the hash function instead of the inbuilt one. A good rolling hash function
 /// should speed up the code.
-pub fn hash_kmers<'a>(seq: &'a [u8], k: usize) -> HashMapFx<&'a [u8], Vec<u32>> {
-    let slc = seq.as_ref();
+pub fn hash_kmers(seq: &[u8], k: usize) -> HashMapFx<&[u8], Vec<u32>> {
+    let slc = seq;
     let mut set: HashMapFx<&[u8], Vec<u32>> = HashMapFx::default();
     for i in 0..(slc.len() + 1).saturating_sub(k) {
         set.entry(&slc[i..i + k])
@@ -403,7 +403,7 @@ pub fn expand_kmer_matches(
     seq1: &[u8],
     seq2: &[u8],
     k: usize,
-    sorted_matches: &Vec<(u32, u32)>,
+    sorted_matches: &[(u32, u32)],
     allowed_mismatches: usize,
 ) -> Vec<(u32, u32)> {
     // incoming matches must be sorted.
@@ -412,7 +412,7 @@ pub fn expand_kmer_matches(
     }
 
     let mut last_match_along_diagonal: HashMapFx<i32, (i32, i32)> = HashMapFx::default();
-    let mut left_expanded_matches: Vec<(u32, u32)> = sorted_matches.clone();
+    let mut left_expanded_matches: Vec<(u32, u32)> = sorted_matches.to_owned();
 
     for &this_match in sorted_matches.iter() {
         let diag = (this_match.0 as i32) - (this_match.1 as i32);
@@ -485,11 +485,11 @@ pub fn expand_kmer_matches(
             if n_mismatches > allowed_mismatches {
                 break;
             }
-            expanded_matches.push(curr_pos.clone());
+            expanded_matches.push(curr_pos);
             curr_pos = (curr_pos.0 + 1, curr_pos.1 + 1);
         }
 
-        next_match_along_diagonal.insert(diag, this_match.clone());
+        next_match_along_diagonal.insert(diag, this_match);
     }
     expanded_matches.sort();
     expanded_matches

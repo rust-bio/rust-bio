@@ -85,7 +85,7 @@ impl BitEnc {
         // pack the value into a block
         let mut value_block = 0;
         {
-            let mut v = value as u32;
+            let mut v = u32::from(value);
             for _ in 0..32 / self.width {
                 value_block |= v;
                 v <<= self.width;
@@ -142,7 +142,7 @@ impl BitEnc {
         let mask = self.mask << bit;
         self.storage[block] |= mask;
         self.storage[block] ^= mask;
-        self.storage[block] |= (value as u32 & self.mask) << bit;
+        self.storage[block] |= (u32::from(value) & self.mask) << bit;
     }
 
     fn addr(&self, i: usize) -> (usize, usize) {

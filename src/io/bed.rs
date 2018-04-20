@@ -73,7 +73,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                 chrom,
                 start,
                 end,
-                aux: aux.unwrap_or(Vec::new()),
+                aux: aux.unwrap_or_else(Vec::new),
             })
         })
     }
