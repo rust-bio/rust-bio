@@ -193,9 +193,9 @@ impl PairHMM {
             LogProb::ln_sum_exp(&self.prob_cols)
         } else {
             LogProb::ln_sum_exp(&[
-                self.fm[prev].last().unwrap().clone(),
-                self.fx[prev].last().unwrap().clone(),
-                self.fy[prev].last().unwrap().clone(),
+                *self.fm[prev].last().unwrap(),
+                *self.fx[prev].last().unwrap(),
+                *self.fy[prev].last().unwrap(),
             ])
         };
         // take the minimum with 1.0, because sum of paths can exceed probability 1.0

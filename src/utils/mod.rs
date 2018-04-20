@@ -48,7 +48,7 @@ impl Strand {
     }
 
     pub fn is_unknown(&self) -> bool {
-        if let &Strand::Unknown = self {
+        if let Strand::Unknown = *self {
             true
         } else {
             false
