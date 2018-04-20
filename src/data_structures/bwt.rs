@@ -116,7 +116,7 @@ impl Occ {
             }
         }
 
-        Occ { occ: occ, k: k }
+        Occ { occ, k }
     }
 
     /// Get occurrence count of symbol a in BWT[..r+1].

@@ -70,9 +70,9 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
     fn next(&mut self) -> Option<csv::Result<Record>> {
         self.inner.next().map(|res| {
             res.map(|(chrom, start, end, aux)| Record {
-                chrom: chrom,
-                start: start,
-                end: end,
+                chrom,
+                start,
+                end,
                 aux: aux.unwrap_or(Vec::new()),
             })
         })

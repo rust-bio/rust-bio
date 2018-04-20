@@ -62,7 +62,7 @@ impl Finder {
                                          .collect::<VecDeque<u8>>()
                                     })
                                     .collect(),
-            min_len: min_len,
+            min_len,
         }
     }
 

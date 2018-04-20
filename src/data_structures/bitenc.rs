@@ -38,7 +38,7 @@ impl BitEnc {
         assert!(width <= 8, "Only encoding widths up to 8 supported");
         BitEnc {
             storage: Vec::new(),
-            width: width,
+            width,
             mask: mask(width),
             len: 0,
             bits: 32 - 32 % width,
@@ -50,7 +50,7 @@ impl BitEnc {
         assert!(width <= 8, "Only encoding widths up to 8 supported");
         BitEnc {
             storage: Vec::with_capacity(n * width / 32),
-            width: width,
+            width,
             mask: mask(width),
             len: 0,
             bits: 32 - 32 % width,

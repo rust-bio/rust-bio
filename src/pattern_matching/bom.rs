@@ -73,7 +73,7 @@ impl BOM {
             table.push(delta);
         }
 
-        BOM { m: m, table: table }
+        BOM { m, table }
     }
 
     fn delta(&self, q: usize, a: u8) -> Option<usize> {
@@ -91,7 +91,7 @@ impl BOM {
     pub fn find_all<'a>(&'a self, text: TextSlice<'a>) -> Matches {
         Matches {
             bom: self,
-            text: text,
+            text,
             window: self.m,
         }
     }

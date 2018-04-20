@@ -171,11 +171,7 @@ impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone>
     ///   less memory usage, but worse performance)
     /// * `alphabet` - the alphabet of the underlying text, omitting the sentinel
     pub fn new(bwt: DBWT, less: DLess, occ: DOcc) -> Self {
-        FMIndex {
-            bwt: bwt,
-            less: less,
-            occ: occ,
-        }
+        FMIndex { bwt, less, occ }
     }
 }
 
@@ -255,7 +251,7 @@ impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone>
             "Expecting BWT over the DNA alphabet (including N) with the sentinel $."
         );
 
-        FMDIndex { fmindex: fmindex }
+        FMDIndex { fmindex }
     }
 }
 
@@ -361,7 +357,7 @@ impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone>
         let lower = self.fmindex.less(a);
 
         BiInterval {
-            lower: lower,
+            lower,
             lower_rev: self.fmindex.less(comp_a),
             size: self.fmindex.less(a + 1) - lower,
             match_size: 1,

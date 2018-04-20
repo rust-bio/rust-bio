@@ -88,10 +88,10 @@ impl QGramIndex {
         }
 
         QGramIndex {
-            q: q,
-            address: address,
-            pos: pos,
-            ranks: ranks,
+            q,
+            address,
+            pos,
+            ranks,
         }
     }
 

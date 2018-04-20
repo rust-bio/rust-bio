@@ -120,10 +120,7 @@ impl Index {
             name_to_rid.insert(record.name.clone(), rid);
             inner.push(record);
         }
-        Ok(Index {
-            inner: inner,
-            name_to_rid: name_to_rid,
-        })
+        Ok(Index { inner, name_to_rid })
     }
 
     /// Open a FASTA index from a given file path.
@@ -182,7 +179,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         let index = try!(Index::new(fai));
         Ok(IndexedReader {
             reader: io::BufReader::new(fasta),
-            index: index,
+            index,
             fetched_idx: None,
             start: None,
             stop: None,
@@ -194,7 +191,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     pub fn with_index(fasta: R, index: Index) -> Self {
         IndexedReader {
             reader: io::BufReader::new(fasta),
-            index: index,
+            index,
             fetched_idx: None,
             start: None,
             stop: None,
@@ -321,8 +318,8 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         Ok(IndexedReaderIterator {
             reader: self,
             record: idx,
-            bases_left: bases_left,
-            line_offset: line_offset,
+            bases_left,
+            line_offset,
             buf: Vec::with_capacity(capacity),
             buf_idx: 0,
         })
@@ -561,7 +558,7 @@ impl Record {
         };
         Record {
             id: id.to_owned(),
-            desc: desc,
+            desc,
             seq: String::from_utf8(seq.to_vec()).unwrap(),
         }
     }

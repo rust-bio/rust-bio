@@ -55,7 +55,7 @@ impl Myers {
         }
 
         Myers {
-            peq: peq,
+            peq,
             bound: 1 << (m - 1),
             m: m as u8,
         }
@@ -111,7 +111,7 @@ impl Myers {
             myers: self,
             state: State::new(self.m),
             text: text.into_iter().enumerate(),
-            max_dist: max_dist,
+            max_dist,
         }
     }
 }

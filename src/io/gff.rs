@@ -99,7 +99,7 @@ impl<R: io::Read> Reader<R> {
         let attribute_re = Regex::new(&r).unwrap();
         Records {
             inner: self.inner.deserialize(),
-            attribute_re: attribute_re,
+            attribute_re,
             value_delim: vdelim as char,
         }
     }
@@ -142,22 +142,22 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                     raw_attributes,
                 )| {
                     let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
-                    let mut attrs = MultiMap::new();
+                    let mut attributes = MultiMap::new();
                     for caps in self.attribute_re.captures_iter(&raw_attributes) {
                         for value in caps["value"].split(self.value_delim) {
-                            attrs.insert(trim_quotes(&caps["key"]), trim_quotes(value));
+                            attributes.insert(trim_quotes(&caps["key"]), trim_quotes(value));
                         }
                     }
                     Record {
-                        seqname: seqname,
-                        source: source,
-                        feature_type: feature_type,
-                        start: start,
-                        end: end,
-                        score: score,
-                        strand: strand,
-                        frame: frame,
-                        attributes: attrs,
+                        seqname,
+                        source,
+                        feature_type,
+                        start,
+                        end,
+                        score,
+                        strand,
+                        frame,
+                        attributes,
                     }
                 },
             )

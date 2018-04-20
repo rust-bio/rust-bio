@@ -185,14 +185,11 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
         match self.root {
             Some(ref n) => IntervalTreeIterator {
                 nodes: vec![n],
-                interval: interval,
+                interval,
             },
             None => {
-                let empty_nodes = vec![];
-                IntervalTreeIterator {
-                    nodes: empty_nodes,
-                    interval: interval,
-                }
+                let nodes = vec![];
+                IntervalTreeIterator { nodes, interval }
             }
         }
     }
@@ -204,14 +201,11 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
         match self.root {
             Some(ref mut n) => IntervalTreeIteratorMut {
                 nodes: vec![n],
-                interval: interval,
+                interval,
             },
             None => {
-                let empty_nodes = vec![];
-                IntervalTreeIteratorMut {
-                    nodes: empty_nodes,
-                    interval: interval,
-                }
+                let nodes = vec![];
+                IntervalTreeIteratorMut { nodes, interval }
             }
         }
     }
@@ -243,8 +237,8 @@ impl<N: Ord + Clone, D> Node<N, D> {
     fn new(interval: Interval<N>, data: D) -> Self {
         let max = interval.end.clone();
         Node {
-            interval: interval,
-            max: max,
+            interval,
+            max,
             height: 1,
             value: data,
             left: None,

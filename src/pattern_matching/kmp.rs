@@ -41,11 +41,7 @@ impl<'a> KMP<'a> {
         let m = pattern.len();
         let lps = lps(pattern);
 
-        KMP {
-            lps: lps,
-            m: m,
-            pattern: pattern,
-        }
+        KMP { lps, m, pattern }
     }
 
     fn delta(&self, mut q: usize, a: u8) -> usize {

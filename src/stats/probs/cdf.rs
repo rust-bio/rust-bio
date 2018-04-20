@@ -24,10 +24,7 @@ pub struct Entry<T: Ord> {
 
 impl<T: Ord> Entry<T> {
     pub fn new(value: T, prob: LogProb) -> Self {
-        Entry {
-            value: value,
-            prob: prob,
-        }
+        Entry { value, prob }
     }
 }
 
@@ -59,7 +56,7 @@ impl<T: Ord> CDF<T> {
                 inner.push(e);
             }
         }
-        let mut cdf = CDF { inner: inner };
+        let mut cdf = CDF { inner };
 
         // cap at prob=1.0 if there are slightly exceeding values due to numerical issues.
         for e in cdf.inner.iter_mut() {
@@ -88,7 +85,7 @@ impl<T: Ord> CDF<T> {
                 inner.push(e);
             }
         }
-        CDF { inner: inner }
+        CDF { inner }
     }
 
     /// Downsample CDF to n entries. Panics if n <= 1 and returns identity if n is greater
@@ -102,7 +99,7 @@ impl<T: Ord> CDF<T> {
             let last = self.inner.pop().unwrap();
             let mut inner = self.inner.into_iter().step(s).collect_vec();
             inner.push(last);
-            CDF { inner: inner }
+            CDF { inner }
         }
     }
 

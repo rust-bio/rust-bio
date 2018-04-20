@@ -158,11 +158,11 @@ impl PrevPtr {
         let d = x + y;
         PrevPtr {
             plane: score + (d * gap_extend),
-            score: score,
-            d: d,
-            id: id,
-            x: x,
-            y: y,
+            score,
+            d,
+            id,
+            x,
+            y,
         }
     }
 }

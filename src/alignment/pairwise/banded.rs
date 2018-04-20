@@ -182,8 +182,8 @@ impl<F: MatchFunc> Aligner<F> {
             Sn: Vec::with_capacity(m + 1),
             traceback: Traceback::with_capacity(m, n),
             scoring: Scoring::new(gap_open, gap_extend, match_fn),
-            k: k,
-            w: w,
+            k,
+            w,
         }
     }
 
@@ -233,9 +233,9 @@ impl<F: MatchFunc> Aligner<F> {
             Ly: Vec::with_capacity(m + 1),
             Sn: Vec::with_capacity(m + 1),
             traceback: Traceback::with_capacity(m, n),
-            scoring: scoring,
-            k: k,
-            w: w,
+            scoring,
+            k,
+            w,
         }
     }
 
@@ -662,7 +662,7 @@ impl<F: MatchFunc> Aligner<F> {
 
         let mut i = m;
         let mut j = n;
-        let mut ops = Vec::with_capacity(x.len());
+        let mut operations = Vec::with_capacity(x.len());
         let mut xstart: usize = 0usize;
         let mut ystart: usize = 0usize;
         let mut xend = m;
@@ -675,47 +675,47 @@ impl<F: MatchFunc> Aligner<F> {
             match last_layer {
                 TB_START => break,
                 TB_INS => {
-                    ops.push(AlignmentOperation::Ins);
+                    operations.push(AlignmentOperation::Ins);
                     next_layer = self.traceback.get(i, j).get_i_bits();
                     i -= 1;
                 }
                 TB_DEL => {
-                    ops.push(AlignmentOperation::Del);
+                    operations.push(AlignmentOperation::Del);
                     next_layer = self.traceback.get(i, j).get_d_bits();
                     j -= 1;
                 }
                 TB_MATCH => {
-                    ops.push(AlignmentOperation::Match);
+                    operations.push(AlignmentOperation::Match);
                     next_layer = self.traceback.get(i - 1, j - 1).get_s_bits();
                     i -= 1;
                     j -= 1;
                 }
                 TB_SUBST => {
-                    ops.push(AlignmentOperation::Subst);
+                    operations.push(AlignmentOperation::Subst);
                     next_layer = self.traceback.get(i - 1, j - 1).get_s_bits();
                     i -= 1;
                     j -= 1;
                 }
                 TB_XCLIP_PREFIX => {
-                    ops.push(AlignmentOperation::Xclip(i));
+                    operations.push(AlignmentOperation::Xclip(i));
                     xstart = i;
                     i = 0;
                     next_layer = self.traceback.get(0, j).get_s_bits();
                 }
                 TB_XCLIP_SUFFIX => {
-                    ops.push(AlignmentOperation::Xclip(self.Lx[j]));
+                    operations.push(AlignmentOperation::Xclip(self.Lx[j]));
                     i -= self.Lx[j];
                     xend = i;
                     next_layer = self.traceback.get(i, j).get_s_bits();
                 }
                 TB_YCLIP_PREFIX => {
-                    ops.push(AlignmentOperation::Yclip(j));
+                    operations.push(AlignmentOperation::Yclip(j));
                     ystart = j;
                     j = 0;
                     next_layer = self.traceback.get(i, 0).get_s_bits();
                 }
                 TB_YCLIP_SUFFIX => {
-                    ops.push(AlignmentOperation::Yclip(self.Ly[i]));
+                    operations.push(AlignmentOperation::Yclip(self.Ly[i]));
                     j -= self.Ly[i];
                     yend = j;
                     next_layer = self.traceback.get(i, j).get_s_bits();
@@ -732,11 +732,11 @@ impl<F: MatchFunc> Aligner<F> {
             let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
             if i_score > self.scoring.xclip_prefix {
                 for _ in 0..i {
-                    ops.push(AlignmentOperation::Ins);
+                    operations.push(AlignmentOperation::Ins);
                 }
                 xstart = 0;
             } else {
-                ops.push(AlignmentOperation::Xclip(i));
+                operations.push(AlignmentOperation::Xclip(i));
                 xstart = i;
             }
         }
@@ -745,25 +745,25 @@ impl<F: MatchFunc> Aligner<F> {
             let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
             if d_score > self.scoring.xclip_prefix {
                 for _ in 0..j {
-                    ops.push(AlignmentOperation::Del);
+                    operations.push(AlignmentOperation::Del);
                 }
                 ystart = 0;
             } else {
-                ops.push(AlignmentOperation::Yclip(j));
+                operations.push(AlignmentOperation::Yclip(j));
                 ystart = j;
             }
         }
 
-        ops.reverse();
+        operations.reverse();
         Alignment {
             score: self.S[n % 2][m],
-            ystart: ystart,
-            xstart: xstart,
-            yend: yend,
-            xend: xend,
+            ystart,
+            xstart,
+            yend,
+            xend,
             ylen: n,
             xlen: m,
-            operations: ops,
+            operations,
             mode: AlignmentMode::Custom,
         }
     }
@@ -967,7 +967,7 @@ impl Band {
         Band {
             rows: m + 1,
             cols: n + 1,
-            ranges: ranges,
+            ranges,
         }
     }
 

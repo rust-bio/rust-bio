@@ -639,9 +639,7 @@ impl PosTypes {
             }
         }
 
-        PosTypes {
-            pos_types: pos_types,
-        }
+        PosTypes { pos_types }
     }
 
     /// Check if p is S-position.

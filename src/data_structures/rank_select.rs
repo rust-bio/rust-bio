@@ -48,14 +48,14 @@ impl RankSelect {
     ///   (e.g. k = (log n)² / 32).
     pub fn new(bits: BitVec, k: usize) -> RankSelect {
         let n = bits.len();
-        let raw = bits.to_bytes();
+        let bits = bits.to_bytes();
         let s = k * 32;
 
         RankSelect {
-            n: n,
-            s: s,
-            superblocks: superblocks(n, s, &raw),
-            bits: raw,
+            n,
+            s,
+            superblocks: superblocks(n, s, &bits),
+            bits,
         }
     }
 

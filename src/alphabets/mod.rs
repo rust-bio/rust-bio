@@ -81,7 +81,7 @@ impl RankTransform {
             ranks.insert(c, r as u8);
         }
 
-        RankTransform { ranks: ranks }
+        RankTransform { ranks }
     }
 
     /// Get the rank of symbol `a`.
@@ -114,7 +114,7 @@ impl RankTransform {
         let mut qgrams = QGrams {
             text: text.into_iter(),
             ranks: self,
-            bits: bits,
+            bits,
             mask: (1 << (q * bits)) - 1,
             qgram: 0,
         };
@@ -130,7 +130,7 @@ impl RankTransform {
     pub fn alphabet(&self) -> Alphabet {
         let mut symbols = BitSet::with_capacity(self.ranks.len());
         symbols.extend(self.ranks.keys());
-        Alphabet { symbols: symbols }
+        Alphabet { symbols }
     }
 }
 

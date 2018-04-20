@@ -41,11 +41,7 @@ impl BNDM {
         // suffix automaton
         let (masks, accept) = masks(pattern.rev());
 
-        BNDM {
-            m: m,
-            masks: masks,
-            accept: accept,
-        }
+        BNDM { m, masks, accept }
     }
 
     /// Find all matches of pattern with a given text. Matches are returned as iterator over start positions.
@@ -53,7 +49,7 @@ impl BNDM {
         Matches {
             bndm: self,
             window: self.m,
-            text: text,
+            text,
         }
     }
 }

@@ -40,11 +40,7 @@ impl ShiftAnd {
         assert!(m <= 64, "Expecting a pattern of at most 64 symbols.");
         let (masks, accept) = masks(pattern);
 
-        ShiftAnd {
-            m: m,
-            masks: masks,
-            accept: accept,
-        }
+        ShiftAnd { m, masks, accept }
     }
 
     /// Find all matches of pattern in the given text. Matches are returned as an iterator

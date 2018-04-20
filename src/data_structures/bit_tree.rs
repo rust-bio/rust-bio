@@ -54,7 +54,7 @@ impl<T: Ord + Default + Copy, Op: PrefixOp<T>> FenwickTree<T, Op> {
         }
 
         FenwickTree {
-            tree: tree,
+            tree,
             phantom: PhantomData,
         }
     }

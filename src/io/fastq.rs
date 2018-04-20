@@ -122,7 +122,7 @@ impl Record {
         };
         Record {
             id: id.to_owned(),
-            desc: desc,
+            desc,
             seq: String::from_utf8(seq.to_vec()).unwrap(),
             qual: String::from_utf8(qual.to_vec()).unwrap(),
         }

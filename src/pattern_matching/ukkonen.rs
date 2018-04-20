@@ -54,7 +54,7 @@ where
         let get_vec = || Vec::with_capacity(m + 1);
         Ukkonen {
             D: [get_vec(), get_vec()],
-            cost: cost,
+            cost,
         }
     }
 
@@ -73,11 +73,11 @@ where
         self.D[1].extend(0..m + 1);
         Matches {
             ukkonen: self,
-            pattern: pattern,
+            pattern,
             text: text.into_iter().enumerate(),
             lastk: min(k, m),
-            m: m,
-            k: k,
+            m,
+            k,
         }
     }
 }
