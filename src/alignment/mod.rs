@@ -200,13 +200,13 @@ impl Alignment {
                 _ => {
                     x_i = self.xstart;
                     y_i = self.ystart;
-                    for k in 0..x_i {
-                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[k]])));
+                    for k in x.iter().take(self.xstart) {
+                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
                         inb_pretty.push(' ');
                         y_pretty.push(' ')
                     }
-                    for k in 0..y_i {
-                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[k]])));
+                    for k in x.iter().take(self.ystart) {
+                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
                         inb_pretty.push(' ');
                         x_pretty.push(' ')
                     }
@@ -251,8 +251,8 @@ impl Alignment {
                         y_pretty.push('-');
                     }
                     AlignmentOperation::Xclip(len) => {
-                        for k in 0..len {
-                            x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[k]])));
+                        for k in x.iter().take(len) {
+                            x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
                             x_i += 1;
 
                             inb_pretty.push(' ');
@@ -261,8 +261,8 @@ impl Alignment {
                         }
                     }
                     AlignmentOperation::Yclip(len) => {
-                        for k in 0..len {
-                            y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[k]])));
+                        for k in x.iter().take(len) {
+                            y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
                             y_i += 1;
 
                             inb_pretty.push(' ');
@@ -278,13 +278,13 @@ impl Alignment {
             match self.mode {
                 AlignmentMode::Custom => {}
                 _ => {
-                    for k in x_i..self.xlen {
-                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[k]])));
+                    for k in x.iter().take(self.xlen).skip(x_i) {
+                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
                         inb_pretty.push(' ');
                         y_pretty.push(' ')
                     }
-                    for k in y_i..self.ylen {
-                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[k]])));
+                    for k in y.iter().take(self.ylen).skip(y_i) {
+                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
                         inb_pretty.push(' ');
                         x_pretty.push(' ')
                     }
@@ -336,9 +336,9 @@ impl Alignment {
             ops.reverse();
 
             // Process the alignment.
-            for i in 0..ops.len() {
-                path.push((x_i, y_i, ops[i]));
-                match ops[i] {
+            for i in ops {
+                path.push((x_i, y_i, i));
+                match i {
                     AlignmentOperation::Match => {
                         x_i -= 1;
                         y_i -= 1;
