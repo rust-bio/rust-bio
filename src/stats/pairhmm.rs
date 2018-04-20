@@ -184,7 +184,7 @@ impl PairHMM {
             // next column
             mem::swap(&mut curr, &mut prev);
             // reset next column to zeros
-            for v in self.fm[curr].iter_mut() {
+            for v in &mut self.fm[curr] {
                 *v = LogProb::ln_zero();
             }
         }

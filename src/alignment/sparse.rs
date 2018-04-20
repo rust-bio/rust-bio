@@ -456,7 +456,7 @@ pub fn expand_kmer_matches(
 
     let mut next_match_along_diagonal: HashMapFx<i32, (u32, u32)> = HashMapFx::default();
 
-    for &this_match in left_expanded_matches.iter() {
+    for &this_match in &left_expanded_matches {
         let diag = (this_match.0 as i32) - (this_match.1 as i32);
         let max_inc = (min(
             seq1.len() as u32 - this_match.0,
