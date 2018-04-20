@@ -12,7 +12,7 @@ mod interval;
 pub use self::interval::{Interval, IntervalError};
 
 /// Strand information.
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy)]
 pub enum Strand {
     Forward,
     Reverse,
