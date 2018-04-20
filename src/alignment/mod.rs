@@ -7,10 +7,9 @@
 
 use utils::TextSlice;
 
-pub mod pairwise;
 pub mod distance;
+pub mod pairwise;
 pub mod sparse;
-
 
 /// Alignment operations supported are match, substitution, insertion, deletion
 /// and clipping. Clipping is a special boundary condition where you are allowed
@@ -78,7 +77,6 @@ pub struct Alignment {
     pub mode: AlignmentMode,
 }
 
-
 impl Alignment {
     /// Calculate the cigar string from the alignment struct. x is the target string
     ///
@@ -101,7 +99,6 @@ impl Alignment {
     /// assert_eq!(alignment.cigar(false), "3S3=1X2I2D1S");
     /// ```
     pub fn cigar(&self, hard_clip: bool) -> String {
-
         match self.mode {
             AlignmentMode::Global => panic!(" Cigar fn not supported for Global Alignment mode"),
             AlignmentMode::Local => panic!(" Cigar fn not supported for Local Alignment mode"),
@@ -372,7 +369,7 @@ impl Alignment {
     /// Filter out Xclip and Yclip operations from the list of operations. Useful
     /// when invoking the standard modes.
     pub fn filter_clip_operations(&mut self) {
-        use self::AlignmentOperation::{Match, Subst, Ins, Del};
+        use self::AlignmentOperation::{Del, Ins, Match, Subst};
         self.operations
             .retain(|&ref x| (*x == Match || *x == Subst || *x == Ins || *x == Del));
     }
@@ -388,11 +385,10 @@ impl Alignment {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::AlignmentOperation::*;
+    use super::*;
 
     #[test]
     fn test_cigar() {

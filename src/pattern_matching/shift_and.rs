@@ -29,11 +29,11 @@ pub struct ShiftAnd {
     accept: u64,
 }
 
-
 impl ShiftAnd {
     /// Create new ShiftAnd instance from a given pattern.
     pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self
-        where P::IntoIter: ExactSizeIterator
+    where
+        P::IntoIter: ExactSizeIterator,
     {
         let pattern = pattern.into_iter();
         let m = pattern.len();
@@ -45,7 +45,6 @@ impl ShiftAnd {
             masks: masks,
             accept: accept,
         }
-
     }
 
     /// Find all matches of pattern in the given text. Matches are returned as an iterator
@@ -58,7 +57,6 @@ impl ShiftAnd {
         }
     }
 }
-
 
 /// Calculate ShiftAnd masks. This function is called automatically when instantiating
 /// a new ShiftAnd for a given pattern.
@@ -74,14 +72,12 @@ pub fn masks<'a, I: IntoTextIterator<'a>>(pattern: I) -> ([u64; 256], u64) {
     (masks, bit / 2)
 }
 
-
 /// Iterator over start positions of matches.
 pub struct Matches<'a, I: TextIterator<'a>> {
     shiftand: &'a ShiftAnd,
     active: u64,
     text: Enumerate<I>,
 }
-
 
 impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
     type Item = usize;

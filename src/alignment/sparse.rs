@@ -29,11 +29,11 @@
 
 extern crate fxhash;
 
-use std::cmp::{max, min};
+use self::fxhash::FxHasher;
 use data_structures::bit_tree::MaxBitTree;
+use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
-use self::fxhash::FxHasher;
 
 pub type HashMapFx<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
 
@@ -64,13 +64,12 @@ pub struct SparseAlignmentResult {
 /// * `score` is the score of the path, which is the number of bases covered by the matched kmers.
 /// * `dp_vector` is the full DP vector, which can generally be ignored. (It may be useful for testing purposes).
 pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> SparseAlignmentResult {
-
     if matches.len() == 0 {
         return SparseAlignmentResult {
-                   path: Vec::new(),
-                   score: 0,
-                   dp_vector: Vec::new(),
-               };
+            path: Vec::new(),
+            score: 0,
+            dp_vector: Vec::new(),
+        };
     }
 
     let k = k as u32;
@@ -92,7 +91,6 @@ pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> SparseAlignmentResult {
     }
     events.sort();
 
-
     let mut max_col_dp: MaxBitTree<(u32, u32)> = MaxBitTree::new(n as usize);
     let mut dp: Vec<(u32, i32)> = Vec::with_capacity(events.len());
     let mut best_dp = (k, 0);
@@ -105,7 +103,6 @@ pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> SparseAlignmentResult {
         let p = (ev.2 % matches.len() as u32) as usize;
         let j = ev.1;
         let is_start = ev.2 >= (matches.len() as u32);
-
 
         if is_start {
             dp[p] = (k, -1);
@@ -146,7 +143,6 @@ pub fn lcskpp(matches: &Vec<(u32, u32)>, k: usize) -> SparseAlignmentResult {
     }
 }
 
-
 #[derive(PartialEq, Eq, Ord, PartialOrd, Default, Copy, Clone)]
 struct PrevPtr {
     plane: u32,
@@ -171,9 +167,6 @@ impl PrevPtr {
     }
 }
 
-
-
-
 /// Sparse DP routine generalizing LCSk++ method above to penalize alignment gaps.
 /// A gap is an unknown combination of mismatch, insertion and deletions, and incurs
 /// a penalty of gap_open + d * gap_extend, where d is the distance along the diagonal of the gap.
@@ -191,19 +184,19 @@ impl PrevPtr {
 /// * `path` is the SDP path, represented as vector of indices into the input matches vector.
 /// * `score` is the score of the path, which is the number of bases covered by the matched kmers.
 /// * `dp_vector` is the full DP vector, which can generally be ignored. (It may be useful for testing purposes).
-pub fn sdpkpp(matches: &Vec<(u32, u32)>,
-              k: usize,
-              match_score: u32,
-              gap_open: i32,
-              gap_extend: i32)
-              -> SparseAlignmentResult {
-
+pub fn sdpkpp(
+    matches: &Vec<(u32, u32)>,
+    k: usize,
+    match_score: u32,
+    gap_open: i32,
+    gap_extend: i32,
+) -> SparseAlignmentResult {
     if matches.len() == 0 {
         return SparseAlignmentResult {
-                   path: Vec::new(),
-                   score: 0,
-                   dp_vector: Vec::new(),
-               };
+            path: Vec::new(),
+            score: 0,
+            dp_vector: Vec::new(),
+        };
     }
 
     let k = k as u32;
@@ -230,7 +223,6 @@ pub fn sdpkpp(matches: &Vec<(u32, u32)>,
     }
     events.sort();
 
-
     let mut max_col_dp: MaxBitTree<PrevPtr> = MaxBitTree::new(n as usize);
     let mut dp: Vec<(u32, i32)> = Vec::with_capacity(events.len());
     let mut best_dp = (k, 0);
@@ -244,7 +236,6 @@ pub fn sdpkpp(matches: &Vec<(u32, u32)>,
         let j = ev.1;
         let is_start = ev.2 >= (matches.len() as u32);
 
-
         if is_start {
             // Default case -- chain starts at this node
             dp[p] = (k * match_score, -1);
@@ -252,7 +243,6 @@ pub fn sdpkpp(matches: &Vec<(u32, u32)>,
             // Find best previous chain, and extend.
             let best_prev = max_col_dp.get(j as usize);
             if best_prev.score > 0 {
-
                 let prev_x = best_prev.x;
                 let prev_y = best_prev.y;
                 let cur_x = ev.0;
@@ -303,12 +293,13 @@ pub fn sdpkpp(matches: &Vec<(u32, u32)>,
     }
 }
 
-pub fn sdpkpp_union_lcskpp_path(matches: &Vec<(u32, u32)>,
-                                k: usize,
-                                match_score: u32,
-                                gap_open: i32,
-                                gap_extend: i32)
-                                -> Vec<usize> {
+pub fn sdpkpp_union_lcskpp_path(
+    matches: &Vec<(u32, u32)>,
+    k: usize,
+    match_score: u32,
+    gap_open: i32,
+    gap_extend: i32,
+) -> Vec<usize> {
     if matches.is_empty() {
         return Vec::new();
     }
@@ -319,8 +310,9 @@ pub fn sdpkpp_union_lcskpp_path(matches: &Vec<(u32, u32)>,
         Err(_) => 0,
     };
     let post_lcskpp = match lcskpp_al
-              .path
-              .binary_search(&sdpkpp_al.path.last().unwrap()) {
+        .path
+        .binary_search(&sdpkpp_al.path.last().unwrap())
+    {
         Ok(ind) => ind + 1,
         Err(_) => lcskpp_al.path.len(),
     };
@@ -338,7 +330,6 @@ pub fn sdpkpp_union_lcskpp_path(matches: &Vec<(u32, u32)>,
 
     path_union
 }
-
 
 /// Find all matches of length k between two strings, using a q-gram
 /// index. For very long reference strings, it may be more efficient to use and
@@ -371,11 +362,11 @@ pub fn hash_kmers<'a>(seq: &'a [u8], k: usize) -> HashMapFx<&'a [u8], Vec<u32>> 
 
 // Find all matches of length k between two strings where the first string is
 // already hashed by using the function sparse::hash_kmers
-pub fn find_kmer_matches_seq1_hashed(seq1_set: &HashMapFx<&[u8], Vec<u32>>,
-                                     seq2: &[u8],
-                                     k: usize)
-                                     -> Vec<(u32, u32)> {
-
+pub fn find_kmer_matches_seq1_hashed(
+    seq1_set: &HashMapFx<&[u8], Vec<u32>>,
+    seq2: &[u8],
+    k: usize,
+) -> Vec<(u32, u32)> {
     let mut matches = Vec::new();
 
     for i in 0..(seq2.len() + 1).saturating_sub(k) {
@@ -396,11 +387,11 @@ pub fn find_kmer_matches_seq1_hashed(seq1_set: &HashMapFx<&[u8], Vec<u32>>,
 
 // Find all matches of length k between two strings where the second string is
 // already hashed by using the function sparse::hash_kmers
-pub fn find_kmer_matches_seq2_hashed(seq1: &[u8],
-                                     seq2_set: &HashMapFx<&[u8], Vec<u32>>,
-                                     k: usize)
-                                     -> Vec<(u32, u32)> {
-
+pub fn find_kmer_matches_seq2_hashed(
+    seq1: &[u8],
+    seq2_set: &HashMapFx<&[u8], Vec<u32>>,
+    k: usize,
+) -> Vec<(u32, u32)> {
     let mut matches = Vec::new();
 
     for i in 0..(seq1.len() + 1).saturating_sub(k) {
@@ -419,13 +410,13 @@ pub fn find_kmer_matches_seq2_hashed(seq1: &[u8],
     matches
 }
 
-pub fn expand_kmer_matches(seq1: &[u8],
-                           seq2: &[u8],
-                           k: usize,
-                           sorted_matches: &Vec<(u32, u32)>,
-                           allowed_mismatches: usize)
-                           -> Vec<(u32, u32)> {
-
+pub fn expand_kmer_matches(
+    seq1: &[u8],
+    seq2: &[u8],
+    k: usize,
+    sorted_matches: &Vec<(u32, u32)>,
+    allowed_mismatches: usize,
+) -> Vec<(u32, u32)> {
     // incoming matches must be sorted.
     for i in 1..sorted_matches.len() {
         assert!(sorted_matches[i - 1] < sorted_matches[i]);
@@ -435,11 +426,12 @@ pub fn expand_kmer_matches(seq1: &[u8],
     let mut left_expanded_matches: Vec<(u32, u32)> = sorted_matches.clone();
 
     for &this_match in sorted_matches.iter() {
-
         let diag = (this_match.0 as i32) - (this_match.1 as i32);
         let min_xy = min(this_match.0, this_match.1) as i32;
-        let default_last_match = (this_match.0 as i32 - min_xy - 1,
-                                  this_match.1 as i32 - min_xy - 1);
+        let default_last_match = (
+            this_match.0 as i32 - min_xy - 1,
+            this_match.1 as i32 - min_xy - 1,
+        );
         let last_match = last_match_along_diagonal
             .get(&diag)
             .cloned()
@@ -477,9 +469,11 @@ pub fn expand_kmer_matches(seq1: &[u8],
 
     for &this_match in left_expanded_matches.iter() {
         let diag = (this_match.0 as i32) - (this_match.1 as i32);
-        let max_inc = (min(seq1.len() as u32 - this_match.0,
-                           seq2.len() as u32 - this_match.1) as u32)
-                .saturating_sub(k as u32 - 1);
+        let max_inc = (min(
+            seq1.len() as u32 - this_match.0,
+            seq2.len() as u32 - this_match.1,
+        ) as u32)
+            .saturating_sub(k as u32 - 1);
         let next_match = next_match_along_diagonal
             .get(&diag)
             .cloned()
@@ -493,12 +487,12 @@ pub fn expand_kmer_matches(seq1: &[u8],
             if curr_pos >= next_match {
                 break;
             }
-            n_mismatches += if seq1[curr_pos.0 as usize + k - 1] ==
-                               seq2[curr_pos.1 as usize + k - 1] {
-                0
-            } else {
-                1
-            };
+            n_mismatches +=
+                if seq1[curr_pos.0 as usize + k - 1] == seq2[curr_pos.1 as usize + k - 1] {
+                    0
+                } else {
+                    1
+                };
             if n_mismatches > allowed_mismatches {
                 break;
             }
@@ -537,8 +531,10 @@ mod sparse_alignment {
         let matches = super::find_kmer_matches(s1, s2, k);
         let res = super::lcskpp(&matches, k);
         let match_path: Vec<(u32, u32)> = res.path.iter().map(|i| matches[*i]).collect();
-        assert_eq!(match_path,
-                   vec![(0, 2), (1, 3), (2, 4), (3, 5), (4, 6), (5, 7), (6, 8)]);
+        assert_eq!(
+            match_path,
+            vec![(0, 2), (1, 3), (2, 4), (3, 5), (4, 6), (5, 7), (6, 8)]
+        );
         assert_eq!(res.score, 14);
     }
 
@@ -557,7 +553,6 @@ mod sparse_alignment {
         let s2 = b"TTACGTACGATAGGTATT";
         strict_compare_lcskpp_sdpkpp(s1, s2);
     }
-
 
     #[test]
     pub fn test_lcskpp1() {
@@ -584,7 +579,6 @@ mod sparse_alignment {
         let s2 = b"TTACGTACGATAGATCCGTACGTAACATTTTTGTACAGTATATCAGTTATATGCGA";
         strict_compare_lcskpp_sdpkpp(s1, s2);
     }
-
 
     #[test]
     pub fn test_lcskpp2() {
@@ -613,7 +607,6 @@ mod sparse_alignment {
         let s1 = b"ACGTACGATAGATCCGACGTACGTACGTTCAGTTATATGACGTACGTACGTAACATTTTTGTA";
         strict_compare_lcskpp_sdpkpp(s1, s1);
     }
-
 
     // Test case from local SV caller alignments.
     // The query sequence ends in 1-2 copies of tandem repeat element
@@ -646,11 +639,7 @@ mod sparse_alignment {
         for i in 0..res.path.len() {
             assert_eq!(matches[res.path[i] as usize], (i as u32, i as u32));
         }
-        */
-
-
-    }
-
+        */    }
 
     #[test]
     fn test_sdpkpp_tandem_repeat() {
@@ -665,8 +654,6 @@ mod sparse_alignment {
         }
         println!("tb: {:?}", tb);
         */
-
-
 
         assert_eq!(res.score, QUERY_REPEAT.len() as u32);
 
@@ -731,11 +718,13 @@ mod sparse_alignment {
         assert_eq!(matches, vec![(4, 4)]);
 
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
-        assert_eq!(expanded_matches,
-                   (0..5)
-                       .into_iter()
-                       .map(|x| (x, x))
-                       .collect::<Vec<(u32, u32)>>());
+        assert_eq!(
+            expanded_matches,
+            (0..5)
+                .into_iter()
+                .map(|x| (x, x))
+                .collect::<Vec<(u32, u32)>>()
+        );
 
         let x = b"TTTTTTGGGCAAAAAA";
         let y = b"TTTTTTGGGGAAAAAA";
@@ -743,11 +732,13 @@ mod sparse_alignment {
         assert_eq!(matches, vec![(0, 0), (1, 1), (2, 2), (3, 3), (10, 10)]);
 
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
-        assert_eq!(expanded_matches,
-                   (0..11)
-                       .into_iter()
-                       .map(|x| (x, x))
-                       .collect::<Vec<(u32, u32)>>());
+        assert_eq!(
+            expanded_matches,
+            (0..11)
+                .into_iter()
+                .map(|x| (x, x))
+                .collect::<Vec<(u32, u32)>>()
+        );
 
         let x = b"TTTTTTCCGCAAAAAA";
         let y = b"TTTTTTGGGGAAAAAA";
@@ -755,8 +746,10 @@ mod sparse_alignment {
         assert_eq!(matches, vec![(0, 0), (10, 10)]);
 
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
-        assert_eq!(expanded_matches,
-                   vec![(0, 0), (1, 1), (8, 8), (9, 9), (10, 10)]);
+        assert_eq!(
+            expanded_matches,
+            vec![(0, 0), (1, 1), (8, 8), (9, 9), (10, 10)]
+        );
 
         let x = b"TTTTTTCGGCAAAAAA";
         let y = b"TTTTTTGGGGAAAAAA";
@@ -764,19 +757,31 @@ mod sparse_alignment {
         assert_eq!(matches, vec![(0, 0), (10, 10)]);
 
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
-        assert_eq!(expanded_matches,
-                   vec![(0, 0), (1, 1), (2, 2), (3, 3), (7, 7), (8, 8), (9, 9), (10, 10)]);
+        assert_eq!(
+            expanded_matches,
+            vec![
+                (0, 0),
+                (1, 1),
+                (2, 2),
+                (3, 3),
+                (7, 7),
+                (8, 8),
+                (9, 9),
+                (10, 10),
+            ]
+        );
 
         let x = b"AAAAAACGGG";
         let y = b"AAAAAAGGGG";
         let matches = super::find_kmer_matches(x, y, 6);
         assert_eq!(matches, vec![(0, 0)]);
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
-        assert_eq!(expanded_matches,
-                   (0..5)
-                       .into_iter()
-                       .map(|x| (x, x))
-                       .collect::<Vec<(u32, u32)>>());
-
+        assert_eq!(
+            expanded_matches,
+            (0..5)
+                .into_iter()
+                .map(|x| (x, x))
+                .collect::<Vec<(u32, u32)>>()
+        );
     }
 }

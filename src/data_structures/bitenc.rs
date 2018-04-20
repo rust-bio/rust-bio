@@ -18,7 +18,6 @@
 //! assert_eq!(values, [0, 2, 1]);
 //! ```
 
-
 /// A sequence of bitencoded values.
 #[derive(Serialize, Deserialize)]
 pub struct BitEnc {
@@ -29,11 +28,9 @@ pub struct BitEnc {
     bits: usize,
 }
 
-
 fn mask(width: usize) -> u32 {
     (1 << width) - 1
 }
-
 
 impl BitEnc {
     /// Create a new instance with a given encoding width (e.g. width=2 for using two bits per value).
@@ -162,13 +159,11 @@ impl BitEnc {
     }
 }
 
-
 /// Iterator over values of a bitencoded sequence (values will be unpacked into bytes).
 pub struct BitEncIter<'a> {
     bitenc: &'a BitEnc,
     i: usize,
 }
-
 
 impl<'a> Iterator for BitEncIter<'a> {
     type Item = u8;
@@ -179,7 +174,6 @@ impl<'a> Iterator for BitEncIter<'a> {
         value
     }
 }
-
 
 #[cfg(test)]
 mod tests {

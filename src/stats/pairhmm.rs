@@ -11,7 +11,6 @@ use std::mem;
 
 use stats::LogProb;
 
-
 /// Trait for parametrization of `PairHMM` gap behavior.
 pub trait GapParameters {
     /// Probability to open gap in x.
@@ -53,7 +52,6 @@ pub trait StartEndGapParameters {
     fn free_end_gap_x(&self) -> bool;
 }
 
-
 /// Trait for parametrization of `PairHMM` emission behavior.
 pub trait EmissionParameters {
     /// Emission probability for (x[i], y[j]).
@@ -70,7 +68,6 @@ pub trait EmissionParameters {
     fn len_y(&self) -> usize;
 }
 
-
 /// A pair Hidden Markov Model for comparing sequences x and y as described by
 /// Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence Analysis.
 /// Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
@@ -78,9 +75,8 @@ pub struct PairHMM {
     fm: [Vec<LogProb>; 2],
     fx: [Vec<LogProb>; 2],
     fy: [Vec<LogProb>; 2],
-    prob_cols: Vec<LogProb>
+    prob_cols: Vec<LogProb>,
 }
-
 
 impl PairHMM {
     pub fn new() -> Self {
@@ -88,18 +84,15 @@ impl PairHMM {
             fm: [Vec::new(), Vec::new()],
             fx: [Vec::new(), Vec::new()],
             fy: [Vec::new(), Vec::new()],
-            prob_cols: Vec::new()
+            prob_cols: Vec::new(),
         }
     }
 
     /// Calculate the probability of sequence x being related to y via any alignment.
-    pub fn prob_related<G, E>(
-        &mut self,
-        gap_params: &G,
-        emission_params: &E
-    ) -> LogProb where
+    pub fn prob_related<G, E>(&mut self, gap_params: &G, emission_params: &E) -> LogProb
+    where
         G: GapParameters + StartEndGapParameters,
-        E: EmissionParameters
+        E: EmissionParameters,
     {
         for k in 0..2 {
             self.fm[k].clear();
@@ -118,7 +111,10 @@ impl PairHMM {
         }
 
         // cache probs
-        let prob_no_gap = gap_params.prob_gap_x().ln_add_exp(gap_params.prob_gap_y()).ln_one_minus_exp();
+        let prob_no_gap = gap_params
+            .prob_gap_x()
+            .ln_add_exp(gap_params.prob_gap_y())
+            .ln_one_minus_exp();
         let prob_no_gap_x_extend = gap_params.prob_gap_x_extend().ln_one_minus_exp();
         let prob_no_gap_y_extend = gap_params.prob_gap_y_extend().ln_one_minus_exp();
         let prob_gap_x = gap_params.prob_gap_x();
@@ -144,33 +140,35 @@ impl PairHMM {
                 let j_ = j + 1;
 
                 // match or mismatch
-                self.fm[curr][j_] = emission_params.prob_emit_xy(i, j) + LogProb::ln_sum_exp(&[
-                    // coming from state M
-                    prob_no_gap + self.fm[prev][j_ - 1],
-                    // coming from state X
-                    prob_no_gap_x_extend + self.fx[prev][j_ - 1],
-                    // coming from state Y
-                    prob_no_gap_y_extend + self.fy[prev][j_ - 1]
-                ]);
+                self.fm[curr][j_] = emission_params.prob_emit_xy(i, j)
+                    + LogProb::ln_sum_exp(&[
+                        // coming from state M
+                        prob_no_gap + self.fm[prev][j_ - 1],
+                        // coming from state X
+                        prob_no_gap_x_extend + self.fx[prev][j_ - 1],
+                        // coming from state Y
+                        prob_no_gap_y_extend + self.fy[prev][j_ - 1],
+                    ]);
 
                 // gap in y
-                self.fx[curr][j_] = prob_emit_x + (
+                self.fx[curr][j_] = prob_emit_x
+                    + (
                     // open gap
                     prob_gap_y + self.fm[prev][j_]
                 ).ln_add_exp(
-                    // extend gap
-                    prob_gap_y_extend + self.fx[prev][j_]
-                );
+                        // extend gap
+                        prob_gap_y_extend + self.fx[prev][j_],
+                    );
 
                 // gap in x
-                self.fy[curr][j_] = emission_params.prob_emit_y(j) + (
+                self.fy[curr][j_] = emission_params.prob_emit_y(j)
+                    + (
                     // open gap
                     prob_gap_x + self.fm[curr][j_ - 1]
                 ).ln_add_exp(
-                    // extend gap
-                    prob_gap_x_extend + self.fy[curr][j_ - 1]
-                );
-
+                        // extend gap
+                        prob_gap_x_extend + self.fy[curr][j_ - 1],
+                    );
             }
 
             if gap_params.free_end_gap_x() {
@@ -197,7 +195,7 @@ impl PairHMM {
             LogProb::ln_sum_exp(&[
                 self.fm[prev].last().unwrap().clone(),
                 self.fx[prev].last().unwrap().clone(),
-                self.fy[prev].last().unwrap().clone()
+                self.fy[prev].last().unwrap().clone(),
             ])
         };
         // take the minimum with 1.0, because sum of paths can exceed probability 1.0
@@ -211,11 +209,10 @@ impl PairHMM {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stats::{Prob, LogProb};
+    use stats::{LogProb, Prob};
 
     // Single base insertion and deletion rates for R1 according to Schirmer et al.
     // BMC Bioinformatics 2016, 10.1186/s12859-016-0976-y
@@ -229,9 +226,8 @@ mod tests {
 
     struct TestEmissionParams {
         x: &'static [u8],
-        y: &'static [u8]
+        y: &'static [u8],
     }
-
 
     impl EmissionParameters for TestEmissionParams {
         fn prob_emit_xy(&self, i: usize, j: usize) -> LogProb {
@@ -259,9 +255,7 @@ mod tests {
         }
     }
 
-
     struct TestGapParams;
-
 
     impl GapParameters for TestGapParams {
         fn prob_gap_x(&self) -> LogProb {
@@ -291,20 +285,19 @@ mod tests {
         }
     }
 
-
     #[test]
     fn test_same() {
         let x = b"AGCTCGATCGATCGATC";
         let y = b"AGCTCGATCGATCGATC";
 
-        let emission_params = TestEmissionParams { x: x, y: y};
+        let emission_params = TestEmissionParams { x: x, y: y };
         let gap_params = TestGapParams;
 
         let mut pair_hmm = PairHMM::new();
         let p = pair_hmm.prob_related(&gap_params, &emission_params);
 
         assert!(*p <= 0.0);
-        assert_relative_eq!(*p, 0.0, epsilon=0.1);
+        assert_relative_eq!(*p, 0.0, epsilon = 0.1);
     }
 
     #[test]
@@ -312,14 +305,14 @@ mod tests {
         let x = b"AGCTCGATCGATCGATC";
         let y = b"AGCTCGATCTGATCGATCT";
 
-        let emission_params = TestEmissionParams { x: x, y: y};
+        let emission_params = TestEmissionParams { x: x, y: y };
         let gap_params = TestGapParams;
 
         let mut pair_hmm = PairHMM::new();
         let p = pair_hmm.prob_related(&gap_params, &emission_params);
 
         assert!(*p <= 0.0);
-        assert_relative_eq!(p.exp(), PROB_ILLUMINA_INS.powi(2), epsilon=1e-11);
+        assert_relative_eq!(p.exp(), PROB_ILLUMINA_INS.powi(2), epsilon = 1e-11);
     }
 
     #[test]
@@ -327,14 +320,14 @@ mod tests {
         let x = b"AGCTCGATCTGATCGATCT";
         let y = b"AGCTCGATCGATCGATC";
 
-        let emission_params = TestEmissionParams { x: x, y: y};
+        let emission_params = TestEmissionParams { x: x, y: y };
         let gap_params = TestGapParams;
 
         let mut pair_hmm = PairHMM::new();
         let p = pair_hmm.prob_related(&gap_params, &emission_params);
 
         assert!(*p <= 0.0);
-        assert_relative_eq!(p.exp(), PROB_ILLUMINA_DEL.powi(2), epsilon=1e-10);
+        assert_relative_eq!(p.exp(), PROB_ILLUMINA_DEL.powi(2), epsilon = 1e-10);
     }
 
     #[test]
@@ -342,13 +335,17 @@ mod tests {
         let x = b"AGCTCGAGCGATCGATC";
         let y = b"TGCTCGATCGATCGATC";
 
-        let emission_params = TestEmissionParams { x: x, y: y};
+        let emission_params = TestEmissionParams { x: x, y: y };
         let gap_params = TestGapParams;
 
         let mut pair_hmm = PairHMM::new();
         let p = pair_hmm.prob_related(&gap_params, &emission_params);
 
         assert!(*p <= 0.0);
-        assert_relative_eq!(p.exp(), (PROB_ILLUMINA_SUBST / Prob(3.0)).powi(2), epsilon=1e-6);
+        assert_relative_eq!(
+            p.exp(),
+            (PROB_ILLUMINA_SUBST / Prob(3.0)).powi(2),
+            epsilon = 1e-6
+        );
     }
 }

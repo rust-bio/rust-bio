@@ -38,9 +38,7 @@
 //! assert_eq!(occ, [8, 25]);
 //! ```
 
-
 use utils::TextSlice;
-
 
 /// Algorithm of Horspool.
 pub struct Horspool<'a> {
@@ -48,7 +46,6 @@ pub struct Horspool<'a> {
     m: usize,
     pattern: TextSlice<'a>,
 }
-
 
 impl<'a> Horspool<'a> {
     /// Create a new instance for a given pattern.
@@ -80,7 +77,6 @@ impl<'a> Horspool<'a> {
     }
 }
 
-
 /// Iterator over start positions of matches.
 pub struct Matches<'a> {
     horspool: &'a Horspool<'a>,
@@ -89,7 +85,6 @@ pub struct Matches<'a> {
     last: usize,
     pattern_last: u8,
 }
-
 
 impl<'a> Iterator for Matches<'a> {
     type Item = usize;
@@ -118,7 +113,6 @@ impl<'a> Iterator for Matches<'a> {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

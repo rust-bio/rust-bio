@@ -3,7 +3,6 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! FASTA format reading and writing.
 //!
 //! # Example
@@ -14,24 +13,21 @@
 //! let reader = fasta::Reader::new(io::stdin());
 //! ```
 
-
+use std::ascii::AsciiExt;
+use std::cmp::min;
+use std::collections;
+use std::convert::AsRef;
+use std::fs;
 use std::io;
 use std::io::prelude::*;
-use std::ascii::AsciiExt;
-use std::collections;
-use std::fs;
 use std::path::Path;
-use std::convert::AsRef;
-use std::cmp::min;
 
 use csv;
 
-use utils::{TextSlice, Text};
-
+use utils::{Text, TextSlice};
 
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
-
 
 /// A FASTA reader.
 pub struct Reader<R: io::Read> {
@@ -39,14 +35,12 @@ pub struct Reader<R: io::Read> {
     line: String,
 }
 
-
 impl Reader<fs::File> {
     /// Read FASTA from given file path.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::open(path).map(Reader::new)
     }
 }
-
 
 impl<R: io::Read> Reader<R> {
     /// Create a new Fasta reader given an instance of `io::Read`.
@@ -68,10 +62,22 @@ impl<R: io::Read> Reader<R> {
         }
 
         if !self.line.starts_with('>') {
-            return Err(io::Error::new(io::ErrorKind::Other, "Expected > at record start."));
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Expected > at record start.",
+            ));
         }
-        record.id = self.line[1..].trim_right().splitn(2, ' ').nth(0).map(|s| s.to_owned()).unwrap();
-        record.desc = self.line[1..].trim_right().splitn(2, ' ').nth(1).map(|s| s.to_owned());
+        record.id = self.line[1..]
+            .trim_right()
+            .splitn(2, ' ')
+            .nth(0)
+            .map(|s| s.to_owned())
+            .unwrap();
+        record.desc = self.line[1..]
+            .trim_right()
+            .splitn(2, ' ')
+            .nth(1)
+            .map(|s| s.to_owned());
         loop {
             self.line.clear();
             try!(self.reader.read_line(&mut self.line));
@@ -93,13 +99,11 @@ impl<R: io::Read> Reader<R> {
     }
 }
 
-
 /// A FASTA index as created by SAMtools (.fai).
 pub struct Index {
     inner: Vec<IndexRecord>,
     name_to_rid: collections::HashMap<String, usize>,
 }
-
 
 impl Index {
     /// Open a FASTA index from a given `io::Read` instance.
@@ -125,8 +129,8 @@ impl Index {
     /// Open a FASTA index from a given file path.
     pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
         fs::File::open(path)
-           .map_err(csv::Error::from)
-           .and_then(Self::new)
+            .map_err(csv::Error::from)
+            .and_then(Self::new)
     }
 
     /// Open a FASTA index given the corresponding FASTA file path.
@@ -143,16 +147,13 @@ impl Index {
         // sort kv pairs by rid to preserve order
         self.inner
             .iter()
-            .map(|record| {
-                Sequence {
-                    name: record.name.clone(),
-                    len: record.len,
-                }
+            .map(|record| Sequence {
+                name: record.name.clone(),
+                len: record.len,
             })
             .collect()
     }
 }
-
 
 /// A FASTA reader with an index as created by SAMtools (.fai).
 pub struct IndexedReader<R: io::Read + io::Seek> {
@@ -163,18 +164,16 @@ pub struct IndexedReader<R: io::Read + io::Seek> {
     stop: Option<u64>,
 }
 
-
 impl IndexedReader<fs::File> {
     /// Read from a given file path. This assumes the index ref.fasta.fai to be
     /// present for FASTA ref.fasta.
     pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
         let index = Index::with_fasta_file(path)?;
         fs::File::open(path)
-           .map(|f| Self::with_index(f, index))
-           .map_err(csv::Error::from)
+            .map(|f| Self::with_index(f, index))
+            .map_err(csv::Error::from)
     }
 }
-
 
 impl<R: io::Read + io::Seek> IndexedReader<R> {
     /// Read from a FASTA and its index, both given as `io::Read`. FASTA has to
@@ -187,7 +186,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
             fetched_idx: None,
             start: None,
             stop: None,
-           })
+        })
     }
 
     /// Read from a FASTA and its index, the first given as `io::Read`, the
@@ -245,7 +244,10 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         let idx = self.fetched_idx.clone();
         match (idx, self.start, self.stop) {
             (Some(idx), Some(start), Some(stop)) => self.read_into_buffer(idx, start, stop, seq),
-            _ => Err(io::Error::new(io::ErrorKind::Other, "No sequence fetched for reading.")),
+            _ => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "No sequence fetched for reading.",
+            )),
         }
     }
 
@@ -254,21 +256,30 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         let idx = self.fetched_idx.clone();
         match (idx, self.start, self.stop) {
             (Some(idx), Some(start), Some(stop)) => self.read_into_iter(idx, start, stop),
-            _ => Err(io::Error::new(io::ErrorKind::Other, "No sequence fetched for reading.")),
+            _ => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "No sequence fetched for reading.",
+            )),
         }
     }
 
-    fn read_into_buffer(&mut self,
-                        idx: IndexRecord,
-                        start: u64,
-                        stop: u64,
-                        seq: &mut Text)
-                        -> io::Result<()> {
+    fn read_into_buffer(
+        &mut self,
+        idx: IndexRecord,
+        start: u64,
+        stop: u64,
+        seq: &mut Text,
+    ) -> io::Result<()> {
         if stop > idx.len {
-            return Err(io::Error::new(io::ErrorKind::Other,
-                                      "FASTA read interval was out of bounds"));
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "FASTA read interval was out of bounds",
+            ));
         } else if start > stop {
-            return Err(io::Error::new(io::ErrorKind::Other, "Invalid query interval"));
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Invalid query interval",
+            ));
         }
 
         let mut bases_left = stop - start;
@@ -282,38 +293,49 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         Ok(())
     }
 
-    fn read_into_iter(&mut self,
-                      idx: IndexRecord,
-                      start: u64,
-                      stop: u64)
-                      -> io::Result<IndexedReaderIterator<R>> {
+    fn read_into_iter(
+        &mut self,
+        idx: IndexRecord,
+        start: u64,
+        stop: u64,
+    ) -> io::Result<IndexedReaderIterator<R>> {
         if stop > idx.len {
-            return Err(io::Error::new(io::ErrorKind::Other,
-                                      "FASTA read interval was out of bounds"));
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "FASTA read interval was out of bounds",
+            ));
         } else if start > stop {
-            return Err(io::Error::new(io::ErrorKind::Other, "Invalid query interval"));
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Invalid query interval",
+            ));
         }
 
         let bases_left = stop - start;
         let line_offset = self.seek_to(&idx, start)?;
-        let capacity = min(MAX_FASTA_BUFFER_SIZE,
-                           min(bases_left, idx.line_bases) as usize);
+        let capacity = min(
+            MAX_FASTA_BUFFER_SIZE,
+            min(bases_left, idx.line_bases) as usize,
+        );
 
         Ok(IndexedReaderIterator {
-               reader: self,
-               record: idx,
-               bases_left: bases_left,
-               line_offset: line_offset,
-               buf: Vec::with_capacity(capacity),
-               buf_idx: 0,
-           })
+            reader: self,
+            record: idx,
+            bases_left: bases_left,
+            line_offset: line_offset,
+            buf: Vec::with_capacity(capacity),
+            buf_idx: 0,
+        })
     }
 
     /// Return the IndexRecord for the given sequence name or io::Result::Err
     fn idx(&self, seqname: &str) -> io::Result<IndexRecord> {
         match self.index.name_to_rid.get(seqname) {
             Some(rid) => self.idx_by_rid(*rid),
-            None => Err(io::Error::new(io::ErrorKind::Other, "Unknown sequence name.")),
+            None => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Unknown sequence name.",
+            )),
         }
     }
 
@@ -321,7 +343,10 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     fn idx_by_rid(&self, rid: usize) -> io::Result<IndexRecord> {
         match self.index.inner.get(rid) {
             Some(record) => Ok(record.clone()),
-            None => Err(io::Error::new(io::ErrorKind::Other, "Invalid record index in fasta file.")),
+            None => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Invalid record index in fasta file.",
+            )),
         }
     }
 
@@ -343,17 +368,20 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     /// whitespace per line, the current `line_offset`, and the amount of bytes
     /// returned from `BufReader::fill_buf`, this function may return Ok(0)
     /// multiple times in a row.
-    fn read_line(&mut self,
-                 idx: &IndexRecord,
-                 line_offset: &mut u64,
-                 bases_left: u64,
-                 buf: &mut Vec<u8>)
-                 -> io::Result<u64> {
+    fn read_line(
+        &mut self,
+        idx: &IndexRecord,
+        line_offset: &mut u64,
+        bases_left: u64,
+        buf: &mut Vec<u8>,
+    ) -> io::Result<u64> {
         let (bytes_to_read, bytes_to_keep) = {
             let src = self.reader.fill_buf()?;
             if src.is_empty() {
-                return Err(io::Error::new(io::ErrorKind::UnexpectedEof,
-                                          "FASTA file is truncated."));
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "FASTA file is truncated.",
+                ));
             }
 
             let bases_on_line = idx.line_bases - min(idx.line_bases, *line_offset);
@@ -383,7 +411,6 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 }
 
-
 /// Record of a FASTA index.
 #[derive(Deserialize, Debug, Clone)]
 struct IndexRecord {
@@ -394,14 +421,12 @@ struct IndexRecord {
     line_bytes: u64,
 }
 
-
 /// A sequence record returned by the FASTA index.
 #[derive(Debug, PartialEq)]
 pub struct Sequence {
     pub name: String,
     pub len: u64,
 }
-
 
 pub struct IndexedReaderIterator<'a, R: io::Read + io::Seek + 'a> {
     reader: &'a mut IndexedReader<R>,
@@ -412,7 +437,6 @@ pub struct IndexedReaderIterator<'a, R: io::Read + io::Seek + 'a> {
     buf_idx: usize,
 }
 
-
 impl<'a, R: io::Read + io::Seek + 'a> IndexedReaderIterator<'a, R> {
     fn fill_buffer(&mut self) -> io::Result<()> {
         assert!(self.bases_left > 0);
@@ -422,18 +446,18 @@ impl<'a, R: io::Read + io::Seek + 'a> IndexedReaderIterator<'a, R> {
 
         // May loop one or more times; see IndexedReader::read_line.
         while self.buf.is_empty() {
-            self.bases_left -= self.reader
-                .read_line(&self.record,
-                           &mut self.line_offset,
-                           bases_to_read,
-                           &mut self.buf)?;
+            self.bases_left -= self.reader.read_line(
+                &self.record,
+                &mut self.line_offset,
+                bases_to_read,
+                &mut self.buf,
+            )?;
         }
 
         self.buf_idx = 0;
         Ok(())
     }
 }
-
 
 impl<'a, R: io::Read + io::Seek + 'a> Iterator for IndexedReaderIterator<'a, R> {
     type Item = io::Result<u8>;
@@ -465,12 +489,10 @@ impl<'a, R: io::Read + io::Seek + 'a> Iterator for IndexedReaderIterator<'a, R> 
     }
 }
 
-
 /// A Fasta writer.
 pub struct Writer<W: io::Write> {
     writer: io::BufWriter<W>,
 }
-
 
 impl Writer<fs::File> {
     /// Write to the given file path.
@@ -479,11 +501,12 @@ impl Writer<fs::File> {
     }
 }
 
-
 impl<W: io::Write> Writer<W> {
     /// Create a new Fasta writer.
     pub fn new(writer: W) -> Self {
-        Writer { writer: io::BufWriter::new(writer) }
+        Writer {
+            writer: io::BufWriter::new(writer),
+        }
     }
 
     /// Directly write a Fasta record.
@@ -512,7 +535,6 @@ impl<W: io::Write> Writer<W> {
     }
 }
 
-
 /// A FASTA record.
 #[derive(Default)]
 pub struct Record {
@@ -520,7 +542,6 @@ pub struct Record {
     desc: Option<String>,
     seq: String,
 }
-
 
 impl Record {
     /// Create a new instance.
@@ -571,7 +592,7 @@ impl Record {
     pub fn desc(&self) -> Option<&str> {
         match self.desc.as_ref() {
             Some(desc) => Some(&desc),
-            None => None
+            None => None,
         }
     }
 
@@ -588,13 +609,11 @@ impl Record {
     }
 }
 
-
 /// An iterator over the records of a Fasta file.
 pub struct Records<R: io::Read> {
     reader: Reader<R>,
     error_has_occured: bool,
 }
-
 
 impl<R: io::Read> Iterator for Records<R> {
     type Item = io::Result<Record>;
@@ -615,7 +634,6 @@ impl<R: io::Read> Iterator for Records<R> {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -661,7 +679,6 @@ GTAGGCTGAAAA
 CCCC";
     const FAI_FILE_NO_TRAILING_LF: &'static [u8] = b"id\t16\t9\t12\t13";
 
-
     const WRITE_FASTA_FILE: &'static [u8] = b">id desc
 ACCGTAGGCTGA
 >id2
@@ -702,8 +719,10 @@ ATTGTTGTTTTA
         let reader = Reader::new(FASTA_FILE);
         let ids = ["id", "id2"];
         let descs = [Some("desc"), None];
-        let seqs: [&[u8]; 2] = [b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC",
-                                b"ATTGTTGTTTTAATTGTTGTTTTAATTGTTGTTTTAGGGG"];
+        let seqs: [&[u8]; 2] = [
+            b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC",
+            b"ATTGTTGTTTTAATTGTTGTTTTAATTGTTGTTTTAGGGG",
+        ];
 
         for (i, r) in reader.records().enumerate() {
             let record = r.expect("Error reading record");
@@ -718,8 +737,10 @@ ATTGTTGTTTTA
     fn test_reader_wrong_header() {
         let mut reader = Reader::new(&b"!test\nACGTA\n"[..]);
         let mut record = Record::new();
-        assert!(reader.read(&mut record).is_err(),
-                "read() should return Err if FASTA header is malformed");
+        assert!(
+            reader.read(&mut record).is_err(),
+            "read() should return Err if FASTA header is malformed"
+        );
     }
 
     #[test]
@@ -727,8 +748,10 @@ ATTGTTGTTTTA
         let mut reader = Reader::new(&b">\nACGTA\n"[..]);
         let mut record = Record::new();
         reader.read(&mut record).unwrap();
-        assert!(record.check().is_err(),
-                "check() should return Err if FASTA header is empty");
+        assert!(
+            record.check().is_err(),
+            "check() should return Err if FASTA header is empty"
+        );
     }
 
     #[test]
@@ -736,33 +759,41 @@ ATTGTTGTTTTA
         let mut reader = Reader::new(&b">id\nACGTA\xE2\x98\xB9AT\n"[..]);
         let mut record = Record::new();
         reader.read(&mut record).unwrap();
-        assert!(record.check().is_err(),
-                "check() should return Err if FASTA sequence is not ASCII");
+        assert!(
+            record.check().is_err(),
+            "check() should return Err if FASTA sequence is not ASCII"
+        );
     }
 
     #[test]
     fn test_reader_read_fails() {
         let mut reader = Reader::new(ReaderMock {
-                                         seek_fails: false,
-                                         read_fails: true,
-                                     });
+            seek_fails: false,
+            read_fails: true,
+        });
         let mut record = Record::new();
-        assert!(reader.read(&mut record).is_err(),
-                "read() should return Err if Read::read fails");
+        assert!(
+            reader.read(&mut record).is_err(),
+            "read() should return Err if Read::read fails"
+        );
     }
 
     #[test]
     fn test_reader_read_fails_iter() {
         let reader = Reader::new(ReaderMock {
-                                     seek_fails: false,
-                                     read_fails: true,
-                                 });
+            seek_fails: false,
+            read_fails: true,
+        });
         let mut records = reader.records();
 
-        assert!(records.next().unwrap().is_err(),
-                "next() should return Err if Read::read fails");
-        assert!(records.next().is_none(),
-                "next() should return None after error has occurred");
+        assert!(
+            records.next().unwrap().is_err(),
+            "next() should return Err if Read::read fails"
+        );
+        assert!(
+            records.next().is_none(),
+            "next() should return None after error has occurred"
+        );
     }
 
     #[test]
@@ -779,16 +810,20 @@ ATTGTTGTTTTA
 
         let sequences = reader.index.sequences();
         assert_eq!(sequences.len(), 2);
-        assert_eq!(sequences[0],
-                   Sequence {
-                       name: "id".into(),
-                       len: 52,
-                   });
-        assert_eq!(sequences[1],
-                   Sequence {
-                       name: "id2".into(),
-                       len: 40,
-                   });
+        assert_eq!(
+            sequences[0],
+            Sequence {
+                name: "id".into(),
+                len: 52,
+            }
+        );
+        assert_eq!(
+            sequences[1],
+            Sequence {
+                name: "id2".into(),
+                len: 40,
+            }
+        );
     }
 
     #[test]
@@ -816,19 +851,26 @@ ATTGTTGTTTTA
     }
 
     fn _test_indexed_reader<'a, F>(fasta: &'a [u8], fai: &'a [u8], read: F)
-        where F: Fn(&mut IndexedReader<io::Cursor<&'a [u8]>>, &str, u64, u64) -> io::Result<Vec<u8>>
+    where
+        F: Fn(&mut IndexedReader<io::Cursor<&'a [u8]>>, &str, u64, u64) -> io::Result<Vec<u8>>,
     {
         let mut reader = IndexedReader::new(io::Cursor::new(fasta), fai).unwrap();
 
         // Test reading various substrings of the sequence
         assert_eq!(read(&mut reader, "id", 1, 5).unwrap(), b"CCGT");
-        assert_eq!(read(&mut reader, "id", 1, 31).unwrap(),
-                   b"CCGTAGGCTGACCGTAGGCTGAACGTAGGC");
+        assert_eq!(
+            read(&mut reader, "id", 1, 31).unwrap(),
+            b"CCGTAGGCTGACCGTAGGCTGAACGTAGGC"
+        );
         assert_eq!(read(&mut reader, "id", 13, 23).unwrap(), b"CGTAGGCTGA");
-        assert_eq!(read(&mut reader, "id", 36, 52).unwrap(),
-                   b"GTAGGCTGAAAACCCC");
-        assert_eq!(read(&mut reader, "id2", 12, 40).unwrap(),
-                   b"ATTGTTGTTTTAATTGTTGTTTTAGGGG");
+        assert_eq!(
+            read(&mut reader, "id", 36, 52).unwrap(),
+            b"GTAGGCTGAAAACCCC"
+        );
+        assert_eq!(
+            read(&mut reader, "id2", 12, 40).unwrap(),
+            b"ATTGTTGTTTTAATTGTTGTTTTAGGGG"
+        );
         assert_eq!(read(&mut reader, "id2", 12, 12).unwrap(), b"");
         assert_eq!(read(&mut reader, "id2", 12, 13).unwrap(), b"A");
         // Minimal sequence spanning new-line
@@ -840,7 +882,8 @@ ATTGTTGTTTTA
     }
 
     fn _test_indexed_reader_truncated<'a, F>(read: F)
-        where F: Fn(&mut IndexedReader<io::Cursor<&'a [u8]>>, &str, u64, u64) -> io::Result<Vec<u8>>
+    where
+        F: Fn(&mut IndexedReader<io::Cursor<&'a [u8]>>, &str, u64, u64) -> io::Result<Vec<u8>>,
     {
         let mut reader = IndexedReader::new(io::Cursor::new(TRUNCATED_FASTA), FAI_FILE).unwrap();
 
@@ -851,7 +894,8 @@ ATTGTTGTTTTA
     }
 
     fn _test_indexed_reader_extreme_whitespace<'a, F>(read: F)
-        where F: Fn(&mut IndexedReader<io::Cursor<Vec<u8>>>, &str, u64, u64) -> io::Result<Vec<u8>>
+    where
+        F: Fn(&mut IndexedReader<io::Cursor<Vec<u8>>>, &str, u64, u64) -> io::Result<Vec<u8>>,
     {
         // Test to exercise the case where we cannot consume all whitespace at once. More than
         // DEFAULT_BUF_SIZE (a non-public constant set to 8 * 1024) whitespace is used to ensure
@@ -868,12 +912,14 @@ ATTGTTGTTTTA
         assert_eq!(read(&mut reader, "id", 0, 2).unwrap(), b"AB");
     }
 
-    fn _read_buffer<T>(reader: &mut IndexedReader<T>,
-                       seqname: &str,
-                       start: u64,
-                       stop: u64)
-                       -> io::Result<Vec<u8>>
-        where T: Seek + Read
+    fn _read_buffer<T>(
+        reader: &mut IndexedReader<T>,
+        seqname: &str,
+        start: u64,
+        stop: u64,
+    ) -> io::Result<Vec<u8>>
+    where
+        T: Seek + Read,
     {
         let mut seq = vec![];
         reader.fetch(seqname, start, stop)?;
@@ -882,12 +928,14 @@ ATTGTTGTTTTA
         Ok(seq)
     }
 
-    fn _read_iter<T>(reader: &mut IndexedReader<T>,
-                     seqname: &str,
-                     start: u64,
-                     stop: u64)
-                     -> io::Result<Vec<u8>>
-        where T: Seek + Read
+    fn _read_iter<T>(
+        reader: &mut IndexedReader<T>,
+        seqname: &str,
+        start: u64,
+        stop: u64,
+    ) -> io::Result<Vec<u8>>
+    where
+        T: Seek + Read,
     {
         let mut seq = vec![];
         reader.fetch(seqname, start, stop)?;
@@ -919,18 +967,24 @@ ATTGTTGTTTTA
     }
 
     fn _test_indexed_reader_all<'a, F>(fasta: &'a [u8], fai: &'a [u8], read: F)
-        where F: Fn(&mut IndexedReader<io::Cursor<&'a [u8]>>, &str) -> io::Result<Vec<u8>>
+    where
+        F: Fn(&mut IndexedReader<io::Cursor<&'a [u8]>>, &str) -> io::Result<Vec<u8>>,
     {
         let mut reader = IndexedReader::new(io::Cursor::new(fasta), fai).unwrap();
 
-        assert_eq!(read(&mut reader, "id").unwrap(),
-                   &b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC"[..]);
-        assert_eq!(read(&mut reader, "id2").unwrap(),
-                   &b"ATTGTTGTTTTAATTGTTGTTTTAATTGTTGTTTTAGGGG"[..]);
+        assert_eq!(
+            read(&mut reader, "id").unwrap(),
+            &b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC"[..]
+        );
+        assert_eq!(
+            read(&mut reader, "id2").unwrap(),
+            &b"ATTGTTGTTTTAATTGTTGTTTTAATTGTTGTTTTAGGGG"[..]
+        );
     }
 
     fn _read_buffer_all<T>(reader: &mut IndexedReader<T>, seqname: &str) -> io::Result<Vec<u8>>
-        where T: Seek + Read
+    where
+        T: Seek + Read,
     {
         let mut seq = vec![];
         reader.fetch_all(seqname)?;
@@ -940,7 +994,8 @@ ATTGTTGTTTTA
     }
 
     fn _read_iter_all<T>(reader: &mut IndexedReader<T>, seqname: &str) -> io::Result<Vec<u8>>
-        where T: Seek + Read
+    where
+        T: Seek + Read,
     {
         let mut seq = vec![];
         reader.fetch_all(seqname)?;
@@ -972,18 +1027,27 @@ ATTGTTGTTTTA
     }
 
     fn _test_indexed_reader_by_rid_all<'a, F>(fasta: &'a [u8], fai: &'a [u8], read: F)
-        where F: Fn(&mut IndexedReader<io::Cursor<&'a [u8]>>, usize) -> io::Result<Vec<u8>>
+    where
+        F: Fn(&mut IndexedReader<io::Cursor<&'a [u8]>>, usize) -> io::Result<Vec<u8>>,
     {
         let mut reader = IndexedReader::new(io::Cursor::new(fasta), fai).unwrap();
 
-        assert_eq!(read(&mut reader, 0).unwrap(),
-                   &b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC"[..]);
-        assert_eq!(read(&mut reader, 1).unwrap(),
-                   &b"ATTGTTGTTTTAATTGTTGTTTTAATTGTTGTTTTAGGGG"[..]);
+        assert_eq!(
+            read(&mut reader, 0).unwrap(),
+            &b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC"[..]
+        );
+        assert_eq!(
+            read(&mut reader, 1).unwrap(),
+            &b"ATTGTTGTTTTAATTGTTGTTTTAATTGTTGTTTTAGGGG"[..]
+        );
     }
 
-    fn _read_buffer_by_rid_all<T>(reader: &mut IndexedReader<T>, seq_index: usize) -> io::Result<Vec<u8>>
-        where T: Seek + Read
+    fn _read_buffer_by_rid_all<T>(
+        reader: &mut IndexedReader<T>,
+        seq_index: usize,
+    ) -> io::Result<Vec<u8>>
+    where
+        T: Seek + Read,
     {
         let mut seq = vec![];
         reader.fetch_all_by_rid(seq_index)?;
@@ -992,8 +1056,12 @@ ATTGTTGTTTTA
         Ok(seq)
     }
 
-    fn _read_iter_by_rid_all<T>(reader: &mut IndexedReader<T>,  seq_index: usize) -> io::Result<Vec<u8>>
-        where T: Seek + Read
+    fn _read_iter_by_rid_all<T>(
+        reader: &mut IndexedReader<T>,
+        seq_index: usize,
+    ) -> io::Result<Vec<u8>>
+    where
+        T: Seek + Read,
     {
         let mut seq = vec![];
         reader.fetch_all_by_rid(seq_index)?;
@@ -1003,7 +1071,7 @@ ATTGTTGTTTTA
 
         Ok(seq)
     }
-    
+
     #[test]
     fn test_indexed_reader_iter_size_hint() {
         let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
@@ -1035,9 +1103,10 @@ ATTGTTGTTTTA
 
     #[test]
     fn test_indexed_reader_no_trailing_lf() {
-        let mut reader = IndexedReader::new(io::Cursor::new(FASTA_FILE_NO_TRAILING_LF),
-                                            FAI_FILE_NO_TRAILING_LF)
-                .unwrap();
+        let mut reader = IndexedReader::new(
+            io::Cursor::new(FASTA_FILE_NO_TRAILING_LF),
+            FAI_FILE_NO_TRAILING_LF,
+        ).unwrap();
         let mut seq = Vec::new();
 
         reader.fetch("id", 0, 16).unwrap();
@@ -1102,8 +1171,10 @@ ATTGTTGTTTTA
         reader.fetch("id", 0, 10).unwrap();
         let mut iterator = reader.read_iter().unwrap();
         assert!(iterator.next().unwrap().is_err());
-        assert!(iterator.next().is_none(),
-                "next() should return none after error has occurred");
+        assert!(
+            iterator.next().is_none(),
+            "next() should return none after error has occurred"
+        );
     }
 
     #[test]
@@ -1130,9 +1201,7 @@ ATTGTTGTTTTA
     #[test]
     fn test_writer() {
         let mut writer = Writer::new(Vec::new());
-        writer
-            .write("id", Some("desc"), b"ACCGTAGGCTGA")
-            .unwrap();
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
         writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
         writer.flush().unwrap();
         assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);

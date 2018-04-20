@@ -3,7 +3,6 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! GFF3 format reading and writing.
 //!
 //! GFF2 definition : http://gmod.org/wiki/GFF2#The_GFF2_File_Format (not yet support)
@@ -18,13 +17,13 @@
 //! let reader = gff::Reader::new(io::stdin(), gff::GffType::GFF3);
 //! ```
 
-use std::io;
-use std::fs;
-use std::path::Path;
-use std::convert::AsRef;
 use itertools::Itertools;
-use regex::Regex;
 use multimap::MultiMap;
+use regex::Regex;
+use std::convert::AsRef;
+use std::fs;
+use std::io;
+use std::path::Path;
 
 use csv;
 
@@ -77,7 +76,6 @@ impl Reader<fs::File> {
     }
 }
 
-
 impl<R: io::Read> Reader<R> {
     /// Create a new GFF reader given an instance of `io::Read`, in given format.
     pub fn new(reader: R, fileformat: GffType) -> Self {
@@ -93,44 +91,56 @@ impl<R: io::Read> Reader<R> {
     /// Iterate over all records.
     pub fn records(&mut self) -> Records<R> {
         let (delim, term, vdelim) = self.gff_type.separator();
-        let r = format!(r" *(?P<key>[^{delim}{term}\t]+){delim}(?P<value>[^{delim}{term}\t]+){term}?",
-                    delim = delim as char,
-                    term = term as char);
+        let r = format!(
+            r" *(?P<key>[^{delim}{term}\t]+){delim}(?P<value>[^{delim}{term}\t]+){term}?",
+            delim = delim as char,
+            term = term as char
+        );
         let attribute_re = Regex::new(&r).unwrap();
         Records {
             inner: self.inner.deserialize(),
             attribute_re: attribute_re,
-            value_delim: vdelim as char
+            value_delim: vdelim as char,
         }
     }
 }
 
-type GffRecordInner = (String, String, String, u64, u64, String, String, String, String);
+type GffRecordInner = (
+    String,
+    String,
+    String,
+    u64,
+    u64,
+    String,
+    String,
+    String,
+    String,
+);
 
 /// A GFF record.
 pub struct Records<'a, R: 'a + io::Read> {
     inner: csv::DeserializeRecordsIter<'a, R, GffRecordInner>,
     attribute_re: Regex,
-    value_delim: char
+    value_delim: char,
 }
-
 
 impl<'a, R: io::Read> Iterator for Records<'a, R> {
     type Item = csv::Result<Record>;
 
     fn next(&mut self) -> Option<csv::Result<Record>> {
-        self.inner
-            .next()
-            .map(|res| {
-                res.map(|(seqname,
-                          source,
-                          feature_type,
-                          start,
-                          end,
-                          score,
-                          strand,
-                          frame,
-                          raw_attributes)| {
+        self.inner.next().map(|res| {
+            res.map(
+                |(
+                    seqname,
+                    source,
+                    feature_type,
+                    start,
+                    end,
+                    score,
+                    strand,
+                    frame,
+                    raw_attributes,
+                )| {
                     let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
                     let mut attrs = MultiMap::new();
                     for caps in self.attribute_re.captures_iter(&raw_attributes) {
@@ -149,11 +159,11 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                         frame: frame,
                         attributes: attrs,
                     }
-                })
-            })
+                },
+            )
+        })
     }
 }
-
 
 /// A GFF writer.
 pub struct Writer<W: io::Write> {
@@ -162,14 +172,12 @@ pub struct Writer<W: io::Write> {
     terminator: String,
 }
 
-
 impl Writer<fs::File> {
     /// Write to a given file path in given format.
     pub fn to_file<P: AsRef<Path>>(path: P, fileformat: GffType) -> io::Result<Self> {
         fs::File::create(path).map(|f| Writer::new(f, fileformat))
     }
 }
-
 
 impl<W: io::Write> Writer<W> {
     /// Write to a given writer.
@@ -198,18 +206,19 @@ impl<W: io::Write> Writer<W> {
             "".to_owned()
         };
 
-        self.inner.serialize((&record.seqname,
-                              &record.source,
-                              &record.feature_type,
-                              record.start,
-                              record.end,
-                              &record.score,
-                              &record.strand,
-                              &record.frame,
-                              attributes))
+        self.inner.serialize((
+            &record.seqname,
+            &record.source,
+            &record.feature_type,
+            record.start,
+            record.end,
+            &record.score,
+            &record.strand,
+            &record.frame,
+            attributes,
+        ))
     }
 }
-
 
 /// A GFF record
 #[derive(Default, Serialize, Deserialize)]
@@ -342,18 +351,20 @@ impl Record {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use utils::Strand;
     use multimap::MultiMap;
+    use utils::Strand;
 
     const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed,Obsolete;ID=test
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV;ID=PRO_0000148105
 ";
     //required because MultiMap iter on element randomly
-    const GFF_FILE_ONE_ATTRIB: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed
+    const GFF_FILE_ONE_ATTRIB: &'static [u8] =
+        b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105
 ";
 
-    const GTF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed;ID test
+    const GTF_FILE: &'static [u8] =
+        b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed;ID test
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote ATP-dependent;ID PRO_0000148105
 ";
 
@@ -365,7 +376,8 @@ chr1\tHAVANA\ttranscript\t11869\t14409\t.\t+\t.\tgene_id \"ENSG00000223972.5\"; 
     const GTF_FILE_DUP_ATTR_KEYS: &'static [u8] = b"chr1\tENSEMBL\ttranscript\t182393\t184158\t.\t+\t.\tgene_id \"ENSG00000279928.1\"; transcript_id \"ENST00000624431.1\"; gene_type \"protein_coding\"; gene_status \"KNOWN\"; gene_name \"FO538757.2\"; transcript_type \"protein_coding\"; transcript_status \"KNOWN\"; transcript_name \"FO538757.2-201\"; level 3; protein_id \"ENSP00000485457.1\"; transcript_support_level \"1\"; tag \"basic\"; tag \"appris_principal_1\";";
 
     //required because MultiMap iter on element randomly
-    const GTF_FILE_ONE_ATTRIB: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed
+    const GTF_FILE_ONE_ATTRIB: &'static [u8] =
+        b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 ";
 
@@ -384,8 +396,10 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         attributes[0].insert("Note".to_owned(), "Removed".to_owned());
         attributes[0].insert("Note".to_owned(), "Obsolete".to_owned());
         attributes[1].insert("ID".to_owned(), "PRO_0000148105".to_owned());
-        attributes[1].insert("Note".to_owned(),
-                             "ATP-dependent protease subunit HslV".to_owned());
+        attributes[1].insert(
+            "Note".to_owned(),
+            "ATP-dependent protease subunit HslV".to_owned(),
+        );
 
         let mut reader = Reader::new(GFF_FILE, GffType::GFF3);
         for (i, r) in reader.records().enumerate() {
@@ -445,12 +459,16 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let frame = [".", "."];
         let mut attributes = [MultiMap::new(), MultiMap::new()];
         attributes[0].insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
-        attributes[0].insert("gene_type".to_owned(),
-                             "transcribed_unprocessed_pseudogene".to_owned());
+        attributes[0].insert(
+            "gene_type".to_owned(),
+            "transcribed_unprocessed_pseudogene".to_owned(),
+        );
         attributes[1].insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
         attributes[1].insert("transcript_id".to_owned(), "ENST00000456328.2".to_owned());
-        attributes[1].insert("gene_type".to_owned(),
-                             "transcribed_unprocessed_pseudogene".to_owned());
+        attributes[1].insert(
+            "gene_type".to_owned(),
+            "transcribed_unprocessed_pseudogene".to_owned(),
+        );
 
         let mut reader = Reader::new(GTF_FILE_2, GffType::GTF2);
         for (i, r) in reader.records().enumerate() {
@@ -473,10 +491,11 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut records = reader.records().collect::<Vec<_>>();
         assert_eq!(records.len(), 1);
         let record = records.pop().unwrap().expect("expected one record");
-        assert_eq!(record.attributes.get("tag"),
-                   Some(&"basic".to_owned()));
-        assert_eq!(record.attributes.get_vec("tag"),
-                   Some(&vec!["basic".to_owned(), "appris_principal_1".to_owned()]));
+        assert_eq!(record.attributes.get("tag"), Some(&"basic".to_owned()));
+        assert_eq!(
+            record.attributes.get_vec("tag"),
+            Some(&vec!["basic".to_owned(), "appris_principal_1".to_owned()])
+        );
     }
 
     #[test]
@@ -489,8 +508,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
                 .ok()
                 .expect("Error writing record");
         }
-        assert_eq!(writer.inner.into_inner().unwrap(),
-                   GFF_FILE_ONE_ATTRIB)
+        assert_eq!(writer.inner.into_inner().unwrap(), GFF_FILE_ONE_ATTRIB)
     }
 
     #[test]
@@ -503,8 +521,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
                 .ok()
                 .expect("Error writing record");
         }
-        assert_eq!(writer.inner.into_inner().unwrap(),
-                   GTF_FILE_ONE_ATTRIB)
+        assert_eq!(writer.inner.into_inner().unwrap(), GTF_FILE_ONE_ATTRIB)
     }
 
     #[test]
@@ -517,7 +534,6 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
                 .ok()
                 .expect("Error writing record");
         }
-        assert_eq!(writer.inner.into_inner().unwrap(),
-                   GFF_FILE_ONE_ATTRIB)
+        assert_eq!(writer.inner.into_inner().unwrap(), GFF_FILE_ONE_ATTRIB)
     }
 }

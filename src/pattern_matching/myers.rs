@@ -27,12 +27,10 @@
 //! # }
 //! ```
 
-
 use std::iter;
 use std::u64;
 
-use utils::{TextSlice, IntoTextIterator, TextIterator};
-
+use utils::{IntoTextIterator, TextIterator, TextSlice};
 
 /// Myers algorithm.
 pub struct Myers {
@@ -41,11 +39,11 @@ pub struct Myers {
     m: u8,
 }
 
-
 impl Myers {
     /// Create a new instance of Myers algorithm for a given pattern.
     pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self
-        where P::IntoIter: ExactSizeIterator
+    where
+        P::IntoIter: ExactSizeIterator,
     {
         let pattern = pattern.into_iter();
         let m = pattern.len();
@@ -104,10 +102,11 @@ impl Myers {
 
     /// Find all matches of pattern in the given text up to a given maximum distance.
     /// Matches are returned as an iterator over pairs of end position and distance.
-    pub fn find_all_end<'a, I: IntoTextIterator<'a>>(&'a self,
-                                                     text: I,
-                                                     max_dist: u8)
-                                                     -> Matches<I::IntoIter> {
+    pub fn find_all_end<'a, I: IntoTextIterator<'a>>(
+        &'a self,
+        text: I,
+        max_dist: u8,
+    ) -> Matches<I::IntoIter> {
         Matches {
             myers: self,
             state: State::new(self.m),
@@ -117,14 +116,12 @@ impl Myers {
     }
 }
 
-
 /// The current algorithm state.
 struct State {
     pv: u64,
     mv: u64,
     dist: u8,
 }
-
 
 impl State {
     /// Create new state.
@@ -137,7 +134,6 @@ impl State {
     }
 }
 
-
 /// Iterator over pairs of end positions and distance of matches.
 pub struct Matches<'a, I: TextIterator<'a>> {
     myers: &'a Myers,
@@ -145,7 +141,6 @@ pub struct Matches<'a, I: TextIterator<'a>> {
     text: iter::Enumerate<I>,
     max_dist: u8,
 }
-
 
 impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
     type Item = (usize, u8);
@@ -160,7 +155,6 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
         None
     }
 }
-
 
 #[cfg(test)]
 mod tests {

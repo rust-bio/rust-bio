@@ -23,9 +23,7 @@
 //! # }
 //! ```
 
-
 use bit_vec::BitVec;
-
 
 /// A rank/select data structure.
 #[derive(Serialize, Deserialize)]
@@ -35,7 +33,6 @@ pub struct RankSelect {
     superblocks: Vec<u32>,
     s: usize,
 }
-
 
 impl RankSelect {
     /// Create a new instance.
@@ -74,7 +71,7 @@ impl RankSelect {
         } else {
             let s = i / self.s; // the superblock
             let b = i / 8; // the block
-            // take the superblock rank
+                           // take the superblock rank
             let mut rank = self.superblocks[s];
             // add the rank within the block
             rank += (self.bits[b] >> (7 - i % 8)).count_ones();
@@ -122,7 +119,6 @@ impl RankSelect {
         None
     }
 }
-
 
 /// Create `n` superblocks of size `s` from a given bitvector.
 fn superblocks(n: usize, s: usize, raw_bits: &[u8]) -> Vec<u32> {

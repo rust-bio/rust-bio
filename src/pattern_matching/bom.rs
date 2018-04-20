@@ -18,12 +18,10 @@
 //! assert_eq!(occ, [8, 25]);
 //! ```
 
-
 use std::iter::repeat;
-use utils::{TextSlice, IntoTextIterator};
+use utils::{IntoTextIterator, TextSlice};
 
 use vec_map::VecMap;
-
 
 /// Backward oracle matching algorithm.
 pub struct BOM {
@@ -31,18 +29,15 @@ pub struct BOM {
     table: Vec<VecMap<usize>>,
 }
 
-
 impl BOM {
     /// Create a new instance for a given pattern.
     pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self
-        where P::IntoIter: DoubleEndedIterator + ExactSizeIterator + Clone
+    where
+        P::IntoIter: DoubleEndedIterator + ExactSizeIterator + Clone,
     {
         let pattern = pattern.into_iter();
         let m = pattern.len();
-        let maxsym = *pattern
-                          .clone()
-                          .max()
-                          .expect("Expecting non-empty pattern.") as usize;
+        let maxsym = *pattern.clone().max().expect("Expecting non-empty pattern.") as usize;
         let mut table: Vec<VecMap<usize>> = Vec::with_capacity(m);
         // init suffix table, initially all values unknown
         // suff[i] is the state in which the longest suffix of
@@ -71,9 +66,9 @@ impl BOM {
             // the longest suffix is either 0 or the state
             // reached by the edge labelled with a
             suff[i] = Some(match k {
-                               Some(k) => *table[k].get(a).unwrap(),
-                               None => 0,
-                           });
+                Some(k) => *table[k].get(a).unwrap(),
+                None => 0,
+            });
 
             table.push(delta);
         }
@@ -102,14 +97,12 @@ impl BOM {
     }
 }
 
-
 /// Iterator over start positions of matches.
 pub struct Matches<'a> {
     bom: &'a BOM,
     text: TextSlice<'a>,
     window: usize,
 }
-
 
 impl<'a> Iterator for Matches<'a> {
     type Item = usize;
@@ -137,7 +130,6 @@ impl<'a> Iterator for Matches<'a> {
         None
     }
 }
-
 
 #[cfg(test)]
 mod tests {

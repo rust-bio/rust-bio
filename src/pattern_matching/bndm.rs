@@ -18,10 +18,8 @@
 //! assert_eq!(occ, [7, 17]);
 //! ```
 
-
 use pattern_matching::shift_and::masks;
-use utils::{TextSlice, IntoTextIterator};
-
+use utils::{IntoTextIterator, TextSlice};
 
 /// BNDM algorithm.
 pub struct BNDM {
@@ -30,13 +28,12 @@ pub struct BNDM {
     accept: u64,
 }
 
-
 impl BNDM {
     /// Create a new instance for a given pattern.
     pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self
-        where P::IntoIter: DoubleEndedIterator + ExactSizeIterator
+    where
+        P::IntoIter: DoubleEndedIterator + ExactSizeIterator,
     {
-
         let pattern = pattern.into_iter();
         let m = pattern.len();
         assert!(m <= 64, "Expecting a pattern of at most 64 symbols.");
@@ -61,14 +58,12 @@ impl BNDM {
     }
 }
 
-
 /// Iterator over start positions of matches.
 pub struct Matches<'a> {
     bndm: &'a BNDM,
     window: usize,
     text: TextSlice<'a>,
 }
-
 
 impl<'a> Iterator for Matches<'a> {
     type Item = usize;
@@ -112,7 +107,6 @@ impl<'a> Iterator for Matches<'a> {
         None
     }
 }
-
 
 #[cfg(test)]
 mod tests {

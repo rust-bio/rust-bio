@@ -13,13 +13,13 @@
 //! let reader = fastq::Reader::new(io::stdin());
 //! ```
 
+use std::ascii::AsciiExt;
+use std::convert::AsRef;
+use std::fmt;
+use std::fs;
 use std::io;
 use std::io::prelude::*;
-use std::ascii::AsciiExt;
-use std::fs;
-use std::fmt;
 use std::path::Path;
-use std::convert::AsRef;
 
 use utils::TextSlice;
 
@@ -29,14 +29,12 @@ pub struct Reader<R: io::Read> {
     sep_line: String,
 }
 
-
 impl Reader<fs::File> {
     /// Read from a given file.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::open(path).map(Reader::new)
     }
 }
-
 
 impl<R: io::Read> Reader<R> {
     /// Read from a given `io::Read`.
@@ -58,7 +56,10 @@ impl<R: io::Read> Reader<R> {
 
         if !header.is_empty() {
             if !header.starts_with('@') {
-                return Err(io::Error::new(io::ErrorKind::Other, "Expected @ at record start."));
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "Expected @ at record start.",
+                ));
             }
             record.id = header[1..]
                 .trim_right()
@@ -66,15 +67,21 @@ impl<R: io::Read> Reader<R> {
                 .nth(0)
                 .unwrap_or_default()
                 .to_owned();
-            record.desc = header[1..].trim_right().splitn(2, ' ').nth(1).map(|s| s.to_owned());
+            record.desc = header[1..]
+                .trim_right()
+                .splitn(2, ' ')
+                .nth(1)
+                .map(|s| s.to_owned());
             try!(self.reader.read_line(&mut record.seq));
             try!(self.reader.read_line(&mut self.sep_line));
             try!(self.reader.read_line(&mut record.qual));
             if record.qual.is_empty() {
-                return Err(io::Error::new(io::ErrorKind::Other,
-                                          "Incomplete record. Each FastQ record has to consist \
-                                           of 4 lines: header, sequence, separator and \
-                                           qualities."));
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "Incomplete record. Each FastQ record has to consist \
+                     of 4 lines: header, sequence, separator and \
+                     qualities.",
+                ));
             }
         }
 
@@ -87,7 +94,6 @@ impl<R: io::Read> Reader<R> {
     }
 }
 
-
 /// A FastQ record.
 #[derive(Debug, Clone, Default)]
 pub struct Record {
@@ -96,7 +102,6 @@ pub struct Record {
     seq: String,
     qual: String,
 }
-
 
 impl Record {
     /// Create a new, empty FastQ record.
@@ -155,7 +160,7 @@ impl Record {
     pub fn desc(&self) -> Option<&str> {
         match self.desc.as_ref() {
             Some(desc) => Some(&desc),
-            None => None
+            None => None,
         }
     }
 
@@ -178,24 +183,23 @@ impl Record {
     }
 }
 
-
 impl fmt::Display for Record {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f,
-               "@{} {}\n{}\n+\n{}",
-               self.id,
-               self.desc().unwrap_or_default(),
-               self.seq,
-               self.qual)
+        write!(
+            f,
+            "@{} {}\n{}\n+\n{}",
+            self.id,
+            self.desc().unwrap_or_default(),
+            self.seq,
+            self.qual
+        )
     }
 }
-
 
 /// An iterator over the records of a FastQ file.
 pub struct Records<R: io::Read> {
     reader: Reader<R>,
 }
-
 
 impl<R: io::Read> Iterator for Records<R> {
     type Item = io::Result<Record>;
@@ -210,12 +214,10 @@ impl<R: io::Read> Iterator for Records<R> {
     }
 }
 
-
 /// A FastQ writer.
 pub struct Writer<W: io::Write> {
     writer: io::BufWriter<W>,
 }
-
 
 impl Writer<fs::File> {
     /// Write to a given file path.
@@ -224,28 +226,27 @@ impl Writer<fs::File> {
     }
 }
 
-
 impl<W: io::Write> Writer<W> {
     /// Write to a given `io::Write`.
     pub fn new(writer: W) -> Self {
-        Writer { writer: io::BufWriter::new(writer) }
+        Writer {
+            writer: io::BufWriter::new(writer),
+        }
     }
 
     /// Directly write a FastQ record.
     pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
-        self.write(record.id(),
-                   record.desc(),
-                   record.seq(),
-                   record.qual())
+        self.write(record.id(), record.desc(), record.seq(), record.qual())
     }
 
     /// Write a FastQ record with given id, optional description, sequence and qualities.
-    pub fn write(&mut self,
-                 id: &str,
-                 desc: Option<&str>,
-                 seq: TextSlice,
-                 qual: &[u8])
-                 -> io::Result<()> {
+    pub fn write(
+        &mut self,
+        id: &str,
+        desc: Option<&str>,
+        seq: TextSlice,
+        qual: &[u8],
+    ) -> io::Result<()> {
         try!(self.writer.write_all(b"@"));
         try!(self.writer.write_all(id.as_bytes()));
         if desc.is_some() {
@@ -266,7 +267,6 @@ impl<W: io::Write> Writer<W> {
         self.writer.flush()
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -301,7 +301,6 @@ IIIIIIJJJJJJ
         assert_eq!(record.desc(), Some("desc"));
         assert_eq!(record.seq(), b"ATGCGGG");
         assert_eq!(record.qual(), b"QQQQQQQ");
-
     }
 
     #[test]
