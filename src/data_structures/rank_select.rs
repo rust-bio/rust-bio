@@ -18,7 +18,7 @@
 //! let mut bits = BitVec::from_elem(64, false);
 //! bits.set(5, true);
 //! bits.set(32, true);
-//! let rs = RankSelect::new(bits, 1);
+//! let rs = RankSelect::new(&bits, 1);
 //! assert!(rs.rank(6).unwrap() == 1);
 //! # }
 //! ```
@@ -46,7 +46,7 @@ impl RankSelect {
     ///   The data structure needs O(n + n log n / (k * 32)) bits with n being the bits of the given bitvector.
     ///   The data structure is succinct if k is chosen as a sublinear function of n
     ///   (e.g. k = (log n)² / 32).
-    pub fn new(bits: BitVec, k: usize) -> RankSelect {
+    pub fn new(bits: &BitVec, k: usize) -> RankSelect {
         let n = bits.len();
         let bits = bits.to_bytes();
         let s = k * 32;
@@ -146,7 +146,7 @@ mod tests {
         let mut bits = BitVec::from_elem(64, false);
         bits.set(5, true);
         bits.set(32, true);
-        let rs = RankSelect::new(bits, 1);
+        let rs = RankSelect::new(&bits, 1);
         assert!(rs.rank(1).unwrap() == 0);
         assert!(rs.rank(5).unwrap() == 1);
         assert!(rs.rank(6).unwrap() == 1);
