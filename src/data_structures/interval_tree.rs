@@ -446,7 +446,7 @@ mod tests {
         name.push_str(&start.to_string());
         name.push_str(":");
         name.push_str(&end.to_string());
-        tree.insert((start..end), name);
+        tree.insert(start..end, name);
         if let Some(ref n) = tree.root {
             validate(n);
         }
@@ -490,37 +490,37 @@ mod tests {
         let mut tree: IntervalTree<i64, String> = IntervalTree::new();
         assert_eq!(tree.find(1..2).count(), 0);
         assert_eq!(tree.find_mut(1..2).count(), 0);
-        tree.insert((50..51), "50:51".to_string());
-        assert_not_found(&tree, (49..50));
-        assert_intersections(&tree, (49..55), vec![(50..51)]);
-        assert_not_found(&tree, (51..55));
-        assert_not_found(&tree, (52..55));
-        assert_not_found(&tree, (40..45));
+        tree.insert(50..51, "50:51".to_string());
+        assert_not_found(&tree, 49..50);
+        assert_intersections(&tree, 49..55, vec![50..51]);
+        assert_not_found(&tree, 51..55);
+        assert_not_found(&tree, 52..55);
+        assert_not_found(&tree, 40..45);
         insert_and_validate(&mut tree, 80, 81);
-        assert_intersections(&tree, (80..83), vec![(80..81)]);
-        assert_intersections(&tree, (1..100), vec![(50..51), (80..81)]);
-        assert_not_found(&tree, (82..83));
+        assert_intersections(&tree, 80..83, vec![80..81]);
+        assert_intersections(&tree, 1..100, vec![50..51, 80..81]);
+        assert_not_found(&tree, 82..83);
         insert_and_validate(&mut tree, 30, 35);
-        assert_intersections(&tree, (25..33), vec![(30..35)]);
-        assert_intersections(&tree, (1..100), vec![(30..35), (50..51), (80..81)]);
-        assert_not_found(&tree, (42..43));
-        assert_not_found(&tree, (35..36));
-        assert_not_found(&tree, (22..29));
+        assert_intersections(&tree, 25..33, vec![30..35]);
+        assert_intersections(&tree, 1..100, vec![30..35, 50..51, 80..81]);
+        assert_not_found(&tree, 42..43);
+        assert_not_found(&tree, 35..36);
+        assert_not_found(&tree, 22..29);
         insert_and_validate(&mut tree, 70, 77);
-        assert_intersections(&tree, (75..79), vec![(70..77)]);
+        assert_intersections(&tree, 75..79, vec![70..77]);
         assert_intersections(
             &tree,
-            (1..100),
-            vec![(30..35), (50..51), (70..77), (80..81)],
+            1..100,
+            vec![30..35, 50..51, 70..77, 80..81],
         );
-        assert_not_found(&tree, (62..68));
-        assert_intersections(&tree, (75..77), vec![(70..77)]);
-        assert_not_found(&tree, (78..79));
-        assert_intersections(&tree, (49..51), vec![(50..51)]);
-        assert_intersections(&tree, (49..55), vec![(50..51)]);
-        assert_not_found(&tree, (51..55));
-        assert_not_found(&tree, (52..55));
-        assert_not_found(&tree, (40..45));
+        assert_not_found(&tree, 62..68);
+        assert_intersections(&tree, 75..77, vec![70..77]);
+        assert_not_found(&tree, 78..79);
+        assert_intersections(&tree, 49..51, vec![50..51]);
+        assert_intersections(&tree, 49..55, vec![50..51]);
+        assert_not_found(&tree, 51..55);
+        assert_not_found(&tree, 52..55);
+        assert_not_found(&tree, 40..45);
         insert_and_validate(&mut tree, 101, 102);
         insert_and_validate(&mut tree, 103, 104);
         insert_and_validate(&mut tree, 105, 106);
@@ -530,37 +530,37 @@ mod tests {
         insert_and_validate(&mut tree, 115, 116);
         insert_and_validate(&mut tree, 117, 118);
         insert_and_validate(&mut tree, 119, 129);
-        assert_not_found(&tree, (112..113));
-        assert_not_found(&tree, (108..109));
-        assert_intersections(&tree, (106..108), vec![(107..108)]);
+        assert_not_found(&tree, 112..113);
+        assert_not_found(&tree, 108..109);
+        assert_intersections(&tree, 106..108, vec![107..108]);
         assert_intersections(
             &tree,
-            (1..100),
-            vec![(30..35), (50..51), (70..77), (80..81)],
+            1..100,
+            vec![30..35, 50..51, 70..77, 80..81],
         );
         assert_intersections(
             &tree,
-            (1..101),
-            vec![(30..35), (50..51), (70..77), (80..81)],
+            1..101,
+            vec![30..35, 50..51, 70..77, 80..81],
         );
         assert_intersections(
             &tree,
-            (1..102),
-            vec![(30..35), (50..51), (70..77), (80..81), (101..102)],
+            1..102,
+            vec![30..35, 50..51, 70..77, 80..81, 101..102],
         );
         assert_intersections(
             &tree,
-            (100..200),
+            100..200,
             vec![
-                (101..102),
-                (103..104),
-                (105..106),
-                (107..108),
-                (111..112),
-                (113..114),
-                (115..116),
-                (117..118),
-                (119..129),
+                101..102,
+                103..104,
+                105..106,
+                107..108,
+                111..112,
+                113..114,
+                115..116,
+                117..118,
+                119..129,
             ],
         );
     }
@@ -586,20 +586,20 @@ mod tests {
             for j in smallest_start..largest_start {
                 expected_intersections.push(j..j + k);
             }
-            assert_intersections(&tree, (lower_bound..upper_bound), expected_intersections);
+            assert_intersections(&tree, lower_bound..upper_bound, expected_intersections);
         }
     }
 
     #[test]
     fn zero_width_ranges() {
         let mut tree: IntervalTree<i64, String> = IntervalTree::new();
-        tree.insert((10..10), "10:10".to_string());
+        tree.insert(10..10, "10:10".to_string());
 
-        assert_not_found(&tree, (5..15));
-        assert_not_found(&tree, (10..10));
+        assert_not_found(&tree, 5..15);
+        assert_not_found(&tree, 10..10);
 
         insert_and_validate(&mut tree, 50, 60);
-        assert_not_found(&tree, (55..55));
+        assert_not_found(&tree, 55..55);
     }
 
     #[test]
