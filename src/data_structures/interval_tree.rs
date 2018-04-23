@@ -87,7 +87,8 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D>
                     self.nodes.push(left);
                 }
 
-                // don't traverse right if the query interval is completely before the current interval
+                // don't traverse right if the query interval is completely before the current
+                // interval
                 if self.interval.end > candidate.interval.start {
                     if let Some(ref right) = candidate.right {
                         self.nodes.push(right);
@@ -508,11 +509,7 @@ mod tests {
         assert_not_found(&tree, 22..29);
         insert_and_validate(&mut tree, 70, 77);
         assert_intersections(&tree, 75..79, vec![70..77]);
-        assert_intersections(
-            &tree,
-            1..100,
-            vec![30..35, 50..51, 70..77, 80..81],
-        );
+        assert_intersections(&tree, 1..100, vec![30..35, 50..51, 70..77, 80..81]);
         assert_not_found(&tree, 62..68);
         assert_intersections(&tree, 75..77, vec![70..77]);
         assert_not_found(&tree, 78..79);
@@ -533,16 +530,8 @@ mod tests {
         assert_not_found(&tree, 112..113);
         assert_not_found(&tree, 108..109);
         assert_intersections(&tree, 106..108, vec![107..108]);
-        assert_intersections(
-            &tree,
-            1..100,
-            vec![30..35, 50..51, 70..77, 80..81],
-        );
-        assert_intersections(
-            &tree,
-            1..101,
-            vec![30..35, 50..51, 70..77, 80..81],
-        );
+        assert_intersections(&tree, 1..100, vec![30..35, 50..51, 70..77, 80..81]);
+        assert_intersections(&tree, 1..101, vec![30..35, 50..51, 70..77, 80..81]);
         assert_intersections(
             &tree,
             1..102,

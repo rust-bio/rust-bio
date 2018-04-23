@@ -250,26 +250,22 @@ impl Alignment {
 
                         y_pretty.push('-');
                     }
-                    AlignmentOperation::Xclip(len) => {
-                        for k in x.iter().take(len) {
-                            x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
-                            x_i += 1;
+                    AlignmentOperation::Xclip(len) => for k in x.iter().take(len) {
+                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
+                        x_i += 1;
 
-                            inb_pretty.push(' ');
+                        inb_pretty.push(' ');
 
-                            y_pretty.push(' ')
-                        }
-                    }
-                    AlignmentOperation::Yclip(len) => {
-                        for k in x.iter().take(len) {
-                            y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
-                            y_i += 1;
+                        y_pretty.push(' ')
+                    },
+                    AlignmentOperation::Yclip(len) => for k in x.iter().take(len) {
+                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
+                        y_i += 1;
 
-                            inb_pretty.push(' ');
+                        inb_pretty.push(' ');
 
-                            x_pretty.push(' ')
-                        }
-                    }
+                        x_pretty.push(' ')
+                    },
                 }
             }
 
