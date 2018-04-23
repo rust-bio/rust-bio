@@ -13,7 +13,6 @@
 //! let reader = fasta::Reader::new(io::stdin());
 //! ```
 
-use std::ascii::AsciiExt;
 use std::cmp::min;
 use std::collections;
 use std::convert::AsRef;

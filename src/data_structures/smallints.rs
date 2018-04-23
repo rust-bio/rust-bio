@@ -39,7 +39,9 @@ pub struct SmallInts<F: Integer + Bounded + NumCast + Copy, B: Integer + NumCast
     bigints: BTreeMap<usize, B>,
 }
 
-impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> Default for SmallInts<S, B> {
+impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> Default
+    for SmallInts<S, B>
+{
     fn default() -> Self {
         assert!(
             size_of::<S>() < size_of::<B>(),

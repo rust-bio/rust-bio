@@ -231,7 +231,7 @@ mod tests {
     const BED_FILE: &'static [u8] = b"1\t5\t5000\tname1\tup
 2\t3\t5005\tname2\tup
 ";
-    const BED_FILE_COMPACT: &'static [u8] = b"1\t5\t5000\n2\t3\t5005\n";
+    //const BED_FILE_COMPACT: &'static [u8] = b"1\t5\t5000\n2\t3\t5005\n";
 
     #[test]
     fn test_reader() {

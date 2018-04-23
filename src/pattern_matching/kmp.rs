@@ -55,7 +55,8 @@ impl<'a> KMP<'a> {
         q
     }
 
-    /// Find all matches of pattern in a given text. Matches are returned as iterator over start positions.
+    /// Find all matches of pattern in a given text. Matches are returned as iterator over start
+    /// positions.
     pub fn find_all<'b, I: IntoTextIterator<'b>>(&'b self, text: I) -> Matches<'b, I::IntoIter> {
         Matches {
             kmp: self,

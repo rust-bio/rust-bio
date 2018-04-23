@@ -184,7 +184,8 @@ mod tests {
 
     #[test]
     fn test_long() {
-        let text = b"ACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAG";
+        let text = b"ACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCG\
+CCATAGACCGTGGATGAGCGCCATAG";
         let pattern = b"TGAGCGTTGAGCGTTGAGCGTTGAGCGTTGAGCGTTGAGCGT";
         let myers = Myers::new(&pattern[..]);
         let occ = myers.find_all_end(&text[..], 1).collect_vec();

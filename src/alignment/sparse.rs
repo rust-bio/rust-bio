@@ -50,11 +50,13 @@ pub struct SparseAlignmentResult {
 
 /// Sparse DP routine for Longest Common Subsequence in length k substrings.  Also known of LCSk++
 /// From LCSk++: Practical similarity metric for long strings. Filip Pavetić, Goran Žužić, Mile Šikić
-/// Paper here :https://arxiv.org/abs/1407.2407.  Original implementation here: https://github.com/fpavetic/lcskpp
+/// Paper here :https://arxiv.org/abs/1407.2407.  Original implementation here:
+/// https://github.com/fpavetic/lcskpp
 ///
 /// # Arguments
 ///
-/// * `matches` - a vector of tuples indicating the (string1 position, string2 position) kmer matches between the strings
+/// * `matches` - a vector of tuples indicating the (string1 position, string2 position) kmer
+///   matches between the strings
 /// * `k` - the kmer length used for matching
 ///
 /// # Return value
@@ -62,7 +64,8 @@ pub struct SparseAlignmentResult {
 /// The method returns a `SparseAlignmentResult` struct with the following fields:
 /// * `path` is the LCSk++ path, represented as vector of indices into the input matches vector.
 /// * `score` is the score of the path, which is the number of bases covered by the matched kmers.
-/// * `dp_vector` is the full DP vector, which can generally be ignored. (It may be useful for testing purposes).
+/// * `dp_vector` is the full DP vector, which can generally be ignored. (It may be useful for
+///   testing purposes).
 pub fn lcskpp(matches: &[(u32, u32)], k: usize) -> SparseAlignmentResult {
     if matches.is_empty() {
         return SparseAlignmentResult {
@@ -169,7 +172,8 @@ impl PrevPtr {
 /// a penalty of gap_open + d * gap_extend, where d is the distance along the diagonal of the gap.
 /// # Arguments
 ///
-/// * `matches` - a vector of tuples indicating the (string1 position, string2 position) kmer matches between the strings
+/// * `matches` - a vector of tuples indicating the (string1 position, string2 position) kmer
+///   matches between the strings
 /// * `k` - the kmer length used for matching
 /// * `match_score` - reward for each matched base
 /// * `gap_open` - score of opening a gap, including a mismatch gap. Must be negative.
@@ -180,7 +184,8 @@ impl PrevPtr {
 /// The method returns a `SparseAlignmentResult` struct with the following fields:
 /// * `path` is the SDP path, represented as vector of indices into the input matches vector.
 /// * `score` is the score of the path, which is the number of bases covered by the matched kmers.
-/// * `dp_vector` is the full DP vector, which can generally be ignored. (It may be useful for testing purposes).
+/// * `dp_vector` is the full DP vector, which can generally be ignored. (It may be useful for
+///   testing purposes).
 pub fn sdpkpp(
     matches: &[(u32, u32)],
     k: usize,
@@ -440,8 +445,6 @@ pub fn expand_kmer_matches(
             if n_mismatches > allowed_mismatches {
                 break;
             }
-            // println!(" This : ({},{}), Current : ({},{}), Last : ({}, {}), Miss : {}",
-            // this_match.0, this_match.1, curr_pos.0, curr_pos.1, last_match.0, last_match.1, n_mismatches);
             left_expanded_matches.push((curr_pos.0 as u32, curr_pos.1 as u32));
             curr_pos = (curr_pos.0 - 1, curr_pos.1 - 1);
         }
@@ -571,7 +574,8 @@ mod sparse_alignment {
 
     #[test]
     pub fn test_lcskpp2() {
-        // Match the same string -- should get a diagonal traceback, despite lots of off-diagonal homology
+        // Match the same string -- should get a diagonal traceback, despite lots of off-diagonal
+        // homology
         let s1 = b"ACGTACGATAGATCCGACGTACGTACGTTCAGTTATATGACGTACGTACGTAACATTTTTGTA";
         let k = 5;
 
@@ -604,9 +608,19 @@ mod sparse_alignment {
     // TRs is arbitrary, and way the implementation breaks ties may introduce
     // a gap while maintaining the same score.
     // The SDP code with gap open & extend penalties should resolve this.
-    const QUERY_REPEAT: &'static [u8] = b"CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCATGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGCAGAACAGGAGGCCCCATCTCCCGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTCCCCAGCTCTTGCTTCAGGGCCTCACGTTTCGCCCCCTGAGGCCTGGGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTG";
+    const QUERY_REPEAT: &'static [u8] = b"CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCATGAGTGA\
+CAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGCAGAACAGGAGGCCCCATCTCC\
+CGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTCCCCAGCTCTTGCTTCAGGGCCTCACGTTTCG\
+CCCCCTGAGGCCTGGGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTG";
 
-    const TARGET_REPEAT: &'static [u8] = b"CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCATGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGCAGAACAGGAGGCCCCATCTCCCGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTCCCCAGCTCTTGCTTCAGGGCCTCACGTTTCGCCCCCTGAGGCCTGGGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGCACGGCTCCCAACTCTCTTCCGGCCAAGGATCCCGTGTTCCTGAAATGTCTTTCTACCAAACACAGTTGCTGTGTAACCACTCATTTCATTTTCCTAATTTGTGTTGATCCAGGACACGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
+    const TARGET_REPEAT: &'static [u8] = b"CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAG\
+GTCATGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGC\
+AGAACAGGAGGCCCCATCTCCCGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTC\
+CCCAGCTCTTGCTTCAGGGCCTCACGTTTCGCCCCCTGAGGCCTGGGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACAT\
+CTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAAC\
+ATCTGGTGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTGCACGGCTCCCAACTCTCTTCCGGCCAAGGATCC\
+CGTGTTCCTGAAATGTCTTTCTACCAAACACAGTTGCTGTGTAACCACTCATTTCATTTTCCTAATTTGTGTTGATCCAGGACA\
+CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
 
     #[test]
     fn test_lcskpp_tandem_repeat() {
