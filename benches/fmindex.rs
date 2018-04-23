@@ -1,7 +1,7 @@
 #![feature(test)]
 
-extern crate test;
 extern crate bio;
+extern crate test;
 
 use bio::alphabets;
 use bio::data_structures::bwt::{bwt, less, Occ};

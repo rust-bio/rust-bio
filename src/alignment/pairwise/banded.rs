@@ -80,19 +80,19 @@
 //! // aligner.custom_with_prehash(x, y, &y_kmers_hash) is also supported
 //! ```
 
-use std::i32;
 use alignment::{Alignment, AlignmentOperation};
-use utils::TextSlice;
-use std::cmp::min;
 use std::cmp::max;
+use std::cmp::min;
+use std::i32;
 use std::ops::Range;
+use utils::TextSlice;
 
 use super::*;
+use alignment::pairwise::Scoring;
 use alignment::sparse;
 use alignment::sparse::HashMapFx;
-use alignment::pairwise::Scoring;
 
-const MAX_CELLS: usize = 5000000;
+const MAX_CELLS: usize = 5_000_000;
 const DEFAULT_MATCH_SCORE: i32 = 2;
 
 /// A banded implementation of Smith-Waterman aligner (SWA).
@@ -124,7 +124,6 @@ pub struct Aligner<F: MatchFunc> {
     w: usize,
 }
 
-
 const DEFAULT_ALIGNER_CAPACITY: usize = 200;
 
 impl<F: MatchFunc> Aligner<F> {
@@ -140,13 +139,15 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `w` - width of the band
     ///
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F, k: usize, w: usize) -> Self {
-        Aligner::with_capacity(DEFAULT_ALIGNER_CAPACITY,
-                               DEFAULT_ALIGNER_CAPACITY,
-                               gap_open,
-                               gap_extend,
-                               match_fn,
-                               k,
-                               w)
+        Aligner::with_capacity(
+            DEFAULT_ALIGNER_CAPACITY,
+            DEFAULT_ALIGNER_CAPACITY,
+            gap_open,
+            gap_extend,
+            match_fn,
+            k,
+            w,
+        )
     }
 
     /// Create new aligner instance. The size hints help to
@@ -162,15 +163,15 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `k` - kmer length used in constructing the band
     /// * `w` - width of the band
     ///
-    pub fn with_capacity(m: usize,
-                         n: usize,
-                         gap_open: i32,
-                         gap_extend: i32,
-                         match_fn: F,
-                         k: usize,
-                         w: usize)
-                         -> Self {
-
+    pub fn with_capacity(
+        m: usize,
+        n: usize,
+        gap_open: i32,
+        gap_extend: i32,
+        match_fn: F,
+        k: usize,
+        w: usize,
+    ) -> Self {
         Aligner {
             band: Band::new(m, n),
             S: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
@@ -181,8 +182,8 @@ impl<F: MatchFunc> Aligner<F> {
             Sn: Vec::with_capacity(m + 1),
             traceback: Traceback::with_capacity(m, n),
             scoring: Scoring::new(gap_open, gap_extend, match_fn),
-            k: k,
-            w: w,
+            k,
+            w,
         }
     }
 
@@ -197,23 +198,31 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `k` - kmer length used in constructing the band
     /// * `w` - width of the band
     ///
-    pub fn with_capacity_and_scoring(m: usize,
-                                     n: usize,
-                                     scoring: Scoring<F>,
-                                     k: usize,
-                                     w: usize)
-                                     -> Self {
-
+    pub fn with_capacity_and_scoring(
+        m: usize,
+        n: usize,
+        scoring: Scoring<F>,
+        k: usize,
+        w: usize,
+    ) -> Self {
         assert!(scoring.gap_open <= 0, "gap_open can't be positive");
         assert!(scoring.gap_extend <= 0, "gap_extend can't be positive");
-        assert!(scoring.xclip_prefix <= 0,
-                "Clipping penalty (x prefix) can't be positive");
-        assert!(scoring.xclip_suffix <= 0,
-                "Clipping penalty (x suffix) can't be positive");
-        assert!(scoring.yclip_prefix <= 0,
-                "Clipping penalty (y prefix) can't be positive");
-        assert!(scoring.yclip_suffix <= 0,
-                "Clipping penalty (y suffix) can't be positive");
+        assert!(
+            scoring.xclip_prefix <= 0,
+            "Clipping penalty (x prefix) can't be positive"
+        );
+        assert!(
+            scoring.xclip_suffix <= 0,
+            "Clipping penalty (x suffix) can't be positive"
+        );
+        assert!(
+            scoring.yclip_prefix <= 0,
+            "Clipping penalty (y prefix) can't be positive"
+        );
+        assert!(
+            scoring.yclip_suffix <= 0,
+            "Clipping penalty (y suffix) can't be positive"
+        );
 
         Aligner {
             band: Band::new(m, n),
@@ -224,9 +233,9 @@ impl<F: MatchFunc> Aligner<F> {
             Ly: Vec::with_capacity(m + 1),
             Sn: Vec::with_capacity(m + 1),
             traceback: Traceback::with_capacity(m, n),
-            scoring: scoring,
-            k: k,
-            w: w,
+            scoring,
+            k,
+            w,
         }
     }
 
@@ -242,12 +251,13 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `w` - width of the band
     ///
     pub fn with_scoring(scoring: Scoring<F>, k: usize, w: usize) -> Self {
-
-        Aligner::with_capacity_and_scoring(DEFAULT_ALIGNER_CAPACITY,
-                                           DEFAULT_ALIGNER_CAPACITY,
-                                           scoring,
-                                           k,
-                                           w)
+        Aligner::with_capacity_and_scoring(
+            DEFAULT_ALIGNER_CAPACITY,
+            DEFAULT_ALIGNER_CAPACITY,
+            scoring,
+            k,
+            w,
+        )
     }
 
     /// Compute the alignment with custom clip penalties
@@ -270,11 +280,12 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `x` - Textslice
     /// * `y` - Textslice
     ///
-    pub fn custom_with_prehash(&mut self,
-                               x: TextSlice,
-                               y: TextSlice,
-                               y_kmer_hash: &HashMapFx<&[u8], Vec<u32>>)
-                               -> Alignment {
+    pub fn custom_with_prehash(
+        &mut self,
+        x: TextSlice,
+        y: TextSlice,
+        y_kmer_hash: &HashMapFx<&[u8], Vec<u32>>,
+    ) -> Alignment {
         self.band = Band::create_with_prehash(x, y, self.k, self.w, &self.scoring, y_kmer_hash);
         self.compute_alignment(x, y)
     }
@@ -289,12 +300,13 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `y` - Textslice
     /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
     ///
-    pub fn custom_with_matches(&mut self,
-                               x: TextSlice,
-                               y: TextSlice,
-                               matches: Vec<(u32, u32)>)
-                               -> Alignment {
-        self.band = Band::create_with_matches(x, y, self.k, self.w, &self.scoring, matches);
+    pub fn custom_with_matches(
+        &mut self,
+        x: TextSlice,
+        y: TextSlice,
+        matches: &[(u32, u32)],
+    ) -> Alignment {
+        self.band = Band::create_with_matches(x, y, self.k, self.w, &self.scoring, &matches);
         self.compute_alignment(x, y)
     }
 
@@ -314,13 +326,14 @@ impl<F: MatchFunc> Aligner<F> {
     /// the specified number of mismatches (Option<usize>)
     /// * `use_lcskpp_union` - Extend the results from sdpkpp using lcskpp
     ///
-    pub fn custom_with_expanded_matches(&mut self,
-                                        x: TextSlice,
-                                        y: TextSlice,
-                                        matches: Vec<(u32, u32)>,
-                                        allowed_mismatches: Option<usize>,
-                                        use_lcskpp_union: bool)
-                                        -> Alignment {
+    pub fn custom_with_expanded_matches(
+        &mut self,
+        x: TextSlice,
+        y: TextSlice,
+        matches: Vec<(u32, u32)>,
+        allowed_mismatches: Option<usize>,
+        use_lcskpp_union: bool,
+    ) -> Alignment {
         let expanded_matches = match allowed_mismatches {
             Some(m) => sparse::expand_kmer_matches(x, y, self.k, &matches, m),
             None => matches,
@@ -331,20 +344,24 @@ impl<F: MatchFunc> Aligner<F> {
                 Some((m, _)) => m,
                 None => DEFAULT_MATCH_SCORE,
             };
-            let path = sparse::sdpkpp_union_lcskpp_path(&expanded_matches,
-                                                        self.k,
-                                                        match_score as u32,
-                                                        self.scoring.gap_open,
-                                                        self.scoring.gap_extend);
-            Band::create_from_match_path(x,
-                                         y,
-                                         self.k,
-                                         self.w,
-                                         &self.scoring,
-                                         &path,
-                                         expanded_matches)
+            let path = sparse::sdpkpp_union_lcskpp_path(
+                &expanded_matches,
+                self.k,
+                match_score as u32,
+                self.scoring.gap_open,
+                self.scoring.gap_extend,
+            );
+            Band::create_from_match_path(
+                x,
+                y,
+                self.k,
+                self.w,
+                &self.scoring,
+                &path,
+                &expanded_matches,
+            )
         } else {
-            Band::create_with_matches(x, y, self.k, self.w, &self.scoring, expanded_matches)
+            Band::create_with_matches(x, y, self.k, self.w, &self.scoring, &expanded_matches)
         };
 
         self.compute_alignment(x, y)
@@ -354,20 +371,19 @@ impl<F: MatchFunc> Aligner<F> {
     // to calling this function
     #[inline(never)]
     fn compute_alignment(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
-
         if self.band.num_cells() > MAX_CELLS {
             // Too many cells in the band. Return an empty alignment
             return Alignment {
-                       score: MIN_SCORE,
-                       ystart: 0,
-                       xstart: 0,
-                       yend: 0,
-                       xend: 0,
-                       ylen: 0,
-                       xlen: 0,
-                       operations: Vec::new(),
-                       mode: AlignmentMode::Custom,
-                   };
+                score: MIN_SCORE,
+                ystart: 0,
+                xstart: 0,
+                yend: 0,
+                xend: 0,
+                ylen: 0,
+                xlen: 0,
+                operations: Vec::new(),
+                mode: AlignmentMode::Custom,
+            };
         }
 
         let (m, n) = (x.len(), y.len());
@@ -406,8 +422,8 @@ impl<F: MatchFunc> Aligner<F> {
                 } else {
                     // Insert all i characters
                     let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
-                    let c_score = self.scoring.xclip_prefix + self.scoring.gap_open +
-                                  self.scoring.gap_extend; // Clip then insert
+                    let c_score =
+                        self.scoring.xclip_prefix + self.scoring.gap_open + self.scoring.gap_extend; // Clip then insert
                     if i_score > c_score {
                         self.I[curr][i] = i_score;
                         tb.set_i_bits(TB_INS);
@@ -468,8 +484,8 @@ impl<F: MatchFunc> Aligner<F> {
                 } else {
                     // Delete all j characters
                     let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
-                    let c_score = self.scoring.yclip_prefix + self.scoring.gap_open +
-                                  self.scoring.gap_extend;
+                    let c_score =
+                        self.scoring.yclip_prefix + self.scoring.gap_open + self.scoring.gap_extend;
                     if d_score > c_score {
                         self.D[curr][0] = d_score;
                         tb.set_d_bits(TB_DEL);
@@ -503,12 +519,13 @@ impl<F: MatchFunc> Aligner<F> {
             self.S[curr][m] = MIN_SCORE;
 
             let q = y[j - 1];
-            let xclip_score = self.scoring.xclip_prefix +
-                              max(self.scoring.yclip_prefix,
-                                  self.scoring.gap_open + self.scoring.gap_extend * (j as i32));
+            let xclip_score = self.scoring.xclip_prefix
+                + max(
+                    self.scoring.yclip_prefix,
+                    self.scoring.gap_open + self.scoring.gap_extend * (j as i32),
+                );
 
             for i in max(1, i_start)..i_end {
-
                 let p = x[i - 1];
                 let mut tb = TracebackCell::new();
 
@@ -563,8 +580,8 @@ impl<F: MatchFunc> Aligner<F> {
                     tb.set_s_bits(TB_XCLIP_PREFIX);
                 }
 
-                let yclip_score = self.scoring.yclip_prefix + self.scoring.gap_open +
-                                  self.scoring.gap_extend * (i as i32);
+                let yclip_score = self.scoring.yclip_prefix + self.scoring.gap_open
+                    + self.scoring.gap_extend * (i as i32);
                 if yclip_score > best_s_score {
                     best_s_score = yclip_score;
                     tb.set_s_bits(TB_YCLIP_PREFIX);
@@ -587,7 +604,6 @@ impl<F: MatchFunc> Aligner<F> {
                 }
 
                 self.traceback.set(i, j, tb);
-
             }
 
             // Suffix clip (y) from i = m and reset S[curr][m] if required
@@ -605,7 +621,6 @@ impl<F: MatchFunc> Aligner<F> {
                 self.I[curr][i] = MIN_SCORE;
                 self.D[curr][i] = MIN_SCORE;
             }
-
         }
 
         // Handle suffix clipping in the j=n case
@@ -647,7 +662,7 @@ impl<F: MatchFunc> Aligner<F> {
 
         let mut i = m;
         let mut j = n;
-        let mut ops = Vec::with_capacity(x.len());
+        let mut operations = Vec::with_capacity(x.len());
         let mut xstart: usize = 0usize;
         let mut ystart: usize = 0usize;
         let mut xend = m;
@@ -660,47 +675,47 @@ impl<F: MatchFunc> Aligner<F> {
             match last_layer {
                 TB_START => break,
                 TB_INS => {
-                    ops.push(AlignmentOperation::Ins);
+                    operations.push(AlignmentOperation::Ins);
                     next_layer = self.traceback.get(i, j).get_i_bits();
                     i -= 1;
                 }
                 TB_DEL => {
-                    ops.push(AlignmentOperation::Del);
+                    operations.push(AlignmentOperation::Del);
                     next_layer = self.traceback.get(i, j).get_d_bits();
                     j -= 1;
                 }
                 TB_MATCH => {
-                    ops.push(AlignmentOperation::Match);
+                    operations.push(AlignmentOperation::Match);
                     next_layer = self.traceback.get(i - 1, j - 1).get_s_bits();
                     i -= 1;
                     j -= 1;
                 }
                 TB_SUBST => {
-                    ops.push(AlignmentOperation::Subst);
+                    operations.push(AlignmentOperation::Subst);
                     next_layer = self.traceback.get(i - 1, j - 1).get_s_bits();
                     i -= 1;
                     j -= 1;
                 }
                 TB_XCLIP_PREFIX => {
-                    ops.push(AlignmentOperation::Xclip(i));
+                    operations.push(AlignmentOperation::Xclip(i));
                     xstart = i;
                     i = 0;
                     next_layer = self.traceback.get(0, j).get_s_bits();
                 }
                 TB_XCLIP_SUFFIX => {
-                    ops.push(AlignmentOperation::Xclip(self.Lx[j]));
+                    operations.push(AlignmentOperation::Xclip(self.Lx[j]));
                     i -= self.Lx[j];
                     xend = i;
                     next_layer = self.traceback.get(i, j).get_s_bits();
                 }
                 TB_YCLIP_PREFIX => {
-                    ops.push(AlignmentOperation::Yclip(j));
+                    operations.push(AlignmentOperation::Yclip(j));
                     ystart = j;
                     j = 0;
                     next_layer = self.traceback.get(i, 0).get_s_bits();
                 }
                 TB_YCLIP_SUFFIX => {
-                    ops.push(AlignmentOperation::Yclip(self.Ly[i]));
+                    operations.push(AlignmentOperation::Yclip(self.Ly[i]));
                     j -= self.Ly[i];
                     yend = j;
                     next_layer = self.traceback.get(i, j).get_s_bits();
@@ -717,11 +732,11 @@ impl<F: MatchFunc> Aligner<F> {
             let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
             if i_score > self.scoring.xclip_prefix {
                 for _ in 0..i {
-                    ops.push(AlignmentOperation::Ins);
+                    operations.push(AlignmentOperation::Ins);
                 }
                 xstart = 0;
             } else {
-                ops.push(AlignmentOperation::Xclip(i));
+                operations.push(AlignmentOperation::Xclip(i));
                 xstart = i;
             }
         }
@@ -730,37 +745,38 @@ impl<F: MatchFunc> Aligner<F> {
             let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
             if d_score > self.scoring.xclip_prefix {
                 for _ in 0..j {
-                    ops.push(AlignmentOperation::Del);
+                    operations.push(AlignmentOperation::Del);
                 }
                 ystart = 0;
             } else {
-                ops.push(AlignmentOperation::Yclip(j));
+                operations.push(AlignmentOperation::Yclip(j));
                 ystart = j;
             }
         }
 
-        ops.reverse();
+        operations.reverse();
         Alignment {
             score: self.S[n % 2][m],
-            ystart: ystart,
-            xstart: xstart,
-            yend: yend,
-            xend: xend,
+            ystart,
+            xstart,
+            yend,
+            xend,
             ylen: n,
             xlen: m,
-            operations: ops,
+            operations,
             mode: AlignmentMode::Custom,
         }
     }
 
     /// Calculate global alignment of x against y.
     pub fn global(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
-
         // Store the current clip penalties
-        let clip_penalties = [self.scoring.xclip_prefix,
-                              self.scoring.xclip_suffix,
-                              self.scoring.yclip_prefix,
-                              self.scoring.yclip_suffix];
+        let clip_penalties = [
+            self.scoring.xclip_prefix,
+            self.scoring.xclip_suffix,
+            self.scoring.yclip_prefix,
+            self.scoring.yclip_suffix,
+        ];
 
         // Temporarily Over-write the clip penalties
         self.scoring.xclip_prefix = MIN_SCORE;
@@ -783,12 +799,13 @@ impl<F: MatchFunc> Aligner<F> {
 
     /// Calculate semiglobal alignment of x against y (x is global, y is local).
     pub fn semiglobal(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
-
         // Store the current clip penalties
-        let clip_penalties = [self.scoring.xclip_prefix,
-                              self.scoring.xclip_suffix,
-                              self.scoring.yclip_prefix,
-                              self.scoring.yclip_suffix];
+        let clip_penalties = [
+            self.scoring.xclip_prefix,
+            self.scoring.xclip_suffix,
+            self.scoring.yclip_prefix,
+            self.scoring.yclip_suffix,
+        ];
 
         // Temporarily Over-write the clip penalties
         self.scoring.xclip_prefix = MIN_SCORE;
@@ -818,17 +835,19 @@ impl<F: MatchFunc> Aligner<F> {
     /// queries against the same reference. The user can precompute the HashMap
     /// using sparse::hash_kmers and invoke this function to speed up the
     /// alignment computation.
-    pub fn semiglobal_with_prehash(&mut self,
-                                   x: TextSlice,
-                                   y: TextSlice,
-                                   y_kmer_hash: &HashMapFx<&[u8], Vec<u32>>)
-                                   -> Alignment {
-
+    pub fn semiglobal_with_prehash(
+        &mut self,
+        x: TextSlice,
+        y: TextSlice,
+        y_kmer_hash: &HashMapFx<&[u8], Vec<u32>>,
+    ) -> Alignment {
         // Store the current clip penalties
-        let clip_penalties = [self.scoring.xclip_prefix,
-                              self.scoring.xclip_suffix,
-                              self.scoring.yclip_prefix,
-                              self.scoring.yclip_suffix];
+        let clip_penalties = [
+            self.scoring.xclip_prefix,
+            self.scoring.xclip_suffix,
+            self.scoring.yclip_prefix,
+            self.scoring.yclip_suffix,
+        ];
 
         // Temporarily Over-write the clip penalties
         self.scoring.xclip_prefix = MIN_SCORE;
@@ -854,12 +873,13 @@ impl<F: MatchFunc> Aligner<F> {
 
     /// Calculate local alignment of x against y.
     pub fn local(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
-
         // Store the current clip penalties
-        let clip_penalties = [self.scoring.xclip_prefix,
-                              self.scoring.xclip_suffix,
-                              self.scoring.yclip_prefix,
-                              self.scoring.yclip_suffix];
+        let clip_penalties = [
+            self.scoring.xclip_prefix,
+            self.scoring.xclip_suffix,
+            self.scoring.yclip_prefix,
+            self.scoring.yclip_suffix,
+        ];
 
         // Temporarily Over-write the clip penalties
         self.scoring.xclip_prefix = 0;
@@ -905,7 +925,7 @@ impl<F: MatchFunc> Aligner<F> {
             for j in 0..self.band.cols {
                 print!("{}", view[index(i, j)]);
             }
-            println!("");
+            println!();
         }
     }
 }
@@ -939,7 +959,6 @@ impl Band {
     // * `n` - the expected size of y
     //
     fn new(m: usize, n: usize) -> Self {
-
         let mut ranges: Vec<Range<usize>> = Vec::with_capacity(n + 1);
         for _ in 0..n + 1 {
             ranges.push(m + 1..0);
@@ -948,15 +967,13 @@ impl Band {
         Band {
             rows: m + 1,
             cols: n + 1,
-            ranges: ranges,
+            ranges,
         }
-
     }
 
     // Add cells around a kmer of length 'k', starting at 'start', which are within a
     // distance of 'w' in x or y directions to the band.
     fn add_kmer(&mut self, start: (u32, u32), k: usize, w: usize) {
-
         let (r, c) = (start.0 as usize, start.1 as usize);
         // println!("{} {} {}", r, k, self.rows);
         debug_assert!(r + k <= self.rows);
@@ -992,7 +1009,6 @@ impl Band {
         for j in (c + k - 1).saturating_sub(w)..min(c + k + w, self.cols) {
             self.ranges[j].end = max(self.ranges[j].end, i);
         }
-
     }
 
     // Add cells around a specific position to the band. An cell which is within 'w' distance
@@ -1025,7 +1041,6 @@ impl Band {
         }
     }
 
-
     // The band needs to start either at (0,0) or at a point that is zero score from (0,0).
     // This naturally sets the start positions correctly for global, semiglobal and local
     // modes. Similarly the band has to either end at (m,n) or at a point from which there is
@@ -1037,13 +1052,14 @@ impl Band {
     // start - the index of the first matching kmer in LCSk++
     // end - the index of the last matching kmer in LCSk++
     //
-    fn set_boundaries<F: MatchFunc>(&mut self,
-                                    start: (u32, u32),
-                                    end: (u32, u32),
-                                    k: usize,
-                                    w: usize,
-                                    scoring: &Scoring<F>) {
-
+    fn set_boundaries<F: MatchFunc>(
+        &mut self,
+        start: (u32, u32),
+        end: (u32, u32),
+        k: usize,
+        w: usize,
+        scoring: &Scoring<F>,
+    ) {
         let lazy_extend: usize = 2 * k;
 
         // -------------- START --------------
@@ -1060,11 +1076,14 @@ impl Band {
                 self.add_kmer(((r - d) as u32, (c - d) as u32), d, w);
 
                 // If we hit one of the edges before completing lazy_extend
-                self.add_gap((r.saturating_sub(lazy_extend) as u32,
-                              c.saturating_sub(lazy_extend) as u32),
-                             ((r - d) as u32, (c - d) as u32),
-                             w);
-
+                self.add_gap(
+                    (
+                        r.saturating_sub(lazy_extend) as u32,
+                        c.saturating_sub(lazy_extend) as u32,
+                    ),
+                    ((r - d) as u32, (c - d) as u32),
+                    w,
+                );
             } else {
                 // we need to find a zero cost cell
 
@@ -1084,8 +1103,10 @@ impl Band {
                     let d = min(r, c);
                     self.add_kmer(((r - d) as u32, (c - d) as u32), d, w);
                     // Make sure we do at least "lazy_extend" extension
-                    let start = (r.saturating_sub(lazy_extend) as u32,
-                                 c.saturating_sub(lazy_extend) as u32);
+                    let start = (
+                        r.saturating_sub(lazy_extend) as u32,
+                        c.saturating_sub(lazy_extend) as u32,
+                    );
                     let end = ((r - d) as u32, (c - d) as u32);
                     if (start.0 <= end.0) && (start.1 <= end.1) {
                         self.add_gap(start, end, w);
@@ -1096,7 +1117,6 @@ impl Band {
                 }
             }
         }
-
 
         // -------------- END --------------
         // Nothing to do if the last kmer ends at (m, n)
@@ -1127,7 +1147,6 @@ impl Band {
                 if (r1 <= r2) && (c1 <= c2) {
                     self.add_gap((r1 as u32, c1 as u32), (r2 as u32, c2 as u32), w);
                 }
-
             } else {
                 // we need to find a zero cost cell
 
@@ -1163,44 +1182,42 @@ impl Band {
                     let cols = self.cols as u32;
                     self.add_gap((r as u32, c as u32), (rows as u32, cols as u32), w);
                 }
-
             }
         }
     }
 
-
-    fn create<F: MatchFunc>(x: TextSlice,
-                            y: TextSlice,
-                            k: usize,
-                            w: usize,
-                            scoring: &Scoring<F>)
-                            -> Band {
-
+    fn create<F: MatchFunc>(
+        x: TextSlice,
+        y: TextSlice,
+        k: usize,
+        w: usize,
+        scoring: &Scoring<F>,
+    ) -> Band {
         let matches = sparse::find_kmer_matches(x, y, k);
-        Band::create_with_matches(x, y, k, w, scoring, matches)
+        Band::create_with_matches(x, y, k, w, scoring, &matches)
     }
 
-    fn create_with_prehash<F: MatchFunc>(x: TextSlice,
-                                         y: TextSlice,
-                                         k: usize,
-                                         w: usize,
-                                         scoring: &Scoring<F>,
-                                         y_kmer_hash: &HashMapFx<&[u8], Vec<u32>>)
-                                         -> Band {
-
+    fn create_with_prehash<F: MatchFunc>(
+        x: TextSlice,
+        y: TextSlice,
+        k: usize,
+        w: usize,
+        scoring: &Scoring<F>,
+        y_kmer_hash: &HashMapFx<&[u8], Vec<u32>>,
+    ) -> Band {
         let matches = sparse::find_kmer_matches_seq2_hashed(x, y_kmer_hash, k);
-        Band::create_with_matches(x, y, k, w, scoring, matches)
+        Band::create_with_matches(x, y, k, w, scoring, &matches)
     }
 
-    fn create_with_matches<F: MatchFunc>(x: TextSlice,
-                                         y: TextSlice,
-                                         k: usize,
-                                         w: usize,
-                                         scoring: &Scoring<F>,
-                                         matches: Vec<(u32, u32)>)
-                                         -> Band {
-
-        if matches.len() == 0 {
+    fn create_with_matches<F: MatchFunc>(
+        x: TextSlice,
+        y: TextSlice,
+        k: usize,
+        w: usize,
+        scoring: &Scoring<F>,
+        matches: &[(u32, u32)],
+    ) -> Band {
+        if matches.is_empty() {
             let mut band = Band::new(x.len(), y.len());
             band.full_matrix();
             return band;
@@ -1211,26 +1228,28 @@ impl Band {
             None => DEFAULT_MATCH_SCORE,
         };
 
-        let res = sparse::sdpkpp(&matches,
-                                 k,
-                                 match_score as u32,
-                                 scoring.gap_open,
-                                 scoring.gap_extend);
-        Band::create_from_match_path(x, y, k, w, scoring, &res.path, matches)
+        let res = sparse::sdpkpp(
+            matches,
+            k,
+            match_score as u32,
+            scoring.gap_open,
+            scoring.gap_extend,
+        );
+        Band::create_from_match_path(x, y, k, w, scoring, &res.path, &matches)
     }
 
-    fn create_from_match_path<F: MatchFunc>(x: TextSlice,
-                                            y: TextSlice,
-                                            k: usize,
-                                            w: usize,
-                                            scoring: &Scoring<F>,
-                                            path: &Vec<usize>,
-                                            matches: Vec<(u32, u32)>)
-                                            -> Band {
-
+    fn create_from_match_path<F: MatchFunc>(
+        x: TextSlice,
+        y: TextSlice,
+        k: usize,
+        w: usize,
+        scoring: &Scoring<F>,
+        path: &[usize],
+        matches: &[(u32, u32)],
+    ) -> Band {
         let mut band = Band::new(x.len(), y.len());
 
-        if matches.len() == 0 {
+        if matches.is_empty() {
             band.full_matrix();
             return band;
         }
@@ -1248,9 +1267,8 @@ impl Band {
                 let p = prev.unwrap();
                 band.add_entry((p.0 + k as u32, p.1 + k as u32), w);
             } else {
-                match prev {
-                    Some(p) => band.add_gap((p.0 + (k - 1) as u32, p.1 + (k - 1) as u32), curr, w),
-                    _ => {}
+                if let Some(p) = prev {
+                    band.add_gap((p.0 + (k - 1) as u32, p.1 + (k - 1) as u32), curr, w)
                 }
                 band.add_kmer(curr, k, w);
             }
@@ -1289,7 +1307,7 @@ impl Band {
             for j in 0..self.cols {
                 print!("{}", view[index(i, j)]);
             }
-            println!("");
+            println!();
         }
     }
 
@@ -1298,13 +1316,12 @@ impl Band {
         let total_cells = self.rows * self.cols;
         let banded_cells = self.num_cells();
         let percent_cells = (banded_cells as f64) / (total_cells as f64) * 100.0;
-        println!(" {} of {} cells are in the band ({2:.2}%)",
-                 banded_cells,
-                 total_cells,
-                 percent_cells);
+        println!(
+            " {} of {} cells are in the band ({2:.2}%)",
+            banded_cells, total_cells, percent_cells
+        );
     }
 }
-
 
 #[cfg(test)]
 mod banded {
@@ -1314,9 +1331,7 @@ mod banded {
 
     // Check that the banded alignment is equivalent to the exhaustive SW alignment
     fn compare_to_full_alignment_local(x: TextSlice, y: TextSlice) {
-
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-
 
         let mut banded_aligner =
             banded::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score, 10, 10);
@@ -1330,9 +1345,7 @@ mod banded {
     }
 
     fn compare_to_full_alignment_global(x: TextSlice, y: TextSlice) {
-
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-
 
         let mut banded_aligner =
             banded::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score, 10, 10);
@@ -1346,7 +1359,6 @@ mod banded {
     }
 
     fn compare_to_full_alignment_semiglobal(x: TextSlice, y: TextSlice) {
-
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
 
         let mut banded_aligner =
@@ -1369,36 +1381,133 @@ mod banded {
     fn test_band_add_entry() {
         let mut band = banded::Band::new(10, 10);
         band.add_entry((3u32, 3u32), 3usize);
-        assert_eq!(band.ranges,
-                   [0..7, 0..7, 0..7, 0..7, 0..7, 0..7, 0..7, 11..0, 11..0, 11..0, 11..0]);
+        assert_eq!(
+            band.ranges,
+            [
+                0..7,
+                0..7,
+                0..7,
+                0..7,
+                0..7,
+                0..7,
+                0..7,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+            ]
+        );
         band.add_entry((9u32, 9u32), 2usize);
-        assert_eq!(band.ranges,
-                   [0..7, 0..7, 0..7, 0..7, 0..7, 0..7, 0..7, 7..11, 7..11, 7..11, 7..11]);
+        assert_eq!(
+            band.ranges,
+            [
+                0..7,
+                0..7,
+                0..7,
+                0..7,
+                0..7,
+                0..7,
+                0..7,
+                7..11,
+                7..11,
+                7..11,
+                7..11,
+            ]
+        );
         band.add_entry((7u32, 5u32), 2usize);
-        assert_eq!(band.ranges,
-                   [0..7, 0..7, 0..7, 0..10, 0..10, 0..10, 0..10, 5..11, 7..11, 7..11, 7..11]);
+        assert_eq!(
+            band.ranges,
+            [
+                0..7,
+                0..7,
+                0..7,
+                0..10,
+                0..10,
+                0..10,
+                0..10,
+                5..11,
+                7..11,
+                7..11,
+                7..11,
+            ]
+        );
 
         let mut band = banded::Band::new(10, 10);
         band.add_entry((0u32, 0u32), 2usize);
-        assert_eq!(band.ranges,
-                   [0..3, 0..3, 0..3, 11..0, 11..0, 11..0, 11..0, 11..0, 11..0, 11..0, 11..0]);
+        assert_eq!(
+            band.ranges,
+            [
+                0..3,
+                0..3,
+                0..3,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+            ]
+        );
 
         let mut band = banded::Band::new(10, 10);
         band.add_entry((10u32, 10u32), 2usize);
-        assert_eq!(band.ranges,
-                   [11..0, 11..0, 11..0, 11..0, 11..0, 11..0, 11..0, 11..0, 8..11, 8..11, 8..11]);
+        assert_eq!(
+            band.ranges,
+            [
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                8..11,
+                8..11,
+                8..11,
+            ]
+        );
 
         let mut band = banded::Band::new(10, 10);
         band.add_entry((10u32, 0u32), 2usize);
-        assert_eq!(band.ranges,
-                   [8..11, 8..11, 8..11, 11..0, 11..0, 11..0, 11..0, 11..0, 11..0, 11..0, 11..0]);
+        assert_eq!(
+            band.ranges,
+            [
+                8..11,
+                8..11,
+                8..11,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+            ]
+        );
 
         let mut band = banded::Band::new(10, 10);
         band.add_entry((0u32, 10u32), 2usize);
-        assert_eq!(band.ranges,
-                   [11..0, 11..0, 11..0, 11..0, 11..0, 11..0, 11..0, 11..0, 0..3, 0..3, 0..3]);
+        assert_eq!(
+            band.ranges,
+            [
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                11..0,
+                0..3,
+                0..3,
+                0..3,
+            ]
+        );
         band.stat();
-
     }
 
     fn compare_add_kmer_and_add_entry(start: (u32, u32), k: usize, w: usize, m: usize, n: usize) {
@@ -1421,7 +1530,8 @@ mod banded {
 
     #[test]
     fn test_same() {
-        let x = b"ACGTATCATAGACCCTAGATAGGGTTGTGTAGATGATCCACAGACGTATCATAGATTAGATAGGGTTGTGTAGATGATTCC\
+        let x =
+            b"ACGTATCATAGACCCTAGATAGGGTTGTGTAGATGATCCACAGACGTATCATAGATTAGATAGGGTTGTGTAGATGATTCC\
         ACAG";
         let y = x.clone();
         compare_to_full_alignment_local(x, &y);
@@ -1431,7 +1541,8 @@ mod banded {
 
     #[test]
     fn test_big() {
-        let query = b"CATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCGTGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTT\
+        let query =
+            b"CATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCGTGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTT\
         CTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGCAGAACAGGAGGCCCCATCTCCCGTTCTTACTCAGAAGCTGTCAGCAGG\
         GCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTCCCCAGCTCTTGCTTCAGGGCCTCACGTTTCGCCCCCTGAGGCCTGGGGGCTCCAT\
         CCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTG";
@@ -1560,8 +1671,8 @@ mod banded {
     // }
 
     use alignment::AlignmentOperation::*;
-    use std::iter::repeat;
     use scores::blosum62;
+    use std::iter::repeat;
 
     #[test]
     fn test_semiglobal() {
@@ -1572,10 +1683,11 @@ mod banded {
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(alignment.operations,
-                   [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
+        assert_eq!(
+            alignment.operations,
+            [Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+        );
     }
-
 
     // Test case for underflow of the SW score.
     #[test]
@@ -1587,10 +1699,11 @@ mod banded {
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(alignment.operations,
-                   [Match, Match, Match, Match, Del, Match, Ins, Match, Match, Match]);
+        assert_eq!(
+            alignment.operations,
+            [Match, Match, Match, Match, Del, Match, Ins, Match, Match, Match,]
+        );
     }
-
 
     #[test]
     fn test_global_affine_ins() {
@@ -1601,10 +1714,11 @@ mod banded {
         let alignment = aligner.global(x, y);
 
         println!("aln:\n{}", alignment.pretty(x, y));
-        assert_eq!(alignment.operations,
-                   [Match, Match, Match, Ins, Ins, Ins, Match, Match, Match]);
+        assert_eq!(
+            alignment.operations,
+            [Match, Match, Match, Ins, Ins, Ins, Match, Match, Match]
+        );
     }
-
 
     #[test]
     fn test_local_empty() {
@@ -1618,7 +1732,6 @@ mod banded {
         assert_eq!(alignment.x_aln_len(), 0);
         assert_eq!(alignment.y_aln_len(), 0);
     }
-
 
     #[test]
     fn test_global_affine_ins2() {
@@ -1638,7 +1751,6 @@ mod banded {
         assert_eq!(alignment.operations, correct);
     }
 
-
     #[test]
     fn test_local_affine_ins2() {
         let x = b"ACGTATCATAGATAGATAGGGTTGTGTAGATGATCCACAG";
@@ -1650,7 +1762,6 @@ mod banded {
         assert_eq!(alignment.ystart, 0);
     }
 
-
     #[test]
     fn test_local() {
         let x = b"ACCGTGGAT";
@@ -1660,8 +1771,10 @@ mod banded {
         let alignment = aligner.local(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(alignment.operations,
-                   [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
+        assert_eq!(
+            alignment.operations,
+            [Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+        );
     }
 
     #[test]
@@ -1675,9 +1788,10 @@ mod banded {
         println!("\naln:\n{}", alignment.pretty(x, y));
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(alignment.operations,
-                   [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match,
-                    Match]);
+        assert_eq!(
+            alignment.operations,
+            [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+        );
     }
 
     #[test]
@@ -1702,10 +1816,11 @@ mod banded {
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(alignment.operations,
-                   [Ins, Ins, Ins, Subst, Match, Match, Match]);
+        assert_eq!(
+            alignment.operations,
+            [Ins, Ins, Ins, Subst, Match, Match, Match]
+        );
     }
-
 
     #[test]
     fn test_issue12_1() {
@@ -1716,8 +1831,10 @@ mod banded {
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.ystart, 1);
-        assert_eq!(alignment.operations,
-                   [Match, Match, Match, Subst, Subst, Subst]);
+        assert_eq!(
+            alignment.operations,
+            [Match, Match, Match, Subst, Subst, Subst]
+        );
     }
 
     #[test]
@@ -1730,10 +1847,11 @@ mod banded {
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.ystart, 0);
 
-        assert_eq!(alignment.operations,
-                   [Subst, Match, Ins, Ins, Ins, Ins, Ins, Ins, Subst, Match, Match]);
+        assert_eq!(
+            alignment.operations,
+            [Subst, Match, Ins, Ins, Ins, Ins, Ins, Ins, Subst, Match, Match,]
+        );
     }
-
 
     #[test]
     fn test_issue12_3() {
@@ -1744,19 +1862,23 @@ mod banded {
         let alignment = aligner.semiglobal(x, y);
 
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(alignment.operations,
-                   [Ins, Ins, Ins, Ins, Ins, Ins, Match, Subst, Subst, Match, Subst, Subst,
-                    Subst, Match, Match, Match, Match]);
-
+        assert_eq!(
+            alignment.operations,
+            [
+                Ins, Ins, Ins, Ins, Ins, Ins, Match, Subst, Subst, Match, Subst, Subst, Subst,
+                Match, Match, Match, Match,
+            ]
+        );
 
         let mut aligner = banded::Aligner::with_capacity(y.len(), x.len(), -5, -1, &score, 10, 10);
         let alignment = aligner.semiglobal(y, x);
 
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(alignment.operations,
-                   [Match, Subst, Subst, Match, Subst, Subst, Subst, Match, Match, Match, Match]);
+        assert_eq!(
+            alignment.operations,
+            [Match, Subst, Subst, Match, Subst, Subst, Subst, Match, Match, Match, Match,]
+        );
     }
-
 
     #[test]
     fn test_left_aligned_del() {
@@ -1769,11 +1891,14 @@ mod banded {
 
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(alignment.operations,
-                   [Match, Match, Match, Del, Del, Del, Match, Match, Match, Match, Match, Match,
-                    Match, Match, Match]);
+        assert_eq!(
+            alignment.operations,
+            [
+                Match, Match, Match, Del, Del, Del, Match, Match, Match, Match, Match, Match,
+                Match, Match, Match,
+            ]
+        );
     }
-
 
     // Test that trailing deletions are correctly handled
     // in global mode
@@ -1792,16 +1917,17 @@ mod banded {
         assert_eq!(alignment.score, -9);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(alignment.operations,
-                   [Ins, Ins, Match, Match, Match, Match, Match, Match, Match, Match, Match,
-                    Match, Ins, Ins, Ins, Ins, Ins, Ins, Ins]);
+        assert_eq!(
+            alignment.operations,
+            [
+                Ins, Ins, Match, Match, Match, Match, Match, Match, Match, Match, Match, Match,
+                Ins, Ins, Ins, Ins, Ins, Ins, Ins,
+            ]
+        );
     }
-
-
 
     #[test]
     fn test_left_aligned_ins() {
-
         let x = b"GTGCATCATCATGTG";
         let y = b"GTGCATCATGTG";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
@@ -1811,12 +1937,14 @@ mod banded {
 
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(alignment.operations,
-                   [Match, Match, Match, Ins, Ins, Ins, Match, Match, Match, Match, Match, Match,
-                    Match, Match, Match]);
+        assert_eq!(
+            alignment.operations,
+            [
+                Match, Match, Match, Ins, Ins, Ins, Match, Match, Match, Match, Match, Match,
+                Match, Match, Match,
+            ]
+        );
     }
-
-
 
     #[test]
     fn test_aligner_new() {
@@ -1828,26 +1956,30 @@ mod banded {
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(alignment.operations,
-                   [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
+        assert_eq!(
+            alignment.operations,
+            [Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+        );
 
         let alignment = aligner.local(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(alignment.operations,
-                   [Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
+        assert_eq!(
+            alignment.operations,
+            [Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+        );
 
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(alignment.operations,
-                   [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match,
-                    Match]);
+        assert_eq!(
+            alignment.operations,
+            [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+        );
     }
 
     #[test]
     fn test_semiglobal_simple() {
-
         let x = b"GAAAACCGTTGAT";
         let y = b"ACCGTGGATGGG";
 
@@ -1855,14 +1987,14 @@ mod banded {
         let mut aligner = banded::Aligner::new(-5, -1, &score, 10, 10);
         let alignment = aligner.semiglobal(x, y);
 
-        assert_eq!(alignment.operations,
-                   [Ins, Ins, Ins, Ins, Match, Match, Match, Match, Match, Subst, Match, Match,
-                    Match]);
+        assert_eq!(
+            alignment.operations,
+            [Ins, Ins, Ins, Ins, Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+        );
     }
 
     #[test]
     fn test_insert_only_semiglobal() {
-
         let x = b"TTTT";
         let y = b"AAAA";
 
@@ -1875,7 +2007,6 @@ mod banded {
 
     #[test]
     fn test_insert_in_between_semiglobal() {
-
         let x = b"GGGGG";
         let y = b"GGTAGGG";
 
@@ -1883,13 +2014,14 @@ mod banded {
         let mut aligner = banded::Aligner::new(-5, -1, &score, 10, 10);
         let alignment = aligner.semiglobal(x, y);
 
-        assert_eq!(alignment.operations,
-                   [Match, Match, Del, Del, Match, Match, Match]);
+        assert_eq!(
+            alignment.operations,
+            [Match, Match, Del, Del, Match, Match, Match]
+        );
     }
 
     #[test]
     fn test_xclip_prefix_custom() {
-
         let x = b"GGGGGGATG";
         let y = b"ATG";
 
@@ -1904,7 +2036,6 @@ mod banded {
 
     #[test]
     fn test_yclip_prefix_custom() {
-
         let y = b"GGGGGGATG";
         let x = b"ATG";
 
@@ -1919,7 +2050,6 @@ mod banded {
 
     #[test]
     fn test_xclip_suffix_custom() {
-
         let x = b"GAAAA";
         let y = b"CG";
 
@@ -1934,7 +2064,6 @@ mod banded {
 
     #[test]
     fn test_yclip_suffix_custom() {
-
         let y = b"GAAAA";
         let x = b"CG";
 
@@ -1949,10 +2078,8 @@ mod banded {
 
     #[test]
     fn test_longer_string_all_operations() {
-
         let x = b"TTTTTGGGGGGATGGCCCCCCTTTTTTTTTTGGGAAAAAAAAAGGGGGG";
         let y = b"GGGGGGATTTCCCCCCCCCTTTTTTTTTTAAAAAAAAA";
-
 
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -3i32 };
         let scoring = Scoring::new(-5, -1, &score).xclip(-5).yclip(0);
@@ -1962,6 +2089,5 @@ mod banded {
 
         println!("{}", alignment.pretty(x, y));
         assert_eq!(alignment.score, 7);
-
     }
 }

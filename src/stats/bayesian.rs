@@ -5,11 +5,10 @@
 
 //! Utilities for Bayesian statistics.
 
-use ordered_float::OrderedFloat;
 use itertools::Itertools;
+use ordered_float::OrderedFloat;
 
 use stats::LogProb;
-
 
 /// For each of the hypothesis tests given as posterior error probabilities
 /// (PEPs, i.e. the posterior probability of the null hypothesis), estimate the FDR
@@ -27,8 +26,8 @@ pub fn expected_fdr(peps: &[LogProb]) -> Vec<LogProb> {
         (0..peps.len()).sorted_by(|&i, &j| OrderedFloat(*peps[i]).cmp(&OrderedFloat(*peps[j])));
     // estimate FDR
     let mut expected_fdr = vec![LogProb::ln_zero(); peps.len()];
-    for (i, expected_fp) in LogProb::ln_cumsum_exp(sorted_idx.iter().map(|&i| peps[i]))
-            .enumerate() {
+    for (i, expected_fp) in LogProb::ln_cumsum_exp(sorted_idx.iter().map(|&i| peps[i])).enumerate()
+    {
         let fdr = LogProb(*expected_fp - ((i + 1) as f64).ln());
         expected_fdr[i] = if fdr <= LogProb::ln_one() {
             fdr
@@ -40,7 +39,6 @@ pub fn expected_fdr(peps: &[LogProb]) -> Vec<LogProb> {
     expected_fdr
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -48,7 +46,11 @@ mod tests {
 
     #[test]
     fn test_expected_fdr() {
-        let peps = [LogProb(0.1f64.ln()), LogProb::ln_zero(), LogProb(0.25f64.ln())];
+        let peps = [
+            LogProb(0.1f64.ln()),
+            LogProb::ln_zero(),
+            LogProb(0.25f64.ln()),
+        ];
         let fdrs = expected_fdr(&peps);
         println!("{:?}", fdrs);
 

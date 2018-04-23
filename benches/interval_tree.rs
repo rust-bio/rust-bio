@@ -1,13 +1,13 @@
 #![feature(test)]
 
-extern crate test;
 extern crate bio;
+extern crate test;
 
 use test::Bencher;
 
 use bio::data_structures::interval_tree::*;
 use bio::utils::Interval;
-use std::cmp::{min, max};
+use std::cmp::{max, min};
 use std::ops::Range;
 
 #[bench]
@@ -24,11 +24,12 @@ fn bench_interval_many_small_queries(b: &mut Bencher) {
     b.iter(|| test_insert_query(10, &(100_000..200_000), 10, (99_995..199_995)));
 }
 
-
-fn test_insert_query(insert_size: i64,
-                     insert_bounds: &Range<i64>,
-                     query_size: i64,
-                     query_bounds: Range<i64>) {
+fn test_insert_query(
+    insert_size: i64,
+    insert_bounds: &Range<i64>,
+    query_size: i64,
+    query_bounds: Range<i64>,
+) {
     let mut tree: IntervalTree<i64, Range<i64>> = IntervalTree::new();
 
     for i in insert_bounds.clone() {
@@ -47,9 +48,11 @@ fn test_insert_query(insert_size: i64,
     }
 }
 
-fn assert_intersections(tree: &IntervalTree<i64, Range<i64>>,
-                        target: Range<i64>,
-                        expected_results: &[Range<i64>]) {
+fn assert_intersections(
+    tree: &IntervalTree<i64, Range<i64>>,
+    target: Range<i64>,
+    expected_results: &[Range<i64>],
+) {
     let mut actual_entries: Vec<_> = tree.find(target).collect();
     actual_entries.sort_by(|x1, x2| x1.data().start.cmp(&x2.data().start));
     let mut expected_entries: Vec<_> = expected_results

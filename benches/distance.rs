@@ -1,8 +1,8 @@
 #![feature(test)]
 
-extern crate test;
-extern crate bit_vec;
 extern crate bio;
+extern crate bit_vec;
+extern crate test;
 
 use test::Bencher;
 
@@ -271,16 +271,20 @@ GCCGCGCGCGCGGGGCCGGGCCGCGCGCGCGCCGGGCCGCCGGCGGGGCGCGGCC";
 
 #[bench]
 fn bench_hamming_dist_equal_str_1000iter(b: &mut Bencher) {
-    b.iter(|| for _ in 0..1000 {
-               hamming(STR_1, STR_1);
-           });
+    b.iter(|| {
+        for _ in 0..1000 {
+            hamming(STR_1, STR_1);
+        }
+    });
 }
 
 #[bench]
 fn bench_hamming_dist_diverse_str_1000iter(b: &mut Bencher) {
-    b.iter(|| for _ in 0..1000 {
-               hamming(STR_1, STR_2);
-           });
+    b.iter(|| {
+        for _ in 0..1000 {
+            hamming(STR_1, STR_2);
+        }
+    });
 }
 
 #[bench]

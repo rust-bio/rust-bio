@@ -22,14 +22,11 @@
 //! assert_eq!(occ, [4, 15]);
 //! ```
 
-
 use std::iter::{repeat, Enumerate};
 
-use utils::{TextSlice, IntoTextIterator, TextIterator};
-
+use utils::{IntoTextIterator, TextIterator, TextSlice};
 
 type LPS = Vec<usize>;
-
 
 /// KMP algorithm.
 pub struct KMP<'a> {
@@ -38,18 +35,13 @@ pub struct KMP<'a> {
     pattern: TextSlice<'a>,
 }
 
-
 impl<'a> KMP<'a> {
     /// Create a new instance for a given pattern.
     pub fn new(pattern: TextSlice<'a>) -> Self {
         let m = pattern.len();
         let lps = lps(pattern);
 
-        KMP {
-            lps: lps,
-            m: m,
-            pattern: pattern,
-        }
+        KMP { lps, m, pattern }
     }
 
     fn delta(&self, mut q: usize, a: u8) -> usize {
@@ -73,7 +65,6 @@ impl<'a> KMP<'a> {
     }
 }
 
-
 fn lps(pattern: &[u8]) -> LPS {
     let (m, mut q) = (pattern.len(), 0);
     let mut lps: LPS = repeat(0).take(m).collect();
@@ -90,14 +81,12 @@ fn lps(pattern: &[u8]) -> LPS {
     lps
 }
 
-
 /// Iterator over start positions of matches.
 pub struct Matches<'a, I: TextIterator<'a>> {
     kmp: &'a KMP<'a>,
     q: usize,
     text: Enumerate<I>,
 }
-
 
 impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
     type Item = usize;

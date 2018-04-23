@@ -18,14 +18,12 @@
 //! let mut bits = BitVec::from_elem(64, false);
 //! bits.set(5, true);
 //! bits.set(32, true);
-//! let rs = RankSelect::new(bits, 1);
+//! let rs = RankSelect::new(&bits, 1);
 //! assert!(rs.rank(6).unwrap() == 1);
 //! # }
 //! ```
 
-
 use bit_vec::BitVec;
-
 
 /// A rank/select data structure.
 #[derive(Serialize, Deserialize)]
@@ -35,7 +33,6 @@ pub struct RankSelect {
     superblocks: Vec<u32>,
     s: usize,
 }
-
 
 impl RankSelect {
     /// Create a new instance.
@@ -49,16 +46,16 @@ impl RankSelect {
     ///   The data structure needs O(n + n log n / (k * 32)) bits with n being the bits of the given bitvector.
     ///   The data structure is succinct if k is chosen as a sublinear function of n
     ///   (e.g. k = (log n)² / 32).
-    pub fn new(bits: BitVec, k: usize) -> RankSelect {
+    pub fn new(bits: &BitVec, k: usize) -> RankSelect {
         let n = bits.len();
-        let raw = bits.to_bytes();
+        let bits = bits.to_bytes();
         let s = k * 32;
 
         RankSelect {
-            n: n,
-            s: s,
-            superblocks: superblocks(n, s, &raw),
-            bits: raw,
+            n,
+            s,
+            superblocks: superblocks(n, s, &bits),
+            bits,
         }
     }
 
@@ -74,7 +71,7 @@ impl RankSelect {
         } else {
             let s = i / self.s; // the superblock
             let b = i / 8; // the block
-            // take the superblock rank
+                           // take the superblock rank
             let mut rank = self.superblocks[s];
             // add the rank within the block
             rank += (self.bits[b] >> (7 - i % 8)).count_ones();
@@ -82,7 +79,7 @@ impl RankSelect {
             rank += self.bits[s * 32 / 8..b]
                 .iter()
                 .map(|&a| a.count_ones())
-                .fold(0, |a, b| a + b);
+                .sum::<u32>();
 
             Some(rank)
         }
@@ -107,7 +104,7 @@ impl RankSelect {
         for (block, &b) in self.bits[first_block..].iter().enumerate() {
             let p = b.count_ones();
             if rank + p >= j {
-                let mut bit = 0b10000000;
+                let mut bit = 0b1000_0000;
                 for i in 0..8usize {
                     rank += (b & bit > 0) as u32;
                     if rank == j {
@@ -122,7 +119,6 @@ impl RankSelect {
         None
     }
 }
-
 
 /// Create `n` superblocks of size `s` from a given bitvector.
 fn superblocks(n: usize, s: usize, raw_bits: &[u8]) -> Vec<u32> {
@@ -150,7 +146,7 @@ mod tests {
         let mut bits = BitVec::from_elem(64, false);
         bits.set(5, true);
         bits.set(32, true);
-        let rs = RankSelect::new(bits, 1);
+        let rs = RankSelect::new(&bits, 1);
         assert!(rs.rank(1).unwrap() == 0);
         assert!(rs.rank(5).unwrap() == 1);
         assert!(rs.rank(6).unwrap() == 1);

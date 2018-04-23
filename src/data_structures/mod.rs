@@ -5,13 +5,12 @@
 
 //! Various useful data structures.
 
-
-pub mod rank_select;
-pub mod suffix_array;
-pub mod bwt;
-pub mod bitenc;
-pub mod smallints;
-pub mod fmindex;
-pub mod qgram_index;
-pub mod interval_tree;
 pub mod bit_tree;
+pub mod bitenc;
+pub mod bwt;
+pub mod fmindex;
+pub mod interval_tree;
+pub mod qgram_index;
+pub mod rank_select;
+pub mod smallints;
+pub mod suffix_array;

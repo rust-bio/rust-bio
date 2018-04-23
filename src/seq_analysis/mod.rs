@@ -5,5 +5,5 @@
 
 //! Sequence analysis algorithms.
 
-pub mod orf;
 pub mod gc;
+pub mod orf;

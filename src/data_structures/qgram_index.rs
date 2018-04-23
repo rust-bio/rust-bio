@@ -27,15 +27,13 @@
 //! ]);
 //! ```
 
-
-use std::collections;
-use std::collections::hash_map::Entry;
 use std;
 use std::cmp;
+use std::collections;
+use std::collections::hash_map::Entry;
 
 use alphabets::{Alphabet, RankTransform};
 use utils;
-
 
 /// A classical, flexible, q-gram index implementation.
 #[derive(Serialize, Deserialize)]
@@ -45,7 +43,6 @@ pub struct QGramIndex {
     pos: Vec<usize>,
     ranks: RankTransform,
 }
-
 
 impl QGramIndex {
     /// Create a new q-gram index.
@@ -91,10 +88,10 @@ impl QGramIndex {
         }
 
         QGramIndex {
-            q: q,
-            address: address,
-            pos: pos,
-            ranks: ranks,
+            q,
+            address,
+            pos,
+            ranks,
         }
     }
 
@@ -119,16 +116,16 @@ impl QGramIndex {
                 match diagonals.entry(diagonal) {
                     Entry::Vacant(v) => {
                         v.insert(Match {
-                                     pattern: Interval {
-                                         start: i,
-                                         stop: i + q,
-                                     },
-                                     text: Interval {
-                                         start: p,
-                                         stop: p + q,
-                                     },
-                                     count: 1,
-                                 });
+                            pattern: Interval {
+                                start: i,
+                                stop: i + q,
+                            },
+                            text: Interval {
+                                start: p,
+                                stop: p + q,
+                            },
+                            count: 1,
+                        });
                     }
                     Entry::Occupied(mut o) => {
                         let m = o.get_mut();
@@ -158,15 +155,15 @@ impl QGramIndex {
                 match diagonals.entry(diagonal) {
                     Entry::Vacant(v) => {
                         v.insert(ExactMatch {
-                                     pattern: Interval {
-                                         start: i,
-                                         stop: i + q,
-                                     },
-                                     text: Interval {
-                                         start: p,
-                                         stop: p + q,
-                                     },
-                                 });
+                            pattern: Interval {
+                                start: i,
+                                stop: i + q,
+                            },
+                            text: Interval {
+                                start: p,
+                                stop: p + q,
+                            },
+                        });
                     }
                     Entry::Occupied(mut o) => {
                         let m = o.get_mut();
@@ -194,7 +191,6 @@ impl QGramIndex {
     }
 }
 
-
 /// An interval, consisting of start and stop position (the latter exclusive).
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub struct Interval {
@@ -202,14 +198,12 @@ pub struct Interval {
     pub stop: usize,
 }
 
-
 impl Interval {
     /// Get the text within the given interval.
     pub fn get<'a>(&self, text: &'a [u8]) -> &'a [u8] {
         &text[self.start..self.stop]
     }
 }
-
 
 /// A match between the pattern and the text.
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
@@ -219,13 +213,11 @@ pub struct Match {
     pub count: usize,
 }
 
-
 impl cmp::Ord for Match {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.count.cmp(&other.count)
     }
 }
-
 
 impl cmp::PartialOrd for Match {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
@@ -233,14 +225,12 @@ impl cmp::PartialOrd for Match {
     }
 }
 
-
 /// An exact match between the pattern and the text.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct ExactMatch {
     pub pattern: Interval,
     pub text: Interval,
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -276,12 +266,14 @@ mod tests {
 
         let pattern = b"GCTG";
         let matches = qgram_index.matches(pattern, 1);
-        assert_eq!(matches,
-                   [Match {
-                        pattern: Interval { start: 0, stop: 4 },
-                        text: Interval { start: 3, stop: 7 },
-                        count: 2,
-                    }]);
+        assert_eq!(
+            matches,
+            [Match {
+                pattern: Interval { start: 0, stop: 4 },
+                text: Interval { start: 3, stop: 7 },
+                count: 2,
+            }]
+        );
     }
 
     #[test]
@@ -308,11 +300,10 @@ mod tests {
         assert!(exact_matches.len() >= 1);
     }
 
-
     #[test]
     #[cfg(feature = "nightly")]
     fn test_serde() {
-        use serde::{Serialize, Deserialize};
+        use serde::{Deserialize, Serialize};
         fn impls_serde_traits<S: Serialize + Deserialize>() {}
 
         impls_serde_traits::<QGramIndex>();
