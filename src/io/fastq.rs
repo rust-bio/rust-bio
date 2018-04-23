@@ -13,7 +13,6 @@
 //! let reader = fastq::Reader::new(io::stdin());
 //! ```
 
-use std::ascii::AsciiExt;
 use std::convert::AsRef;
 use std::fmt;
 use std::fs;

@@ -370,17 +370,17 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote ATP-dependent;ID PRO_0000148105
 ";
 
     // Another variant of GTF file, modified from a published GENCODE GTF file.
-    const GTF_FILE_2: &'static [u8] = b"chr1\tHAVANA\tgene\t11869\t14409\t.\t+\t.\t
+    const GTF_FILE_2: &'static [u8] = b"chr1\tHAVANA\tgene\t11869\t14409\t.\t+\t.\t\
 gene_id \"ENSG00000223972.5\"; gene_type \"transcribed_unprocessed_pseudogene\";
-chr1\tHAVANA\ttranscript\t11869\t14409\t.\t+\t.\tgene_id \"ENSG00000223972.5\";
+chr1\tHAVANA\ttranscript\t11869\t14409\t.\t+\t.\tgene_id \"ENSG00000223972.5\";\
 transcript_id \"ENST00000456328.2\"; gene_type \"transcribed_unprocessed_pseudogene\"";
 
     // GTF file with duplicate attribute keys, taken from a published GENCODE GTF file.
-    const GTF_FILE_DUP_ATTR_KEYS: &'static [u8] = b"chr1\tENSEMBL\ttranscript\t182393\t
-184158\t.\t+\t.\tgene_id \"ENSG00000279928.1\"; transcript_id \"ENST00000624431.1\";
-gene_type \"protein_coding\"; gene_status \"KNOWN\"; gene_name \"FO538757.2\";
-transcript_type \"protein_coding\"; transcript_status \"KNOWN\";
-transcript_name \"FO538757.2-201\"; level 3; protein_id \"ENSP00000485457.1\";
+    const GTF_FILE_DUP_ATTR_KEYS: &'static [u8] = b"chr1\tENSEMBL\ttranscript\t182393\t\
+184158\t.\t+\t.\tgene_id \"ENSG00000279928.1\"; transcript_id \"ENST00000624431.1\";\
+gene_type \"protein_coding\"; gene_status \"KNOWN\"; gene_name \"FO538757.2\";\
+transcript_type \"protein_coding\"; transcript_status \"KNOWN\";\
+transcript_name \"FO538757.2-201\"; level 3; protein_id \"ENSP00000485457.1\";\
 transcript_support_level \"1\"; tag \"basic\"; tag \"appris_principal_1\";";
 
     //required because MultiMap iter on element randomly
