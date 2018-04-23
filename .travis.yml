@@ -19,6 +19,7 @@ addons:
 before_script:
   - cargo install --force cargo-travis
   - export PATH=$HOME/.cargo/bin:$PATH
+  - rustup component add rustfmt-preview
 
 matrix:
   include:
@@ -30,9 +31,9 @@ matrix:
     - rust: beta
 
 script:
-  - |
-      cargo build &&
-      cargo test
+  - cargo fmt --all -- --write-mode=diff
+  - cargo build
+  - cargo test
 
 after_success:
   - cargo coveralls
