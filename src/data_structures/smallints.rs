@@ -23,13 +23,13 @@
 //! assert_eq!(values, [50000, 4, 255, 305093]);
 //! ```
 
-use std::iter::{Enumerate, repeat};
-use std::mem::size_of;
 use std::collections::BTreeMap;
+use std::iter::{repeat, Enumerate};
+use std::mem::size_of;
 use std::slice;
 
-use num_traits::{NumCast, Bounded, Num, cast};
 use num_integer::Integer;
+use num_traits::{cast, Bounded, Num, NumCast};
 
 /// Data structure for storing a sequence of small integers with few big ones space efficiently
 /// while supporting classical vector operations.
@@ -39,22 +39,31 @@ pub struct SmallInts<F: Integer + Bounded + NumCast + Copy, B: Integer + NumCast
     bigints: BTreeMap<usize, B>,
 }
 
-
-impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallInts<S, B> {
-    /// Create a new instance.
-    pub fn new() -> Self {
-        assert!(size_of::<S>() < size_of::<B>(),
-                "S has to be smaller than B");
+impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> Default for SmallInts<S, B> {
+    fn default() -> Self {
+        assert!(
+            size_of::<S>() < size_of::<B>(),
+            "S has to be smaller than B"
+        );
         SmallInts {
             smallints: Vec::new(),
             bigints: BTreeMap::new(),
         }
     }
+}
+
+impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallInts<S, B> {
+    /// Create a new instance.
+    pub fn new() -> Self {
+        Default::default()
+    }
 
     /// Create a new instance with a given capacity.
     pub fn with_capacity(n: usize) -> Self {
-        assert!(size_of::<S>() < size_of::<B>(),
-                "S has to be smaller than B");
+        assert!(
+            size_of::<S>() < size_of::<B>(),
+            "S has to be smaller than B"
+        );
         SmallInts {
             smallints: Vec::with_capacity(n),
             bigints: BTreeMap::new(),
@@ -63,8 +72,10 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
 
     /// Create a new instance containing `n` times the integer `v` (and `v` is expected to be small).
     pub fn from_elem(v: S, n: usize) -> Self {
-        assert!(size_of::<S>() < size_of::<B>(),
-                "S has to be smaller than B");
+        assert!(
+            size_of::<S>() < size_of::<B>(),
+            "S has to be smaller than B"
+        );
         if v > cast(0).unwrap() {
             assert!(v < S::max_value(), "v has to be smaller than maximum value");
         }
@@ -141,24 +152,24 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
     }
 }
 
-
 /// Iterator over the elements of a `SmallInts` sequence.
 pub struct Iter<'a, S, B>
-    where S: 'a + Integer + Bounded + NumCast + Copy,
-          B: 'a + Integer + NumCast + Copy,
-          <S as Num>::FromStrRadixErr: 'a,
-          <B as Num>::FromStrRadixErr: 'a
+where
+    S: 'a + Integer + Bounded + NumCast + Copy,
+    B: 'a + Integer + NumCast + Copy,
+    <S as Num>::FromStrRadixErr: 'a,
+    <B as Num>::FromStrRadixErr: 'a,
 {
     smallints: &'a SmallInts<S, B>,
     items: Enumerate<slice::Iter<'a, S>>,
 }
 
-
 impl<'a, S, B> Iterator for Iter<'a, S, B>
-    where S: 'a + Integer + Bounded + NumCast + Copy,
-          B: 'a + Integer + NumCast + Copy,
-          <S as Num>::FromStrRadixErr: 'a,
-          <B as Num>::FromStrRadixErr: 'a
+where
+    S: 'a + Integer + Bounded + NumCast + Copy,
+    B: 'a + Integer + NumCast + Copy,
+    <S as Num>::FromStrRadixErr: 'a,
+    <B as Num>::FromStrRadixErr: 'a,
 {
     type Item = B;
 
@@ -174,7 +185,7 @@ impl<'a, S, B> Iterator for Iter<'a, S, B>
 mod tests {
     #[test]
     fn test_serde() {
-        use serde::{Serialize, Deserialize};
+        use serde::{Deserialize, Serialize};
         fn impls_serde_traits<S: Serialize + Deserialize>() {}
 
         impls_serde_traits::<SmallInts<i8, isize>>();

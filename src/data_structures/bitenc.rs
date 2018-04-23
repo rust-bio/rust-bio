@@ -18,7 +18,6 @@
 //! assert_eq!(values, [0, 2, 1]);
 //! ```
 
-
 /// A sequence of bitencoded values.
 #[derive(Serialize, Deserialize)]
 pub struct BitEnc {
@@ -29,11 +28,9 @@ pub struct BitEnc {
     bits: usize,
 }
 
-
 fn mask(width: usize) -> u32 {
     (1 << width) - 1
 }
-
 
 impl BitEnc {
     /// Create a new instance with a given encoding width (e.g. width=2 for using two bits per value).
@@ -41,7 +38,7 @@ impl BitEnc {
         assert!(width <= 8, "Only encoding widths up to 8 supported");
         BitEnc {
             storage: Vec::new(),
-            width: width,
+            width,
             mask: mask(width),
             len: 0,
             bits: 32 - 32 % width,
@@ -53,7 +50,7 @@ impl BitEnc {
         assert!(width <= 8, "Only encoding widths up to 8 supported");
         BitEnc {
             storage: Vec::with_capacity(n * width / 32),
-            width: width,
+            width,
             mask: mask(width),
             len: 0,
             bits: 32 - 32 % width,
@@ -88,7 +85,7 @@ impl BitEnc {
         // pack the value into a block
         let mut value_block = 0;
         {
-            let mut v = value as u32;
+            let mut v = u32::from(value);
             for _ in 0..32 / self.width {
                 value_block |= v;
                 v <<= self.width;
@@ -145,7 +142,7 @@ impl BitEnc {
         let mask = self.mask << bit;
         self.storage[block] |= mask;
         self.storage[block] ^= mask;
-        self.storage[block] |= (value as u32 & self.mask) << bit;
+        self.storage[block] |= (u32::from(value) & self.mask) << bit;
     }
 
     fn addr(&self, i: usize) -> (usize, usize) {
@@ -162,13 +159,11 @@ impl BitEnc {
     }
 }
 
-
 /// Iterator over values of a bitencoded sequence (values will be unpacked into bytes).
 pub struct BitEncIter<'a> {
     bitenc: &'a BitEnc,
     i: usize,
 }
-
 
 impl<'a> Iterator for BitEncIter<'a> {
     type Item = u8;
@@ -179,7 +174,6 @@ impl<'a> Iterator for BitEncIter<'a> {
         value
     }
 }
-
 
 #[cfg(test)]
 mod tests {

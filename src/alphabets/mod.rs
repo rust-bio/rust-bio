@@ -22,17 +22,15 @@ use vec_map::VecMap;
 use utils::{IntoTextIterator, TextIterator};
 
 pub mod dna;
-pub mod rna;
 pub mod protein;
+pub mod rna;
 
 pub type SymbolRanks = VecMap<u8>;
-
 
 /// Representation of an alphabet.
 pub struct Alphabet {
     pub symbols: BitSet,
 }
-
 
 impl Alphabet {
     /// Create new alphabet from given symbols.
@@ -69,13 +67,11 @@ impl Alphabet {
     }
 }
 
-
 /// Tools based on transforming the alphabet symbols to their lexicographical ranks.
 #[derive(Serialize, Deserialize)]
 pub struct RankTransform {
     pub ranks: SymbolRanks,
 }
-
 
 impl RankTransform {
     /// Construct a new `RankTransform`.
@@ -85,7 +81,7 @@ impl RankTransform {
             ranks.insert(c, r as u8);
         }
 
-        RankTransform { ranks: ranks }
+        RankTransform { ranks }
     }
 
     /// Get the rank of symbol `a`.
@@ -97,10 +93,10 @@ impl RankTransform {
     pub fn transform<'a, T: IntoTextIterator<'a>>(&self, text: T) -> Vec<u8> {
         text.into_iter()
             .map(|&c| {
-                     *self.ranks
-                          .get(c as usize)
-                          .expect("Unexpected character in text.")
-                 })
+                *self.ranks
+                    .get(c as usize)
+                    .expect("Unexpected character in text.")
+            })
             .collect()
     }
 
@@ -110,13 +106,15 @@ impl RankTransform {
     /// If q is larger than usize::BITS / log2(|A|), this method fails with an assertion.
     pub fn qgrams<'a, T: IntoTextIterator<'a>>(&'a self, q: u32, text: T) -> QGrams<T::IntoIter> {
         let bits = (self.ranks.len() as f32).log2().ceil() as u32;
-        assert!((bits * q) as usize <= mem::size_of::<usize>() * 8,
-                "Expecting q to be smaller than usize / log2(|A|)");
+        assert!(
+            (bits * q) as usize <= mem::size_of::<usize>() * 8,
+            "Expecting q to be smaller than usize / log2(|A|)"
+        );
 
         let mut qgrams = QGrams {
             text: text.into_iter(),
             ranks: self,
-            bits: bits,
+            bits,
             mask: (1 << (q * bits)) - 1,
             qgram: 0,
         };
@@ -132,10 +130,9 @@ impl RankTransform {
     pub fn alphabet(&self) -> Alphabet {
         let mut symbols = BitSet::with_capacity(self.ranks.len());
         symbols.extend(self.ranks.keys());
-        Alphabet { symbols: symbols }
+        Alphabet { symbols }
     }
 }
-
 
 /// Iterator over q-grams.
 pub struct QGrams<'a, T: TextIterator<'a>> {
@@ -146,7 +143,6 @@ pub struct QGrams<'a, T: TextIterator<'a>> {
     qgram: usize,
 }
 
-
 impl<'a, T: TextIterator<'a>> QGrams<'a, T> {
     fn qgram_push(&mut self, a: u8) {
         self.qgram <<= self.bits;
@@ -154,7 +150,6 @@ impl<'a, T: TextIterator<'a>> QGrams<'a, T> {
         self.qgram &= self.mask;
     }
 }
-
 
 impl<'a, T: TextIterator<'a>> Iterator for QGrams<'a, T> {
     type Item = usize;
@@ -175,7 +170,7 @@ impl<'a, T: TextIterator<'a>> Iterator for QGrams<'a, T> {
 mod tests {
     #[test]
     fn test_serde() {
-        use serde::{Serialize, Deserialize};
+        use serde::{Deserialize, Serialize};
         fn impls_serde_traits<S: Serialize + Deserialize>() {}
 
         impls_serde_traits::<RankTransform>();

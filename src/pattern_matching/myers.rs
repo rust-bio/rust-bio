@@ -27,12 +27,10 @@
 //! # }
 //! ```
 
-
 use std::iter;
 use std::u64;
 
-use utils::{TextSlice, IntoTextIterator, TextIterator};
-
+use utils::{IntoTextIterator, TextIterator, TextSlice};
 
 /// Myers algorithm.
 pub struct Myers {
@@ -41,11 +39,11 @@ pub struct Myers {
     m: u8,
 }
 
-
 impl Myers {
     /// Create a new instance of Myers algorithm for a given pattern.
     pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self
-        where P::IntoIter: ExactSizeIterator
+    where
+        P::IntoIter: ExactSizeIterator,
     {
         let pattern = pattern.into_iter();
         let m = pattern.len();
@@ -57,7 +55,7 @@ impl Myers {
         }
 
         Myers {
-            peq: peq,
+            peq,
             bound: 1 << (m - 1),
             m: m as u8,
         }
@@ -104,19 +102,19 @@ impl Myers {
 
     /// Find all matches of pattern in the given text up to a given maximum distance.
     /// Matches are returned as an iterator over pairs of end position and distance.
-    pub fn find_all_end<'a, I: IntoTextIterator<'a>>(&'a self,
-                                                     text: I,
-                                                     max_dist: u8)
-                                                     -> Matches<I::IntoIter> {
+    pub fn find_all_end<'a, I: IntoTextIterator<'a>>(
+        &'a self,
+        text: I,
+        max_dist: u8,
+    ) -> Matches<I::IntoIter> {
         Matches {
             myers: self,
             state: State::new(self.m),
             text: text.into_iter().enumerate(),
-            max_dist: max_dist,
+            max_dist,
         }
     }
 }
-
 
 /// The current algorithm state.
 struct State {
@@ -124,7 +122,6 @@ struct State {
     mv: u64,
     dist: u8,
 }
-
 
 impl State {
     /// Create new state.
@@ -137,7 +134,6 @@ impl State {
     }
 }
 
-
 /// Iterator over pairs of end positions and distance of matches.
 pub struct Matches<'a, I: TextIterator<'a>> {
     myers: &'a Myers,
@@ -145,7 +141,6 @@ pub struct Matches<'a, I: TextIterator<'a>> {
     text: iter::Enumerate<I>,
     max_dist: u8,
 }
-
 
 impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
     type Item = (usize, u8);
@@ -160,7 +155,6 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
         None
     }
 }
-
 
 #[cfg(test)]
 mod tests {

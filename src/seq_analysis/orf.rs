@@ -29,11 +29,9 @@
 //! But that's not so performance friendly, as the reverse complementation and the orf research
 //! could go on at the same time.
 
-
-use utils::{TextIterator, IntoTextIterator};
 use std::collections::VecDeque;
 use std::iter;
-
+use utils::{IntoTextIterator, TextIterator};
 
 /// An implementation of a naive algorithm finder
 pub struct Finder {
@@ -44,10 +42,11 @@ pub struct Finder {
 
 impl Finder {
     /// Create a new instance of a finder for the given start and stop codons and a particular length
-    pub fn new<'a>(start_codons: Vec<&'a [u8; 3]>,
-                   stop_codons: Vec<&'a [u8; 3]>,
-                   min_len: usize)
-                   -> Self {
+    pub fn new<'a>(
+        start_codons: Vec<&'a [u8; 3]>,
+        stop_codons: Vec<&'a [u8; 3]>,
+        min_len: usize,
+    ) -> Self {
         Finder {
             start_codons: start_codons.into_iter()                          // Convert start_ and
                                       .map(|x| {                            // stop_codons from
@@ -63,7 +62,7 @@ impl Finder {
                                          .collect::<VecDeque<u8>>()
                                     })
                                     .collect(),
-            min_len: min_len,
+            min_len,
         }
     }
 
@@ -92,7 +91,6 @@ struct State {
     codon: VecDeque<u8>,
 }
 
-
 impl State {
     /// Create new state.
     pub fn new() -> Self {
@@ -102,7 +100,6 @@ impl State {
         }
     }
 }
-
 
 /// Iterator over offset, start position, end position and sequence of matched orfs.
 pub struct Matches<'a, I: TextIterator<'a>> {
@@ -115,12 +112,10 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
     type Item = Orf;
 
     fn next(&mut self) -> Option<Orf> {
-
         let mut result: Option<Orf> = None;
         let mut offset: usize;
 
         for (index, &nuc) in self.seq.by_ref() {
-
             // update the codon
             if self.state.codon.len() >= 3 {
                 self.state.codon.pop_front();
@@ -136,15 +131,15 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
                     if index + 1 - self.state.start_pos[offset].unwrap() > self.finder.min_len {
                         // build results
                         result = Some(Orf {
-                                          start: self.state.start_pos[offset].unwrap() - 2,
-                                          end: index + 1,
-                                          offset: offset as i8,
-                                      });
+                            start: self.state.start_pos[offset].unwrap() - 2,
+                            end: index + 1,
+                            offset: offset as i8,
+                        });
                     }
                     // reinitialize
                     self.state.start_pos[offset] = None;
                 }
-                // check if entering orf
+            // check if entering orf
             } else if self.finder.start_codons.contains(&self.state.codon) {
                 self.state.start_pos[offset] = Some(index);
             }
@@ -155,7 +150,6 @@ impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
         None
     }
 }
-
 
 #[cfg(test)]
 mod tests {

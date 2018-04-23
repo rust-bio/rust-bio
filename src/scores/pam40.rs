@@ -3,9 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use ndarray;
-
 
 lazy_static! {
     // taken from https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h#L806
