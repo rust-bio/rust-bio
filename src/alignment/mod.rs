@@ -7,10 +7,9 @@
 
 use utils::TextSlice;
 
-pub mod pairwise;
 pub mod distance;
+pub mod pairwise;
 pub mod sparse;
-
 
 /// Alignment operations supported are match, substitution, insertion, deletion
 /// and clipping. Clipping is a special boundary condition where you are allowed
@@ -78,7 +77,6 @@ pub struct Alignment {
     pub mode: AlignmentMode,
 }
 
-
 impl Alignment {
     /// Calculate the cigar string from the alignment struct. x is the target string
     ///
@@ -101,7 +99,6 @@ impl Alignment {
     /// assert_eq!(alignment.cigar(false), "3S3=1X2I2D1S");
     /// ```
     pub fn cigar(&self, hard_clip: bool) -> String {
-
         match self.mode {
             AlignmentMode::Global => panic!(" Cigar fn not supported for Global Alignment mode"),
             AlignmentMode::Local => panic!(" Cigar fn not supported for Local Alignment mode"),
@@ -203,13 +200,13 @@ impl Alignment {
                 _ => {
                     x_i = self.xstart;
                     y_i = self.ystart;
-                    for k in 0..x_i {
-                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[k]])));
+                    for k in x.iter().take(self.xstart) {
+                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
                         inb_pretty.push(' ');
                         y_pretty.push(' ')
                     }
-                    for k in 0..y_i {
-                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[k]])));
+                    for k in x.iter().take(self.ystart) {
+                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
                         inb_pretty.push(' ');
                         x_pretty.push(' ')
                     }
@@ -253,26 +250,22 @@ impl Alignment {
 
                         y_pretty.push('-');
                     }
-                    AlignmentOperation::Xclip(len) => {
-                        for k in 0..len {
-                            x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[k]])));
-                            x_i += 1;
+                    AlignmentOperation::Xclip(len) => for k in x.iter().take(len) {
+                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
+                        x_i += 1;
 
-                            inb_pretty.push(' ');
+                        inb_pretty.push(' ');
 
-                            y_pretty.push(' ')
-                        }
-                    }
-                    AlignmentOperation::Yclip(len) => {
-                        for k in 0..len {
-                            y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[k]])));
-                            y_i += 1;
+                        y_pretty.push(' ')
+                    },
+                    AlignmentOperation::Yclip(len) => for k in x.iter().take(len) {
+                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
+                        y_i += 1;
 
-                            inb_pretty.push(' ');
+                        inb_pretty.push(' ');
 
-                            x_pretty.push(' ')
-                        }
-                    }
+                        x_pretty.push(' ')
+                    },
                 }
             }
 
@@ -281,13 +274,13 @@ impl Alignment {
             match self.mode {
                 AlignmentMode::Custom => {}
                 _ => {
-                    for k in x_i..self.xlen {
-                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[x[k]])));
+                    for k in x.iter().take(self.xlen).skip(x_i) {
+                        x_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
                         inb_pretty.push(' ');
                         y_pretty.push(' ')
                     }
-                    for k in y_i..self.ylen {
-                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[y[k]])));
+                    for k in y.iter().take(self.ylen).skip(y_i) {
+                        y_pretty.push_str(&format!("{}", String::from_utf8_lossy(&[*k])));
                         inb_pretty.push(' ');
                         x_pretty.push(' ')
                     }
@@ -339,9 +332,9 @@ impl Alignment {
             ops.reverse();
 
             // Process the alignment.
-            for i in 0..ops.len() {
-                path.push((x_i, y_i, ops[i]));
-                match ops[i] {
+            for i in ops {
+                path.push((x_i, y_i, i));
+                match i {
                     AlignmentOperation::Match => {
                         x_i -= 1;
                         y_i -= 1;
@@ -372,9 +365,9 @@ impl Alignment {
     /// Filter out Xclip and Yclip operations from the list of operations. Useful
     /// when invoking the standard modes.
     pub fn filter_clip_operations(&mut self) {
-        use self::AlignmentOperation::{Match, Subst, Ins, Del};
+        use self::AlignmentOperation::{Del, Ins, Match, Subst};
         self.operations
-            .retain(|&ref x| (*x == Match || *x == Subst || *x == Ins || *x == Del));
+            .retain(|x| (*x == Match || *x == Subst || *x == Ins || *x == Del));
     }
 
     /// Number of bases in reference sequence that are aligned
@@ -388,11 +381,10 @@ impl Alignment {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::AlignmentOperation::*;
+    use super::*;
 
     #[test]
     fn test_cigar() {

@@ -86,38 +86,38 @@
 //! Documentation and further examples for each module can be found in the module descriptions below.
 
 #[macro_use]
-extern crate serde_derive;
-extern crate serde;
-extern crate csv;
-extern crate num_traits;
-extern crate num_integer;
-extern crate itertools;
-extern crate itertools_num;
-extern crate bit_vec;
-extern crate vec_map;
-extern crate bit_set;
-#[macro_use]
-extern crate lazy_static;
-extern crate ndarray;
-#[macro_use]
 extern crate approx;
+extern crate bit_set;
+extern crate bit_vec;
+extern crate bytecount;
+extern crate csv;
 #[macro_use]
 extern crate custom_derive;
+extern crate itertools;
+extern crate itertools_num;
+#[macro_use]
+extern crate lazy_static;
+extern crate multimap;
+extern crate ndarray;
 #[macro_use]
 extern crate newtype_derive;
+extern crate num_integer;
+extern crate num_traits;
 extern crate ordered_float;
 #[macro_use]
 extern crate quick_error;
 extern crate regex;
-extern crate multimap;
-extern crate bytecount;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate vec_map;
 
-pub mod utils;
-pub mod alphabets;
-pub mod pattern_matching;
-pub mod data_structures;
 pub mod alignment;
+pub mod alphabets;
+pub mod data_structures;
 pub mod io;
+pub mod pattern_matching;
+pub mod scores;
 pub mod seq_analysis;
 pub mod stats;
-pub mod scores;
+pub mod utils;

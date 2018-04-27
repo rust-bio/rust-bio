@@ -5,10 +5,9 @@
 
 //! Mathematical and statistical tools.
 
-
-pub mod combinatorics;
-pub mod probs;
 pub mod bayesian;
+pub mod combinatorics;
 pub mod pairhmm;
+pub mod probs;
 
-pub use stats::probs::{Prob, LogProb, PHREDProb};
+pub use stats::probs::{LogProb, PHREDProb, Prob};

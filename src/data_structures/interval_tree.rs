@@ -28,14 +28,20 @@
 //!
 
 use std::cmp;
-use std::mem;
 use std::iter::FromIterator;
+use std::mem;
 use utils::Interval;
 
 /// An interval tree for storing intervals with data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntervalTree<N: Ord + Clone, D> {
     root: Option<Node<N, D>>,
+}
+
+impl<N: Ord + Clone, D> Default for IntervalTree<N, D> {
+    fn default() -> Self {
+        Self { root: None }
+    }
 }
 
 /// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
@@ -81,7 +87,8 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D>
                     self.nodes.push(left);
                 }
 
-                // don't traverse right if the query interval is completely before the current interval
+                // don't traverse right if the query interval is completely before the current
+                // interval
                 if self.interval.end > candidate.interval.start {
                     if let Some(ref right) = candidate.right {
                         self.nodes.push(right);
@@ -90,9 +97,9 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D>
                     // overlap is only possible if both tests pass
                     if intersect(&self.interval, &candidate.interval) {
                         return Some(Entry {
-                                        data: &candidate.value,
-                                        interval: &candidate.interval,
-                                    });
+                            data: &candidate.value,
+                            interval: &candidate.interval,
+                        });
                     }
                 }
             }
@@ -166,7 +173,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIteratorMut<'a, N,
 impl<N: Clone + Ord, D> IntervalTree<N, D> {
     /// Creates a new empty `IntervalTree`
     pub fn new() -> Self {
-        IntervalTree { root: None }
+        Default::default()
     }
 
     /// Inserts an `Interval` into the tree and associates it with `data`
@@ -183,13 +190,13 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
     pub fn find<I: Into<Interval<N>>>(&self, interval: I) -> IntervalTreeIterator<N, D> {
         let interval = interval.into();
         match self.root {
-            Some(ref n) => IntervalTreeIterator {nodes: vec![n], interval: interval},
+            Some(ref n) => IntervalTreeIterator {
+                nodes: vec![n],
+                interval,
+            },
             None => {
-                let empty_nodes = vec![];
-                IntervalTreeIterator {
-                    nodes: empty_nodes,
-                    interval: interval,
-                }
+                let nodes = vec![];
+                IntervalTreeIterator { nodes, interval }
             }
         }
     }
@@ -199,13 +206,13 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
     pub fn find_mut<I: Into<Interval<N>>>(&mut self, interval: I) -> IntervalTreeIteratorMut<N, D> {
         let interval = interval.into();
         match self.root {
-            Some(ref mut n) => IntervalTreeIteratorMut {nodes: vec![n], interval: interval},
+            Some(ref mut n) => IntervalTreeIteratorMut {
+                nodes: vec![n],
+                interval,
+            },
             None => {
-                let empty_nodes = vec![];
-                IntervalTreeIteratorMut {
-                    nodes: empty_nodes,
-                    interval: interval,
-                }
+                let nodes = vec![];
+                IntervalTreeIteratorMut { nodes, interval }
             }
         }
     }
@@ -237,8 +244,8 @@ impl<N: Ord + Clone, D> Node<N, D> {
     fn new(interval: Interval<N>, data: D) -> Self {
         let max = interval.end.clone();
         Node {
-            interval: interval,
-            max: max,
+            interval,
+            max,
             height: 1,
             value: data,
             left: None,
@@ -358,17 +365,17 @@ fn swap_interval_data<N: Ord + Clone, D>(node_1: &mut Node<N, D>, node_2: &mut N
 }
 
 fn intersect<N: Ord + Clone>(range_1: &Interval<N>, range_2: &Interval<N>) -> bool {
-    range_1.start < range_1.end && range_2.start < range_2.end && range_1.end > range_2.start &&
-    range_1.start < range_2.end
+    range_1.start < range_1.end && range_2.start < range_2.end && range_1.end > range_2.start
+        && range_1.start < range_2.end
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Node, IntervalTree, Entry};
-    use utils::Interval;
+    use super::{Entry, IntervalTree, Node};
     use std::cmp;
-    use std::cmp::{min, max};
+    use std::cmp::{max, min};
     use std::ops::Range;
+    use utils::Interval;
 
     fn validate(node: &Node<i64, String>) {
         validate_height(node);
@@ -391,15 +398,35 @@ mod tests {
             reached_maximum = true;
         }
         if let Some(ref son) = node.left {
-            assert!(son.max <= node.max, "left max invariant violated:\n{:?} -> {:?}", node, son);
-            assert!(son.interval.start <= node.interval.start, "left ord invariant violated\n{:?} -> {:?}", node, son);
+            assert!(
+                son.max <= node.max,
+                "left max invariant violated:\n{:?} -> {:?}",
+                node,
+                son
+            );
+            assert!(
+                son.interval.start <= node.interval.start,
+                "left ord invariant violated\n{:?} -> {:?}",
+                node,
+                son
+            );
             if node.max == son.max {
                 reached_maximum = true;
             }
         }
         if let Some(ref son) = node.right {
-            assert!(son.max <= node.max, "right max invariant violated\n{:?} -> {:?}", node, son);
-            assert!(son.interval.start >= node.interval.start, "right ord invariant violated\n{:?} -> {:?}", node, son);
+            assert!(
+                son.max <= node.max,
+                "right max invariant violated\n{:?} -> {:?}",
+                node,
+                son
+            );
+            assert!(
+                son.interval.start >= node.interval.start,
+                "right ord invariant violated\n{:?} -> {:?}",
+                node,
+                son
+            );
             if node.max == son.max {
                 reached_maximum = true;
             }
@@ -420,7 +447,7 @@ mod tests {
         name.push_str(&start.to_string());
         name.push_str(":");
         name.push_str(&end.to_string());
-        tree.insert((start..end), name);
+        tree.insert(start..end, name);
         if let Some(ref n) = tree.root {
             validate(n);
         }
@@ -439,9 +466,11 @@ mod tests {
         entries
     }
 
-    fn assert_intersections(tree: &IntervalTree<i64, String>,
-                            target: Range<i64>,
-                            expected_results: Vec<Range<i64>>) {
+    fn assert_intersections(
+        tree: &IntervalTree<i64, String>,
+        target: Range<i64>,
+        expected_results: Vec<Range<i64>>,
+    ) {
         let mut actual_entries: Vec<Entry<i64, String>> = tree.find(&target).collect();
         println!("{:?}", actual_entries);
         actual_entries.sort_by(|x1, x2| x1.data.cmp(&x2.data));
@@ -460,37 +489,35 @@ mod tests {
     #[test]
     fn test_insertion_and_intersection() {
         let mut tree: IntervalTree<i64, String> = IntervalTree::new();
-        assert_eq!(tree.find( 1..2).count(), 0);
-        assert_eq!(tree.find_mut( 1..2).count(), 0);
-        tree.insert((50..51), "50:51".to_string());
-        assert_not_found(&tree, (49..50));
-        assert_intersections(&tree, (49..55), vec![(50..51)]);
-        assert_not_found(&tree, (51..55));
-        assert_not_found(&tree, (52..55));
-        assert_not_found(&tree, (40..45));
+        assert_eq!(tree.find(1..2).count(), 0);
+        assert_eq!(tree.find_mut(1..2).count(), 0);
+        tree.insert(50..51, "50:51".to_string());
+        assert_not_found(&tree, 49..50);
+        assert_intersections(&tree, 49..55, vec![50..51]);
+        assert_not_found(&tree, 51..55);
+        assert_not_found(&tree, 52..55);
+        assert_not_found(&tree, 40..45);
         insert_and_validate(&mut tree, 80, 81);
-        assert_intersections(&tree, (80..83), vec![(80..81)]);
-        assert_intersections(&tree, (1..100), vec![(50..51), (80..81)]);
-        assert_not_found(&tree, (82..83));
+        assert_intersections(&tree, 80..83, vec![80..81]);
+        assert_intersections(&tree, 1..100, vec![50..51, 80..81]);
+        assert_not_found(&tree, 82..83);
         insert_and_validate(&mut tree, 30, 35);
-        assert_intersections(&tree, (25..33), vec![(30..35)]);
-        assert_intersections(&tree, (1..100), vec![(30..35), (50..51), (80..81)]);
-        assert_not_found(&tree, (42..43));
-        assert_not_found(&tree, (35..36));
-        assert_not_found(&tree, (22..29));
+        assert_intersections(&tree, 25..33, vec![30..35]);
+        assert_intersections(&tree, 1..100, vec![30..35, 50..51, 80..81]);
+        assert_not_found(&tree, 42..43);
+        assert_not_found(&tree, 35..36);
+        assert_not_found(&tree, 22..29);
         insert_and_validate(&mut tree, 70, 77);
-        assert_intersections(&tree, (75..79), vec![(70..77)]);
-        assert_intersections(&tree,
-                             (1..100),
-                             vec![(30..35), (50..51), (70..77), (80..81)]);
-        assert_not_found(&tree, (62..68));
-        assert_intersections(&tree, (75..77), vec![(70..77)]);
-        assert_not_found(&tree, (78..79));
-        assert_intersections(&tree, (49..51), vec![(50..51)]);
-        assert_intersections(&tree, (49..55), vec![(50..51)]);
-        assert_not_found(&tree, (51..55));
-        assert_not_found(&tree, (52..55));
-        assert_not_found(&tree, (40..45));
+        assert_intersections(&tree, 75..79, vec![70..77]);
+        assert_intersections(&tree, 1..100, vec![30..35, 50..51, 70..77, 80..81]);
+        assert_not_found(&tree, 62..68);
+        assert_intersections(&tree, 75..77, vec![70..77]);
+        assert_not_found(&tree, 78..79);
+        assert_intersections(&tree, 49..51, vec![50..51]);
+        assert_intersections(&tree, 49..55, vec![50..51]);
+        assert_not_found(&tree, 51..55);
+        assert_not_found(&tree, 52..55);
+        assert_not_found(&tree, 40..45);
         insert_and_validate(&mut tree, 101, 102);
         insert_and_validate(&mut tree, 103, 104);
         insert_and_validate(&mut tree, 105, 106);
@@ -500,24 +527,32 @@ mod tests {
         insert_and_validate(&mut tree, 115, 116);
         insert_and_validate(&mut tree, 117, 118);
         insert_and_validate(&mut tree, 119, 129);
-        assert_not_found(&tree, (112..113));
-        assert_not_found(&tree, (108..109));
-        assert_intersections(&tree, (106..108), vec![(107..108)]);
-        assert_intersections(&tree,
-                             (1..100),
-                             vec![(30..35), (50..51), (70..77), (80..81)]);
-        assert_intersections(&tree,
-                             (1..101),
-                             vec![(30..35), (50..51), (70..77), (80..81)]);
-        assert_intersections(&tree,
-                             (1..102),
-                             vec![(30..35), (50..51), (70..77), (80..81), (101..102)]);
-        assert_intersections(&tree,
-                             (100..200),
-                             vec![(101..102), (103..104), (105..106), (107..108), (111..112),
-                                  (113..114), (115..116), (117..118), (119..129)]);
+        assert_not_found(&tree, 112..113);
+        assert_not_found(&tree, 108..109);
+        assert_intersections(&tree, 106..108, vec![107..108]);
+        assert_intersections(&tree, 1..100, vec![30..35, 50..51, 70..77, 80..81]);
+        assert_intersections(&tree, 1..101, vec![30..35, 50..51, 70..77, 80..81]);
+        assert_intersections(
+            &tree,
+            1..102,
+            vec![30..35, 50..51, 70..77, 80..81, 101..102],
+        );
+        assert_intersections(
+            &tree,
+            100..200,
+            vec![
+                101..102,
+                103..104,
+                105..106,
+                107..108,
+                111..112,
+                113..114,
+                115..116,
+                117..118,
+                119..129,
+            ],
+        );
     }
-
 
     #[test]
     fn test_insertion_and_intersection_2() {
@@ -540,20 +575,20 @@ mod tests {
             for j in smallest_start..largest_start {
                 expected_intersections.push(j..j + k);
             }
-            assert_intersections(&tree, (lower_bound..upper_bound), expected_intersections);
+            assert_intersections(&tree, lower_bound..upper_bound, expected_intersections);
         }
     }
 
     #[test]
     fn zero_width_ranges() {
         let mut tree: IntervalTree<i64, String> = IntervalTree::new();
-        tree.insert((10..10), "10:10".to_string());
+        tree.insert(10..10, "10:10".to_string());
 
-        assert_not_found(&tree, (5..15));
-        assert_not_found(&tree, (10..10));
+        assert_not_found(&tree, 5..15);
+        assert_not_found(&tree, 10..10);
 
         insert_and_validate(&mut tree, 50, 60);
-        assert_not_found(&tree, (55..55));
+        assert_not_found(&tree, 55..55);
     }
 
     #[test]
@@ -570,20 +605,20 @@ mod tests {
 
     #[test]
     fn iter_mut() {
-        let mut tree: IntervalTree<i64, usize> = vec![
-            (10..100, 0),
-            (10..20, 0),
-            (1..8, 0)].into_iter().collect();
+        let mut tree: IntervalTree<i64, usize> = vec![(10..100, 0), (10..20, 0), (1..8, 0)]
+            .into_iter()
+            .collect();
         let q = Interval::new(11..30).unwrap();
         for mut e in tree.find_mut(q.clone()) {
             *e.data() += 1;
         }
-        assert!(tree.find(0..100).all(|e| {
-            if super::intersect(e.interval(), &q) {
-                *e.data() == 1
-            } else {
-                *e.data() == 0
-            }
-        }));
+        assert!(
+            tree.find(0..100)
+                .all(|e| if super::intersect(e.interval(), &q) {
+                    *e.data() == 1
+                } else {
+                    *e.data() == 0
+                })
+        );
     }
 }

@@ -17,11 +17,10 @@
 //!
 //! Another fast pattern matching algorithm is available in the twoway crate: https://crates.io/crates/twoway
 
-
-pub mod shift_and;
-pub mod kmp;
+pub mod bndm;
 pub mod bom;
 pub mod horspool;
-pub mod bndm;
-pub mod ukkonen;
+pub mod kmp;
 pub mod myers;
+pub mod shift_and;
+pub mod ukkonen;

@@ -6,20 +6,18 @@
 //! Common utilities.
 
 mod text;
-pub use self::text::{Text, TextSlice, TextIterator, IntoTextIterator, trim_newline};
+pub use self::text::{trim_newline, IntoTextIterator, Text, TextIterator, TextSlice};
 
 mod interval;
 pub use self::interval::{Interval, IntervalError};
 
-
 /// Strand information.
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy)]
 pub enum Strand {
     Forward,
     Reverse,
     Unknown,
 }
-
 
 impl PartialEq for Strand {
     /// Returns true if both are `Forward` or both are `Reverse`, otherwise returns false.
@@ -27,14 +25,12 @@ impl PartialEq for Strand {
         match (self, other) {
             (&Strand::Forward, &Strand::Forward) => true,
             (&Strand::Reverse, &Strand::Reverse) => true,
-            _ => false
+            _ => false,
         }
     }
 }
 
-
 impl Strand {
-
     /// Returns a `Strand` enum representing the given char.
     ///
     /// The mapping is as follows:
@@ -46,20 +42,19 @@ impl Strand {
         match *strand_char {
             '+' | 'f' | 'F' => Ok(Strand::Forward),
             '-' | 'r' | 'R' => Ok(Strand::Reverse),
-            '.' | '?'  => Ok(Strand::Unknown),
+            '.' | '?' => Ok(Strand::Unknown),
             invalid => Err(StrandError::InvalidChar(invalid)),
         }
     }
 
     pub fn is_unknown(&self) -> bool {
-        if let &Strand::Unknown = self {
+        if let Strand::Unknown = *self {
             true
         } else {
             false
         }
     }
 }
-
 
 quick_error! {
     #[derive(Debug)]
@@ -71,7 +66,6 @@ quick_error! {
     }
 }
 
-
 /// In place implementation of scan over a slice.
 pub fn scan<T: Copy, F: Fn(T, T) -> T>(a: &mut [T], op: F) {
     let mut s = a[0];
@@ -80,7 +74,6 @@ pub fn scan<T: Copy, F: Fn(T, T) -> T>(a: &mut [T], op: F) {
         *v = s;
     }
 }
-
 
 // Inplace implementation of prescan over a slice.
 pub fn prescan<T: Copy, F: Fn(T, T) -> T>(a: &mut [T], neutral: T, op: F) {
