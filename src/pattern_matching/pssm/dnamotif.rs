@@ -3,8 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ndarray::prelude::Array2;
 use super::*;
+use ndarray::prelude::Array2;
 use std::f32;
 use std::f32::{INFINITY, NEG_INFINITY};
 
