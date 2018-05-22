@@ -67,6 +67,7 @@ pub trait Motif {
     fn get_min_score(&self) -> f32;
     /// sum of "best" base at each position
     fn get_max_score(&self) -> f32;
+    // this should be replaced with a CTFE ... or maybe just a constant
     fn get_bits() -> f32;
 
     // standard PSSM scoring is calibrated to (1) pattern len and (2) the min and

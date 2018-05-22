@@ -150,13 +150,48 @@ impl Motif for ProtMotif {
     }
 }
 
+impl From<Array2<f32>> for ProtMotif {
+    fn from(scores: Array2<f32>) -> Self {
+        let mut m = ProtMotif {
+            seq_ct: 0,
+            scores: scores,
+            min_score: 0.0,
+            max_score: 0.0,
+        };
+        m.normalize();
+        m.calc_minmax();
+        m
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ndarray::Array;
 
     #[test]
     fn test_info_content() {
         let pwm = ProtMotif::from_seqs_with_pseudocts(vec![b"AAAA".to_vec()], &[0.0; 20]);
         assert_eq!(pwm.info_content(), ProtMotif::get_bits() * 4.0);
+    }
+
+    #[test]
+    fn test_scoring() {
+        // should match "ARND"
+        let m: Array2<f32> = Array::from_vec( vec![0.81, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+                                           0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+
+                                           0.01, 0.81, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+                                           0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+
+                                           0.01, 0.01, 0.81, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+                                           0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+
+                                           0.01, 0.01, 0.01, 0.81, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+                                           0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01] )
+            .into_shape((4,20)).unwrap();
+        let pwm = ProtMotif::from(m);
+        let scored_pos = pwm.score(b"AAAAARNDAAA").unwrap();
+        assert_eq!( scored_pos.loc, 4 );
     }
 }
