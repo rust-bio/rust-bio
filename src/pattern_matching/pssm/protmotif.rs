@@ -71,12 +71,12 @@ impl ProtMotif {
 
     // helper function
     fn calc_minmax(&mut self) {
-        let pwm_len = self.len();
+        let pssm_len = self.len();
 
         // score corresponding to sum of "worst" bases at each position
         // FIXME: iter ...
         self.min_score = 0.0;
-        for i in 0..pwm_len {
+        for i in 0..pssm_len {
             // can't use the regular min/max on f32, so we use f32::min
             let min_sc = (0..20)
                 .map(|b| self.scores[[i, b]])
@@ -86,7 +86,7 @@ impl ProtMotif {
 
         // score corresponding to "best" base at each position
         self.max_score = 0.0;
-        for i in 0..pwm_len {
+        for i in 0..pssm_len {
             let max_sc = (0..20)
                 .map(|b| self.scores[[i, b]])
                 .fold(NEG_INFINITY, f32::max);
@@ -171,8 +171,8 @@ mod tests {
 
     #[test]
     fn test_info_content() {
-        let pwm = ProtMotif::from_seqs_with_pseudocts(vec![b"AAAA".to_vec()], &[0.0; 20]);
-        assert_eq!(pwm.info_content(), ProtMotif::get_bits() * 4.0);
+        let pssm = ProtMotif::from_seqs_with_pseudocts(vec![b"AAAA".to_vec()], &[0.0; 20]);
+        assert_eq!(pssm.info_content(), ProtMotif::get_bits() * 4.0);
     }
 
     #[test]
@@ -187,8 +187,8 @@ mod tests {
             0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
         ]).into_shape((4, 20))
             .unwrap();
-        let pwm = ProtMotif::from(m);
-        let scored_pos = pwm.score(b"AAAAARNDAAA").unwrap();
+        let pssm = ProtMotif::from(m);
+        let scored_pos = pssm.score(b"AAAAARNDAAA").unwrap();
         assert_eq!(scored_pos.loc, 4);
     }
 }

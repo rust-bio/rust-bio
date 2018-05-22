@@ -78,12 +78,12 @@ impl DNAMotif {
 
     // helper function
     pub fn calc_minmax(&mut self) {
-        let pwm_len = self.len();
+        let pssm_len = self.len();
 
         // score corresponding to sum of "worst" bases at each position
         // FIXME: iter ...
         self.min_score = 0.0;
-        for i in 0..pwm_len {
+        for i in 0..pssm_len {
             // can't use the regular min/max on f32, so we use f32::min
             let min_sc = (0..4).map(|b| self.scores[[i, b]]).fold(INFINITY, f32::min);
             self.min_score += min_sc;
@@ -91,7 +91,7 @@ impl DNAMotif {
 
         // score corresponding to "best" base at each position
         self.max_score = 0.0;
-        for i in 0..pwm_len {
+        for i in 0..pssm_len {
             let max_sc = (0..4)
                 .map(|b| self.scores[[i, b]])
                 .fold(NEG_INFINITY, f32::max);
@@ -210,22 +210,22 @@ mod tests {
     use super::*;
     use pattern_matching::pssm::ScoredPos;
     #[test]
-    fn simple_pwm() {
-        let pwm = DNAMotif::from(vec![
+    fn simple_pssm() {
+        let pssm = DNAMotif::from(vec![
             b"AAAA".to_vec(),
             b"TTTT".to_vec(),
             b"GGGG".to_vec(),
             b"CCCC".to_vec(),
         ]);
-        assert_eq!(pwm.scores, Array2::from_elem((4, 4), 0.25));
+        assert_eq!(pssm.scores, Array2::from_elem((4, 4), 0.25));
     }
     #[test]
     fn find_motif() {
-        let pwm = DNAMotif::from(vec![b"ATGC".to_vec()]);
+        let pssm = DNAMotif::from(vec![b"ATGC".to_vec()]);
         let seq = b"GGGGATGCGGGG";
         if let Some(ScoredPos {
             ref loc, ref sum, ..
-        }) = pwm.score(seq)
+        }) = pssm.score(seq)
         {
             assert_eq!(*loc, 4);
             assert_eq!(*sum, 1.0);
@@ -236,8 +236,9 @@ mod tests {
     #[test]
     fn test_info_content() {
         // matrix w/ 100% match to A at each position
-        let pwm = DNAMotif::from_seqs_with_pseudocts(vec![b"AAAA".to_vec()], &[0.0, 0.0, 0.0, 0.0]);
+        let pssm =
+            DNAMotif::from_seqs_with_pseudocts(vec![b"AAAA".to_vec()], &[0.0, 0.0, 0.0, 0.0]);
         // 4 bases * 2 bits per base = 8
-        assert_eq!(pwm.info_content(), 8.0);
+        assert_eq!(pssm.info_content(), 8.0);
     }
 }

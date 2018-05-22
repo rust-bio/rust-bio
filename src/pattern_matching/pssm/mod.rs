@@ -5,6 +5,18 @@
 
 //! Implementation of position-specific scoring matrix (PSSM), aka position
 //! weight matrix (PWM), for both DNA and amino-acid sequences
+//!
+//! # Examples
+//!
+//! use bio::pattern_matching::pssm::DNAMotif;
+//! let pssm = DNAMotif::from(vec![
+//!            b"AAAA".to_vec(),
+//!            b"AATA".to_vec(),
+//!            b"AAGA".to_vec(),
+//!            b"AAAA".to_vec(),
+//!        ]);
+//! let start_pos = pssm.score(b"CCCCCAATA").unwrap().loc;
+//! println!("motif found at position {}", start_pos);
 
 use ndarray::prelude::Array2;
 use std::f32::NEG_INFINITY;
@@ -19,7 +31,7 @@ pub use self::protmotif::ProtMotif;
 pub const EPSILON: f32 = 1e-5;
 pub const INVALID_MONO: u8 = 255;
 
-/// represents motif score
+/// represents motif score & location of match
 #[derive(Debug, Clone)]
 pub struct ScoredPos {
     pub loc: usize,
@@ -37,12 +49,13 @@ impl Default for ScoredPos {
     }
 }
 
+/// Trait containing code shared between DNA and protein implementations.
 pub trait Motif {
     /// lookup table mapping monomer -> index
     const LK: [u8; 127] = [INVALID_MONO; 127];
     const MONOS: &'static [u8] = b"";
 
-    /// use lk to find index; enforce boundaries
+    /// Use lookup table LK to find index of given monomer in the scores matrix.
     fn lookup(mono: u8) -> Option<usize> {
         if mono >= 127 {
             None
@@ -55,26 +68,38 @@ pub trait Motif {
             }
         }
     }
-    /// reverse lookup: given index, return monomer (eg, 0 -> A)
+
+    /// Reverse lookup: given index, return monomer.
     fn rev_lk(idx: usize) -> u8;
 
+    /// Length of motif
     fn len(&self) -> usize;
 
-    /// represent highly conserved bases
+    /// Represent motif using ambiguous codes.
+    /// Primarily useful for DNA motifs, where ambiguous codes are
+    /// common (eg, 'M' for 'A or C'); less so for proteins, where we
+    /// represent any position without a dominant amino acid as an 'X'
     fn degenerate_consensus(&self) -> Vec<u8>;
+
+    /// Helper method: accessor for scores matrix.
     fn get_scores(&self) -> &Array2<f32>;
-    /// sum of "worst" base at each position
+
+    /// Helper method: sum of "worst" base at each position
     fn get_min_score(&self) -> f32;
-    /// sum of "best" base at each position
+
+    /// Helper method: sum of "best" base at each position
     fn get_max_score(&self) -> f32;
-    // this should be replaced with a CTFE ... or maybe just a constant
+
+    /// Helper method: information content of a single position.  Used by info_content
+    /// `info_content` method.
+    /// FIXME: this should be replaced with a CTFE ... or maybe just a constant
     fn get_bits() -> f32;
 
-    // standard PSSM scoring is calibrated to (1) pattern len and (2) the min and
-    //     max possible scores
-    // this is just a dumb sum of matching bases
+    /// Standard PSSM scoring is calibrated to (1) pattern len and (2) the min and
+    /// max possible scores.  This is just a un-normalized sum of matching bases, useful for
+    /// comparing matches from motifs of different lengths.
     fn raw_score<'a, T: IntoTextIterator<'a>>(&self, seq_it: T) -> (usize, f32, Vec<f32>) {
-        let pwm_len = self.len();
+        let pssm_len = self.len();
 
         let mut best_start = 0;
         let mut best_score = -1.0;
@@ -82,8 +107,8 @@ pub trait Motif {
         // we have to look at slices, so a simple iterator won't do
         let seq = seq_it.into_iter().cloned().collect::<Vec<u8>>();
         let scores = self.get_scores();
-        for start in 0..seq.len() - pwm_len + 1 {
-            let m: Vec<f32> = (0..pwm_len)
+        for start in 0..seq.len() - pssm_len + 1 {
+            let m: Vec<f32> = (0..pssm_len)
                 .map(|i| scores[[i, Self::lookup(seq[start + i]).expect("raw lookup")]])
                 .collect();
             let tot = m.iter().sum();
@@ -96,17 +121,25 @@ pub trait Motif {
         (best_start, best_score, best_m)
     }
 
-    /// apply PSM to sequence, finding the offset with the highest score
-    /// return None if sequence is too short
+    /// Apply PSSM to sequence, finding the offset with the highest score.
+    /// Return None if sequence is too short
     /// see:
     ///   MATCHTM: a tool for searching transcription factor binding sites in DNA sequences
     ///   Nucleic Acids Res. 2003 Jul 1; 31(13): 3576–3579
     ///   https://www.ncbi.nlm.nih.gov/pmc/articles/PMC169193/
     ///
+    /// # Example
+    /// let pssm = DNAMotif::from(vec![
+    ///            b"AAAA".to_vec(),
+    ///            b"AATA".to_vec(),
+    ///            b"AAGA".to_vec(),
+    ///            b"AAAA".to_vec(),
+    ///        ]);
+    /// let start_pos = pssm.score(b"CCCCCAATA").unwrap().loc;
     fn score<'a, T: IntoTextIterator<'a>>(&self, seq_it: T) -> Option<ScoredPos> {
-        let pwm_len = self.len();
+        let pssm_len = self.len();
         let seq = seq_it.into_iter().cloned().collect::<Vec<u8>>();
-        if seq.len() < pwm_len {
+        if seq.len() < pssm_len {
             return None;
         }
         let min_score = self.get_min_score();
@@ -125,8 +158,8 @@ pub trait Motif {
         })
     }
 
-    /// roughly the inverse of Shannon Entropy
-    /// adapted from the information content described here:
+    /// Represents the information content of a motif; roughly the inverse of Shannon Entropy.
+    /// Adapted from the information content described here:
     ///    https://en.wikipedia.org/wiki/Sequence_logo#Logo_creation
     fn info_content(&self) -> f32 {
         fn ent<'a, I>(probs: I) -> f32
