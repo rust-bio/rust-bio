@@ -22,5 +22,6 @@ pub mod bom;
 pub mod horspool;
 pub mod kmp;
 pub mod myers;
+pub mod pssm;
 pub mod shift_and;
 pub mod ukkonen;
