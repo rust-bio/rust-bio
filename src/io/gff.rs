@@ -34,7 +34,7 @@ use utils::Strand;
 /// We have three format in the GFF family.
 /// The change is in the last field of GFF.
 /// For each type we have key value separator and field separator
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum GffType {
     /// Attribute format is: key1=value; key2=value1,value2
     GFF3,
@@ -64,6 +64,7 @@ impl GffType {
 }
 
 /// A GFF reader.
+#[derive(Debug)]
 pub struct Reader<R: io::Read> {
     inner: csv::Reader<R>,
     gff_type: GffType,
@@ -166,6 +167,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
 }
 
 /// A GFF writer.
+#[derive(Debug)]
 pub struct Writer<W: io::Write> {
     inner: csv::Writer<W>,
     delimiter: char,
@@ -221,7 +223,7 @@ impl<W: io::Write> Writer<W> {
 }
 
 /// A GFF record
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Record {
     seqname: String,
     source: String,

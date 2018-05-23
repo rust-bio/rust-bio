@@ -29,6 +29,7 @@ use csv;
 use utils::Strand;
 
 /// A BED reader.
+#[derive(Debug)]
 pub struct Reader<R: io::Read> {
     inner: csv::Reader<R>,
 }
@@ -82,6 +83,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
 }
 
 /// A BED writer.
+#[derive(Debug)]
 pub struct Writer<W: io::Write> {
     inner: csv::Writer<W>,
 }
