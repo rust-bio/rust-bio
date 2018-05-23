@@ -6,6 +6,9 @@
 //! Implementation of position-specific scoring matrix (PSSM), aka position
 //! weight matrix (PWM), for both DNA and amino-acid sequences
 //!
+//! Matrices can either be built from example sequences, as shown below,
+//! or directly from a float matrix (type Array2<f32>).
+//!
 //! # Examples
 //!
 //! use bio::pattern_matching::pssm::DNAMotif;
@@ -31,7 +34,20 @@ pub use self::protmotif::ProtMotif;
 pub const EPSILON: f32 = 1e-5;
 pub const INVALID_MONO: u8 = 255;
 
-/// represents motif score & location of match
+/// Errors
+#[derive(Debug, Clone)]
+pub enum PSSMError {
+    /// attempted to build a pattern from sequences with mismatched lengths
+    InconsistentLen,
+    /// target sequence is shorter than pattern
+    TargetTooShort,
+    /// unknown monomer, eg, DNA base other than ATGC
+    InvalidMonomer,
+    /// information-free pattern
+    NullPattern,
+}
+
+/// Represents motif score & location of match
 #[derive(Debug, Clone)]
 pub struct ScoredPos {
     pub loc: usize,
@@ -56,15 +72,15 @@ pub trait Motif {
     const MONOS: &'static [u8] = b"";
 
     /// Use lookup table LK to find index of given monomer in the scores matrix.
-    fn lookup(mono: u8) -> Option<usize> {
+    fn lookup(mono: u8) -> Result<usize,PSSMError> {
         if mono >= 127 {
-            None
+            Err(PSSMError::InvalidMonomer)
         } else {
             let idx = Self::LK[mono as usize];
             if idx == INVALID_MONO {
-                None
+                Err(PSSMError::InvalidMonomer)
             } else {
-                Some(idx as usize)
+                Ok(idx as usize)
             }
         }
     }
@@ -79,7 +95,7 @@ pub trait Motif {
     /// Primarily useful for DNA motifs, where ambiguous codes are
     /// common (eg, 'M' for 'A or C'); less so for proteins, where we
     /// represent any position without a dominant amino acid as an 'X'
-    fn degenerate_consensus(&self) -> Vec<u8>;
+    fn degenerate_consensus(&self) -> Result<Vec<u8>,PSSMError>;
 
     /// Helper method: accessor for scores matrix.
     fn get_scores(&self) -> &Array2<f32>;
@@ -98,7 +114,7 @@ pub trait Motif {
     /// Standard PSSM scoring is calibrated to (1) pattern len and (2) the min and
     /// max possible scores.  This is just a un-normalized sum of matching bases, useful for
     /// comparing matches from motifs of different lengths.
-    fn raw_score<'a, T: IntoTextIterator<'a>>(&self, seq_it: T) -> (usize, f32, Vec<f32>) {
+    fn raw_score<'a, T: IntoTextIterator<'a>>(&self, seq_it: T) -> Result<(usize, f32, Vec<f32>), PSSMError> {
         let pssm_len = self.len();
 
         let mut best_start = 0;
@@ -108,9 +124,15 @@ pub trait Motif {
         let seq = seq_it.into_iter().cloned().collect::<Vec<u8>>();
         let scores = self.get_scores();
         for start in 0..seq.len() - pssm_len + 1 {
-            let m: Vec<f32> = (0..pssm_len)
-                .map(|i| scores[[i, Self::lookup(seq[start + i]).expect("raw lookup")]])
-                .collect();
+            let m: Vec<f32> = match (0..pssm_len)
+                .map(|i| match Self::lookup(seq[start + i]) {
+                    Err(e) => Err(e),
+                    Ok(pos) => Ok(scores[[i, pos]])
+                })
+                .collect() {
+                    Ok(m) => m,
+                    Err(e) => return Err(e),
+                };
             let tot = m.iter().sum();
             if tot > best_score {
                 best_score = tot;
@@ -118,7 +140,7 @@ pub trait Motif {
                 best_m = m;
             }
         }
-        (best_start, best_score, best_m)
+        Ok((best_start, best_score, best_m))
     }
 
     /// Apply PSSM to sequence, finding the offset with the highest score.
@@ -136,22 +158,22 @@ pub trait Motif {
     ///            b"AAAA".to_vec(),
     ///        ]);
     /// let start_pos = pssm.score(b"CCCCCAATA").unwrap().loc;
-    fn score<'a, T: IntoTextIterator<'a>>(&self, seq_it: T) -> Option<ScoredPos> {
+    fn score<'a, T: IntoTextIterator<'a>>(&self, seq_it: T) -> Result<ScoredPos,PSSMError> {
         let pssm_len = self.len();
         let seq = seq_it.into_iter().cloned().collect::<Vec<u8>>();
         if seq.len() < pssm_len {
-            return None;
+            return Err(PSSMError::TargetTooShort);
         }
         let min_score = self.get_min_score();
         let max_score = self.get_max_score();
 
         if max_score == min_score {
-            return None;
+            return Err(PSSMError::NullPattern);
         }
 
-        let (best_start, best_score, best_m) = self.raw_score(&seq);
+        let (best_start, best_score, best_m) = self.raw_score(&seq)?;
 
-        Some(ScoredPos {
+        Ok(ScoredPos {
             loc: best_start,
             sum: (best_score - min_score) / (max_score - min_score),
             scores: best_m,
