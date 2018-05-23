@@ -219,21 +219,20 @@ impl LogProb {
                 LogProb(f64::INFINITY)
             } else {
                 // TODO use sum() once it has been stabilized: .sum::<usize>()
-                pmax
-                    + LogProb(
-                        (probs
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(i, p)| {
-                                if i == imax {
-                                    None
-                                } else {
-                                    Some((p - pmax).exp())
-                                }
-                            })
-                            .fold(0.0, |s, e| s + e))
-                            .ln_1p(),
-                    )
+                pmax + LogProb(
+                    (probs
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, p)| {
+                            if i == imax {
+                                None
+                            } else {
+                                Some((p - pmax).exp())
+                            }
+                        })
+                        .fold(0.0, |s, e| s + e))
+                        .ln_1p(),
+                )
             }
         }
     }

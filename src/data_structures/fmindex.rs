@@ -232,11 +232,8 @@ impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone> F
     }
 }
 
-impl<
-    DBWT: DerefBWT + Clone,
-    DLess: DerefLess + Clone,
-    DOcc: DerefOcc + Clone,
-> From<FMIndex<DBWT, DLess, DOcc>> for FMDIndex<DBWT, DLess, DOcc>
+impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone>
+    From<FMIndex<DBWT, DLess, DOcc>> for FMDIndex<DBWT, DLess, DOcc>
 {
     /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
     /// This expects a BWT that was created from a text over the DNA alphabet with N
