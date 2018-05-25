@@ -61,6 +61,11 @@ impl RankSelect {
         }
     }
 
+    /// Get internal representation of bit vector.
+    pub fn bits(&self) -> &[u8] {
+        &self.bits
+    }
+
     /// Get the 1-rank of a given bit, i.e. the number of 1-bits in the bitvector up to i (inclusive).
     /// Complexity: O(k).
     ///
