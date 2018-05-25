@@ -185,7 +185,8 @@ fn superblocks(t: bool, n: usize, s: usize, raw_bits: &[u8]) -> Vec<u32> {
         if i % s == 0 {
             superblocks.push(rank);
         }
-        rank += if t { b.count_ones() } else { b.count_zeros() };
+        rank +=
+            if t { b.count_ones() } else { b.count_zeros() };
         i += 8;
     }
 
