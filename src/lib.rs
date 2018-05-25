@@ -110,8 +110,8 @@ extern crate regex;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate vec_map;
 extern crate bv;
+extern crate vec_map;
 
 pub mod alignment;
 pub mod alphabets;
