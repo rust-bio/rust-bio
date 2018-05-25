@@ -30,7 +30,8 @@ use bit_vec::BitVec;
 pub struct RankSelect {
     n: usize,
     bits: Vec<u8>,
-    superblocks: Vec<u32>,
+    superblocks_1: Vec<u32>,
+    superblocks_0: Vec<u32>,
     s: usize,
 }
 
@@ -54,25 +55,26 @@ impl RankSelect {
         RankSelect {
             n,
             s,
-            superblocks: superblocks(n, s, &bits),
+            superblocks_1: superblocks(true, n, s, &bits),
+            superblocks_0: superblocks(false, n, s, &bits),
             bits,
         }
     }
 
-    /// Get the rank of a given bit, i.e. the number of 1-bits in the bitvector up to i (inclusive).
+    /// Get the 1-rank of a given bit, i.e. the number of 1-bits in the bitvector up to i (inclusive).
     /// Complexity: O(k).
     ///
     /// # Arguments
     ///
     /// * `i` - Position of the bit to determine the rank for.
-    pub fn rank(&self, i: usize) -> Option<u32> {
+    pub fn rank_1(&self, i: usize) -> Option<u32> {
         if i >= self.n {
             None
         } else {
             let s = i / self.s; // the superblock
             let b = i / 8; // the block
                            // take the superblock rank
-            let mut rank = self.superblocks[s];
+            let mut rank = self.superblocks_1[s];
             // add the rank within the block
             rank += (self.bits[b] >> (7 - i % 8)).count_ones();
             // add the popcounts of blocks in between
@@ -85,20 +87,35 @@ impl RankSelect {
         }
     }
 
-    /// Get the smallest bit with a given rank.
+    /// Get the 0-rank of a given bit, i.e. the number of 0-bits in the bitvector up to i (inclusive).
+    /// Complexity: O(k).
+    ///
+    /// # Arguments
+    ///
+    /// * `i` - Position of the bit to determine the rank for.
+    pub fn rank_0(&self, i: usize) -> Option<u32> {
+        self.rank_1(i).map(|r| (i as u32 + 1) - r)
+    }
+
+    /// Alias for `RankSelect::rank_1`.
+    pub fn rank(&self, i: usize) -> Option<u32> {
+        self.rank_1(i)
+    }
+
+    /// Get the smallest bit with a given 1-rank.
     /// Complexity: O(log (n / k) + k).
     ///
     /// # Arguments
     ///
     /// * `j` - The rank to find the smallest bit for.
-    pub fn select(&self, j: u32) -> Option<usize> {
-        let mut superblock = match self.superblocks.binary_search(&j) {
+    pub fn select_1(&self, j: u32) -> Option<usize> {
+        let mut superblock = match self.superblocks_1.binary_search(&j) {
             Ok(i) | Err(i) => i, // superblock with same rank exists
         };
         if superblock > 0 {
             superblock -= 1;
         }
-        let mut rank = self.superblocks[superblock];
+        let mut rank = self.superblocks_1[superblock];
 
         let first_block = superblock * self.s / 8;
         for (block, &b) in self.bits[first_block..].iter().enumerate() {
@@ -118,10 +135,49 @@ impl RankSelect {
 
         None
     }
+
+    /// Get the smallest bit with a given 0-rank.
+    /// Complexity: O(log (n / k) + k).
+    ///
+    /// # Arguments
+    ///
+    /// * `j` - The rank to find the smallest bit for.
+    pub fn select_0(&self, j: u32) -> Option<usize> {
+        let mut superblock = match self.superblocks_0.binary_search(&j) {
+            Ok(i) | Err(i) => i, // superblock with same rank exists
+        };
+        if superblock > 0 {
+            superblock -= 1;
+        }
+        let mut rank = self.superblocks_0[superblock];
+
+        let first_block = superblock * self.s / 8;
+        for (block, &b) in self.bits[first_block..].iter().enumerate() {
+            let p = b.count_zeros();
+            if rank + p >= j {
+                let mut bit = 0b1000_0000;
+                for i in 0..8usize {
+                    rank += (b & bit == 0) as u32;
+                    if rank == j {
+                        return Some((first_block + block) * 8 + i);
+                    }
+                    bit >>= 1;
+                }
+            }
+            rank += p;
+        }
+
+        None
+    }
+
+    /// Alias for `RankSelect::select_1`.
+    pub fn select(&self, j: u32) -> Option<usize> {
+        self.select_1(j)
+    }
 }
 
 /// Create `n` superblocks of size `s` from a given bitvector.
-fn superblocks(n: usize, s: usize, raw_bits: &[u8]) -> Vec<u32> {
+fn superblocks(t: bool, n: usize, s: usize, raw_bits: &[u8]) -> Vec<u32> {
     let mut superblocks = Vec::with_capacity(n / s + 1);
     let mut rank: u32 = 0;
     let mut i = 0;
@@ -129,7 +185,7 @@ fn superblocks(n: usize, s: usize, raw_bits: &[u8]) -> Vec<u32> {
         if i % s == 0 {
             superblocks.push(rank);
         }
-        rank += b.count_ones();
+        rank += if t { b.count_ones() } else { b.count_zeros() };
         i += 8;
     }
 
@@ -147,13 +203,18 @@ mod tests {
         bits.set(5, true);
         bits.set(32, true);
         let rs = RankSelect::new(&bits, 1);
-        assert!(rs.rank(1).unwrap() == 0);
-        assert!(rs.rank(5).unwrap() == 1);
-        assert!(rs.rank(6).unwrap() == 1);
-        assert!(rs.rank(32).unwrap() == 2);
-        assert!(rs.rank(33).unwrap() == 2);
-        assert!(rs.rank(64) == None);
-        assert!(rs.select(0).unwrap() == 0);
-        assert!(rs.select(1).unwrap() == 5);
+        assert_eq!(rs.rank_1(1).unwrap(), 0);
+        assert_eq!(rs.rank_1(5).unwrap(), 1);
+        assert_eq!(rs.rank_1(6).unwrap(), 1);
+        assert_eq!(rs.rank_1(32).unwrap(), 2);
+        assert_eq!(rs.rank_1(33).unwrap(), 2);
+        assert_eq!(rs.rank_1(64), None);
+        assert_eq!(rs.select_1(0).unwrap(), 0);
+        assert_eq!(rs.select_1(1).unwrap(), 5);
+        assert_eq!(rs.rank_0(1).unwrap(), 2);
+        assert_eq!(rs.rank_0(4).unwrap(), 5);
+        assert_eq!(rs.rank_0(5).unwrap(), 5);
+        assert_eq!(rs.select_0(0), None);
+        assert_eq!(rs.select_0(1).unwrap(), 0);
     }
 }
