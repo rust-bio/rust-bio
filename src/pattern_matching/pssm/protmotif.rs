@@ -18,7 +18,10 @@ pub struct ProtMotif {
 }
 
 impl ProtMotif {
-    pub fn from_seqs_with_pseudocts(seqs: Vec<Vec<u8>>, pseudos: &[f32; 20]) -> Result<ProtMotif,PSSMError> {
+    pub fn from_seqs_with_pseudocts(
+        seqs: Vec<Vec<u8>>,
+        pseudos: &[f32; 20],
+    ) -> Result<ProtMotif, PSSMError> {
         if seqs.len() == 0 {
             return Ok(ProtMotif {
                 seq_ct: 0,
@@ -37,13 +40,13 @@ impl ProtMotif {
         }
         for seq in seqs.iter() {
             if seq.len() != seqlen {
-                return Err(PSSMError::InconsistentLen)
+                return Err(PSSMError::InconsistentLen);
             }
 
             for (idx, base) in seq.iter().enumerate() {
                 match Self::lookup(*base) {
                     Err(e) => return Err(e),
-                    Ok(pos) => counts[[idx, pos]] += 1.0
+                    Ok(pos) => counts[[idx, pos]] += 1.0,
                 }
             }
         }
@@ -133,7 +136,7 @@ impl Motif for ProtMotif {
     fn get_bits() -> f32 {
         20f32.log2()
     }
-    fn degenerate_consensus(&self) -> Result<Vec<u8>,PSSMError> {
+    fn degenerate_consensus(&self) -> Result<Vec<u8>, PSSMError> {
         let len = self.len();
         let mut res = Vec::with_capacity(len);
         for pos in 0..len {

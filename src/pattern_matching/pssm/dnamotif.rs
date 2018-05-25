@@ -23,7 +23,10 @@ pub struct DNAMotif {
 }
 
 impl DNAMotif {
-    pub fn from_seqs_with_pseudocts(seqs: Vec<Vec<u8>>, pseudos: &[f32; 4]) -> Result<DNAMotif,PSSMError> {
+    pub fn from_seqs_with_pseudocts(
+        seqs: Vec<Vec<u8>>,
+        pseudos: &[f32; 4],
+    ) -> Result<DNAMotif, PSSMError> {
         // null case
         if seqs.len() == 0 {
             return Ok(DNAMotif {
@@ -43,13 +46,13 @@ impl DNAMotif {
 
         for seq in seqs.iter() {
             if seq.len() != seqlen {
-                return Err(PSSMError::InconsistentLen)
+                return Err(PSSMError::InconsistentLen);
             }
 
             for (idx, base) in seq.iter().enumerate() {
                 match Self::lookup(*base) {
                     Err(e) => return Err(e),
-                    Ok(pos) => { counts[[idx, pos]] += 1.0 }
+                    Ok(pos) => counts[[idx, pos]] += 1.0,
                 }
             }
         }
@@ -143,8 +146,8 @@ impl Motif for DNAMotif {
 
     /// derived from
     /// https://github.com/biopython/biopython/blob/master/Bio/motifs/matrix.py#L205
-    fn degenerate_consensus(&self) -> Result<Vec<u8>,PSSMError> {
-        fn two(_a: u8, _b: u8) -> Result<u8,PSSMError> {
+    fn degenerate_consensus(&self) -> Result<Vec<u8>, PSSMError> {
+        fn two(_a: u8, _b: u8) -> Result<u8, PSSMError> {
             let (a, b) = if _b > _a { (_a, _b) } else { (_b, _a) };
             match (a, b) {
                 (b'A', b'C') => Ok(b'M'),
@@ -153,7 +156,7 @@ impl Motif for DNAMotif {
                 (b'C', b'G') => Ok(b'S'),
                 (b'C', b'T') => Ok(b'Y'),
                 (b'G', b'T') => Ok(b'K'),
-                _ => return Err(PSSMError::InvalidMonomer),
+                _ => return Err(PSSMError::InvalidMonomer(a)),
             }
         }
         let len = self.len();
@@ -170,12 +173,13 @@ impl Motif for DNAMotif {
             } else if 4.0 * (fracs[0].0 + fracs[1].0) > 3.0 {
                 two(Self::MONOS[fracs[0].1], Self::MONOS[fracs[1].1])?
             } else if fracs[3].0 < EPSILON {
-                match Self::MONOS[fracs[3].1] {
+                let base = Self::MONOS[fracs[3].1];
+                match base {
                     b'T' => b'V',
                     b'G' => b'H',
                     b'C' => b'D',
                     b'A' => b'B',
-                    _ => return Err(PSSMError::InvalidMonomer)
+                    _ => return Err(PSSMError::InvalidMonomer(base)),
                 }
             } else {
                 b'N'
@@ -189,7 +193,8 @@ impl Motif for DNAMotif {
 /// use DEF_PSEUDO as default pseudocount
 impl From<Vec<Vec<u8>>> for DNAMotif {
     fn from(seqs: Vec<Vec<u8>>) -> Self {
-        DNAMotif::from_seqs_with_pseudocts(seqs, &[DEF_PSEUDO, DEF_PSEUDO, DEF_PSEUDO, DEF_PSEUDO]).expect("from_seqs_with_pseudocts failed")
+        DNAMotif::from_seqs_with_pseudocts(seqs, &[DEF_PSEUDO, DEF_PSEUDO, DEF_PSEUDO, DEF_PSEUDO])
+            .expect("from_seqs_with_pseudocts failed")
     }
 }
 
@@ -239,7 +244,8 @@ mod tests {
     fn test_info_content() {
         // matrix w/ 100% match to A at each position
         let pssm =
-            DNAMotif::from_seqs_with_pseudocts(vec![b"AAAA".to_vec()], &[0.0, 0.0, 0.0, 0.0]).unwrap();
+            DNAMotif::from_seqs_with_pseudocts(vec![b"AAAA".to_vec()], &[0.0, 0.0, 0.0, 0.0])
+                .unwrap();
         // 4 bases * 2 bits per base = 8
         assert_eq!(pssm.info_content(), 8.0);
     }
