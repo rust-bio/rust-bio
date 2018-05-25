@@ -33,6 +33,7 @@ pub struct RankSelect {
     superblocks_1: Vec<u32>,
     superblocks_0: Vec<u32>,
     s: usize,
+    k: usize,
 }
 
 impl RankSelect {
@@ -55,9 +56,25 @@ impl RankSelect {
         RankSelect {
             n,
             s,
+            k,
             superblocks_1: superblocks(true, n, s, &bits),
             superblocks_0: superblocks(false, n, s, &bits),
             bits,
+        }
+    }
+
+    /// Return the used k (see `RankSelect::new()`).
+    pub fn k(&self) -> usize {
+        self.k
+    }
+
+    /// Get i-th bit. Returns `None` if i is bigger than the number of bits.
+    pub fn get(&self, i: usize) -> Option<bool> {
+        if i >= self.bits.len() * 8 {
+            None
+        } else {
+            let one = 1 << (7 - (i % 8));
+            Some((self.bits.get(i / 8).unwrap() & one) != 0)
         }
     }
 
@@ -222,5 +239,8 @@ mod tests {
         assert_eq!(rs.rank_0(5).unwrap(), 5);
         assert_eq!(rs.select_0(0), None);
         assert_eq!(rs.select_0(1).unwrap(), 0);
+        assert_eq!(rs.get(5).unwrap(), true);
+        assert_eq!(rs.get(1).unwrap(), false);
+        assert_eq!(rs.get(32).unwrap(), true);
     }
 }
