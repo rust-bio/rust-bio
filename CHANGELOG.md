@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.18.0] - 2018-05-04
+- More flexible FASTA API.
+- Fixed bug in KMP.
+
 ## [0.17.0] - 2018-02-22
 - Bug fix in Ukkonen algorithm
 - Convenience improvements to API
