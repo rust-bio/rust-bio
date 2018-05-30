@@ -29,6 +29,7 @@ use utils::{Text, TextSlice};
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
 
 /// A FASTA reader.
+#[derive(Debug)]
 pub struct Reader<R: io::Read> {
     reader: io::BufReader<R>,
     line: String,
@@ -99,6 +100,7 @@ impl<R: io::Read> Reader<R> {
 }
 
 /// A FASTA index as created by SAMtools (.fai).
+#[derive(Debug, Clone)]
 pub struct Index {
     inner: Vec<IndexRecord>,
     name_to_rid: collections::HashMap<String, usize>,
@@ -152,6 +154,7 @@ impl Index {
 }
 
 /// A FASTA reader with an index as created by SAMtools (.fai).
+#[derive(Debug)]
 pub struct IndexedReader<R: io::Read + io::Seek> {
     reader: io::BufReader<R>,
     pub index: Index,
@@ -486,6 +489,7 @@ impl<'a, R: io::Read + io::Seek + 'a> Iterator for IndexedReaderIterator<'a, R> 
 }
 
 /// A Fasta writer.
+#[derive(Debug)]
 pub struct Writer<W: io::Write> {
     writer: io::BufWriter<W>,
 }
@@ -532,7 +536,7 @@ impl<W: io::Write> Writer<W> {
 }
 
 /// A FASTA record.
-#[derive(Default)]
+#[derive(Default, Clone, Debug)]
 pub struct Record {
     id: String,
     desc: Option<String>,

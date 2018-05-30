@@ -23,6 +23,7 @@ use std::path::Path;
 use utils::TextSlice;
 
 /// A FastQ reader.
+#[derive(Debug)]
 pub struct Reader<R: io::Read> {
     reader: io::BufReader<R>,
     sep_line: String,
@@ -196,6 +197,7 @@ impl fmt::Display for Record {
 }
 
 /// An iterator over the records of a FastQ file.
+#[derive(Debug)]
 pub struct Records<R: io::Read> {
     reader: Reader<R>,
 }
@@ -214,6 +216,7 @@ impl<R: io::Read> Iterator for Records<R> {
 }
 
 /// A FastQ writer.
+#[derive(Debug)]
 pub struct Writer<W: io::Write> {
     writer: io::BufWriter<W>,
 }
