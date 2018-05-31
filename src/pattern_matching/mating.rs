@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Merge overlapping paired Illumina reads 
+//! Merge overlapping paired sequences
 //!
 //! # Example
 //!
@@ -34,17 +34,19 @@ fn merge_records(r1: &Record, r2: &Record) -> Option<Record> {
 }
 
 fn mate(r1: &[u8], r2: [&u8]) -> Option<usize> {
-    let min = cmp::min(r1.len(), r2.len());
+    let min_offset = 25;
+    let min_score = 0;
+    let max_offset = cmp::min(r1.len(), r2.len());
     let mut m: i16 = 0;
     let mut pos: usize = 0;
-    for i in 0..min {
-        let h = score(&r2[0..i], &r1[min-i..min]);
+    for i in min_offset..max_offset {
+        let h = score(&r2[0..i], &r1[max_offset-i..max_offset]);
         if h > m {
             m = h;
             pos = i;
         }
     }
-    if pos > 25 {
+    if pos > min_offset && m > min_score {
         Some(pos)
     }
     None
@@ -82,8 +84,8 @@ mod tests {
     fn test_merge_pair() {
         let r1 = b"tacgattcgat";
         let r2 = b"acgtaatcgaa";
-        let offset = mate(&r1, &r2).unwrap();
-        let contig: Vec<u8> = merge(&r1, &r2, offset);
+//        let offset = mate(&r1, &r2).unwrap();
+        let contig: Vec<u8> = merge(r1.to_slice(), r2.to_slice(), 3);
         assert_eq!(contig, b"tacgattcgattacgt");
     }
 }
