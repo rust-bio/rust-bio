@@ -7,7 +7,7 @@
 //! that constitute a motif, and use this matrix to scan query sequences for
 //! occurances of this motif.
 //! Complexity: O(n*m) for motif length n and query length m
-//! 
+//!
 //! The position-specific scoring matrix (PSSM), aka position weight matrix (PWM),
 //! algorithm is implemented for both DNA and amino-acid sequences.
 //!
@@ -23,7 +23,6 @@
 //! let start_pos = pssm.score(b"CCCCCAATA").unwrap().loc;
 //! println!("motif found at position {}", start_pos);
 
-
 use ndarray::prelude::Array2;
 use std::f32::NEG_INFINITY;
 use std::char;
@@ -35,12 +34,15 @@ mod protmotif;
 pub use self::dnamotif::DNAMotif;
 pub use self::protmotif::ProtMotif;
 
+/// default pseudocount - used to prevent 0 tallies
+const DEF_PSEUDO: f32 = 0.5;
+
 pub const EPSILON: f32 = 1e-5;
 pub const INVALID_MONO: u8 = 255;
 
 /// Errors
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub enum PSSMError {
         QueryTooShort(motif_len: usize, query_len: usize) {
             description("query cannot be shorter than motif")
@@ -61,9 +63,8 @@ quick_error! {
     }
 }
 
-
 /// Represents motif score & location of match
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ScoredPos {
     pub loc: usize,
     pub sum: f32,

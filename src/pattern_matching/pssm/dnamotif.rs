@@ -8,11 +8,7 @@ use ndarray::prelude::Array2;
 use std::f32;
 use std::f32::{INFINITY, NEG_INFINITY};
 
-/// monomers, ie, DNA bases
-/// default pseudocount - used to prevent 0 tallies
-const DEF_PSEUDO: f32 = 0.5;
-
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DNAMotif {
     pub seq_ct: usize,
     pub scores: Array2<f32>,
@@ -193,7 +189,7 @@ impl Motif for DNAMotif {
 /// use DEF_PSEUDO as default pseudocount
 impl From<Vec<Vec<u8>>> for DNAMotif {
     fn from(seqs: Vec<Vec<u8>>) -> Self {
-        DNAMotif::from_seqs_with_pseudocts(seqs, &[DEF_PSEUDO, DEF_PSEUDO, DEF_PSEUDO, DEF_PSEUDO])
+        DNAMotif::from_seqs_with_pseudocts(seqs, &[DEF_PSEUDO; 4])
             .expect("from_seqs_with_pseudocts failed")
     }
 }
@@ -240,6 +236,7 @@ mod tests {
             assert!(false);
         }
     }
+
     #[test]
     fn test_info_content() {
         // matrix w/ 100% match to A at each position
@@ -248,5 +245,25 @@ mod tests {
                 .unwrap();
         // 4 bases * 2 bits per base = 8
         assert_eq!(pssm.info_content(), 8.0);
+    }
+
+    #[test]
+    fn test_mono_err() {
+        let pssm = DNAMotif::from(vec![b"ATGC".to_vec()]);
+        assert_eq!(
+            pssm.score(b"AAAAXAAAAAAAAA"),
+            Err(PSSMError::InvalidMonomer(b'X'))
+        );
+    }
+
+    #[test]
+    fn test_inconsist_err() {
+        assert_eq!(
+            DNAMotif::from_seqs_with_pseudocts(
+                vec![b"AAAA".to_vec(), b"TTTT".to_vec(), b"C".to_vec()],
+                &[0.0; 4]
+            ),
+            Err(PSSMError::InconsistentLen)
+        );
     }
 }

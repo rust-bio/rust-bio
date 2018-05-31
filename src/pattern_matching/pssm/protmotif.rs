@@ -8,6 +8,7 @@ use ndarray::prelude::Array2;
 use std::f32;
 use std::f32::{INFINITY, NEG_INFINITY};
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct ProtMotif {
     pub seq_ct: usize,
     pub scores: Array2<f32>,
@@ -156,6 +157,15 @@ impl Motif for ProtMotif {
     }
 }
 
+/// calculate scores matrix from a list of equal-length protein sequences
+/// use DEF_PSEUDO as default pseudocount
+impl From<Vec<Vec<u8>>> for ProtMotif {
+    fn from(seqs: Vec<Vec<u8>>) -> Self {
+        ProtMotif::from_seqs_with_pseudocts(seqs, &[DEF_PSEUDO; 20])
+            .expect("from_seqs_with_pseudocts failed")
+    }
+}
+
 impl From<Array2<f32>> for ProtMotif {
     fn from(scores: Array2<f32>) -> Self {
         let mut m = ProtMotif {
@@ -196,5 +206,25 @@ mod tests {
         let pssm = ProtMotif::from(m);
         let scored_pos = pssm.score(b"AAAAARNDAAA").unwrap();
         assert_eq!(scored_pos.loc, 4);
+    }
+
+    #[test]
+    fn test_mono_err() {
+        let pssm = ProtMotif::from(vec![b"ARGN".to_vec()]);
+        assert_eq!(
+            pssm.score(b"AAAABAAAAAAAAA"),
+            Err(PSSMError::InvalidMonomer(b'B'))
+        );
+    }
+
+    #[test]
+    fn test_inconsist_err() {
+        assert_eq!(
+            ProtMotif::from_seqs_with_pseudocts(
+                vec![b"NNNNN".to_vec(), b"RRRRR".to_vec(), b"C".to_vec()],
+                &[0.0; 20]
+            ),
+            Err(PSSMError::InconsistentLen)
+        );
     }
 }
