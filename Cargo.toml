@@ -21,7 +21,6 @@ num-traits = "0.1"
 num-integer = "0.1"
 itertools = "0.6"
 itertools-num = "0.1"
-bit-vec = "0.4"
 bv = { version = "0.7", features = ["serde"] }
 bit-set = "0.4"
 ndarray= "0.9"

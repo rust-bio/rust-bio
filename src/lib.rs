@@ -88,7 +88,6 @@
 #[macro_use]
 extern crate approx;
 extern crate bit_set;
-extern crate bit_vec;
 extern crate bytecount;
 extern crate csv;
 #[macro_use]
