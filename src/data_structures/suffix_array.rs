@@ -16,7 +16,7 @@ use std::ops::Deref;
 use num_integer::Integer;
 use num_traits::{cast, NumCast, Unsigned};
 
-use bv::{BitVec, BitsMut, Bits};
+use bv::{BitVec, Bits, BitsMut};
 use vec_map::VecMap;
 
 use alphabets::{Alphabet, RankTransform};

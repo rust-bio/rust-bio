@@ -208,8 +208,11 @@ fn superblocks(t: bool, n: usize, s: usize, bits: &BitVec<u8>) -> Vec<u64> {
         if i % s == 0 {
             superblocks.push(rank);
         }
-        rank +=
-            if t { b.count_ones() as u64 } else { b.count_zeros() as u64 };
+        rank += if t {
+            b.count_ones() as u64
+        } else {
+            b.count_zeros() as u64
+        };
         i += 8;
     }
 
