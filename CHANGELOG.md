@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 # [0.20.0] - 2018-06-01
 - Refactored RankSelect API to consistently use u64.
+- Use bv crate in suffix array implementation.
 
 # [0.19.0] - 2018-05-25
 - rank-0 and select-0 in RankSelect.
