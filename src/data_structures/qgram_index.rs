@@ -268,13 +268,11 @@ mod tests {
         let matches = qgram_index.matches(pattern, 1);
         assert_eq!(
             matches,
-            [
-                Match {
-                    pattern: Interval { start: 0, stop: 4 },
-                    text: Interval { start: 3, stop: 7 },
-                    count: 2,
-                }
-            ]
+            [Match {
+                pattern: Interval { start: 0, stop: 4 },
+                text: Interval { start: 3, stop: 7 },
+                count: 2,
+            }]
         );
     }
 
