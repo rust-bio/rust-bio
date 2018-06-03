@@ -24,6 +24,8 @@
 //! # }
 //! ```
 
+use std::cmp;
+
 use bv::BitVec;
 use bv::Bits;
 
@@ -137,12 +139,14 @@ impl RankSelect {
         let mut rank = self.superblocks_1[superblock];
 
         let first_block = superblock * self.s / 8;
-        for block in first_block..first_block + self.s {
+        for block in first_block..cmp::min(first_block + self.s / 8, self.bits.block_len()) {
             let b = self.bits.get_block(block);
             let p = b.count_ones() as u64;
             if rank + p >= j {
                 let mut bit = 0b1;
-                for i in 0..8 {
+                // do not look at unused bits of the last block
+                let max_bit = cmp::min(8, self.bits.len() - block as u64 * 8);
+                for i in 0..max_bit {
                     rank += (b & bit != 0) as u64;
                     if rank == j {
                         return Some((first_block + block) as u64 * 8 + i);
@@ -172,12 +176,14 @@ impl RankSelect {
         let mut rank = self.superblocks_0[superblock];
 
         let first_block = superblock * self.s / 8;
-        for block in first_block..first_block + self.s / 8 {
+        for block in first_block..cmp::min(first_block + self.s / 8, self.bits.block_len()) {
             let b = self.bits.get_block(block);
             let p = b.count_zeros() as u64;
             if rank + p >= j {
                 let mut bit = 0b1;
-                for i in 0..8 {
+                // do not look at unused bits of the last block
+                let max_bit = cmp::min(8, self.bits.len() - block as u64 * 8);
+                for i in 0..max_bit {
                     rank += (b & bit == 0) as u64;
                     if rank == j {
                         return Some((first_block + block) as u64 * 8 + i);
@@ -247,5 +253,20 @@ mod tests {
         assert_eq!(rs.get(5), true);
         assert_eq!(rs.get(1), false);
         assert_eq!(rs.get(32), true);
+    }
+
+    #[test]
+    fn test_select() {
+        let bits: BitVec<u8> = bit_vec![true, false];
+        let rs = RankSelect::new(bits, 1);
+
+        assert_eq!(rs.select_0(0), Some(0));
+        assert_eq!(rs.select_1(0), None);
+
+        assert_eq!(rs.select_0(1), Some(1));
+        assert_eq!(rs.select_1(1), Some(0));
+
+        assert_eq!(rs.select_0(2), None);
+        assert_eq!(rs.select_1(2), None);
     }
 }
