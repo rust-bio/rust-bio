@@ -64,6 +64,10 @@ quick_error! {
             description("attempted to create a motif from zero sequences")
             display("motif cannot be created from zero sequences")
         }
+        InvalidPseudos(expected: u8, received: u8) {
+            description("pseudo-score array should have on entry per monomer")
+            display("expected pseudo-score array of length {}; got {}", expected, received)
+        }
     }
 }
 
@@ -94,7 +98,6 @@ pub trait Motif {
     /// Monomer count - equal to length of `MONOS`
     const MONO_CT: usize = 0;
 
-
     /// Returns a weight matrix representing the sequences provided.
     /// This code is shared by implementations of `from_seqs`
     /// # Arguments
@@ -108,16 +111,21 @@ pub trait Motif {
         seqs: &Vec<Vec<u8>>,
         _pseudos: Option<&[f32]>,
     ) -> Result<Array2<f32>, PSSMError> {
-
-
         let p = vec![DEF_PSEUDO; Self::MONO_CT];
         let pseudos = match _pseudos {
             Some(ref p) => p,
             None => p.as_slice(),
         };
 
+        if pseudos.len() != Self::MONO_CT {
+            return Err(PSSMError::InvalidPseudos(
+                Self::MONO_CT as u8,
+                pseudos.len() as u8,
+            ));
+        }
+
         if seqs.len() == 0 {
-            return Err(PSSMError::EmptyMotif)
+            return Err(PSSMError::EmptyMotif);
         }
 
         let seqlen = seqs[0].len();
@@ -143,7 +151,7 @@ pub trait Motif {
         }
         Ok(counts)
     }
-    
+
     /// Returns the index of given monomer in the scores matrix using the lookup table `LK`
     /// # Arguments
     /// * `mono` - monomer, eg, b'A' for DNA or b'R' for protein

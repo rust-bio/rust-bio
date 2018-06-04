@@ -8,7 +8,6 @@ use ndarray::prelude::Array2;
 use std::f32;
 use std::f32::{INFINITY, NEG_INFINITY};
 
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct DNAMotif {
     pub seq_ct: usize,
@@ -20,7 +19,6 @@ pub struct DNAMotif {
 }
 
 impl DNAMotif {
-
     /// Returns a Motif representing the sequences provided.
     /// # Arguments
     /// * `seqs` - sequences incorportated into motif
@@ -29,11 +27,7 @@ impl DNAMotif {
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently impossible (see issue 42863)
-    pub fn from_seqs(
-        seqs: &Vec<Vec<u8>>,
-        pseudos: Option<&[f32]>,
-    ) -> Result<Self, PSSMError>
-    {
+    pub fn from_seqs(seqs: &Vec<Vec<u8>>, pseudos: Option<&[f32]>) -> Result<Self, PSSMError> {
         let w = Self::seqs_to_weights(seqs, pseudos)?;
         let mut m = DNAMotif {
             seq_ct: seqs.len(),
@@ -136,7 +130,7 @@ impl Motif for DNAMotif {
                 (b'C', b'G') => b'S',
                 (b'C', b'T') => b'Y',
                 (b'G', b'T') => b'K',
-                _ => unreachable!() // no other combinations exist
+                _ => unreachable!(), // no other combinations exist
             }
         }
         let len = self.len();
@@ -159,7 +153,7 @@ impl Motif for DNAMotif {
                     b'G' => b'H',
                     b'C' => b'D',
                     b'A' => b'B',
-                    _ => unreachable!() // no other bases exist
+                    _ => unreachable!(), // no other bases exist
                 }
             } else {
                 b'N'
@@ -189,11 +183,15 @@ mod tests {
     use pattern_matching::pssm::ScoredPos;
     #[test]
     fn simple_pssm() {
-        let pssm: DNAMotif = DNAMotif::from_seqs(vec![
-            b"AAAA".to_vec(),
-            b"TTTT".to_vec(),
-            b"GGGG".to_vec(),
-            b"CCCC".to_vec(), ].as_ref(), None).unwrap();
+        let pssm: DNAMotif = DNAMotif::from_seqs(
+            vec![
+                b"AAAA".to_vec(),
+                b"TTTT".to_vec(),
+                b"GGGG".to_vec(),
+                b"CCCC".to_vec(),
+            ].as_ref(),
+            None,
+        ).unwrap();
         assert_eq!(pssm.scores, Array2::from_elem((4, 4), 0.25));
     }
     #[test]

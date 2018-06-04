@@ -8,7 +8,6 @@ use ndarray::prelude::Array2;
 use std::f32;
 use std::f32::{INFINITY, NEG_INFINITY};
 
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProtMotif {
     pub seq_ct: usize,
@@ -28,11 +27,7 @@ impl ProtMotif {
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently impossible (see issue 42863)
-    pub fn from_seqs(
-        seqs: &Vec<Vec<u8>>,
-        pseudos: Option<&[f32]>,
-    ) -> Result<Self, PSSMError>
-    {
+    pub fn from_seqs(seqs: &Vec<Vec<u8>>, pseudos: Option<&[f32]>) -> Result<Self, PSSMError> {
         let w = Self::seqs_to_weights(seqs, pseudos)?;
         let mut m = ProtMotif {
             seq_ct: seqs.len(),
