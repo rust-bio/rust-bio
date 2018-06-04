@@ -60,6 +60,10 @@ quick_error! {
             description("a motif in which every monomer is equally likely at every position will result in a divide-by-zero exception")
             display("information-free motif")
         }
+        EmptyMotif {
+            description("attempted to create a motif from zero sequences")
+            display("motif cannot be created from zero sequences")
+        }
     }
 }
 
@@ -83,11 +87,68 @@ impl Default for ScoredPos {
 
 /// Trait containing code shared between DNA and protein implementations.
 pub trait Motif {
-    /// lookup table mapping monomer -> index
+    /// Lookup table mapping monomer -> index
     const LK: [u8; 127] = [INVALID_MONO; 127];
+    /// All monomers, in order corresponding to lookup table
     const MONOS: &'static [u8] = b"";
+    /// Monomer count - equal to length of `MONOS`
+    const MONO_CT: usize = 0;
 
-    /// Use lookup table LK to find index of given monomer in the scores matrix.
+
+    /// Returns a weight matrix representing the sequences provided.
+    /// This code is shared by implementations of `from_seqs`
+    /// # Arguments
+    /// * `seqs` - sequences incorportated into motif
+    /// * `pseudos` - array slice with a pseudocount for each monomer;
+    ///    defaults to DEF_PSEUDO for all if None is supplied
+    ///
+    /// FIXME: pseudos should be an array of size MONO_CT, but that
+    /// is currently unsupported
+    fn seqs_to_weights(
+        seqs: &Vec<Vec<u8>>,
+        _pseudos: Option<&[f32]>,
+    ) -> Result<Array2<f32>, PSSMError> {
+
+
+        let p = vec![DEF_PSEUDO; Self::MONO_CT];
+        let pseudos = match _pseudos {
+            Some(ref p) => p,
+            None => p.as_slice(),
+        };
+
+        if seqs.len() == 0 {
+            return Err(PSSMError::EmptyMotif)
+        }
+
+        let seqlen = seqs[0].len();
+        let mut counts = Array2::zeros((seqlen, Self::MONO_CT));
+        println!("-- array dim: [{}, {}]", seqlen, Self::MONO_CT);
+        for i in 0..seqlen {
+            for base in 0..Self::MONO_CT {
+                counts[[i, base]] = pseudos[base];
+            }
+        }
+
+        for seq in seqs.iter() {
+            if seq.len() != seqlen {
+                return Err(PSSMError::InconsistentLen);
+            }
+
+            for (idx, base) in seq.iter().enumerate() {
+                match Self::lookup(*base) {
+                    Err(e) => return Err(e),
+                    Ok(pos) => counts[[idx, pos]] += 1.0,
+                }
+            }
+        }
+        Ok(counts)
+    }
+    
+    /// Returns the index of given monomer in the scores matrix using the lookup table `LK`
+    /// # Arguments
+    /// * `mono` - monomer, eg, b'A' for DNA or b'R' for protein
+    /// # Errors
+    /// * `PSSMError::InvalidMonomer(mono)` - `mono` wasn't found in the lookup table
     fn lookup(mono: u8) -> Result<usize, PSSMError> {
         if mono >= 127 {
             Err(PSSMError::InvalidMonomer(mono))
@@ -101,35 +162,43 @@ pub trait Motif {
         }
     }
 
-    /// Reverse lookup: given index, return monomer.
+    /// Returns the monomer associated with the given index; the reverse of `lookup`.
+    /// Returns INVALID_MONO if the index isn't associated with a monomer.
+    /// # Arguments
+    /// * `idx` - the index in question
     fn rev_lk(idx: usize) -> u8;
 
-    /// Length of motif
+    /// Returns the length of motif
     fn len(&self) -> usize;
 
-    /// Represent motif using ambiguous codes.
+    /// Returns a representation of the motif using ambiguous codes.
     /// Primarily useful for DNA motifs, where ambiguous codes are
     /// common (eg, 'M' for 'A or C'); less so for proteins, where we
     /// represent any position without a dominant amino acid as an 'X'
-    fn degenerate_consensus(&self) -> Result<Vec<u8>, PSSMError>;
+    fn degenerate_consensus(&self) -> Vec<u8>;
 
-    /// Helper method: accessor for scores matrix.
+    /// Accessor - returns scores matrix
     fn get_scores(&self) -> &Array2<f32>;
 
-    /// Helper method: sum of "worst" base at each position
+    /// Return sum of "worst" base at each position
     fn get_min_score(&self) -> f32;
 
-    /// Helper method: sum of "best" base at each position
+    /// Return sum of "best" base at each position
     fn get_max_score(&self) -> f32;
 
-    /// Helper method: information content of a single position.  Used by info_content
-    /// `info_content` method.
+    /// Returns information content of a single position.
+    /// Used `info_content` method.
     /// FIXME: this should be replaced with a CTFE ... or maybe just a constant
     fn get_bits() -> f32;
 
-    /// Standard PSSM scoring is calibrated to (1) motif len and (2) the min and
-    /// max possible scores.  This is just a un-normalized sum of matching bases, useful for
-    /// comparing matches from motifs of different lengths.
+    /// Returns the un-normalized sum of matching bases, useful for comparing matches from
+    /// motifs of different lengths
+    ///
+    /// # Arguments
+    /// * `seq_it` - iterator representing the query sequence
+    ///
+    /// # Errors
+    /// * `PSSMError::InvalidMonomer(mono)` - sequence `seq_it` contained invalid monomer `mono`
     fn raw_score<'a, T: IntoTextIterator<'a>>(
         &self,
         seq_it: T,
@@ -163,12 +232,18 @@ pub trait Motif {
         Ok((best_start, best_score, best_m))
     }
 
-    /// Apply PSSM to sequence, finding the offset with the highest score.
-    /// Return None if sequence is too short
+    /// Returns a `ScoredPos` struct representing the best match within the query sequence
     /// see:
     ///   MATCHTM: a tool for searching transcription factor binding sites in DNA sequences
     ///   Nucleic Acids Res. 2003 Jul 1; 31(13): 3576–3579
     ///   https://www.ncbi.nlm.nih.gov/pmc/articles/PMC169193/
+    ///
+    /// # Arguments
+    /// * `seq_it` - iterator representing the query sequence
+    ///
+    /// # Errors
+    /// * `PSSMError::InvalidMonomer(mono)` - sequence `seq_it` contained invalid monomer `mono`
+    /// * `PSSMError::QueryTooShort` - sequence `seq_id` was too short
     ///
     /// # Example
     /// let pssm = DNAMotif::from(vec![
@@ -200,7 +275,8 @@ pub trait Motif {
         })
     }
 
-    /// Represents the information content of a motif; roughly the inverse of Shannon Entropy.
+    /// Returns a float representing the information content of a motif; roughly the
+    /// inverse of Shannon Entropy.
     /// Adapted from the information content described here:
     ///    https://en.wikipedia.org/wiki/Sequence_logo#Logo_creation
     fn info_content(&self) -> f32 {

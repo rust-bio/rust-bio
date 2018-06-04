@@ -8,6 +8,7 @@ use ndarray::prelude::Array2;
 use std::f32;
 use std::f32::{INFINITY, NEG_INFINITY};
 
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProtMotif {
     pub seq_ct: usize,
@@ -19,41 +20,23 @@ pub struct ProtMotif {
 }
 
 impl ProtMotif {
-    pub fn from_seqs_with_pseudocts(
-        seqs: Vec<Vec<u8>>,
-        pseudos: &[f32; 20],
-    ) -> Result<ProtMotif, PSSMError> {
-        if seqs.len() == 0 {
-            return Ok(ProtMotif {
-                seq_ct: 0,
-                scores: Array2::zeros((0, 0)),
-                min_score: 0.0,
-                max_score: 0.0,
-            });
-        }
-
-        let seqlen = seqs[0].len();
-        let mut counts = Array2::zeros((seqlen, 20));
-        for i in 0..seqlen {
-            for base in 0..20 {
-                counts[[i, base]] = pseudos[base];
-            }
-        }
-        for seq in seqs.iter() {
-            if seq.len() != seqlen {
-                return Err(PSSMError::InconsistentLen);
-            }
-
-            for (idx, base) in seq.iter().enumerate() {
-                match Self::lookup(*base) {
-                    Err(e) => return Err(e),
-                    Ok(pos) => counts[[idx, pos]] += 1.0,
-                }
-            }
-        }
+    /// Returns a Motif representing the sequences provided.
+    /// # Arguments
+    /// * `seqs` - sequences incorportated into motif
+    /// * `pseudos` - array slice with a pseudocount for each monomer;
+    ///    defaults to DEF_PSEUDO for all if None is supplied
+    ///
+    /// FIXME: pseudos should be an array of size MONO_CT, but that
+    /// is currently impossible (see issue 42863)
+    pub fn from_seqs(
+        seqs: &Vec<Vec<u8>>,
+        pseudos: Option<&[f32]>,
+    ) -> Result<Self, PSSMError>
+    {
+        let w = Self::seqs_to_weights(seqs, pseudos)?;
         let mut m = ProtMotif {
             seq_ct: seqs.len(),
-            scores: counts,
+            scores: w,
             min_score: 0.0,
             max_score: 0.0,
         };
@@ -113,6 +96,7 @@ impl Motif for ProtMotif {
         255, 18, 255, 255, 255, 255, 255,
     ];
     const MONOS: &'static [u8] = b"ARNDCEQGHILKMFPSTWYV";
+    const MONO_CT: usize = 20;
 
     fn rev_lk(idx: usize) -> u8 {
         if idx >= Self::MONOS.len() {
@@ -137,7 +121,7 @@ impl Motif for ProtMotif {
     fn get_bits() -> f32 {
         20f32.log2()
     }
-    fn degenerate_consensus(&self) -> Result<Vec<u8>, PSSMError> {
+    fn degenerate_consensus(&self) -> Vec<u8> {
         let len = self.len();
         let mut res = Vec::with_capacity(len);
         for pos in 0..len {
@@ -153,16 +137,7 @@ impl Motif for ProtMotif {
                 b'X'
             });
         }
-        Ok(res)
-    }
-}
-
-/// calculate scores matrix from a list of equal-length protein sequences
-/// use DEF_PSEUDO as default pseudocount
-impl From<Vec<Vec<u8>>> for ProtMotif {
-    fn from(seqs: Vec<Vec<u8>>) -> Self {
-        ProtMotif::from_seqs_with_pseudocts(seqs, &[DEF_PSEUDO; 20])
-            .expect("from_seqs_with_pseudocts failed")
+        res
     }
 }
 
@@ -187,7 +162,7 @@ mod tests {
 
     #[test]
     fn test_info_content() {
-        let pssm = ProtMotif::from_seqs_with_pseudocts(vec![b"AAAA".to_vec()], &[0.0; 20]).unwrap();
+        let pssm = ProtMotif::from_seqs(vec![b"AAAA".to_vec()].as_ref(), Some(&[0.0; 20])).unwrap();
         assert_eq!(pssm.info_content(), ProtMotif::get_bits() * 4.0);
     }
 
@@ -203,14 +178,14 @@ mod tests {
             0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
         ]).into_shape((4, 20))
             .unwrap();
-        let pssm = ProtMotif::from(m);
+        let pssm: ProtMotif = m.into();
         let scored_pos = pssm.score(b"AAAAARNDAAA").unwrap();
         assert_eq!(scored_pos.loc, 4);
     }
 
     #[test]
     fn test_mono_err() {
-        let pssm = ProtMotif::from(vec![b"ARGN".to_vec()]);
+        let pssm = ProtMotif::from_seqs(vec![b"ARGN".to_vec()].as_ref(), None).unwrap();
         assert_eq!(
             pssm.score(b"AAAABAAAAAAAAA"),
             Err(PSSMError::InvalidMonomer(b'B'))
@@ -220,9 +195,9 @@ mod tests {
     #[test]
     fn test_inconsist_err() {
         assert_eq!(
-            ProtMotif::from_seqs_with_pseudocts(
-                vec![b"NNNNN".to_vec(), b"RRRRR".to_vec(), b"C".to_vec()],
-                &[0.0; 20]
+            ProtMotif::from_seqs(
+                vec![b"NNNNN".to_vec(), b"RRRRR".to_vec(), b"C".to_vec()].as_ref(),
+                Some(&[0.0; 20])
             ),
             Err(PSSMError::InconsistentLen)
         );
