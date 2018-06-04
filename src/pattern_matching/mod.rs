@@ -24,3 +24,4 @@ pub mod kmp;
 pub mod myers;
 pub mod shift_and;
 pub mod ukkonen;
+pub mod mating;
