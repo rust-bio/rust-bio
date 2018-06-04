@@ -20,10 +20,8 @@
 //!   mate: identifying the optimal index of overlap or rejecting the case
 //!   merge: combines overlapping sequences 
 //!
-//! mating is governed by an objective function and merging is guided by a
+//! Mating is governed by an objective function and merging is guided by a
 //! function that resolves conflicts between sequences.
-//!
-//! The objective function is by default that which first appeared in SHE-RA
 //!
 //! We also need to define the conditions under which mating fails. This can
 //! be guessed with a k-mer distribution or targetted with
