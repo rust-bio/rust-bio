@@ -130,34 +130,7 @@ impl RankSelect {
     ///
     /// * `j` - The rank to find the smallest bit for.
     pub fn select_1(&self, j: u64) -> Option<u64> {
-        let mut superblock = match self.superblocks_1.binary_search(&j) {
-            Ok(i) | Err(i) => i, // superblock with same rank exists
-        };
-        if superblock > 0 {
-            superblock -= 1;
-        }
-        let mut rank = self.superblocks_1[superblock];
-
-        let first_block = superblock * self.s / 8;
-        for block in first_block..cmp::min(first_block + self.s / 8, self.bits.block_len()) {
-            let b = self.bits.get_block(block);
-            let p = b.count_ones() as u64;
-            if rank + p >= j {
-                let mut bit = 0b1;
-                // do not look at unused bits of the last block
-                let max_bit = cmp::min(8, self.bits.len() - block as u64 * 8);
-                for i in 0..max_bit {
-                    rank += (b & bit != 0) as u64;
-                    if rank == j {
-                        return Some((first_block + block) as u64 * 8 + i);
-                    }
-                    bit <<= 1;
-                }
-            }
-            rank += p;
-        }
-
-        None
+        self.select_x(j, &self.superblocks_1, |bit| bit != 0)
     }
 
     /// Get the smallest bit with a given 0-rank.
@@ -167,13 +140,17 @@ impl RankSelect {
     ///
     /// * `j` - The rank to find the smallest bit for.
     pub fn select_0(&self, j: u64) -> Option<u64> {
-        let mut superblock = match self.superblocks_0.binary_search(&j) {
+        self.select_x(j, &self.superblocks_0, |bit| bit == 0)
+    }
+
+    fn select_x<F: Fn(u8) -> bool>(&self, j: u64, superblocks: &[u64], is_match: F) -> Option<u64> {
+        let mut superblock = match superblocks.binary_search(&j) {
             Ok(i) | Err(i) => i, // superblock with same rank exists
         };
         if superblock > 0 {
             superblock -= 1;
         }
-        let mut rank = self.superblocks_0[superblock];
+        let mut rank = superblocks[superblock];
 
         let first_block = superblock * self.s / 8;
         for block in first_block..cmp::min(first_block + self.s / 8, self.bits.block_len()) {
@@ -184,7 +161,7 @@ impl RankSelect {
                 // do not look at unused bits of the last block
                 let max_bit = cmp::min(8, self.bits.len() - block as u64 * 8);
                 for i in 0..max_bit {
-                    rank += (b & bit == 0) as u64;
+                    rank += is_match(b & bit) as u64;
                     if rank == j {
                         return Some((first_block + block) as u64 * 8 + i);
                     }
