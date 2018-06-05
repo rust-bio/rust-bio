@@ -11,6 +11,7 @@ use std::f32::{INFINITY, NEG_INFINITY};
 /// Position-specific scoring matrix for DNA sequences
 #[derive(Clone, Debug, PartialEq)]
 pub struct DNAMotif {
+    /// matrix holding weights at each position, indexed by [position, base]
     pub scores: Array2<f32>,
     /// sum of "worst" base at each position
     pub min_score: f32,
