@@ -8,9 +8,9 @@ use ndarray::prelude::Array2;
 use std::f32;
 use std::f32::{INFINITY, NEG_INFINITY};
 
+/// Position-specific scoring matrix for protein sequences
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProtMotif {
-    pub seq_ct: usize,
     pub scores: Array2<f32>,
     /// sum of "worst" base at each position
     pub min_score: f32,
@@ -30,7 +30,6 @@ impl ProtMotif {
     pub fn from_seqs(seqs: &Vec<Vec<u8>>, pseudos: Option<&[f32]>) -> Result<Self, PSSMError> {
         let w = Self::seqs_to_weights(seqs, pseudos)?;
         let mut m = ProtMotif {
-            seq_ct: seqs.len(),
             scores: w,
             min_score: 0.0,
             max_score: 0.0,
@@ -136,10 +135,14 @@ impl Motif for ProtMotif {
     }
 }
 
+/// Return a ProtMotif wrapping an Array2 representing amino acid
+/// weights at each position.  The dimensions and contents of this
+/// array are unchecked, and it is incumbant on the user to ensure
+/// the correct dimensions are used (ie, SEQ_LEN x 20), and no zeros
+/// appear in the array.
 impl From<Array2<f32>> for ProtMotif {
     fn from(scores: Array2<f32>) -> Self {
         let mut m = ProtMotif {
-            seq_ct: 0,
             scores: scores,
             min_score: 0.0,
             max_score: 0.0,

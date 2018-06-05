@@ -8,9 +8,9 @@ use ndarray::prelude::Array2;
 use std::f32;
 use std::f32::{INFINITY, NEG_INFINITY};
 
+/// Position-specific scoring matrix for DNA sequences
 #[derive(Clone, Debug, PartialEq)]
 pub struct DNAMotif {
-    pub seq_ct: usize,
     pub scores: Array2<f32>,
     /// sum of "worst" base at each position
     pub min_score: f32,
@@ -30,7 +30,6 @@ impl DNAMotif {
     pub fn from_seqs(seqs: &Vec<Vec<u8>>, pseudos: Option<&[f32]>) -> Result<Self, PSSMError> {
         let w = Self::seqs_to_weights(seqs, pseudos)?;
         let mut m = DNAMotif {
-            seq_ct: seqs.len(),
             scores: w,
             min_score: 0.0,
             max_score: 0.0,
@@ -54,12 +53,11 @@ impl DNAMotif {
         }
     }
 
-    // helper function
+    // helper function: populate min_score and max_score
     fn calc_minmax(&mut self) {
         let pssm_len = self.len();
 
         // score corresponding to sum of "worst" bases at each position
-        // FIXME: iter ...
         self.min_score = 0.0;
         for i in 0..pssm_len {
             // can't use the regular min/max on f32, so we use f32::min
@@ -163,10 +161,14 @@ impl Motif for DNAMotif {
     }
 }
 
+/// Return a DNAMotif wrapping an Array2 representing amino acid
+/// weights at each position.  The dimensions and contents of this
+/// array are unchecked, and it is incumbant on the user to ensure
+/// the correct dimensions are used (ie, SEQ_LEN x 4), and no zeros
+/// appear in the array.
 impl From<Array2<f32>> for DNAMotif {
     fn from(scores: Array2<f32>) -> Self {
         let mut m = DNAMotif {
-            seq_ct: 0,
             scores: scores,
             min_score: 0.0,
             max_score: 0.0,

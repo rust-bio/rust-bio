@@ -36,8 +36,9 @@ pub use self::protmotif::ProtMotif;
 
 /// default pseudocount - used to prevent 0 tallies
 const DEF_PSEUDO: f32 = 0.5;
-
+/// aproximately zero
 pub const EPSILON: f32 = 1e-5;
+/// value representing an invalid monomer in lookup table
 pub const INVALID_MONO: u8 = 255;
 
 /// Errors
@@ -89,7 +90,8 @@ impl Default for ScoredPos {
     }
 }
 
-/// Trait containing code shared between DNA and protein implementations.
+/// Trait containing code shared between DNA and protein implementations
+/// of the position-specific scoring matrix.
 pub trait Motif {
     /// Lookup table mapping monomer -> index
     const LK: [u8; 127] = [INVALID_MONO; 127];
@@ -111,10 +113,10 @@ pub trait Motif {
         seqs: &Vec<Vec<u8>>,
         _pseudos: Option<&[f32]>,
     ) -> Result<Array2<f32>, PSSMError> {
-        let p = vec![DEF_PSEUDO; Self::MONO_CT];
+        let p1 = vec![DEF_PSEUDO; Self::MONO_CT];
         let pseudos = match _pseudos {
-            Some(ref p) => p,
-            None => p.as_slice(),
+            Some(ref p2) => p2,
+            None => p1.as_slice(),
         };
 
         if pseudos.len() != Self::MONO_CT {
@@ -130,7 +132,6 @@ pub trait Motif {
 
         let seqlen = seqs[0].len();
         let mut counts = Array2::zeros((seqlen, Self::MONO_CT));
-        println!("-- array dim: [{}, {}]", seqlen, Self::MONO_CT);
         for i in 0..seqlen {
             for base in 0..Self::MONO_CT {
                 counts[[i, base]] = pseudos[base];
