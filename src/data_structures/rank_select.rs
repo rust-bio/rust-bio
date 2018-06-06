@@ -97,7 +97,8 @@ impl RankSelect {
                            // take the superblock rank
             let mut rank = self.superblocks_1[s as usize];
             // add the rank within the block
-            rank += (self.bits.get_block(b as usize) & ((2 << j) - 1)).count_ones() as u64;
+            let mask = ((2u16 << j) - 1) as u8;
+            rank += (self.bits.get_block(b as usize) & mask).count_ones() as u64;
             // add the popcounts of blocks in between
             for block in s * 32 / 8..b {
                 let b = self.bits.get_block(block as usize);
@@ -217,6 +218,7 @@ mod tests {
         assert_eq!(rs.rank_1(1).unwrap(), 0);
         assert_eq!(rs.rank_1(5).unwrap(), 1);
         assert_eq!(rs.rank_1(6).unwrap(), 1);
+        assert_eq!(rs.rank_1(7).unwrap(), 1);
         assert_eq!(rs.rank_1(32).unwrap(), 2);
         assert_eq!(rs.rank_1(33).unwrap(), 2);
         assert_eq!(rs.rank_1(64), None);
