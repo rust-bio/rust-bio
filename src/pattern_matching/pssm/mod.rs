@@ -35,7 +35,7 @@ pub use self::dnamotif::DNAMotif;
 pub use self::protmotif::ProtMotif;
 
 /// default pseudocount - used to prevent 0 tallies
-const DEF_PSEUDO: f32 = 0.5;
+pub const DEF_PSEUDO: f32 = 0.5;
 /// aproximately zero
 pub const EPSILON: f32 = 1e-5;
 /// value representing an invalid monomer in lookup table

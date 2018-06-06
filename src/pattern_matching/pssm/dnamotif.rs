@@ -24,10 +24,11 @@ impl DNAMotif {
     /// # Arguments
     /// * `seqs` - sequences incorportated into motif
     /// * `pseudos` - array slice with a pseudocount for each monomer;
-    ///    defaults to DEF_PSEUDO for all if None is supplied
+    ///    defaults to pssm::DEF_PSEUDO for all if None is supplied
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
-    /// is currently impossible (see issue 42863)
+    /// is currently impossible - see
+    /// https://github.com/rust-lang/rust/issues/42863
     pub fn from_seqs(seqs: &Vec<Vec<u8>>, pseudos: Option<&[f32]>) -> Result<Self, PSSMError> {
         let w = Self::seqs_to_weights(seqs, pseudos)?;
         let mut m = DNAMotif {
