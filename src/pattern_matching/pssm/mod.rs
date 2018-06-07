@@ -24,8 +24,8 @@
 //! println!("motif found at position {}", start_pos);
 
 use ndarray::prelude::Array2;
-use std::f32::NEG_INFINITY;
 use std::char;
+use std::f32::NEG_INFINITY;
 use utils::IntoTextIterator;
 
 mod dnamotif;
