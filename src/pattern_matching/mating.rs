@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Merge overlapping paired sequences
+//! Mate and merge overlapping paired sequences
 //!
 //! # Example
 //!
@@ -11,7 +11,7 @@
 //! use bio::pattern_matching::mating::{mate,merge};
 //! let read1 = b"tacgattcgat";
 //! let read2 = b"ttcgattacgt";
-//! let offset = mate(read1, read2, 0).unwrap();
+//! let offset = mate(read1, read2, 0, 0).unwrap();
 //! let contig = merge(read1, read2, offset);
 //! assert_eq!(contig, b"tacgattcgattacgt");
 //! ```
@@ -29,8 +29,7 @@
 
 use std::cmp;
 
-pub fn mate(r1: &[u8], r2: &[u8], min_overhang: usize) -> Option<usize> {
-    let min_score = 23; // TODO: move this to score closure
+pub fn mate(r1: &[u8], r2: &[u8], min_overhang: usize, min_score: i16) -> Option<usize> {
     let min_offset = min_overhang;
     let max_offset = cmp::min(r1.len(), r2.len()) - min_overhang;
     let mut m: i16 = 0;
@@ -80,7 +79,7 @@ mod tests {
     fn test_mate_pair() {
         let r1 = b"tacgattcgat";
         let r2 = b"ttcgattacgt";
-        let offset = mate(r1, r2, 0).unwrap();
+        let offset = mate(r1, r2, 0, 0).unwrap();
         assert_eq!(offset, 6);
     }
 
