@@ -20,17 +20,17 @@
 //!   mate: identifying the optimal index of overlap or rejecting the case
 //!   merge: combines overlapping sequences 
 //!
-//! Mating is governed by an objective function and merging is guided by a
-//! function that resolves conflicts between sequences.
+//! Mating is governed by an objective function and merging resolves 
+//! conflicts between sequences.
 //!
 //! We also need to define the conditions under which mating fails. This can
 //! be guessed with a k-mer distribution or targetted with
-//! information about fragment size statistics
+//! information about fragment size statistics.
 
 use std::cmp;
 
 pub fn mate(r1: &[u8], r2: &[u8], min_overhang: usize) -> Option<usize> {
-    let min_score = 0; // TODO: move this to score closure
+    let min_score = 23; // TODO: move this to score closure
     let min_offset = min_overhang;
     let max_offset = cmp::min(r1.len(), r2.len()) - min_overhang;
     let mut m: i16 = 0;
