@@ -29,20 +29,20 @@
 
 use std::cmp;
 
-pub fn mate(r1: &[u8], r2: &[u8], min_overhang: usize, min_score: i16) -> Option<usize> {
-    let min_offset = min_overhang;
-    let max_offset = cmp::min(r1.len(), r2.len()) - min_overhang;
+// return the highest scoring overlap length if possible
+pub fn mate(r1: &[u8], r2: &[u8], min_overlap: usize, min_score: i16) -> Option<usize> {
+    let max_overlap = cmp::min(r1.len(), r2.len());
     let mut m: i16 = 0;
-    let mut pos: usize = 0;
-    for i in min_offset..max_offset {
-        let h = score(&r2[0..i], &r1[max_offset-i..max_offset]);
+    let mut overlap: usize = 0;
+    for i in min_overlap..max_overlap {
+        let h = score(&r2[0..i], &r1[r1.len()-i..r1.len()]);
         if h > m {
             m = h;
-            pos = i;
+            overlap = i;
         }
     }
-    if pos > min_offset && m > min_score {
-        return Some(pos)
+    if m > min_score {
+        return Some(overlap)
     }
     None
 }
@@ -61,9 +61,9 @@ fn score(r1: &[u8], r2: &[u8]) -> i16 {
 }
 
 // prototypical overlap mending function that replaces the bases with '-'
-fn z(a: u8, b: u8) -> u8 {
-    b'-'
-}
+//fn z(a: u8, b: u8) -> u8 {
+//    b'-'
+//}
 
 // strict overlap mending that reports 'N' on disagreement
 fn mend_consensus(a: u8, b: u8) -> u8 {
@@ -77,8 +77,7 @@ fn mend_consensus(a: u8, b: u8) -> u8 {
 pub fn merge(r1: &[u8], r2: &[u8], overlap: usize) -> Vec<u8> {
     let r1_end = r1.len() - overlap; 
     let r2_end = r2.len() - overlap;
-    let r2_start = overlap;
-    let len = r1_end + r2_end + overlap;
+    let len = r1_end + overlap + r2_end;
 
     let mut seq = vec![0; len];
     seq[0..r1_end].copy_from_slice(&r1[0..r1_end]);
@@ -88,7 +87,7 @@ pub fn merge(r1: &[u8], r2: &[u8], overlap: usize) -> Vec<u8> {
         seq[r1_end + i] = mend_consensus(r1[r1_end + i], r2[i]);
     }
 
-    seq[(r1_end + overlap)..len].copy_from_slice(&r2[r2_start..r2.len()]);
+    seq[(r1_end + overlap)..len].copy_from_slice(&r2[overlap..r2.len()]);
     seq
 }
 
@@ -99,7 +98,7 @@ mod tests {
     #[test]
     fn test_mate_pair() {
         let r1 = b"tacgattcgat";
-        let r2 = b"ttcgattacgt";
+        let r2 =      b"ttcgattacgt";
         let offset = mate(r1, r2, 0, 0).unwrap();
         assert_eq!(offset, 6);
     }
@@ -107,14 +106,14 @@ mod tests {
     #[test]
     fn test_merge_pair() {
         let r1 = b"tacgattcgat";
-        let r2 = b"ttcgattacgt";
+        let r2 =      b"ttcgattacgt";
         assert_eq!(merge(r1, r2, 6), b"tacgattcgattacgt");
     }
 
     #[test]
     fn test_merge_consensus() {
         let r1 = b"actgtagtacaccatgatg";
-        let r2 = b"gtttaccatgatggattga";
+        let r2 =       b"gtttaccatgatggattga";
         let offset = mate(r1, r2, 0, 0).unwrap();
         assert_eq!(offset, 13);  
         assert_eq!(merge(r1, r2, offset), b"actgtagtNNaccatgatggattga");
