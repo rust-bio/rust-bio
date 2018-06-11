@@ -17,7 +17,7 @@
 //! ```
 //!
 //! Mate pair merging procedes in two steps:
-//!   mate: identifying the optimal index of overlap or rejecting the case
+//!   mate: identifying the optimal overlap length or rejecting the case
 //!   merge: combines overlapping sequences 
 //!
 //! Mating is governed by an objective function and merging resolves 
@@ -84,8 +84,6 @@ pub fn merge(r1: &[u8], r2: &[u8], overlap: usize) -> Vec<u8> {
     seq[0..r1_end].copy_from_slice(&r1[0..r1_end]);
     
     // decide what to do for the overlapping part
-
-    println!("{} {} {}", r1_end, overlap, r1.len());
     for i in 0..overlap {
         seq[r1_end + i] = mend_consensus(r1[r1_end + i], r2[i]);
     }
