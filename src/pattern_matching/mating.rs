@@ -16,16 +16,16 @@
 //! assert_eq!(contig, b"tacgattcgattacgt");
 //! ```
 //!
-//! Mate pair merging procedes two steps:
+//! Mate pair merging procedes in two steps:
 //!   mate: identifying the optimal index of overlap or rejecting the case
 //!   merge: combines overlapping sequences 
 //!
 //! Mating is governed by an objective function and merging resolves 
-//! conflicts between sequences.
+//! conflicts between sequences ("mending").
 //!
-//! We also need to define the conditions under which mating fails. This can
-//! be guessed with a k-mer distribution or targetted with
-//! information about fragment size statistics.
+//! We also need to define the scores for which mating is acceptible. The
+//! minimum overlap score and minimum overlap length could be guessed
+//! from the k-mer distribution.
 
 use std::cmp;
 
@@ -60,13 +60,13 @@ fn score(r1: &[u8], r2: &[u8]) -> i16 {
     s
 }
 
-// prototypical overlap mending function that replaces all bases with '-'
+// prototypical overlap mending function that replaces the bases with '-'
 fn z(a: u8, b: u8) -> u8 {
     b'-'
 }
 
 // strict overlap mending that reports 'N' on disagreement
-fn match_consensus(a: u8, b: u8) -> u8 {
+fn mend_consensus(a: u8, b: u8) -> u8 {
     if a == b {
         a
     } else {
@@ -87,7 +87,7 @@ pub fn merge(r1: &[u8], r2: &[u8], overlap: usize) -> Vec<u8> {
 
     println!("{} {} {}", r1_end, overlap, r1.len());
     for i in 0..overlap {
-        seq[r1_end + i] = match_consensus(r1[r1_end + i], r2[i]);
+        seq[r1_end + i] = mend_consensus(r1[r1_end + i], r2[i]);
     }
 
     seq[(r1_end + overlap)..len].copy_from_slice(&r2[r2_start..r2.len()]);
@@ -111,5 +111,14 @@ mod tests {
         let r1 = b"tacgattcgat";
         let r2 = b"ttcgattacgt";
         assert_eq!(merge(r1, r2, 6), b"tacgattcgattacgt");
+    }
+
+    #[test]
+    fn test_merge_consensus() {
+        let r1 = b"actgtagtacaccatgatg";
+        let r2 = b"gtttaccatgatggattga";
+        let offset = mate(r1, r2, 0, 0).unwrap();
+        assert_eq!(offset, 13);  
+        assert_eq!(merge(r1, r2, offset), b"actgtagtNNaccatgatggattga");
     }
 }
