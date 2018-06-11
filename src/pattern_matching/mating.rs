@@ -60,14 +60,37 @@ fn score(r1: &[u8], r2: &[u8]) -> i16 {
     s
 }
 
+// prototypical overlap mending function that replaces all bases with '-'
+fn z(a: u8, b: u8) -> u8 {
+    b'-'
+}
+
+// strict overlap mending that reports 'N' on disagreement
+fn match_consensus(a: u8, b: u8) -> u8 {
+    if a == b {
+        a
+    } else {
+        b'N'
+    }
+}
+
 pub fn merge(r1: &[u8], r2: &[u8], overlap: usize) -> Vec<u8> {
     let r1_end = r1.len() - overlap; 
     let r2_end = r2.len() - overlap;
+    let r2_start = overlap;
     let len = r1_end + r2_end + overlap;
 
     let mut seq = vec![0; len];
     seq[0..r1_end].copy_from_slice(&r1[0..r1_end]);
-    seq[r1_end..len].copy_from_slice(&r2[0..r2.len()]);
+    
+    // decide what to do for the overlapping part
+
+    println!("{} {} {}", r1_end, overlap, r1.len());
+    for i in 0..overlap {
+        seq[r1_end + i] = match_consensus(r1[r1_end + i], r2[i]);
+    }
+
+    seq[(r1_end + overlap)..len].copy_from_slice(&r2[r2_start..r2.len()]);
     seq
 }
 
