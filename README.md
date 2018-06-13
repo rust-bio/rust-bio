@@ -23,6 +23,7 @@ Currently, rust-bio provides
 * BWT and FM-Index,
 * FMD-Index for finding supermaximal exact matches,
 * a q-gram index,
+* utilities to work with [PSSMs](https://en.wikipedia.org/wiki/Position_weight_matrix),
 * an orf research algorithm,
 * a rank/select data structure,
 * [serde](https://github.com/serde-rs/serde) support for all data structures when built with `nightly` feature,

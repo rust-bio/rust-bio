@@ -16,7 +16,7 @@ use std::ops::Deref;
 use num_integer::Integer;
 use num_traits::{cast, NumCast, Unsigned};
 
-use bit_vec::BitVec;
+use bv::{BitVec, Bits, BitsMut};
 use vec_map::VecMap;
 
 use alphabets::{Alphabet, RankTransform};
@@ -625,17 +625,17 @@ impl PosTypes {
     /// * `text` - the text, ending with a sentinel.
     fn new<T: Integer + Unsigned + NumCast + Copy>(text: &[T]) -> Self {
         let n = text.len();
-        let mut pos_types = BitVec::from_elem(n, false);
-        pos_types.set(n - 1, true);
+        let mut pos_types = BitVec::new_fill(false, n as u64);
+        pos_types.set_bit(n as u64 - 1, true);
 
         for p in (0..n - 1).rev() {
             if text[p] == text[p + 1] {
                 // if the characters are equal, the next position determines
                 // the lexicographical order
-                let v = pos_types.get(p + 1).unwrap();
-                pos_types.set(p, v);
+                let v = pos_types.get_bit(p as u64 + 1);
+                pos_types.set_bit(p as u64, v);
             } else {
-                pos_types.set(p, text[p] < text[p + 1]);
+                pos_types.set_bit(p as u64, text[p] < text[p + 1]);
             }
         }
 
@@ -644,12 +644,12 @@ impl PosTypes {
 
     /// Check if p is S-position.
     fn is_s_pos(&self, p: usize) -> bool {
-        self.pos_types.get(p).unwrap()
+        self.pos_types.get_bit(p as u64)
     }
 
     /// Check if p is L-position.
     fn is_l_pos(&self, p: usize) -> bool {
-        !self.pos_types.get(p).unwrap()
+        !self.pos_types.get_bit(p as u64)
     }
 
     /// Check if p is LMS-position.
@@ -665,7 +665,7 @@ mod tests {
     use super::*;
     use super::{transform_text, PosTypes, SAIS};
     use alphabets::Alphabet;
-    use bit_vec::BitVec;
+    use bv::{BitVec, BitsPush};
     //use data_structures::bwt::{bwt, less, Occ};
     use std::str;
 
@@ -677,8 +677,10 @@ mod tests {
         let n = text.len();
 
         let pos_types = PosTypes::new(&text);
-        let mut test = BitVec::from_bytes(&[0b01100110, 0b10010011, 0b01100100]);
-        test.truncate(n);
+        //let mut test = BitSlice::from_slice(&[0b01100110, 0b10010011, 0b01100100]).to_owned();
+        let mut test = BitVec::new();
+        test.push_block(0b001001101100100101100110);
+        test.truncate(n as u64);
         assert_eq!(pos_types.pos_types, test);
         let lms_pos: Vec<usize> = (0..n).filter(|&p| pos_types.is_lms_pos(p)).collect();
         assert_eq!(lms_pos, vec![1, 5, 8, 11, 14, 17, 21]);
@@ -712,7 +714,7 @@ mod tests {
         assert_eq!(
             sais.pos,
             vec![
-                21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18, 2, 16, 0, 19, 4, 13, 10, 3, 12, 9
+                21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18, 2, 16, 0, 19, 4, 13, 10, 3, 12, 9,
             ]
         );
     }

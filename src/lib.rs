@@ -88,7 +88,6 @@
 #[macro_use]
 extern crate approx;
 extern crate bit_set;
-extern crate bit_vec;
 extern crate bytecount;
 extern crate csv;
 #[macro_use]
@@ -110,6 +109,8 @@ extern crate regex;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate bv;
 extern crate vec_map;
 
 pub mod alignment;

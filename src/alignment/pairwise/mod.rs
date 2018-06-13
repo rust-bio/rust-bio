@@ -1052,9 +1052,7 @@ mod tests {
         assert_eq!(alignment.xstart, 0);
         assert_eq!(
             alignment.operations,
-            [
-                Match, Match, Match, Match, Match, Subst, Match, Match, Match,
-            ]
+            [Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
         );
     }
 
@@ -1070,9 +1068,7 @@ mod tests {
         assert_eq!(alignment.xstart, 0);
         assert_eq!(
             alignment.operations,
-            [
-                Match, Match, Match, Match, Del, Match, Ins, Match, Match, Match,
-            ]
+            [Match, Match, Match, Match, Del, Match, Ins, Match, Match, Match,]
         );
     }
 
@@ -1131,9 +1127,7 @@ mod tests {
         assert_eq!(alignment.xstart, 0);
         assert_eq!(
             alignment.operations,
-            [
-                Match, Match, Match, Match, Match, Subst, Match, Match, Match,
-            ]
+            [Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
         );
     }
 
@@ -1150,9 +1144,7 @@ mod tests {
         assert_eq!(alignment.xstart, 0);
         assert_eq!(
             alignment.operations,
-            [
-                Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match,
-            ]
+            [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
         );
     }
 
@@ -1211,9 +1203,7 @@ mod tests {
 
         assert_eq!(
             alignment.operations,
-            [
-                Subst, Match, Ins, Ins, Ins, Ins, Ins, Ins, Subst, Match, Match,
-            ]
+            [Subst, Match, Ins, Ins, Ins, Ins, Ins, Ins, Subst, Match, Match,]
         );
     }
 
@@ -1240,9 +1230,7 @@ mod tests {
         assert_eq!(alignment.xstart, 0);
         assert_eq!(
             alignment.operations,
-            [
-                Match, Subst, Subst, Match, Subst, Subst, Subst, Match, Match, Match, Match,
-            ]
+            [Match, Subst, Subst, Match, Subst, Subst, Subst, Match, Match, Match, Match,]
         );
     }
 
@@ -1324,9 +1312,7 @@ mod tests {
         assert_eq!(alignment.xstart, 0);
         assert_eq!(
             alignment.operations,
-            [
-                Match, Match, Match, Match, Match, Subst, Match, Match, Match,
-            ]
+            [Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
         );
 
         let alignment = aligner.local(x, y);
@@ -1334,9 +1320,7 @@ mod tests {
         assert_eq!(alignment.xstart, 0);
         assert_eq!(
             alignment.operations,
-            [
-                Match, Match, Match, Match, Match, Subst, Match, Match, Match,
-            ]
+            [Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
         );
 
         let alignment = aligner.global(x, y);
@@ -1344,9 +1328,7 @@ mod tests {
         assert_eq!(alignment.xstart, 0);
         assert_eq!(
             alignment.operations,
-            [
-                Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match,
-            ]
+            [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
         );
     }
 
@@ -1361,9 +1343,7 @@ mod tests {
 
         assert_eq!(
             alignment.operations,
-            [
-                Ins, Ins, Ins, Ins, Match, Match, Match, Match, Match, Subst, Match, Match, Match,
-            ]
+            [Ins, Ins, Ins, Ins, Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
         );
     }
 
