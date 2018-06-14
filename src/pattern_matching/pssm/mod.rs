@@ -14,14 +14,23 @@
 //! # Examples
 //!
 //! use bio::pattern_matching::pssm::DNAMotif;
-//! let pssm = DNAMotif::from(vec![
+//! let pssm = DNAMotif::from_seqs(vec![
 //!            b"AAAA".to_vec(),
 //!            b"AATA".to_vec(),
 //!            b"AAGA".to_vec(),
 //!            b"AAAA".to_vec(),
-//!        ]);
+//!        ].as_ref(), None).unwrap();
 //! let start_pos = pssm.score(b"CCCCCAATA").unwrap().loc;
 //! println!("motif found at position {}", start_pos);
+//!
+//! /* amino acid sequences are supported, too */
+//! use pssm::pattern_matching::pssm::ProtMotif;
+//! let pssm = ProtMotif::from_seqs(vec![
+//!            b"ARNNYM".to_vec(),
+//!            b"ARNRYM".to_vec(),
+//!            b"ARNNCM".to_vec(),
+//!            b"ARNNYM".to_vec(),
+//!        ].as_ref(), None).unwrap();
 
 use ndarray::prelude::Array2;
 use std::char;
@@ -255,12 +264,12 @@ pub trait Motif {
     /// * `PSSMError::QueryTooShort` - sequence `seq_id` was too short
     ///
     /// # Example
-    /// let pssm = DNAMotif::from(vec![
+    /// let pssm = DNAMotif::from_seqs(vec![
     ///            b"AAAA".to_vec(),
     ///            b"AATA".to_vec(),
     ///            b"AAGA".to_vec(),
     ///            b"AAAA".to_vec(),
-    ///        ]);
+    ///        ].as_ref(), None).unwrap();
     /// let start_pos = pssm.score(b"CCCCCAATA").unwrap().loc;
     fn score<'a, T: IntoTextIterator<'a>>(&self, seq_it: T) -> Result<ScoredPos, PSSMError> {
         let pssm_len = self.len();
