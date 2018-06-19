@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.21.0] - 2018-06-19
+- Added PSSM implementation (thanks to @hervold).
+
 # [0.20.0] - 2018-06-01
 - Refactored RankSelect API to consistently use u64.
 - Use bv crate in suffix array implementation.
