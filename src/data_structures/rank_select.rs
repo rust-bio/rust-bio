@@ -97,7 +97,8 @@ impl RankSelect {
                            // take the superblock rank
             let mut rank = self.superblocks_1[s as usize];
             // add the rank within the block
-            rank += (self.bits.get_block(b as usize) & ((2 << j) - 1)).count_ones() as u64;
+            let mask = ((2u16 << j) - 1) as u8;
+            rank += (self.bits.get_block(b as usize) & mask).count_ones() as u64;
             // add the popcounts of blocks in between
             for block in s * 32 / 8..b {
                 let b = self.bits.get_block(block as usize);
@@ -130,7 +131,12 @@ impl RankSelect {
     ///
     /// * `j` - The rank to find the smallest bit for.
     pub fn select_1(&self, j: u64) -> Option<u64> {
-        self.select_x(j, &self.superblocks_1, |bit| bit != 0)
+        self.select_x(
+            j,
+            &self.superblocks_1,
+            |bit| bit != 0,
+            |block| block.count_ones(),
+        )
     }
 
     /// Get the smallest bit with a given 0-rank.
@@ -140,10 +146,21 @@ impl RankSelect {
     ///
     /// * `j` - The rank to find the smallest bit for.
     pub fn select_0(&self, j: u64) -> Option<u64> {
-        self.select_x(j, &self.superblocks_0, |bit| bit == 0)
+        self.select_x(
+            j,
+            &self.superblocks_0,
+            |bit| bit == 0,
+            |block| block.count_zeros(),
+        )
     }
 
-    fn select_x<F: Fn(u8) -> bool>(&self, j: u64, superblocks: &[u64], is_match: F) -> Option<u64> {
+    fn select_x<F: Fn(u8) -> bool, C: Fn(u8) -> u32>(
+        &self,
+        j: u64,
+        superblocks: &[u64],
+        is_match: F,
+        count_all: C,
+    ) -> Option<u64> {
         let mut superblock = match superblocks.binary_search(&j) {
             Ok(i) | Err(i) => i, // superblock with same rank exists
         };
@@ -155,7 +172,7 @@ impl RankSelect {
         let first_block = superblock * self.s / 8;
         for block in first_block..cmp::min(first_block + self.s / 8, self.bits.block_len()) {
             let b = self.bits.get_block(block);
-            let p = b.count_zeros() as u64;
+            let p = count_all(b) as u64;
             if rank + p >= j {
                 let mut bit = 0b1;
                 // do not look at unused bits of the last block
@@ -217,6 +234,7 @@ mod tests {
         assert_eq!(rs.rank_1(1).unwrap(), 0);
         assert_eq!(rs.rank_1(5).unwrap(), 1);
         assert_eq!(rs.rank_1(6).unwrap(), 1);
+        assert_eq!(rs.rank_1(7).unwrap(), 1);
         assert_eq!(rs.rank_1(32).unwrap(), 2);
         assert_eq!(rs.rank_1(33).unwrap(), 2);
         assert_eq!(rs.rank_1(64), None);
@@ -245,5 +263,24 @@ mod tests {
 
         assert_eq!(rs.select_0(2), None);
         assert_eq!(rs.select_1(2), None);
+    }
+
+    #[test]
+    fn test_single_select() {
+        let bits: BitVec<u8> = bit_vec![true];
+        let rs = RankSelect::new(bits, 1);
+        assert_eq!(rs.select_1(0), None);
+        assert_eq!(rs.select_1(1), Some(0));
+        assert_eq!(rs.select_0(0), Some(0));
+        assert_eq!(rs.select_0(1), None);
+
+        let bits: BitVec<u8> = bit_vec![false];
+        let rs = RankSelect::new(bits, 1);
+        assert_eq!(rs.select_1(1), None);
+        assert_eq!(rs.select_1(0), Some(0));
+        assert_eq!(rs.select_0(0), None);
+        assert_eq!(rs.select_0(1), Some(0));
+        assert_eq!(rs.rank_0(0), Some(1));
+        assert_eq!(rs.rank_1(0), Some(0));
     }
 }

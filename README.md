@@ -23,6 +23,7 @@ Currently, rust-bio provides
 * BWT and FM-Index,
 * FMD-Index for finding supermaximal exact matches,
 * a q-gram index,
+* utilities to work with [PSSMs](https://en.wikipedia.org/wiki/Position_weight_matrix),
 * an orf research algorithm,
 * a rank/select data structure,
 * [serde](https://github.com/serde-rs/serde) support for all data structures when built with `nightly` feature,
@@ -55,6 +56,7 @@ For reading and writing BAM and BCF files, have a look at https://github.com/chr
 * [Marcin Fatyga](https://github.com/rednum)
 * [Patrick Marks](https://github.com/pmarks)
 * [Henning Timm](https://github.com/HenningTimm)
+* [Kieran Hervold](https://github.com/hervold)
 
 The next name in this list could be you! If you are interested in joining the effort to build a general purpose Rust bioinformatics library, just introduce yourself [here](https://github.com/rust-bio/rust-bio/issues/3), or issue a pull request with your first contribution.
 
