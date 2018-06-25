@@ -230,7 +230,7 @@ impl POAGraph {
         let score_fn = |a: u8, b: u8| if a == b { 4i32 } else { -2i32 };
         let mut aligner = banded::Aligner::new(-4, -2, &score_fn, 8, 10);
 
-        aligner.local(seq, &self.cns)
+        aligner.global(seq, &self.cns)
     }
 
     /// Incorporate a new sequence into the graph from an alignment
