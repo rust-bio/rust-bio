@@ -263,7 +263,7 @@ impl POAGraph {
         };
 
         for apos in astart..aln.operations.len() {
-            let op = aln.operations[apos] - 1;
+            let op = aln.operations[apos];
             match op {
                 AlignmentOperation::Match => {
                     let curr_node = self.cns_path[ypos];
