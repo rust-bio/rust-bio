@@ -230,7 +230,7 @@ impl POAGraph {
         let score_fn = |a: u8, b: u8| if a == b { 4i32 } else { -2i32 };
         let mut aligner = banded::Aligner::new(-4, -2, &score_fn, 8, 10);
 
-        aligner.global(seq, &self.cns)
+        aligner.local(seq, &self.cns)
     }
 
     /// Incorporate a new sequence into the graph from an alignment
@@ -423,5 +423,33 @@ impl POAGraph {
             Err(why) => panic!("couldn't write to file {}: {}", filename, why.description()),
             _ => (),
         }
+    }
+}
+
+#[cfg(test)]
+mod poa {
+    use alignment::poa::POAGraph;
+
+//    #[test]
+//    fn test_align_sequence() {
+//        assert_eq!(true, true);
+//    }
+
+    #[test]
+    fn test_alignment() {
+        let seq1 = b"HIDLLVGSA";
+        let seq2 = b"HIDLLVDSA";
+        let mut poa = POAGraph::new_from_sequence(Some("seq1"), Some(seq1));
+        let alignment = poa.align_sequence(seq2);
+        poa.incorporate_alignment(alignment, "seq2", seq2);
+    }
+
+    #[test]
+    fn test_incorporate_alignment() {
+        let seq1 = b"HIDLLVGSA";
+        let seq2 = b"LLVGAATLC";
+        let mut poa = POAGraph::new_from_sequence(Some("seq1"), Some(seq1));
+        let alignment = poa.align_sequence(seq2);
+        poa.incorporate_alignment(alignment, "seq2", seq2);
     }
 }
