@@ -18,107 +18,99 @@
 //! alignment graphs." Bioinformatics 19.8 (2003): 999-1008.
 //!
 //! For a reference implementation that inspired this code, see poapy:
-//! https://github.com/ljdursi/poapy.get
+//! https://github.com/ljdursi/poapy
 
 use std::str;
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
-use alignment::Alignment;
-use alignment::AlignmentOperation;
-use alignment::pairwise::banded;
+use alignment::{Alignment, AlignmentOperation, AlignmentMode};
 use utils::TextSlice;
 
-use petgraph;
-use petgraph::Graph;
+use petgraph::{Graph, Directed};
 use petgraph::graph::{NodeIndex, EdgeIndex};
 use petgraph::visit::EdgeRef;
 use petgraph::dot::Dot;
+use petgraph::algo::toposort;
 
 /// A Partial-Order Alignment Graph
-#[derive(Default)]
+//#[derive(Default)]
 pub struct POAGraph {
-    graph: Graph<u8, u16, petgraph::Directed>,
+    graph: Graph<u8, u16, Directed>,
     cns: Vec<u8>,
     cns_path: Vec<NodeIndex>,
     node_idx: Vec<NodeIndex>,
     needs_sort: bool,
 }
 
+pub struct Aligner {
+    traceback: Vec<Vec<u8>>,
+    scoring: fn(u8, u8) -> i32,
+}
+
+impl Aligner {
+    pub fn new() -> Self {
+       let score_fn = |a: u8, b: u8| if a == b { 4i32 } else { -2i32 };
+       Aligner {
+            traceback: vec![vec![]],
+            scoring: score_fn,
+        }
+    }
+
+    pub fn custom(&mut self, x: &POAGraph, y: TextSlice) -> Alignment {
+        // dimensions of the score/traceback matrices 
+        let (m, n) = (x.graph.node_count(), y.len());
+        
+        self.traceback = vec![vec![]];
+        // these iterators define the area of the traceback matrix
+        //for x in 0..seq.len() {
+            // traverse graph nodes in topological order
+        //    for y in self.graph.nodes() {
+                // instead of the predecesors from the familiar totally ordered
+                // case, we instead consider the predecesor nodes from the
+                // sequence graph. That's all.
+        //        for pred in self.graph.edges() {
+        //        score = min(score_fn(seq[i], self.graph[y]),
+        //                    score_fn(seq[i-1], self.graph[y]) + gap,
+        //                    preds); 
+
+        //    }
+        //}
+        Alignment {
+            score: 0, xstart: 0, ystart: 0, xend: 0, yend: 0, ylen: 0, xlen: 0,
+            operations: vec![], mode: AlignmentMode::Custom, }
+    }
+}
+
 impl POAGraph {
-    /// Create new POAGraph instance, optionally initialized with a sequence
+    /// Create new POAGraph instance initialized with a sequence
     ///
     /// # Arguments
     ///
-    /// * `label` - optional sequence label for an initial sequence
-    /// * `sequence` - opetional TextSlice from which to initialize the POA
+    /// * `label` - sequence label for an initial sequence
+    /// * `sequence` - TextSlice from which to initialize the POA
     ///
-    pub fn new_from_sequence(label: Option<&str>, sequence: Option<TextSlice>) -> POAGraph {
-        let mut poa = POAGraph {
+    pub fn new_from_sequence(label: &str, sequence: TextSlice) -> POAGraph {
+        let mut poa = POAGraph::new();
+        poa.add_unmatched_sequence(label, sequence);
+        return poa;
+    }
+
+    /// Create an empty POAGraph 
+    pub fn new() -> POAGraph {
+        POAGraph {
             graph: Graph::new(),
             cns: Vec::new(),
             cns_path: Vec::new(),
             node_idx: Vec::new(),
             needs_sort: false,
-        };
-
-        // Only initialize with a sequence if both a label and sequence were provided
-        match (label, sequence) {
-            (Some(lab), Some(seq)) => poa.add_unmatched_sequence(lab, seq),
-            (_, _) => (None, None),
-        };
-
-        return poa;
+        }
     }
 
-    /// Create new POAGraph instance, optionally initialized with a sequence
-    pub fn new() -> POAGraph {
-        POAGraph::new_from_sequence(None::<&str>, None::<TextSlice>)
-    }
-
-    /// Return the number of nodes in the underlying graph
-    pub fn node_count(&self) -> usize {
-        self.graph.node_count()
-    }
-
-    /// Return the number of edges (note: not edge-weights) in the underlying graph
-    pub fn edge_count(&self) -> usize {
-        self.graph.edge_count()
-    }
-
-    /// Add a new sequence node to the underlying graph
-    ///
-    /// # Arguments
-    ///
-    /// * `weight` - The character or nucleotide for this position
-    ///
-    pub fn add_node(&mut self, weight: u8) -> NodeIndex {
-        let new_node = self.graph.add_node(weight);
-        self.needs_sort = true;
-
-        new_node
-    }
-
-    /// Add a new edge connecting two sequence nodes in the graph
-    ///
-    /// # Arguments
-    ///
-    /// * `in_node` - The 'source' of the new edge
-    /// * `out_node` - The 'sink' or 'target' of the new edge
-    /// * `weight` - The weight associated with the new edge
-    ///
-    pub fn add_edge(&mut self, in_node: NodeIndex, out_node: NodeIndex, weight: u16) -> EdgeIndex {
-        let new_edge = self.graph.add_edge(in_node, out_node, weight);
-        self.needs_sort = true;
-
-        new_edge
-    }
-
-    /// Add a new sequence new unaligned sequence to the underlying graph.
-    /// Useful for both initializing the graph with it's first sequence, as
+    /// Add a new unaligned sequence to the underlying graph.
+    /// Useful for both initializing the graph with its first sequence, as
     /// well as adding unaligned prefix or suffix sequence from partially
     /// aligned reads.
     ///
@@ -127,27 +119,16 @@ impl POAGraph {
     /// * `label` - the id of the sequence to be added
     /// * `sequence` - The sequence to be added
     ///
-    pub fn add_unmatched_sequence(
-        &mut self,
-        _label: &str,
-        sequence: TextSlice,
-    ) -> (Option<NodeIndex>, Option<NodeIndex>) {
-        // Add each character to the graph, and it's associated edges
-        let mut first = None::<NodeIndex>;
-        let mut last = None::<NodeIndex>;
-        for b in sequence {
-            let node = self.add_node(*b);
-            if first.is_none() {
-                first = Some(node);
-            }
-            if last.is_some() {
-                self.add_edge(last.unwrap(), node, 1);
-            }
-            last = Some(node);
+    pub fn add_unmatched_sequence(&mut self, _label: &str, sequence: TextSlice) {
+        // this should return a POAGraph
+        let mut graph = Graph::new();
+        let mut prev = graph.add_node(sequence[0]); 
+        for i in 1..sequence.len() {
+            let node = graph.add_node(sequence[i]);
+            graph.add_edge(node, prev, 1);
+            let prev = node;
         }
-
-        // Return the book-end positions of the new sequence
-        return (first, last);
+        self.graph = graph;
     }
 
     /// Calculate and return the current consensus sequence as an array reference
@@ -219,7 +200,7 @@ impl POAGraph {
         &self.cns_path
     }
 
-    /// Align a sequence to the current consensus and return the
+    /// Align a sequence to the current graph and return the
     /// resulting alignment object
     ///
     /// # Arguments
@@ -227,109 +208,21 @@ impl POAGraph {
     /// * `sequence` - The new sequence to align as a text slice
     ///
     pub fn align_sequence(&self, seq: &[u8]) -> Alignment {
-        let score_fn = |a: u8, b: u8| if a == b { 4i32 } else { -2i32 };
-        let mut aligner = banded::Aligner::new(-4, -2, &score_fn, 8, 10);
+        let mut aligner = Aligner::new();
 
-        aligner.local(seq, &self.cns)
-    }
+        aligner.custom(self, seq)
+   }
 
     /// Incorporate a new sequence into the graph from an alignment
     ///
     /// # Arguments
     ///
-    /// * `aln` - The alignment object of the new sequence to the current consensus
+    /// * `aln` - The alignment object of the new sequence to the graph 
     /// * `label` - The name of the new sequence being added to the graph
     /// * `seq` - The complete sequence of the read being incorporated
     ///
     pub fn incorporate_alignment(&mut self, aln: Alignment, label: &str, seq: TextSlice) {
-        // Ends of sequence may be unaligned, and incorporated separately
-        let mut head_node = None::<NodeIndex>;
-        let mut tail_node = None::<NodeIndex>;
-        if aln.xstart > 0 {
-            let (_start_node, end_node) = self.add_unmatched_sequence(&label, &seq[..aln.xstart]);
-            head_node = end_node;
-        }
-        if aln.xend < seq.len() {
-            let (start_node, _end_node) = self.add_unmatched_sequence(&label, &seq[aln.xend + 1..]);
-            tail_node = start_node;
-        }
-
-        // Since each transition is an graph edge, we need to choose an initial source 'prev_node':
-        //   1) Use the last node of the unmatched prefix as the initial "prev_node", start at 0
-        //   2) Use the node at 0 as the initial "prev_node", start at 1
-        let (astart, mut xpos, mut ypos, mut prev_node) = match head_node {
-            Some(_n) => (0, aln.xstart, aln.ystart, head_node.unwrap()),
-            None => (1, aln.xstart + 1, aln.ystart + 1, self.cns_path[aln.ystart]),
-        };
-
-        for apos in astart..aln.operations.len() {
-            let op = aln.operations[apos];
-            match op {
-                AlignmentOperation::Match => {
-                    let curr_node = self.cns_path[ypos];
-                    match self.graph.find_edge(prev_node, curr_node) {
-                        Some(e) => {
-                            *self.graph.edge_weight_mut(e).unwrap() += 1;
-                        }
-                        None => {
-                            self.add_edge(prev_node, curr_node, 1);
-                        }
-                    }
-                    xpos += 1;
-                    ypos += 1;
-                    prev_node = self.cns_path[ypos - 1];
-                }
-                AlignmentOperation::Subst => {
-                    let xchar = seq[xpos];
-                    let out_edge = self.graph
-                        .edges(prev_node)
-                        .find(|e| *self.graph.node_weight(e.target()).unwrap() as u8 == xchar)
-                        .map(|e| e.id());
-                    match out_edge {
-                        Some(e) => {
-                            *self.graph.edge_weight_mut(e).unwrap() += 1;
-                            prev_node = self.graph.edge_endpoints(e).unwrap().1;
-                        }
-                        None => {
-                            let new_node = self.add_node(xchar);
-                            self.add_edge(prev_node, new_node, 1);
-                            prev_node = new_node;
-                        }
-                    }
-                    xpos += 1;
-                    ypos += 1;
-                }
-                AlignmentOperation::Del => {
-                    ypos += 1;
-                }
-                AlignmentOperation::Ins => {
-                    let xchar = seq[xpos];
-                    let out_edge = self.graph
-                        .edges(prev_node)
-                        .filter(|e| e.target() != self.cns_path[ypos])
-                        .find(|e| *self.graph.node_weight(e.target()).unwrap() as u8 == xchar)
-                        .map(|e| e.id());
-                    match out_edge {
-                        Some(e) => {
-                            *self.graph.edge_weight_mut(e).unwrap() += 1;
-                            prev_node = self.graph.edge_endpoints(e).unwrap().1;
-                        }
-                        None => {
-                            let new_node = self.add_node(xchar);
-                            self.add_edge(prev_node, new_node, 1);
-                            prev_node = new_node;
-                        }
-                    }
-                    xpos += 1;
-                }
-                _ => ()  // Skip any clipped bases
-            }
-
-            // Finally, if the sequence had an unmatched suffix, connect it to the alignment's end
-            if tail_node.is_some() {
-                self.add_edge(prev_node, tail_node.unwrap(), 1);
-            }
-        }
+        // this will replace self.graph
     }
 
     /// Sort the nodes in the underlying graph topologically,
@@ -338,71 +231,7 @@ impl POAGraph {
     /// it.  This guarantees stable, fast results from traversals
     /// and consensus operations
     pub fn topological_sort(&mut self) {
-        let mut sorted_indices: Vec<NodeIndex> = Vec::new();
-        let mut completed: HashSet<NodeIndex> = HashSet::new();
-
-        // Depth-first search for unsorted nodes from some defined start-point
-        let dfs = |graph: &Graph<u8, u16, petgraph::Directed>,
-                   start: NodeIndex,
-                   completed: &mut HashSet<NodeIndex>,
-                   sorted_indices: &mut Vec<NodeIndex>|
-         -> () {
-            let mut stack = vec![start];
-            let mut started = HashSet::new();
-            loop {
-                let node = match stack.pop() {
-                    Some(n) => n,
-                    None => {
-                        break;
-                    }
-                };
-
-                if completed.contains(&node) {
-                    continue;
-                }
-
-                if started.contains(&node) {
-                    completed.insert(node);
-                    sorted_indices.insert(0, node);
-                    started.remove(&node);
-                    continue;
-                }
-
-                let successors = graph
-                    .edges(node)
-                    .map(|e| e.target())
-                    .filter(|n| !completed.contains(n));
-                started.insert(node);
-                stack.push(node);
-                stack.extend(successors);
-            }
-        };
-
-        // Loop over all uncompleted nodes, performing a depth-first search on each
-        loop {
-            if sorted_indices.len() == self.node_count() {
-                break;
-            }
-
-            let mut found = None::<NodeIndex>;
-            for node in self.graph.node_indices() {
-                if !completed.contains(&node) {
-                    found = Some(node);
-                    break;
-                }
-            }
-            assert!(found.is_some());
-            dfs(
-                &self.graph,
-                found.unwrap(),
-                &mut completed,
-                &mut sorted_indices,
-            );
-        }
-
-        // Finally, store the results of the sort
-        self.node_idx = sorted_indices;
-        self.needs_sort = false;
+        // TODO: use petgraph's toposort
     }
 
     /// Write the current graph to a specified filepath in dot format for
@@ -436,19 +265,24 @@ mod poa {
 //    }
 
     #[test]
+    fn test_init_graph() {
+        let poa = POAGraph::new_from_sequence("seq1", b"ASDFGHJKL");
+    }
+
+    #[test]
     fn test_alignment() {
-        let seq1 = b"HIDLLVGSA";
-        let seq2 = b"HIDLLVDSA";
-        let mut poa = POAGraph::new_from_sequence(Some("seq1"), Some(seq1));
+        let seq1 = b"PKMIVRPQKNETV";
+        let seq2 = b"THKMLVRNETIM";
+        let mut poa = POAGraph::new_from_sequence("seq1", seq1);
         let alignment = poa.align_sequence(seq2);
         poa.incorporate_alignment(alignment, "seq2", seq2);
     }
 
     #[test]
     fn test_incorporate_alignment() {
-        let seq1 = b"HIDLLVGSA";
-        let seq2 = b"LLVGAATLC";
-        let mut poa = POAGraph::new_from_sequence(Some("seq1"), Some(seq1));
+        let seq1 = b"CCGCTTTTCCGC";
+        let seq2 = b"CCGCAAAACCGC";
+        let mut poa = POAGraph::new_from_sequence("seq1", seq1);
         let alignment = poa.align_sequence(seq2);
         poa.incorporate_alignment(alignment, "seq2", seq2);
     }
