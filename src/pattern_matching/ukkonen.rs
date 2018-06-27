@@ -24,68 +24,68 @@
 //! assert_eq!(occ, [(13, 1), (14, 1)]);
 //! ```
 
-use std::iter;
 use std::cmp::min;
+use std::iter;
 use std::iter::repeat;
 
-use utils::{TextSlice, IntoTextIterator, TextIterator};
-
+use utils::{IntoTextIterator, TextIterator, TextSlice};
 
 /// Default cost function (unit costs).
 pub fn unit_cost(a: u8, b: u8) -> u32 {
     (a != b) as u32
 }
 
-
 /// Ukkonens algorithm.
 #[allow(non_snake_case)]
 pub struct Ukkonen<F>
-    where F: Fn(u8, u8) -> u32
+where
+    F: Fn(u8, u8) -> u32,
 {
     D: [Vec<usize>; 2],
     cost: F,
 }
 
-
 impl<F> Ukkonen<F>
-    where F: Fn(u8, u8) -> u32
+where
+    F: Fn(u8, u8) -> u32,
 {
     /// Initialize algorithm with given capacity and cost function.
     pub fn with_capacity(m: usize, cost: F) -> Self {
         let get_vec = || Vec::with_capacity(m + 1);
         Ukkonen {
             D: [get_vec(), get_vec()],
-            cost: cost,
+            cost,
         }
     }
 
     /// Find all matches between pattern and text with up to k errors.
     /// Matches are returned as an iterator over pairs of end position and distance.
-    pub fn find_all_end<'a, T: IntoTextIterator<'a>>(&'a mut self,
-                                                     pattern: TextSlice<'a>,
-                                                     text: T,
-                                                     k: usize)
-                                                     -> Matches<F, T::IntoIter> {
+    pub fn find_all_end<'a, T: IntoTextIterator<'a>>(
+        &'a mut self,
+        pattern: TextSlice<'a>,
+        text: T,
+        k: usize,
+    ) -> Matches<F, T::IntoIter> {
         let m = pattern.len();
-        self.D[1].clear();
-        self.D[1].extend(repeat(k + 1).take(m + 1));
         self.D[0].clear();
-        self.D[0].extend(0..m + 1);
+        self.D[0].extend(repeat(k + 1).take(m + 1));
+        self.D[1].clear();
+        self.D[1].extend(0..m + 1);
         Matches {
             ukkonen: self,
-            pattern: pattern,
+            pattern,
             text: text.into_iter().enumerate(),
             lastk: min(k, m),
-            m: m,
-            k: k,
+            m,
+            k,
         }
     }
 }
 
-
 /// Iterator over pairs of end positions and distance of matches.
 pub struct Matches<'a, F, T: TextIterator<'a>>
-    where F: 'a + Fn(u8, u8) -> u32
+where
+    F: 'a + Fn(u8, u8) -> u32,
 {
     ukkonen: &'a mut Ukkonen<F>,
     pattern: TextSlice<'a>,
@@ -95,9 +95,9 @@ pub struct Matches<'a, F, T: TextIterator<'a>>
     k: usize,
 }
 
-
 impl<'a, F, T: TextIterator<'a>> Iterator for Matches<'a, F, T>
-    where F: 'a + Fn(u8, u8) -> u32
+where
+    F: 'a + Fn(u8, u8) -> u32,
 {
     type Item = (usize, usize);
 
@@ -113,9 +113,10 @@ impl<'a, F, T: TextIterator<'a>> Iterator for Matches<'a, F, T>
             // in each column, go at most one cell further than before
             // do not look at cells with too big k
             for j in 1..self.lastk + 1 {
-                self.ukkonen.D[col][j] =
-                    min(min(self.ukkonen.D[prev][j] + 1, self.ukkonen.D[col][j - 1] + 1),
-                        self.ukkonen.D[prev][j - 1] + (cost)(self.pattern[j - 1], *c) as usize);
+                self.ukkonen.D[col][j] = min(
+                    min(self.ukkonen.D[prev][j] + 1, self.ukkonen.D[col][j - 1] + 1),
+                    self.ukkonen.D[prev][j - 1] + (cost)(self.pattern[j - 1], *c) as usize,
+                );
             }
 
             // reduce lastk as long as k is exceeded: while lastk can increase by at most 1, it can
@@ -144,5 +145,21 @@ mod tests {
         let pattern = b"TGAGCGT";
         let occ: Vec<(usize, usize)> = ukkonen.find_all_end(pattern, text, 1).collect();
         assert_eq!(occ, [(13, 1), (14, 1)]);
+    }
+
+    #[test]
+    fn test_find_start() {
+        let mut u = Ukkonen::with_capacity(10, unit_cost);
+
+        let pattern = b"ACCGT";
+        // hit begins at 1st position
+        let text1 = b"ACCGTGGATGAGCGCCATAG";
+        // hit begins at 2nd position
+        let text2 = b"AACCGTGGATGAGCGCCATAG";
+
+        let occ: Vec<(usize, usize)> = u.find_all_end(pattern, text1, 1).collect();
+        assert_eq!(occ, [(3, 1), (4, 0), (5, 1)]);
+        let occ: Vec<(usize, usize)> = u.find_all_end(pattern, text2, 1).collect();
+        assert_eq!(occ, [(4, 1), (5, 0), (6, 1)]);
     }
 }

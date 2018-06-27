@@ -7,23 +7,21 @@
 
 pub mod cdf;
 
-use std::mem;
 use std::f64;
 use std::iter;
-use std::ops::{Add, Sub, Mul, Div};
+use std::mem;
+use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
-use itertools_num::linspace;
 use itertools::Itertools;
+use itertools_num::linspace;
 use num_traits::Float;
-
+use ordered_float::NotNaN;
 
 /// A factor to convert log-probabilities to PHRED-scale (phred = p * `LOG_TO_PHRED_FACTOR`).
-const LOG_TO_PHRED_FACTOR: f64 = -4.3429448190325175; // -10 * 1 / ln(10)
-
+const LOG_TO_PHRED_FACTOR: f64 = -4.342_944_819_032_517_5; // -10 * 1 / ln(10)
 
 /// A factor to convert PHRED-scale to log-probabilities (p = phred * `PHRED_TO_LOG_FACTOR`).
-const PHRED_TO_LOG_FACTOR: f64 = -0.23025850929940456; // 1 / (-10 * log10(e))
-
+const PHRED_TO_LOG_FACTOR: f64 = -0.230_258_509_299_404_56; // 1 / (-10 * log10(e))
 
 /// Calculate log(1 - p) with p given in log space without loss of precision as described in
 /// http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf.
@@ -72,7 +70,6 @@ custom_derive! {
     pub struct Prob(pub f64);
 }
 
-
 impl Prob {
     pub fn checked(p: f64) -> Result<Self, ProbError> {
         if p >= 0.0 && p <= 1.0 {
@@ -82,7 +79,6 @@ impl Prob {
         }
     }
 }
-
 
 custom_derive! {
     /// A newtype for log-scale probabilities.
@@ -121,7 +117,6 @@ custom_derive! {
     pub struct LogProb(pub f64);
 }
 
-
 custom_derive! {
     /// A newtype for PHRED-scale probabilities.
     ///
@@ -154,18 +149,21 @@ custom_derive! {
     pub struct PHREDProb(pub f64);
 }
 
-
 /// Iterator returned by scans over logprobs.
-pub type ScanIter<I> = iter::Scan<<I as IntoIterator>::IntoIter,
-                                  LogProb,
-                                  fn(&mut LogProb, LogProb) -> Option<LogProb>>;
-
+pub type ScanIter<I> = iter::Scan<
+    <I as IntoIterator>::IntoIter,
+    LogProb,
+    fn(&mut LogProb, LogProb) -> Option<LogProb>,
+>;
 
 static LOGPROB_LN_ZERO: LogProb = LogProb(f64::NEG_INFINITY);
 static LOGPROB_LN_ONE: LogProb = LogProb(0.0);
 
-
 impl LogProb {
+    pub fn is_valid(&self) -> bool {
+        !self.is_nan() && **self <= 0.0
+    }
+
     /// Log-space representation of Pr=0
     pub fn ln_zero() -> LogProb {
         LOGPROB_LN_ZERO
@@ -183,13 +181,16 @@ impl LogProb {
     /// handling LogProbs, e.g. `ln_1m_exp`
     pub fn cap_numerical_overshoot(&self, epsilon: f64) -> LogProb {
         if *self <= LogProb::ln_one() {
-            return *self
+            *self
         } else {
             let capped = **self - epsilon;
             if capped <= 0.0 {
-                return LogProb::ln_one()
+                LogProb::ln_one()
             } else {
-                panic!("Cannot correct LogProb {:?} -- not within given epsilon of 0.0 ({})", **self, epsilon);
+                panic!(
+                    "Cannot correct LogProb {:?} -- not within given epsilon of 0.0 ({})",
+                    **self, epsilon
+                );
             }
         }
     }
@@ -218,17 +219,20 @@ impl LogProb {
                 LogProb(f64::INFINITY)
             } else {
                 // TODO use sum() once it has been stabilized: .sum::<usize>()
-                pmax +
-                LogProb((probs
-                             .iter()
-                             .enumerate()
-                             .filter_map(|(i, p)| if i == imax {
-                                             None
-                                         } else {
-                                             Some((p - pmax).exp())
-                                         })
-                             .fold(0.0, |s, e| s + e))
-                                .ln_1p())
+                pmax + LogProb(
+                    (probs
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, p)| {
+                            if i == imax {
+                                None
+                            } else {
+                                Some((p - pmax).exp())
+                            }
+                        })
+                        .fold(0.0, |s, e| s + e))
+                        .ln_1p(),
+                )
             }
         }
     }
@@ -251,8 +255,10 @@ impl LogProb {
     /// Numerically stable subtraction of probabilities in log-space.
     pub fn ln_sub_exp(self, other: LogProb) -> LogProb {
         let (p0, p1) = (self, other);
-        assert!(p0 >= p1,
-                "Subtraction would lead to negative probability, which is undefined in log space.");
+        assert!(
+            p0 >= p1,
+            "Subtraction would lead to negative probability, which is undefined in log space."
+        );
         if *p1 == f64::NEG_INFINITY {
             p0
         } else if relative_eq!(*p0, *p1) || p0 == Self::ln_zero() {
@@ -274,10 +280,11 @@ impl LogProb {
     }
 
     /// Integrate numerically stable over given log-space density in the interval [a, b]. Uses the trapezoidal rule with n grid points.
-    pub fn ln_trapezoidal_integrate_exp<T, D>(density: &D, a: T, b: T, n: usize) -> LogProb where
-        T: Copy + Add<Output=T> + Sub<Output=T> + Div<Output=T> + Mul<Output=T> + Float,
-        D: Fn(T) -> LogProb,
-        f64: From<T>
+    pub fn ln_trapezoidal_integrate_exp<T, D>(mut density: D, a: T, b: T, n: usize) -> LogProb
+    where
+        T: Copy + Add<Output = T> + Sub<Output = T> + Div<Output = T> + Mul<Output = T> + Float,
+        D: FnMut(T) -> LogProb,
+        f64: From<T>,
     {
         let mut probs = linspace(a, b, n)
             .dropping(1)
@@ -292,10 +299,11 @@ impl LogProb {
     }
 
     /// Integrate numerically stable over given log-space density in the interval [a, b]. Uses Simpson's rule with n (odd) grid points.
-    pub fn ln_simpsons_integrate_exp<T, D>(density: &D, a: T, b: T, n: usize) -> LogProb where
-        T: Copy + Add<Output=T> + Sub<Output=T> + Div<Output=T> + Mul<Output=T> + Float,
-        D: Fn(T) -> LogProb,
-        f64: From<T>
+    pub fn ln_simpsons_integrate_exp<T, D>(mut density: D, a: T, b: T, n: usize) -> LogProb
+    where
+        T: Copy + Add<Output = T> + Sub<Output = T> + Div<Output = T> + Mul<Output = T> + Float,
+        D: FnMut(T) -> LogProb,
+        f64: From<T>,
     {
         assert_eq!(n % 2, 1, "n must be odd");
         let mut probs = linspace(a, b, n)
@@ -303,9 +311,9 @@ impl LogProb {
             .dropping(1)
             .dropping_back(1)
             .map(|(i, v)| {
-                     let weight = (2 + (i % 2) * 2) as f64;
-                     LogProb(*density(v) + weight.ln()) // factors alter between 2 and 4
-                 })
+                let weight = (2 + (i % 2) * 2) as f64;
+                LogProb(*density(v) + weight.ln()) // factors alter between 2 and 4
+            })
             .collect_vec();
         probs.push(density(a));
         probs.push(density(b));
@@ -320,6 +328,41 @@ impl LogProb {
     }
 }
 
+impl<'a> iter::Sum<&'a LogProb> for LogProb {
+    fn sum<I: Iterator<Item = &'a LogProb>>(iter: I) -> Self {
+        iter.fold(LogProb(0.0), |a, b| a + *b)
+    }
+}
+
+impl<'a> iter::Sum<LogProb> for LogProb {
+    fn sum<I: Iterator<Item = LogProb>>(iter: I) -> Self {
+        iter.fold(LogProb(0.0), |a, b| a + b)
+    }
+}
+
+impl AddAssign for LogProb {
+    fn add_assign(&mut self, other: LogProb) {
+        *self = *self + other;
+    }
+}
+
+impl SubAssign for LogProb {
+    fn sub_assign(&mut self, other: LogProb) {
+        *self = *self - other;
+    }
+}
+
+impl From<NotNaN<f64>> for LogProb {
+    fn from(p: NotNaN<f64>) -> LogProb {
+        LogProb(*p)
+    }
+}
+
+impl From<LogProb> for NotNaN<f64> {
+    fn from(p: LogProb) -> NotNaN<f64> {
+        NotNaN::from(*p)
+    }
+}
 
 impl From<LogProb> for Prob {
     fn from(p: LogProb) -> Prob {
@@ -327,13 +370,11 @@ impl From<LogProb> for Prob {
     }
 }
 
-
 impl From<PHREDProb> for Prob {
     fn from(p: PHREDProb) -> Prob {
         Prob(10.0f64.powf(-*p / 10.0))
     }
 }
-
 
 impl From<Prob> for LogProb {
     fn from(p: Prob) -> LogProb {
@@ -341,13 +382,11 @@ impl From<Prob> for LogProb {
     }
 }
 
-
 impl From<PHREDProb> for LogProb {
     fn from(p: PHREDProb) -> LogProb {
         LogProb(*p * PHRED_TO_LOG_FACTOR)
     }
 }
-
 
 impl From<Prob> for PHREDProb {
     fn from(p: Prob) -> PHREDProb {
@@ -355,13 +394,11 @@ impl From<Prob> for PHREDProb {
     }
 }
 
-
 impl From<LogProb> for PHREDProb {
     fn from(p: LogProb) -> PHREDProb {
         PHREDProb(*p * LOG_TO_PHRED_FACTOR)
     }
 }
-
 
 impl Default for LogProb {
     fn default() -> LogProb {
@@ -369,13 +406,11 @@ impl Default for LogProb {
     }
 }
 
-
 impl Default for PHREDProb {
     fn default() -> PHREDProb {
         PHREDProb::from(Prob(0.0))
     }
 }
-
 
 quick_error! {
     #[derive(Debug)]
@@ -405,9 +440,19 @@ mod tests {
 
     #[test]
     fn test_cumsum() {
-        let probs = vec![LogProb::ln_zero(), LogProb(0.01f64.ln()), LogProb(0.001f64.ln())];
-        assert_eq!(LogProb::ln_cumsum_exp(probs).collect_vec(),
-                   [LogProb::ln_zero(), LogProb(0.01f64.ln()), LogProb(0.011f64.ln())]);
+        let probs = vec![
+            LogProb::ln_zero(),
+            LogProb(0.01f64.ln()),
+            LogProb(0.001f64.ln()),
+        ];
+        assert_eq!(
+            LogProb::ln_cumsum_exp(probs).collect_vec(),
+            [
+                LogProb::ln_zero(),
+                LogProb(0.01f64.ln()),
+                LogProb(0.011f64.ln()),
+            ]
+        );
     }
 
     #[test]
@@ -435,23 +480,26 @@ mod tests {
     #[test]
     fn test_trapezoidal_integrate() {
         let density = |_| LogProb(0.1f64.ln());
-        let prob = LogProb::ln_trapezoidal_integrate_exp(&density, 0.0, 10.0, 5);
+        let prob = LogProb::ln_trapezoidal_integrate_exp(density, 0.0, 10.0, 5);
         assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon = 0.0000001);
     }
 
     #[test]
     fn test_simpsons_integrate() {
         let density = |_| LogProb(0.1f64.ln());
-        let prob = LogProb::ln_simpsons_integrate_exp(&density, 0.0, 10.0, 5);
+        let prob = LogProb::ln_simpsons_integrate_exp(density, 0.0, 10.0, 5);
         assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon = 0.0000001);
     }
 
     #[test]
     fn test_cap_numerical_overshoot() {
         let under_top = LogProb(-0.00000005);
-        assert_eq!(under_top, under_top.cap_numerical_overshoot(0.0000001) );
+        assert_eq!(under_top, under_top.cap_numerical_overshoot(0.0000001));
         let over_top = LogProb(0.00000005);
-        assert_eq!(LogProb::ln_one(), over_top.cap_numerical_overshoot(0.0000001) );
+        assert_eq!(
+            LogProb::ln_one(),
+            over_top.cap_numerical_overshoot(0.0000001)
+        );
     }
 
     #[test]
@@ -461,4 +509,11 @@ mod tests {
         over_top.cap_numerical_overshoot(0.00000001);
     }
 
+    #[test]
+    fn test_sum_one_zero() {
+        assert_eq!(
+            LogProb::ln_one().ln_add_exp(LogProb::ln_zero()),
+            LogProb::ln_one()
+        );
+    }
 }

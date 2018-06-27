@@ -14,15 +14,12 @@
 //! assert!(!alphabet.is_word(b"BzJ"));
 //! ```
 
-
 use alphabets::Alphabet;
-
 
 /// Returns the standard protein alphabet, containing the 20 common amino acids.
 pub fn alphabet() -> Alphabet {
     Alphabet::new(&b"ARNDCEQGHILKMFPSTWYVarndceqghilkmfpstwyv"[..])
 }
-
 
 #[cfg(test)]
 mod tests {

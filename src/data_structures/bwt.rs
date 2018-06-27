@@ -9,11 +9,11 @@
 
 use std::iter::repeat;
 
-use utils::prescan;
 use alphabets::Alphabet;
+use bytecount;
 use data_structures::suffix_array::RawSuffixArray;
 use std::ops::Deref;
-use bytecount;
+use utils::prescan;
 
 pub type BWT = Vec<u8>;
 pub type BWTSlice = [u8];
@@ -59,11 +59,10 @@ pub fn bwt(text: &[u8], pos: &RawSuffixArray) -> BWT {
     bwt
 }
 
-
 /// Calculate the inverse of a BWT of length n, which is the original text.
 /// Complexity: O(n).
 ///
-/// This only works if the last sentinel in the original text is unique 
+/// This only works if the last sentinel in the original text is unique
 /// and lexicographically the smallest.
 ///
 /// # Arguments
@@ -84,14 +83,12 @@ pub fn invert_bwt(bwt: &BWTSlice) -> Vec<u8> {
     inverse
 }
 
-
 /// An occurence array implementation.
 #[derive(Serialize, Deserialize)]
 pub struct Occ {
     occ: Vec<Vec<usize>>,
     k: u32,
 }
-
 
 impl Occ {
     /// Calculate occ array with sampling from BWT of length n.
@@ -119,7 +116,7 @@ impl Occ {
             }
         }
 
-        Occ { occ: occ, k: k }
+        Occ { occ, k }
     }
 
     /// Get occurrence count of symbol a in BWT[..r+1].
@@ -163,7 +160,6 @@ impl Occ {
     }
 }
 
-
 /// Calculate the less array for a given BWT. Complexity O(n).
 pub fn less(bwt: &BWTSlice, alphabet: &Alphabet) -> Less {
     let m = alphabet
@@ -179,7 +175,6 @@ pub fn less(bwt: &BWTSlice, alphabet: &Alphabet) -> Less {
     less
 }
 
-
 /// Calculate the bwtfind array needed for inverting the BWT. Complexity O(n).
 pub fn bwtfind(bwt: &BWTSlice, alphabet: &Alphabet) -> BWTFind {
     let n = bwt.len();
@@ -194,12 +189,11 @@ pub fn bwtfind(bwt: &BWTSlice, alphabet: &Alphabet) -> BWTFind {
     bwtfind
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::{bwtfind, bwt, invert_bwt, Occ};
-    use data_structures::suffix_array::suffix_array;
+    use super::{bwt, bwtfind, invert_bwt, Occ};
     use alphabets::Alphabet;
+    use data_structures::suffix_array::suffix_array;
 
     #[test]
     fn test_bwtfind() {

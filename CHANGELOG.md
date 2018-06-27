@@ -2,6 +2,30 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.21.0] - 2018-06-19
+- Added PSSM implementation (thanks to @hervold).
+
+# [0.20.0] - 2018-06-01
+- Refactored RankSelect API to consistently use u64.
+- Use bv crate in suffix array implementation.
+
+# [0.19.0] - 2018-05-25
+- rank-0 and select-0 in RankSelect.
+- use bv crate for RankSelect.
+
+## [0.18.0] - 2018-05-04
+- More flexible FASTA API.
+- Fixed bug in KMP.
+
+## [0.17.0] - 2018-02-22
+- Bug fix in Ukkonen algorithm
+- Convenience improvements to API
+
+## [0.16.0] - 2018-01-05
+- Pairwise alignment has been rewritten to support banded alignment and clips.
+- Various minor API additions and improvements.
+- Several small bug fixes. 
+
 ## [0.15.0] - 2017-11-20
 - Add pair hidden markov model implementation to calculate the probability of two sequences being related.
 - Various minor bug fixes and usability improvements.

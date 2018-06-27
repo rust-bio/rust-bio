@@ -1,4 +1,3 @@
-
 // Copyright 2017 Ryan Hagenson.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
@@ -19,30 +18,26 @@
 use alphabets::Alphabet;
 use utils::IntoTextIterator;
 
-
 /// The RNA alphabet (uppercase and lowercase).
 pub fn alphabet() -> Alphabet {
     Alphabet::new(b"ACGUacgu")
 }
-
 
 /// The RNA alphabet including N (uppercase and lowercase).
 pub fn n_alphabet() -> Alphabet {
     Alphabet::new(b"ACGUNacgun")
 }
 
-
 /// The IUPAC RNA alphabet (uppercase and lowercase).
 pub fn iupac_alphabet() -> Alphabet {
     Alphabet::new(b"ACGURYSWKMBDHVNZacguryswkmbdhvnz")
 }
 
-
 lazy_static! {
     static ref COMPLEMENT: Vec<u8> = {
         let mut comp = Vec::new();
         comp.resize(256, 0);
-        for (v, mut a) in comp.iter_mut().enumerate() {
+        for (v, a) in comp.iter_mut().enumerate() {
             *a = v as u8;
         }
         for (&a, &b) in b"AGCUYRWSKMDVHBNZ".iter().zip(b"UCGARYWSMKHBDVNZ".iter()) {
@@ -53,16 +48,15 @@ lazy_static! {
     };
 }
 
-
 /// Return complement of given RNA alphabet character (IUPAC alphabet supported).
 pub fn complement(a: u8) -> u8 {
     COMPLEMENT[a as usize]
 }
 
-
 /// Calculate reverse complement of given text (IUPAC alphabet supported).
 pub fn revcomp<'a, T: IntoTextIterator<'a>>(text: T) -> Vec<u8>
-    where T::IntoIter: DoubleEndedIterator
+where
+    T::IntoIter: DoubleEndedIterator,
 {
     text.into_iter().rev().map(|&a| complement(a)).collect()
 }

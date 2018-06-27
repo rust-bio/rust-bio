@@ -5,9 +5,7 @@
 
 //! Combinations with and without replacement.
 
-
 use std::cmp;
-
 
 /// Calculate the number of combinations when choosing
 /// k elements from n elements without replacement, multiplied by a scaling factor.
@@ -24,7 +22,6 @@ pub fn scaled_combinations(n: u64, k: u64, scale: f64) -> f64 {
     }
 }
 
-
 /// Calculate the number of combinations when choosing
 /// k elements from n elements without replacement.
 /// This is also known as n over k, or the binomial coefficient.
@@ -32,13 +29,11 @@ pub fn combinations(n: u64, k: u64) -> f64 {
     scaled_combinations(n, k, 1.0)
 }
 
-
 /// Calculate the number of combinations when choosing
 /// k elements from n elements with replacement.
 pub fn combinations_with_repl(n: u64, k: u64) -> f64 {
     combinations(n + k - 1, k)
 }
-
 
 #[cfg(test)]
 mod tests {

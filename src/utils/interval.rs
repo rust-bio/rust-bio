@@ -1,4 +1,4 @@
-use std::ops::{Range, Deref};
+use std::ops::{Deref, Range};
 
 /// An `Interval` wraps the `std::ops::Range` from the stdlib and is defined by a start and end field
 /// where end should be >= start.
@@ -22,7 +22,9 @@ impl<N: Ord + Clone> From<Range<N>> for Interval<N> {
     fn from(r: Range<N>) -> Self {
         match Interval::new(r) {
             Ok(interval) => interval,
-            Err(IntervalError::InvalidRange) => panic!("Cannot convert negative width range to interval"),
+            Err(IntervalError::InvalidRange) => {
+                panic!("Cannot convert negative width range to interval")
+            }
         }
     }
 }
@@ -33,11 +35,12 @@ impl<'a, N: Ord + Clone> From<&'a Range<N>> for Interval<N> {
     fn from(r: &Range<N>) -> Self {
         match Interval::new(r.clone()) {
             Ok(interval) => interval,
-            Err(IntervalError::InvalidRange) => panic!("Cannot convert negative width range to interval"),
+            Err(IntervalError::InvalidRange) => {
+                panic!("Cannot convert negative width range to interval")
+            }
         }
     }
 }
-
 
 /// Use the `Deref` operator to get a reference to `Range` wrapped by the `Interval` newtype.
 impl<N: Ord + Clone> Deref for Interval<N> {
