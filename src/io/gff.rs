@@ -84,6 +84,7 @@ impl<R: io::Read> Reader<R> {
             inner: csv::ReaderBuilder::new()
                 .delimiter(b'\t')
                 .has_headers(false)
+                .comment(Some(b'#'))
                 .from_reader(reader),
             gff_type: fileformat,
         }
@@ -360,6 +361,12 @@ mod tests {
 Note=Removed,Obsolete;ID=test
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV;\
 ID=PRO_0000148105";
+    const GFF_FILE_WITH_COMMENT: &'static [u8] = b"#comment
+P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t\
+Note=Removed,Obsolete;ID=test
+#comment
+P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV;\
+ID=PRO_0000148105";
     //required because MultiMap iter on element randomly
     const GFF_FILE_ONE_ATTRIB: &'static [u8] =
         b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed
@@ -412,6 +419,20 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         );
 
         let mut reader = Reader::new(GFF_FILE, GffType::GFF3);
+        for (i, r) in reader.records().enumerate() {
+            let record = r.unwrap();
+            assert_eq!(record.seqname(), seqname[i]);
+            assert_eq!(record.source(), source[i]);
+            assert_eq!(record.feature_type(), feature_type[i]);
+            assert_eq!(*record.start(), starts[i]);
+            assert_eq!(*record.end(), ends[i]);
+            assert_eq!(record.score(), scores[i]);
+            assert_eq!(record.strand(), strand[i]);
+            assert_eq!(record.frame(), frame[i]);
+            assert_eq!(record.attributes(), &attributes[i]);
+        }
+
+        let mut reader = Reader::new(GFF_FILE_WITH_COMMENT, GffType::GFF3);
         for (i, r) in reader.records().enumerate() {
             let record = r.unwrap();
             assert_eq!(record.seqname(), seqname[i]);
