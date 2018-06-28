@@ -24,21 +24,22 @@ use std::str;
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
-use std::collections::{HashMap, HashSet};
+use std::cmp::max;
+use std::collections::HashMap;
 
 use alignment::{Alignment, AlignmentOperation, AlignmentMode};
 use utils::TextSlice;
 
-use petgraph::{Graph, Directed};
-use petgraph::graph::{NodeIndex, EdgeIndex};
-use petgraph::visit::EdgeRef;
+use petgraph::{Graph, Directed, Incoming};
+use petgraph::graph::NodeIndex;
+use petgraph::visit::{EdgeRef, IntoNodeReferences, IntoNodeIdentifiers, IntoNeighborsDirected, Topo, Walker};
 use petgraph::dot::Dot;
-use petgraph::algo::toposort;
 
 /// A Partial-Order Alignment Graph
-//#[derive(Default)]
 pub struct POAGraph {
-    graph: Graph<u8, u16, Directed>,
+    // the POAGraph struct stores a DAG and labels for the sequences which
+    // compose it
+    graph: Graph<u8, i32, Directed>,
     cns: Vec<u8>,
     cns_path: Vec<NodeIndex>,
     node_idx: Vec<NodeIndex>,
@@ -46,7 +47,7 @@ pub struct POAGraph {
 }
 
 pub struct Aligner {
-    traceback: Vec<Vec<u8>>,
+    traceback: Vec<Vec<i32>>,
     scoring: fn(u8, u8) -> i32,
 }
 
@@ -59,28 +60,35 @@ impl Aligner {
         }
     }
 
-    pub fn custom(&mut self, x: &POAGraph, y: TextSlice) -> Alignment {
+    pub fn custom(&mut self, g: &Graph<usize, i32, Directed, usize>, query: TextSlice) -> Alignment {
         // dimensions of the score/traceback matrices 
-        let (m, n) = (x.graph.node_count(), y.len());
-        
-        self.traceback = vec![vec![]];
-        // these iterators define the area of the traceback matrix
-        //for x in 0..seq.len() {
-            // traverse graph nodes in topological order
-        //    for y in self.graph.nodes() {
-                // instead of the predecesors from the familiar totally ordered
-                // case, we instead consider the predecesor nodes from the
-                // sequence graph. That's all.
-        //        for pred in self.graph.edges() {
-        //        score = min(score_fn(seq[i], self.graph[y]),
-        //                    score_fn(seq[i-1], self.graph[y]) + gap,
-        //                    preds); 
+        let (m, n) = (g.node_count(), query.len());
 
-        //    }
-        //}
+        self.traceback = vec![vec![0; n]; m];
+        let ops: Vec<AlignmentOperation> = vec![];
+
+        // construct the score matrix (naive) 
+        let mut topo = Topo::new(&g);
+        while let Some(node) = topo.next(&g) {
+            for (y, q) in query.iter().enumerate() {
+                let mut score = 0;
+                let mut prevs = g.neighbors_directed(node, Incoming).detach();
+                while let Some((_, prev_n)) = prevs.next(&g) {
+//                    score = max((self.scoring)(g[prev_n], *q) + self.traceback[prev_n.index()][y] + 4,
+//                               score);
+                }
+                self.traceback[node.index()][y] = max(score, 4);
+            }
+        }
+
+        // trace the optimal path through the score matrix
+        let mut ops = vec![];
+
         Alignment {
-            score: 0, xstart: 0, ystart: 0, xend: 0, yend: 0, ylen: 0, xlen: 0,
-            operations: vec![], mode: AlignmentMode::Custom, }
+            score: self.traceback[m - 1][n - 1],
+            xstart: 0, ystart: 0, xend: m, yend: n, ylen: m, xlen: n,
+            operations: ops, mode: AlignmentMode::Custom,
+        }
     }
 }
 
@@ -122,11 +130,12 @@ impl POAGraph {
     pub fn add_unmatched_sequence(&mut self, _label: &str, sequence: TextSlice) {
         // this should return a POAGraph
         let mut graph = Graph::new();
-        let mut prev = graph.add_node(sequence[0]); 
+        let mut prev: NodeIndex = graph.add_node(sequence[0]); 
+        let mut node: NodeIndex;
         for i in 1..sequence.len() {
-            let node = graph.add_node(sequence[i]);
-            graph.add_edge(node, prev, 1);
-            let prev = node;
+            node = graph.add_node(sequence[i]);
+            graph.add_edge(prev, node, 1);
+            prev = node;
         }
         self.graph = graph;
     }
@@ -209,8 +218,15 @@ impl POAGraph {
     ///
     pub fn align_sequence(&self, seq: &[u8]) -> Alignment {
         let mut aligner = Aligner::new();
-
-        aligner.custom(self, seq)
+        let mut g: Graph<usize, i32, Directed, usize> = Graph::with_capacity(25, 25);
+        let a = g.add_node(0);
+        let b = g.add_node(4);
+        let c = g.add_node(8);
+        g.add_edge(a, b, 1);
+        g.add_edge(b, c, 2);
+        g.add_edge(a, c, 3);
+ 
+        aligner.custom(&g, seq)
    }
 
     /// Incorporate a new sequence into the graph from an alignment
@@ -256,7 +272,7 @@ impl POAGraph {
 }
 
 #[cfg(test)]
-mod poa {
+mod tests {
     use alignment::poa::POAGraph;
 
 //    #[test]
@@ -266,7 +282,19 @@ mod poa {
 
     #[test]
     fn test_init_graph() {
-        let poa = POAGraph::new_from_sequence("seq1", b"ASDFGHJKL");
+        // sanity check for String -> Graph
+        let poa = POAGraph::new_from_sequence("seq1", b"123456789");
+        assert!(poa.graph.is_directed());
+        assert_eq!(poa.graph.node_count(), 9);
+        assert_eq!(poa.graph.edge_count(), 8);
+    }
+
+    #[test]
+    fn test_incorporate() {
+        let seq1 = b"AAAAAA";
+        let seq2 = b"ABBBBA";
+        let seq3 = b"ABCCBA";
+
     }
 
     #[test]

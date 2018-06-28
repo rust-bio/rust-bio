@@ -112,6 +112,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate bv;
 extern crate vec_map;
+extern crate petgraph;
 
 pub mod alignment;
 pub mod alphabets;

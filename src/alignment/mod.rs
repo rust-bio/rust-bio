@@ -10,6 +10,7 @@ use utils::TextSlice;
 pub mod distance;
 pub mod pairwise;
 pub mod sparse;
+pub mod poa;
 
 /// Alignment operations supported are match, substitution, insertion, deletion
 /// and clipping. Clipping is a special boundary condition where you are allowed
