@@ -53,14 +53,14 @@ pub struct Aligner {
 
 impl Aligner {
     pub fn new() -> Self {
-       let score_fn = |a: u8, b: u8| if a == b { 4i32 } else { -2i32 };
+       let score_fn = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
        Aligner {
             traceback: vec![vec![]],
             scoring: score_fn,
         }
     }
 
-    pub fn custom(&mut self, g: &Graph<usize, i32, Directed, usize>, query: TextSlice) -> Alignment {
+    pub fn custom(&mut self, g: &Graph<u8, i32, Directed, usize>, query: TextSlice) -> Alignment {
         // dimensions of the score/traceback matrices 
         let (m, n) = (g.node_count(), query.len());
 
@@ -70,17 +70,45 @@ impl Aligner {
         // construct the score matrix (naive) 
         let mut topo = Topo::new(&g);
         while let Some(node) = topo.next(&g) {
-            for (y, q) in query.iter().enumerate() {
-                let mut score = 0;
+            for (y, q_b) in query.iter().enumerate() {
+                
                 let mut prevs = g.neighbors_directed(node, Incoming).detach();
+                let mut m = -99;
+                let mut i = -1 * y as i32;
+
+                // iterate over predecesor nodes
                 while let Some((_, prev_n)) = prevs.next(&g) {
-//                    score = max((self.scoring)(g[prev_n], *q) + self.traceback[prev_n.index()][y] + 4,
-//                               score);
+                    let p_i = prev_n.index(); // index of previous node
+                    let r_b = g.raw_nodes()[p_i].weight; // reference base at previous index
+                    if y < 1 { 
+                        m = max(m, -1 * p_i as i32);
+                    } else {
+                        println!("comparing {:?} {:?} -> {:?}", r_b, *q_b, (self.scoring)(r_b, *q_b));
+                        m = max(m, self.traceback[p_i][y - 1] + (self.scoring)(r_b, *q_b));
+                    }
+                    i = max(i, self.traceback[p_i][y] - 1i32);
                 }
-                self.traceback[node.index()][y] = max(score, 4);
+                let score = if y < 1 {
+                    max(m, i)
+                } else {
+                    max(m, max(i, self.traceback[node.index()][y - 1] - 1i32))
+                };
+                self.traceback[node.index()][y] = score;
             }
         }
-
+        println!("{:?}", self.traceback);
+        print!(".");
+        for j in 0..n {
+            print!("\t{:?}", query[j]);
+        }
+        print!("\n");
+        for i in 0..m {
+            print!("{:?}:", g.raw_nodes()[i].weight);
+            for j in 0..n {
+                print!("\t{:?}", self.traceback[i][j]);
+            }
+            print!("\n");
+        }
         // trace the optimal path through the score matrix
         let mut ops = vec![];
 
@@ -218,14 +246,22 @@ impl POAGraph {
     ///
     pub fn align_sequence(&self, seq: &[u8]) -> Alignment {
         let mut aligner = Aligner::new();
-        let mut g: Graph<usize, i32, Directed, usize> = Graph::with_capacity(25, 25);
-        let a = g.add_node(0);
-        let b = g.add_node(4);
-        let c = g.add_node(8);
-        g.add_edge(a, b, 1);
-        g.add_edge(b, c, 2);
-        g.add_edge(a, c, 3);
- 
+        let mut g: Graph<u8, i32, Directed, usize> = Graph::with_capacity(25, 25);
+        let a = g.add_node(b'G');
+        let b = g.add_node(b'A');
+        let c = g.add_node(b'T');
+        let d = g.add_node(b'T');
+        let e = g.add_node(b'A');
+        let f = g.add_node(b'C');
+        let h = g.add_node(b'A');
+
+        g.add_edge(a, b, 0);
+        g.add_edge(b, c, 0);
+        g.add_edge(c, d, 0);
+        g.add_edge(d, e, 0);
+        g.add_edge(e, f, 0);
+        g.add_edge(f, h, 0);
+
         aligner.custom(&g, seq)
    }
 
@@ -302,8 +338,9 @@ mod tests {
         let seq1 = b"PKMIVRPQKNETV";
         let seq2 = b"THKMLVRNETIM";
         let mut poa = POAGraph::new_from_sequence("seq1", seq1);
-        let alignment = poa.align_sequence(seq2);
+        let alignment = poa.align_sequence(b"GCATGCU");
         poa.incorporate_alignment(alignment, "seq2", seq2);
+        assert!(false);
     }
 
     #[test]
