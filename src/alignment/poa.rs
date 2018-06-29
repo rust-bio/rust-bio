@@ -32,7 +32,7 @@ use utils::TextSlice;
 
 use petgraph::{Graph, Directed, Incoming};
 use petgraph::graph::NodeIndex;
-use petgraph::visit::{EdgeRef, IntoNodeReferences, IntoNodeIdentifiers, IntoNeighborsDirected, Topo, Walker};
+use petgraph::visit::{EdgeRef, IntoNeighborsDirected, Topo, Walker};
 use petgraph::dot::Dot;
 
 /// A Partial-Order Alignment Graph
@@ -64,36 +64,45 @@ impl Aligner {
         // dimensions of the score/traceback matrices 
         let (m, n) = (g.node_count(), query.len());
 
-        self.traceback = vec![vec![0; n]; m];
+        self.traceback = vec![vec![0; n + 2]; m + 2];
         let ops: Vec<AlignmentOperation> = vec![];
+
+        for i in 0..(m + 2) {
+            self.traceback[i][0] = -1 * i as i32;
+        }
+        for j in 0..(n + 2) {
+            self.traceback[0][j] = -1 * j as i32;
+        }
 
         // construct the score matrix (naive) 
         let mut topo = Topo::new(&g);
         while let Some(node) = topo.next(&g) {
-            for (y, q_b) in query.iter().enumerate() {
-                
-                let mut prevs = g.neighbors_directed(node, Incoming).detach();
-                let mut m = -99;
-                let mut i = -1 * y as i32;
+            // reference base and index
+            let r = g.raw_nodes()[node.index()].weight; // reference base at previous index
+            let i = node.index() + 1;
 
-                // iterate over predecesor nodes
-                while let Some((_, prev_n)) = prevs.next(&g) {
-                    let p_i = prev_n.index(); // index of previous node
-                    let r_b = g.raw_nodes()[p_i].weight; // reference base at previous index
-                    if y < 1 { 
-                        m = max(m, -1 * p_i as i32);
-                    } else {
-                        println!("comparing {:?} {:?} -> {:?}", r_b, *q_b, (self.scoring)(r_b, *q_b));
-                        m = max(m, self.traceback[p_i][y - 1] + (self.scoring)(r_b, *q_b));
-                    }
-                    i = max(i, self.traceback[p_i][y] - 1i32);
-                }
-                let score = if y < 1 {
-                    max(m, i)
+            // predecesors of this node
+            let prevs: Vec<NodeIndex<usize>> = g.neighbors_directed(node, Incoming).collect();
+            // query base and index
+            for (j_p, q) in query.iter().enumerate() {
+                let j = j_p + 1;
+                // match and insertion scores for first reference base
+                let (mat, del) = if prevs.len() == 0 {
+                    (self.traceback[0][j] + (self.scoring)(r, *q),
+                     self.traceback[0][j + 1] - 1i32)
                 } else {
-                    max(m, max(i, self.traceback[node.index()][y - 1] - 1i32))
+                    let mut mat_max = -999;
+                    let mut del_max = -999;
+                    for prev_n in 0..prevs.len() {
+                        let i_p: usize = prevs[prev_n].index() + 1; // index of previous node
+
+                        mat_max = max(mat_max, self.traceback[i_p][j - 1] + (self.scoring)(r, *q));
+                        del_max = max(del_max, self.traceback[i_p][j] - 1i32);
+                    }
+                    (mat_max, del_max)
                 };
-                self.traceback[node.index()][y] = score;
+                let score = max(mat, max(del, self.traceback[i][j - 1] - 1i32));
+                self.traceback[i][j] = score;
             }
         }
         println!("{:?}", self.traceback);
@@ -105,7 +114,7 @@ impl Aligner {
         for i in 0..m {
             print!("{:?}:", g.raw_nodes()[i].weight);
             for j in 0..n {
-                print!("\t{:?}", self.traceback[i][j]);
+                print!("\t{:?}", self.traceback[i + 1][j + 1]);
             }
             print!("\n");
         }
@@ -113,7 +122,7 @@ impl Aligner {
         let mut ops = vec![];
 
         Alignment {
-            score: self.traceback[m - 1][n - 1],
+            score: self.traceback[m][n],
             xstart: 0, ystart: 0, xend: m, yend: n, ylen: m, xlen: n,
             operations: ops, mode: AlignmentMode::Custom,
         }
