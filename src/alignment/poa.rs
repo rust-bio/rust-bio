@@ -64,13 +64,13 @@ impl Aligner {
         // dimensions of the score/traceback matrices 
         let (m, n) = (g.node_count(), query.len());
 
-        self.traceback = vec![vec![0; n + 2]; m + 2];
+        self.traceback = vec![vec![0; n + 1]; m + 1];
         let ops: Vec<AlignmentOperation> = vec![];
 
-        for i in 0..(m + 2) {
+        for i in 0..(m + 1) {
             self.traceback[i][0] = -1 * i as i32;
         }
-        for j in 0..(n + 2) {
+        for j in 0..(n + 1) {
             self.traceback[0][j] = -1 * j as i32;
         }
 
@@ -88,8 +88,8 @@ impl Aligner {
                 let j = j_p + 1;
                 // match and insertion scores for first reference base
                 let (mat, del) = if prevs.len() == 0 {
-                    (self.traceback[0][j] + (self.scoring)(r, *q),
-                     self.traceback[0][j + 1] - 1i32)
+                    (self.traceback[0][j - 1] + (self.scoring)(r, *q),
+                     self.traceback[0][j] - 1i32)
                 } else {
                     let mut mat_max = -999;
                     let mut del_max = -999;
@@ -105,21 +105,6 @@ impl Aligner {
                 self.traceback[i][j] = score;
             }
         }
-        println!("{:?}", self.traceback);
-        print!(".");
-        for j in 0..n {
-            print!("\t{:?}", query[j]);
-        }
-        print!("\n");
-        for i in 0..m {
-            print!("{:?}:", g.raw_nodes()[i].weight);
-            for j in 0..n {
-                print!("\t{:?}", self.traceback[i + 1][j + 1]);
-            }
-            print!("\n");
-        }
-        // trace the optimal path through the score matrix
-        let mut ops = vec![];
 
         Alignment {
             score: self.traceback[m][n],
@@ -336,20 +321,20 @@ mod tests {
 
     #[test]
     fn test_incorporate() {
-        let seq1 = b"AAAAAA";
-        let seq2 = b"ABBBBA";
-        let seq3 = b"ABCCBA";
+        let _seq1 = b"AAAAAA";
+        let _seq2 = b"ABBBBA";
+        let _seq3 = b"ABCCBA";
 
     }
 
     #[test]
     fn test_alignment() {
-        let seq1 = b"PKMIVRPQKNETV";
-        let seq2 = b"THKMLVRNETIM";
-        let mut poa = POAGraph::new_from_sequence("seq1", seq1);
+        let _seq1 = b"PKMIVRPQKNETV";
+        let _seq2 = b"THKMLVRNETIM";
+        let mut poa = POAGraph::new_from_sequence("seq1", _seq1);
         let alignment = poa.align_sequence(b"GCATGCU");
-        poa.incorporate_alignment(alignment, "seq2", seq2);
-        assert!(false);
+//        poa.incorporate_alignment(alignment, "seq2", seq2);
+        assert_eq!(alignment.score, 0);
     }
 
     #[test]
