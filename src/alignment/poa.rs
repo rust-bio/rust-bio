@@ -25,21 +25,20 @@ use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::cmp::max;
-use std::collections::HashMap;
 
 use alignment::{Alignment, AlignmentOperation, AlignmentMode};
 use utils::TextSlice;
 
 use petgraph::{Graph, Directed, Incoming};
 use petgraph::graph::NodeIndex;
-use petgraph::visit::{EdgeRef, IntoNeighborsDirected, Topo, Walker};
+use petgraph::visit::{EdgeRef, Topo};
 use petgraph::dot::Dot;
 
 /// A Partial-Order Alignment Graph
 pub struct POAGraph {
     // the POAGraph struct stores a DAG and labels for the sequences which
     // compose it
-    graph: Graph<u8, i32, Directed>,
+    graph: Graph<u8, i32, Directed, usize>,
     cns: Vec<u8>,
     cns_path: Vec<NodeIndex>,
     node_idx: Vec<NodeIndex>,
@@ -122,16 +121,10 @@ impl POAGraph {
     /// * `label` - sequence label for an initial sequence
     /// * `sequence` - TextSlice from which to initialize the POA
     ///
-    pub fn new_from_sequence(label: &str, sequence: TextSlice) -> POAGraph {
-        let mut poa = POAGraph::new();
-        poa.add_unmatched_sequence(label, sequence);
-        return poa;
-    }
 
-    /// Create an empty POAGraph 
-    pub fn new() -> POAGraph {
+    pub fn new(label: &str, sequence: TextSlice) -> POAGraph {
         POAGraph {
-            graph: Graph::new(),
+            graph: POAGraph::seq_to_graph(sequence),
             cns: Vec::new(),
             cns_path: Vec::new(),
             node_idx: Vec::new(),
@@ -149,86 +142,18 @@ impl POAGraph {
     /// * `label` - the id of the sequence to be added
     /// * `sequence` - The sequence to be added
     ///
-    pub fn add_unmatched_sequence(&mut self, _label: &str, sequence: TextSlice) {
+    pub fn seq_to_graph(sequence: TextSlice) -> Graph<u8, i32, Directed, usize> {
         // this should return a POAGraph
-        let mut graph = Graph::new();
-        let mut prev: NodeIndex = graph.add_node(sequence[0]); 
-        let mut node: NodeIndex;
+        let mut graph: Graph<u8, i32, Directed, usize> =
+            Graph::with_capacity(sequence.len(), sequence.len() - 1);
+        let mut prev: NodeIndex<usize> = graph.add_node(sequence[0]);
+        let mut node: NodeIndex<usize>;
         for i in 1..sequence.len() {
             node = graph.add_node(sequence[i]);
             graph.add_edge(prev, node, 1);
             prev = node;
         }
-        self.graph = graph;
-    }
-
-    /// Calculate and return the current consensus sequence as an array reference
-    pub fn consensus(&mut self) -> &[u8] {
-        // If we've added no new nodes or edges since the last call, sort first
-        if self.needs_sort {
-            self.topological_sort();
-        }
-
-        self.cns = Vec::new();
-        for node in self.consensus_path().to_vec() {
-            self.cns.push(*self.graph.node_weight(node).unwrap() as u8);
-        }
-
-        &self.cns
-    }
-
-    /// Calculate and return the current consensus-path through the underlying
-    /// graph structure and return it as an array reference of node indices
-    pub fn consensus_path(&mut self) -> &[NodeIndex] {
-        // If we've added no new nodes or edges since the last call, sort first
-        if self.needs_sort {
-            self.topological_sort();
-        }
-
-        // For each node find the best predecessor by edge-weight, breaking ties with path-weight
-        let mut scores = HashMap::new();
-        let mut next_in_path: HashMap<NodeIndex, Option<NodeIndex>> = HashMap::new();
-        for node in self.node_idx.iter().rev() {
-            let mut best_neighbor = None::<NodeIndex>;
-            let mut best_weights = (0, 0); // (Edge-weight, Path-weight)
-            for e_ref in self.graph.edges(*node) {
-                let weight = *e_ref.weight();
-                let target = e_ref.target();
-
-                if (weight, *scores.entry(target).or_insert(0)) > best_weights {
-                    best_neighbor = Some(target);
-                    best_weights = (weight, *scores.entry(target).or_insert(0));
-                }
-            }
-
-            scores.insert(*node, best_weights.0 + best_weights.1);
-            next_in_path.insert(*node, best_neighbor);
-        }
-
-        // Find the start position by locating the highest scoring node
-        let mut start_node = None::<NodeIndex>;
-        let mut best_score = 0;
-        for (node, score) in &scores {
-            if score > &best_score {
-                start_node = Some(*node);
-                best_score = *score;
-            }
-        }
-
-        // Traverse the graph from the start node, recording the path of nodes taken
-        self.cns_path = Vec::new();
-        let mut curr_node = start_node;
-        loop {
-            if curr_node.is_some() {
-                let node = curr_node.unwrap();
-                self.cns_path.push(node);
-                curr_node = *next_in_path.get(&node).unwrap();
-            } else {
-                break;
-            }
-        }
-
-        &self.cns_path
+        graph
     }
 
     /// Align a sequence to the current graph and return the
@@ -240,23 +165,7 @@ impl POAGraph {
     ///
     pub fn align_sequence(&self, seq: &[u8]) -> Alignment {
         let mut aligner = Aligner::new();
-        let mut g: Graph<u8, i32, Directed, usize> = Graph::with_capacity(25, 25);
-        let a = g.add_node(b'G');
-        let b = g.add_node(b'A');
-        let c = g.add_node(b'T');
-        let d = g.add_node(b'T');
-        let e = g.add_node(b'A');
-        let f = g.add_node(b'C');
-        let h = g.add_node(b'A');
-
-        g.add_edge(a, b, 0);
-        g.add_edge(b, c, 0);
-        g.add_edge(c, d, 0);
-        g.add_edge(d, e, 0);
-        g.add_edge(e, f, 0);
-        g.add_edge(f, h, 0);
-
-        aligner.custom(&g, seq)
+        aligner.custom(&self.graph, seq)
    }
 
     /// Incorporate a new sequence into the graph from an alignment
@@ -267,7 +176,7 @@ impl POAGraph {
     /// * `label` - The name of the new sequence being added to the graph
     /// * `seq` - The complete sequence of the read being incorporated
     ///
-    pub fn incorporate_alignment(&mut self, aln: Alignment, label: &str, seq: TextSlice) {
+    pub fn incorporate_alignment(&mut self, _aln: Alignment, _label: &str, _seq: TextSlice) {
         // this will replace self.graph
     }
 
@@ -292,8 +201,8 @@ impl POAGraph {
             Err(why) => panic!("couldn't open file {}: {}", filename, why.description()),
             Ok(file) => file,
         };
-        let g = self.graph.map(|ni, nw| *nw as char,
-                               |ni, ew| ew);
+        let g = self.graph.map(|_, nw| *nw as char,
+                               |_, ew| ew);
         match file.write_all(Dot::new(&g).to_string().as_bytes()) {
             Err(why) => panic!("couldn't write to file {}: {}", filename, why.description()),
             _ => (),
@@ -313,7 +222,7 @@ mod tests {
     #[test]
     fn test_init_graph() {
         // sanity check for String -> Graph
-        let poa = POAGraph::new_from_sequence("seq1", b"123456789");
+        let poa = POAGraph::new("seq1", b"123456789");
         assert!(poa.graph.is_directed());
         assert_eq!(poa.graph.node_count(), 9);
         assert_eq!(poa.graph.edge_count(), 8);
@@ -329,11 +238,11 @@ mod tests {
 
     #[test]
     fn test_alignment() {
-        let _seq1 = b"PKMIVRPQKNETV";
-        let _seq2 = b"THKMLVRNETIM";
-        let mut poa = POAGraph::new_from_sequence("seq1", _seq1);
+        // examples from the POA paper
+        //let _seq1 = b"PKMIVRPQKNETV";
+        //let _seq2 = b"THKMLVRNETIM";
+        let poa = POAGraph::new("seq1", b"GATTACA");
         let alignment = poa.align_sequence(b"GCATGCU");
-//        poa.incorporate_alignment(alignment, "seq2", seq2);
         assert_eq!(alignment.score, 0);
     }
 
@@ -341,7 +250,7 @@ mod tests {
     fn test_incorporate_alignment() {
         let seq1 = b"CCGCTTTTCCGC";
         let seq2 = b"CCGCAAAACCGC";
-        let mut poa = POAGraph::new_from_sequence("seq1", seq1);
+        let mut poa = POAGraph::new("seq1", seq1);
         let alignment = poa.align_sequence(seq2);
         poa.incorporate_alignment(alignment, "seq2", seq2);
     }
