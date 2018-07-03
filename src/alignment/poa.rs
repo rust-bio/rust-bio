@@ -31,7 +31,7 @@ use utils::TextSlice;
 
 use petgraph::{Graph, Directed, Incoming};
 use petgraph::graph::NodeIndex;
-use petgraph::visit::{EdgeRef, Topo};
+use petgraph::visit::Topo;
 use petgraph::dot::Dot;
 
 /// A Partial-Order Alignment Graph
@@ -42,7 +42,8 @@ pub struct POAGraph {
     cns: Vec<u8>,
     cns_path: Vec<NodeIndex>,
     node_idx: Vec<NodeIndex>,
-    needs_sort: bool,
+    head: NodeIndex<usize>,
+    tail: NodeIndex<usize>,
 }
 
 pub struct Aligner {
@@ -63,10 +64,12 @@ impl Aligner {
         // dimensions of the score/traceback matrices 
         let (m, n) = (g.node_count(), query.len());
 
+        // initialize matrix
         self.traceback = vec![vec![0; n + 1]; m + 1];
         let ops: Vec<AlignmentOperation> = vec![];
 
         for i in 0..(m + 1) {
+            // TODO: these should be -1 * distance from head node
             self.traceback[i][0] = -1 * i as i32;
         }
         for j in 0..(n + 1) {
@@ -75,11 +78,15 @@ impl Aligner {
 
         // construct the score matrix (naive) 
         let mut topo = Topo::new(&g);
+
+        // we'll be storing the last visited node in topological order so that
+        // we can index into the end of the alignment
+        let mut last: NodeIndex<usize> = NodeIndex::new(0);
         while let Some(node) = topo.next(&g) {
             // reference base and index
             let r = g.raw_nodes()[node.index()].weight; // reference base at previous index
             let i = node.index() + 1;
-
+            last = node;
             // predecesors of this node
             let prevs: Vec<NodeIndex<usize>> = g.neighbors_directed(node, Incoming).collect();
             // query base and index
@@ -105,8 +112,18 @@ impl Aligner {
             }
         }
 
+//        print!(".\t");
+//        for i in 0..n {
+//            print!("{:?}\t", query[i]);
+//        }
+//        for i in 0..m {
+//            print!("\n{:?}\t", g.raw_nodes()[i].weight);
+//            for j in 0..n {
+//                print!("{}\t", self.traceback[i+1][j+1]);
+//            }
+//        }
         Alignment {
-            score: self.traceback[m][n],
+            score: self.traceback[last.index()][n],
             xstart: 0, ystart: 0, xend: m, yend: n, ylen: m, xlen: n,
             operations: ops, mode: AlignmentMode::Custom,
         }
@@ -121,14 +138,15 @@ impl POAGraph {
     /// * `label` - sequence label for an initial sequence
     /// * `sequence` - TextSlice from which to initialize the POA
     ///
-
-    pub fn new(label: &str, sequence: TextSlice) -> POAGraph {
+    pub fn new(_label: &str, sequence: TextSlice) -> POAGraph {
+        let graph = POAGraph::seq_to_graph(sequence);
         POAGraph {
-            graph: POAGraph::seq_to_graph(sequence),
+            graph: graph,
             cns: Vec::new(),
             cns_path: Vec::new(),
             node_idx: Vec::new(),
-            needs_sort: false,
+            head: NodeIndex::new(0),
+            tail: NodeIndex::new(0),
         }
     }
 
@@ -213,6 +231,7 @@ impl POAGraph {
 #[cfg(test)]
 mod tests {
     use alignment::poa::POAGraph;
+    use petgraph::graph::NodeIndex;
 
 //    #[test]
 //    fn test_align_sequence() {
@@ -228,13 +247,12 @@ mod tests {
         assert_eq!(poa.graph.edge_count(), 8);
     }
 
-    #[test]
-    fn test_incorporate() {
-        let _seq1 = b"AAAAAA";
-        let _seq2 = b"ABBBBA";
-        let _seq3 = b"ABCCBA";
-
-    }
+//    #[test]
+//    fn test_incorporate() {
+//        let _seq1 = b"AAAAAA";
+//        let _seq2 = b"ABBBBA";
+//        let _seq3 = b"ABCCBA";
+//    }
 
     #[test]
     fn test_alignment() {
@@ -247,11 +265,38 @@ mod tests {
     }
 
     #[test]
-    fn test_incorporate_alignment() {
-        let seq1 = b"CCGCTTTTCCGC";
-        let seq2 = b"CCGCAAAACCGC";
+    fn test_branched_alignment() {
+        let seq1 = b"TTTTT";
+        let seq2 = b"TTATT";
         let mut poa = POAGraph::new("seq1", seq1);
+        let head: NodeIndex<usize> = NodeIndex::new(1);
+        let tail: NodeIndex<usize> = NodeIndex::new(2);
+        let node1 = poa.graph.add_node(b'A');
+        let node2 = poa.graph.add_node(b'A');
+        poa.graph.add_edge(head, node1, 1);
+        poa.graph.add_edge(node1, node2, 1);
+        poa.graph.add_edge(node2, tail, 1);
         let alignment = poa.align_sequence(seq2);
-        poa.incorporate_alignment(alignment, "seq2", seq2);
+        assert_eq!(alignment.score, 4);
+    }
+
+    #[test]
+    fn test_alt_branched_alignment() {
+//        let seq1 = b"CCGCTTTTCCGC";
+//        let seq2 = b"CCGCAAAACCGC";
+        let seq1 = b"TTTTT";
+        let seq2 = b"TTCTT";
+        let mut poa = POAGraph::new("seq1", seq1);
+        let head: NodeIndex<usize> = NodeIndex::new(1);
+        let tail: NodeIndex<usize> = NodeIndex::new(2);
+        let node1 = poa.graph.add_node(b'A');
+        let node2 = poa.graph.add_node(b'A');
+        poa.graph.add_edge(head, node1, 1);
+        poa.graph.add_edge(node1, node2, 1);
+        poa.graph.add_edge(node2, tail, 1);
+        let alignment = poa.align_sequence(seq2);
+        assert_eq!(alignment.score, 3);
+//        poa.write_dot("/tmp/out.dot".to_string());
+//        poa.incorporate_alignment(alignment, "seq2", seq2);
     }
 }
