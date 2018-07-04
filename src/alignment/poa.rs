@@ -24,13 +24,13 @@ use std::str;
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
-use std::cmp::max;
+use std::cmp::{max, Ordering};
 
-use alignment::{Alignment, AlignmentOperation, AlignmentMode};
+use alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use utils::TextSlice;
 
 use petgraph::{Graph, Directed, Incoming};
-use petgraph::graph::NodeIndex;
+use petgraph::graph::{NodeIndex, EdgeIndex};
 use petgraph::visit::Topo;
 use petgraph::dot::Dot;
 
@@ -46,10 +46,44 @@ pub struct POAGraph {
     tail: NodeIndex<usize>,
 }
 
+#[derive(Debug, Clone)]
+pub enum Op {
+    Match(Option<EdgeIndex<usize>>),
+    Del(Option<EdgeIndex<usize>>),
+    Ins(Option<EdgeIndex<usize>>),
+}
+
+
 pub struct Aligner {
-    traceback: Vec<Vec<i32>>,
+    traceback: Vec<Vec<Cell>>,
     scoring: fn(u8, u8) -> i32,
 }
+
+#[derive(Debug, Clone)]
+struct Cell {
+    score: i32,
+    op: Op,
+}
+
+impl Ord for Cell {
+    fn cmp(&self, other: &Cell) -> Ordering {
+        self.score.cmp(&other.score)
+    }
+}
+
+impl PartialOrd for Cell {
+    fn partial_cmp(&self, other: &Cell) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Cell {
+    fn eq(&self, other: &Cell) -> bool {
+        self.score == other.score
+    }
+}
+
+impl Eq for Cell {}
 
 impl Aligner {
     pub fn new() -> Self {
@@ -65,16 +99,18 @@ impl Aligner {
         let (m, n) = (g.node_count(), query.len());
 
         // initialize matrix
-        self.traceback = vec![vec![0; n + 1]; m + 1];
+        self.traceback = vec![vec![Cell { score: 0, op: Op::Del(None) } ; n + 1]; m + 1];
         let ops: Vec<AlignmentOperation> = vec![];
 
         for i in 0..(m + 1) {
             // TODO: these should be -1 * distance from head node
-            self.traceback[i][0] = -1 * i as i32;
+            self.traceback[i][0] = Cell { score: -1 * i as i32, op: Op::Del(None) };
         }
         for j in 0..(n + 1) {
-            self.traceback[0][j] = -1 * j as i32;
+            self.traceback[0][j] = Cell { score: -1 * j as i32, op: Op::Ins(None) };
         }
+
+        self.traceback[0][0] = Cell { score: 0, op: Op::Match(None) };
 
         // construct the score matrix (naive) 
         let mut topo = Topo::new(&g);
@@ -92,38 +128,56 @@ impl Aligner {
             // query base and index
             for (j_p, q) in query.iter().enumerate() {
                 let j = j_p + 1;
-                // match and insertion scores for first reference base
+                // match and deletion scores for first reference base
                 let (mat, del) = if prevs.len() == 0 {
-                    (self.traceback[0][j - 1] + (self.scoring)(r, *q),
-                     self.traceback[0][j] - 1i32)
+                    (Cell { score: self.traceback[0][j - 1].score + (self.scoring)(r, *q),
+                            op: Op::Match(None) },
+                     Cell { score: self.traceback[0][j].score - 1i32, op: Op::Del(None) })
                 } else {
-                    let mut mat_max = -999;
-                    let mut del_max = -999;
+                    let mut mat_max = Cell { score: -999, op: Op::Match(None) };
+                    let mut del_max = Cell { score: -999, op: Op::Del(None) };
                     for prev_n in 0..prevs.len() {
                         let i_p: usize = prevs[prev_n].index() + 1; // index of previous node
 
-                        mat_max = max(mat_max, self.traceback[i_p][j - 1] + (self.scoring)(r, *q));
-                        del_max = max(del_max, self.traceback[i_p][j] - 1i32);
+                        mat_max = max(mat_max,
+                            Cell { score: self.traceback[i_p][j - 1].score + (self.scoring)(r, *q),
+                                    op: Op::Match(None)});
+                        del_max = max(del_max,
+                            Cell { score: self.traceback[i_p][j].score - 1i32, op: Op::Del(None) });
                     }
                     (mat_max, del_max)
                 };
-                let score = max(mat, max(del, self.traceback[i][j - 1] - 1i32));
+                let score = max(mat, max(del, Cell { score: self.traceback[i][j - 1].score - 1i32, 
+                                                     op: Op::Ins(None) }));
                 self.traceback[i][j] = score;
             }
         }
 
-//        print!(".\t");
-//        for i in 0..n {
-//            print!("{:?}\t", query[i]);
-//        }
-//        for i in 0..m {
-//            print!("\n{:?}\t", g.raw_nodes()[i].weight);
-//            for j in 0..n {
-//                print!("{}\t", self.traceback[i+1][j+1]);
-//            }
-//        }
+        print!(".\t");
+        for i in 0..n {
+            print!("{:?}\t", query[i]);
+        }
+        for i in 0..m {
+            print!("\n{:?}\t", g.raw_nodes()[i].weight);
+            for j in 0..n {
+                print!("{:?}\t", self.traceback[i+1][j+1]);
+            }
+        }
+
+        let mut i = last.index();
+        let mut j = n;
+        while (i != 0 && j != 0) {
+            // push operation and edge corresponding to optimal route
+            // nb. optimal route is ambiguous :o
+//            let edges: Vec<EdgeIndex<usize>> = g.edges(node).collect();
+//            let mut op;
+            i = i - 1;
+            j = j - 1;
+        }
+
+
         Alignment {
-            score: self.traceback[last.index()][n],
+            score: self.traceback[last.index()][n].score,
             xstart: 0, ystart: 0, xend: m, yend: n, ylen: m, xlen: n,
             operations: ops, mode: AlignmentMode::Custom,
         }
@@ -261,7 +315,7 @@ mod tests {
         //let _seq2 = b"THKMLVRNETIM";
         let poa = POAGraph::new("seq1", b"GATTACA");
         let alignment = poa.align_sequence(b"GCATGCU");
-        assert_eq!(alignment.score, 0);
+        assert_eq!(alignment.score, 1);
     }
 
     #[test]
