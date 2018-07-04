@@ -30,7 +30,7 @@ use alignment::{AlignmentMode, AlignmentOperation};
 use utils::TextSlice;
 
 use petgraph::{Graph, Directed, Incoming};
-use petgraph::graph::{NodeIndex, EdgeIndex};
+use petgraph::graph::{Node, NodeIndex, EdgeIndex};
 use petgraph::visit::Topo;
 use petgraph::dot::Dot;
 
@@ -192,10 +192,11 @@ impl Aligner {
             }
         }
 
+        ops.reverse();
         println!("{:?}", ops);
 
         Alignment {
-            score: self.traceback[last.index()][n].score,
+            score: self.traceback[last.index() + 1][n].score,
             operations: ops,
         }
     }
@@ -265,8 +266,21 @@ impl POAGraph {
     /// * `label` - The name of the new sequence being added to the graph
     /// * `seq` - The complete sequence of the read being incorporated
     ///
-    pub fn incorporate_alignment(&mut self, _aln: Alignment, _label: &str, _seq: TextSlice) {
-        // this will replace self.graph
+    pub fn incorporate_alignment(&mut self, aln: Alignment, _label: &str, seq: TextSlice) {
+        let mut prev: Node<i16, usize>;
+        let attach = |n: usize, i: usize| -> (Node<i16, usize>, Node<i16, usize>) {
+            let new = self.graph.add_node(seq[i]);
+            let node = self.graph.raw_nodes()[n];
+            self.graph.add_edge(node, new, 1);
+            (node, new)
+        };
+        for op in aln {
+            match op {
+                Op::Match(Some(n)) => { prev = attach(n, n).0; },
+                Op::Ins(Some(n)) => { prev = attach(n, n).1; },
+                Op::Del(Some(n)) => { prev = attach(n, n).1; },
+            }
+        }
     }
 
     /// Sort the nodes in the underlying graph topologically,
@@ -348,8 +362,7 @@ mod tests {
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
         let alignment = poa.align_sequence(seq2);
-        poa.write_dot("/tmp/out.dot".to_string());
-        assert_eq!(alignment.score, 2);
+        assert_eq!(alignment.score, 3);
     }
 
     #[test]
@@ -370,4 +383,23 @@ mod tests {
         assert_eq!(alignment.score, 3);
 //        poa.incorporate_alignment(alignment, "seq2", seq2);
     }
+
+    #[test]
+    fn test_insertion_on_branch() {
+        let seq1 = b"TTTT";
+        let seq2 = b"TTCCCATT";
+        let mut poa = POAGraph::new("seq1", seq1);
+        let head: NodeIndex<usize> = NodeIndex::new(1);
+        let tail: NodeIndex<usize> = NodeIndex::new(2);
+        let node1 = poa.graph.add_node(b'C');
+        let node2 = poa.graph.add_node(b'C');
+        poa.graph.add_edge(head, node1, 1);
+        poa.graph.add_edge(node1, node2, 1);
+        poa.graph.add_edge(node2, tail, 1);
+        let alignment = poa.align_sequence(seq2);
+        assert_eq!(alignment.score, 4);
+        poa.write_dot("/tmp/out.dot".to_string());
+//        poa.incorporate_alignment(alignment, "seq2", seq2);
+    }
+
 }
