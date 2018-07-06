@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# HEAD
+- Added HMM implementation.
+
 # [0.21.0] - 2018-06-19
 - Added PSSM implementation (thanks to @hervold).
 
