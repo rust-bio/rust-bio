@@ -262,14 +262,18 @@ pub fn backward<Observation>(
     // Compute matrix.
     for (i, o) in observations.iter().rev().enumerate() {
         if i == 0 {
-            // Initial (last) column.
             for j in hmm.states() {
-                vals[[0, *j]] = LogProb::ln_one() + hmm.observation_prob(j, o);
+                let maybe_initial = if i == observations.len() - 1 {
+                    hmm.initial_prob(j)
+                } else {
+                    LogProb::ln_one()
+                };
+                vals[[0, *j]] = LogProb::ln_one() + hmm.observation_prob(j, o) + maybe_initial;
             }
         } else {
             // Previous columns.
             for j in hmm.states() {
-                let maybe_initial = if *j == hmm.num_states() - 1 {
+                let maybe_initial = if i == observations.len() - 1 {
                     hmm.initial_prob(j)
                 } else {
                     LogProb::ln_one()
@@ -519,9 +523,9 @@ mod tests {
     use super::super::Prob;
     use statrs::distribution::Normal;
 
-    use super::*;
     use super::discrete_emission::Model as DiscreteEmissionHMM;
     use super::univariate_continuous_emission::GaussianModel as GaussianHMM;
+    use super::*;
 
     #[test]
     fn test_discrete_viterbi_toy_example() {
@@ -579,6 +583,34 @@ mod tests {
     }
 
     #[test]
+    fn test_discrete_forward_equals_backward_toy_example() {
+        // Same toy example as above.
+        let transition = array![[0.5, 0.5], [0.4, 0.6]];
+        let observation = array![[0.2, 0.3, 0.3, 0.2], [0.3, 0.2, 0.2, 0.3]];
+        let initial = array![0.5, 0.5];
+        let hmm = DiscreteEmissionHMM::with_float(&transition, &observation, &initial)
+            .expect("Dimensions should be consistent");
+
+        for len in 1..10 {
+            let mut seq: Vec<usize> = vec![0; len];
+            while seq.iter().sum::<usize>() != len {
+                for i in 0..len {
+                    if seq[i] == 0 {
+                        seq[i] = 1;
+                        break;
+                    } else {
+                        seq[i] = 0;
+                    }
+                }
+
+                let prob_fwd = *Prob::from(forward(&hmm, &seq).1);
+                let prob_bck = *Prob::from(backward(&hmm, &seq).1);
+                assert_relative_eq!(prob_fwd, prob_bck, epsilon = 0.00001);
+            }
+        }
+    }
+
+    #[test]
     fn test_gaussian_viterbi_simple_example() {
         let transition = array![[0.5, 0.5], [0.4, 0.6]];
         let observation = vec![
@@ -617,7 +649,7 @@ mod tests {
         let log_prob = forward(&hmm, &vec![0.1, 1.5, 1.8, 2.2, 0.5]).1;
         let prob = Prob::from(log_prob);
 
-        assert_relative_eq!(2.675e-4_f64, *prob, epsilon = 1e-5_f64);
+        assert_relative_eq!(7.820e-4_f64, *prob, epsilon = 1e-5_f64);
     }
 
     #[test]
@@ -634,6 +666,25 @@ mod tests {
         let log_prob = backward(&hmm, &vec![0.1, 1.5, 1.8, 2.2, 0.5]).1;
         let prob = Prob::from(log_prob);
 
-        assert_relative_eq!(2.675e-4_f64, *prob, epsilon = 1e-5_f64);
+        assert_relative_eq!(7.820e-4_f64, *prob, epsilon = 1e-5_f64);
+    }
+
+    #[test]
+    fn test_gaussian_forward_equals_backward_simple_example() {
+        let transition = array![[0.5, 0.5], [0.4, 0.6]];
+        let observation = vec![
+            Normal::new(0.0, 1.0).unwrap(),
+            Normal::new(2.0, 1.0).unwrap(),
+        ];
+        let initial = array![0.5, 0.5];
+        let hmm = GaussianHMM::with_float(&transition, observation, &initial)
+            .expect("Dimensions should be consistent");
+
+        let seqs = vec![vec![0.1, 0.5, 1.0, 1.5, 1.8, 2.1]];
+        for seq in &seqs {
+            let prob_fwd = *Prob::from(forward(&hmm, &seq).1);
+            let prob_bck = *Prob::from(backward(&hmm, &seq).1);
+            assert_relative_eq!(prob_fwd, prob_bck, epsilon = 0.00001);
+        }
     }
 }
