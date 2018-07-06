@@ -106,20 +106,20 @@ impl Aligner {
         self.traceback = vec![vec![Cell { score: 0, op: Op::Del(None) } ; n + 1]; m + 1];
         let mut ops: Vec<Op> = vec![];
 
-        for i in 0..(m + 1) {
+        for i in 1..(m + 1) {
             // TODO: these should be -1 * distance from head node
-            self.traceback[i][0] = Cell { score: -1 * i as i32, op: Op::Del(Some(i)) };
+            self.traceback[i][0] = Cell { score: -1 * i as i32, op: Op::Del(None) };
         }
-        for j in 0..(n + 1) {
-            self.traceback[0][j] = Cell { score: -1 * j as i32, op: Op::Ins(Some(0)) };
+        for j in 1..(n + 1) {
+            self.traceback[0][j] = Cell { score: -1 * j as i32, op: Op::Ins(None) };
         }
 
-        self.traceback[0][0] = Cell { score: 0, op: Op::Match(Some(0)) };
+        self.traceback[0][0] = Cell { score: 0, op: Op::Match(None) };
 
         // construct the score matrix (naive) 
         let mut topo = Topo::new(&g);
 
-        // we'll be storing the last visited node in topological order so that
+        // store the last visited node in topological order so that
         // we can index into the end of the alignment
         let mut last: NodeIndex<usize> = NodeIndex::new(0);
         while let Some(node) = topo.next(&g) {
@@ -129,30 +129,29 @@ impl Aligner {
             last = node;
             // predecesors of this node
             let prevs: Vec<NodeIndex<usize>> = g.neighbors_directed(node, Incoming).collect();
-            // query base and index
+            // query base and index (traceback matrix rows)
             for (j_p, q) in query.iter().enumerate() {
                 let j = j_p + 1;
                 // match and deletion scores for first reference base
                 let (mat, del) = if prevs.len() == 0 {
                     (Cell { score: self.traceback[0][j - 1].score + (self.scoring)(r, *q),
-                            op: Op::Match(Some(0)) },
-                     Cell { score: self.traceback[0][j].score - 1i32, op: Op::Del(Some(0)) })
+                            op: Op::Match(None) },
+                     Cell { score: self.traceback[0][j].score - 1i32, op: Op::Del(None) })
                 } else {
                     let mut mat_max = Cell { score: -999, op: Op::Match(None) };
                     let mut del_max = Cell { score: -999, op: Op::Del(None) };
                     for prev_n in 0..prevs.len() {
                         let i_p: usize = prevs[prev_n].index() + 1; // index of previous node
-
                         mat_max = max(mat_max,
                             Cell { score: self.traceback[i_p][j - 1].score + (self.scoring)(r, *q),
-                                    op: Op::Match(Some(i_p))});
+                                    op: Op::Match(Some(i_p - 1))});
                         del_max = max(del_max,
-                            Cell { score: self.traceback[i_p][j].score - 1i32, op: Op::Del(Some(i_p)) });
+                            Cell { score: self.traceback[i_p][j].score - 1i32, op: Op::Del(Some(i_p - 1)) });
                     }
                     (mat_max, del_max)
                 };
                 let score = max(mat, max(del, Cell { score: self.traceback[i][j - 1].score - 1i32, 
-                                                     op: Op::Ins(Some(i)) }));
+                                                     op: Op::Ins(Some(i - 1)) }));
                 self.traceback[i][j] = score;
             }
         }
@@ -164,28 +163,29 @@ impl Aligner {
         for i in 0..m {
             print!("\n{:?}\t", g.raw_nodes()[i].weight);
             for j in 0..n {
-                print!("{}\t", self.traceback[i+1][j+1].score);
+                print!("{}.\t", self.traceback[i+1][j+1].score);
             }
         }
-
+        print!("\n");
         let mut i = last.index() + 1;
         let mut j = n;
+        println!("last node: {:?} {:?}", i, j);
         while (i > 0 && j > 0) {
             // push operation and edge corresponding to (one of the) optimal
             // routes
-            println!("\t{}, {}", i, j);
+            println!("\t{}, {} => {}", i, j, self.traceback[i][j].score);
             ops.push(self.traceback[i][j].op.clone());
             match self.traceback[i][j].op {
-                Op::Match(Some(p)) => { i = p; j = max(j - 1, 0); },
-                Op::Del(Some(p)) => { i = p; },
-                Op::Ins(Some(p)) => { i = p; j = max(j - 1, 0); },
-                Op::Match(None) => { i = i - 1; j = max(j - 1, 0); },
-                Op::Del(None) => { },
-                Op::Ins(None) => { i = max(i - 1, 0) },
+                Op::Match(Some(p)) => { i = p + 1; j = j - 1; },
+                Op::Del(Some(p)) => { i = p + 1; },
+                Op::Ins(Some(p)) => { i = p + 1; j = j - 1; },
+                Op::Match(None) => { break; },
+                Op::Del(None) => { j = j - 1; },
+                Op::Ins(None) => { i = i - 1; },
             }
         }
 
-        ops.reverse();
+//        ops.reverse();
         println!("{:?}", ops);
 
         Alignment {
@@ -261,23 +261,27 @@ impl POAGraph {
     ///
     pub fn incorporate_alignment(&mut self, aln: Alignment, _label: &str, seq: TextSlice) {
         let mut prev: NodeIndex<usize> = NodeIndex::new(0);
-        let mut i: usize = 0;
+        let mut i: usize = seq.len();
         for op in aln.operations {
             match op {
-                Op::Match(Some(0)) => { i = i + 1; },
+                Op::Match(None) => { break; },
                 Op::Match(Some(n)) => { 
-                    self.graph.add_edge(prev, NodeIndex::new(n), 1);
+                    println!("(M) linking {:?} and {:?}", n, prev);
+                    self.graph.add_edge(NodeIndex::new(n), prev, 1);
                     prev = NodeIndex::new(n);
-                    i = i + 1; },
+                    i = i - 1;
+                },
                 Op::Ins(Some(n)) => {
-                    let node = self.graph.add_node(seq[i]);
+                    let node = self.graph.add_node(seq[i - 1]);
                     self.graph.add_edge(prev, node, 1);
-                    prev = node;
-                    i = i + 1; },
-                Op::Del(Some(n)) => { },
+                    println!("(I) linking {:?} and {:?}", prev, node);
+                    prev = NodeIndex::new(n);
+                    i = i - 1; },
+                Op::Del(Some(n)) => { 
+                    println!("(D) skipping link {:?}", n);
+                },
                 Op::Ins(None) => {},
                 Op::Del(None) => {},
-                Op::Match(None) => {},
             }
         }
     }
@@ -369,8 +373,8 @@ mod tests {
     fn test_alt_branched_alignment() {
 //        let seq1 = b"CCGCTTTTCCGC";
 //        let seq2 = b"CCGCAAAACCGC";
-        let seq1 = b"TTTTT";
-        let seq2 = b"TTCTT";
+        let seq1 = b"TTCCTTAA";
+        let seq2 = b"TTTTGGAA";
         let mut poa = POAGraph::new("seq1", seq1);
         let head: NodeIndex<usize> = NodeIndex::new(1);
         let tail: NodeIndex<usize> = NodeIndex::new(2);
@@ -383,6 +387,21 @@ mod tests {
         assert_eq!(alignment.score, 3);
 //        poa.incorporate_alignment(alignment, "seq2", seq2);
     }
+
+    #[test]
+    fn test_incorporation() {
+//        let seq1 = b"CCGCTTTTCCGC";
+//        let seq2 = b"CCGCAAAACCGC";
+        let seq1 = b"TTCCGGTTTAA";
+        let seq2 = b"TTGGTTTGGGAA";
+        let mut poa = POAGraph::new("seq1", seq1);
+        let alignment = poa.align_sequence(seq2);
+        poa.write_dot("/tmp/inc1.dot".to_string());
+        poa.incorporate_alignment(alignment, "seq2", seq2);
+        poa.write_dot("/tmp/inc2.dot".to_string());
+        assert!(false);
+    }
+
 
     #[test]
     fn test_insertion_on_branch() {
@@ -398,9 +417,9 @@ mod tests {
         poa.graph.add_edge(node2, tail, 1);
         poa.write_dot("/tmp/out1.dot".to_string());
         let alignment = poa.align_sequence(seq2);
-        assert_eq!(alignment.score, 4);
         poa.incorporate_alignment(alignment, "seq2", seq2);
-        poa.write_dot("/tmp/out2.dot".to_string());
+//        assert_eq!(alignment.score, -4);
+        assert!(false);
     }
 
 }
