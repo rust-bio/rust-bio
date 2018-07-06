@@ -171,10 +171,8 @@ impl Aligner {
         let mut i = last.index() + 1;
         let mut j = n;
         while (i > 0 && j > 0) {
-            // push operation and edge corresponding to optimal route
-            // nb. optimal route is ambiguous :o
-//            let edges: Vec<EdgeIndex<usize>> = g.edges(node).collect();
-//            let mut op;
+            // push operation and edge corresponding to (one of the) optimal
+            // routes
             println!("\t{}, {}", i, j);
             ops.push(self.traceback[i][j].op.clone());
             match self.traceback[i][j].op {
@@ -184,11 +182,6 @@ impl Aligner {
                 Op::Match(None) => { i = i - 1; j = max(j - 1, 0); },
                 Op::Del(None) => { },
                 Op::Ins(None) => { i = max(i - 1, 0) },
-            }
-
-            if (i == 0 && j == 0) {
-//                ops.push(self.traceback[0][0].op.clone());
-                break;
             }
         }
 
@@ -267,18 +260,24 @@ impl POAGraph {
     /// * `seq` - The complete sequence of the read being incorporated
     ///
     pub fn incorporate_alignment(&mut self, aln: Alignment, _label: &str, seq: TextSlice) {
-        let mut prev: Node<i16, usize>;
-        let attach = |n: usize, i: usize| -> (Node<i16, usize>, Node<i16, usize>) {
-            let new = self.graph.add_node(seq[i]);
-            let node = self.graph.raw_nodes()[n];
-            self.graph.add_edge(node, new, 1);
-            (node, new)
-        };
-        for op in aln {
+        let mut prev: NodeIndex<usize> = NodeIndex::new(0);
+        let mut i: usize = 0;
+        for op in aln.operations {
             match op {
-                Op::Match(Some(n)) => { prev = attach(n, n).0; },
-                Op::Ins(Some(n)) => { prev = attach(n, n).1; },
-                Op::Del(Some(n)) => { prev = attach(n, n).1; },
+                Op::Match(Some(0)) => { i = i + 1; },
+                Op::Match(Some(n)) => { 
+                    self.graph.add_edge(prev, NodeIndex::new(n), 1);
+                    prev = NodeIndex::new(n);
+                    i = i + 1; },
+                Op::Ins(Some(n)) => {
+                    let node = self.graph.add_node(seq[i]);
+                    self.graph.add_edge(prev, node, 1);
+                    prev = node;
+                    i = i + 1; },
+                Op::Del(Some(n)) => { },
+                Op::Ins(None) => {},
+                Op::Del(None) => {},
+                Op::Match(None) => {},
             }
         }
     }
@@ -288,7 +287,7 @@ impl POAGraph {
     /// edges to, and succeeds all nodes that have edges connecting to
     /// it.  This guarantees stable, fast results from traversals
     /// and consensus operations
-    pub fn topological_sort(&mut self) {
+    fn topological_sort(&mut self) {
         // TODO: use petgraph's toposort
     }
 
@@ -344,9 +343,10 @@ mod tests {
         // examples from the POA paper
         //let _seq1 = b"PKMIVRPQKNETV";
         //let _seq2 = b"THKMLVRNETIM";
-        let poa = POAGraph::new("seq1", b"GATTACA");
+        let mut poa = POAGraph::new("seq1", b"GATTACA");
         let alignment = poa.align_sequence(b"GCATGCU");
         assert_eq!(alignment.score, 0);
+        poa.incorporate_alignment(alignment, "seq2", b"GCATCGU");
     }
 
     #[test]
@@ -396,10 +396,11 @@ mod tests {
         poa.graph.add_edge(head, node1, 1);
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
+        poa.write_dot("/tmp/out1.dot".to_string());
         let alignment = poa.align_sequence(seq2);
         assert_eq!(alignment.score, 4);
-        poa.write_dot("/tmp/out.dot".to_string());
-//        poa.incorporate_alignment(alignment, "seq2", seq2);
+        poa.incorporate_alignment(alignment, "seq2", seq2);
+        poa.write_dot("/tmp/out2.dot".to_string());
     }
 
 }
