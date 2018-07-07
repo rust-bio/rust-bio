@@ -221,6 +221,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 
     /// Fetch the whole sequence with the given name for reading.
+    #[cfg_attr(feature="flame_it", flame)]
     pub fn fetch_all(&mut self, seq_name: &str) -> io::Result<()> {
         let idx = self.idx(seq_name)?;
         self.start = Some(0);
@@ -284,6 +285,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         let mut bases_left = stop - start;
         let mut line_offset = self.seek_to(&idx, start)?;
 
+        #[cfg_attr(feature="flame_it", flame)]
         seq.clear();
         while bases_left > 0 {
             bases_left -= self.read_line(&idx, &mut line_offset, bases_left, seq)?;
@@ -367,6 +369,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     /// whitespace per line, the current `line_offset`, and the amount of bytes
     /// returned from `BufReader::fill_buf`, this function may return Ok(0)
     /// multiple times in a row.
+    #[cfg_attr(feature="flame_it", flame)]
     fn read_line(
         &mut self,
         idx: &IndexRecord,
@@ -602,6 +605,7 @@ impl Record {
     }
 
     /// Clear the record.
+    #[cfg_attr(feature="flame_it", flame)]
     fn clear(&mut self) {
         self.id.clear();
         self.desc = None;
