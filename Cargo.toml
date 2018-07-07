@@ -1,5 +1,4 @@
 [package]
-
 name = "bio"
 version = "0.22.1-alpha.0"
 authors = ["Johannes Köster <johannes.koester@tu-dortmund.de>"]
@@ -14,6 +13,7 @@ license = "MIT"
 [features]
 avx-accel = ["bytecount/avx-accel"]
 simd-accel = ["bytecount/simd-accel"]
+flame_it = ["flame", "flamer"]
 
 [dependencies]
 bytecount = "0.3.1"
@@ -38,6 +38,8 @@ multimap = "0.4"
 fxhash = "0.2"
 statrs = "0.9.0"
 bio-types = ">=0.1.1"
+flame = { git = "https://github.com/TyOverby/flame.git", branch = "master", optional = true }
+flamer = { version = "^0.2.3", optional = true }
 
 [dependencies.vec_map]
 version = "0.8"
