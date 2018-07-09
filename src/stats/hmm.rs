@@ -1,4 +1,68 @@
-//! An implementation of various (but limited) types of Hidden Markov Models in Rust.
+// Copyright 2018 Manuel Holtgrewe, Berlin Institute of Health.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! An implementation of Hidden Markov Models in Rust.
+//!
+//! ## Examples
+//!
+//! ### Discrete Emission Distribution
+//!
+//! We construct the example from Borodovsky & Ekisheva (2006), pp. 80 (also see
+//! [these slides](http://cecas.clemson.edu/~ahoover/ece854/refs/Gonze-ViterbiAlgorithm.pdf).
+//!
+//! ```rust
+//! # extern crate bio;
+//! #[macro_use] extern crate approx;
+//! #[macro_use] extern crate ndarray;
+//!
+//! use bio::stats::Prob;
+//! use bio::stats::hmm::discrete_emission::Model as DiscreteEmissionHMM;
+//! use bio::stats::hmm::viterbi;
+//!
+//! let transition = array![[0.5, 0.5], [0.4, 0.6]];
+//! let observation = array![[0.2, 0.3, 0.3, 0.2], [0.3, 0.2, 0.2, 0.3]];
+//! let initial = array![0.5, 0.5];
+//!
+//! let hmm = DiscreteEmissionHMM::with_float(&transition, &observation, &initial)
+//!     .expect("Dimensions should be consistent");
+//! let (path, log_prob) = viterbi(&hmm, &vec![2, 2, 1, 0, 1, 3, 2, 0, 0]);
+//! let prob = Prob::from(log_prob);
+//! assert_relative_eq!(4.25e-8_f64, *prob, epsilon = 1e-9_f64);
+//! ```
+//!
+//! ### Continuous (Gaussian) Emission Distribution
+//!
+//! ```rust
+//! # extern crate bio;
+//! #[macro_use] extern crate approx;
+//! #[macro_use] extern crate ndarray;
+//! # extern crate statrs;
+//!
+//! use bio::stats::Prob;
+//! use bio::stats::hmm::univariate_continuous_emission::GaussianModel as GaussianHMM;
+//! use statrs::distribution::Normal;
+//! use bio::stats::hmm::viterbi;
+//!
+//! let transition = array![[0.5, 0.5], [0.4, 0.6]];
+//! let observation = vec![
+//!     Normal::new(0.0, 1.0).unwrap(),
+//!     Normal::new(2.0, 1.0).unwrap(),
+//! ];
+//! let initial = array![0.5, 0.5];
+//!
+//! let hmm = GaussianHMM::with_float(&transition, observation, &initial)
+//!     .expect("Dimensions should be consistent");
+//! let (path, log_prob) = viterbi(
+//!     &hmm,
+//!     &vec![-0.1, 0.1, -0.2, 0.5, 0.8, 1.1, 1.2, 1.5, 0.5, 0.2],
+//! );
+//! let prob = Prob::from(log_prob);
+//! assert_relative_eq!(2.64e-8_f64, *prob, epsilon = 1e-9_f64);
+//! ```
+//!
+//! ## Numeric Stability
 //!
 //! The implementation uses log-scale probabilities for numeric stability.
 //!
@@ -6,6 +70,11 @@
 //!
 //! Currently, only discrete and single-variate Gaussian continuous HMMs are implemented.
 //! Also, only dense transition matrices are supported.
+//!
+//! ## References
+//!
+//! - Rabiner, Lawrence R. "A tutorial on hidden Markov models and selected applications
+//!   in speech recognition." Proceedings of the IEEE 77, no. 2 (1989): 257-286.
 
 use std::cmp::Ordering;
 
@@ -43,7 +112,7 @@ custom_derive! {
     pub struct State(pub usize);
 }
 
-/// An iterator iterating states.
+/// Iterate over the states of a `Model`.
 pub struct StateIter {
     nxt: usize,
     max: usize,
@@ -63,7 +132,7 @@ impl Iterator for StateIter {
     }
 }
 
-/// A transition between two states.
+/// Transition between two states in a `Model`.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct StateTransition {
     /// Source of the transition.
@@ -79,7 +148,7 @@ impl StateTransition {
     }
 }
 
-/// Iterator over all state transitions.
+/// Iterate over all state transitions of a `Model`.
 pub struct StateTransitionIter {
     nxt_a: usize,
     nxt_b: usize,
@@ -105,10 +174,18 @@ impl Iterator for StateTransitionIter {
     }
 }
 
-/// A trait for Hidden Markov Models (HMM) with generic observations.
+/// A trait for Hidden Markov Models (HMM) with generic `Observation` type.
 ///
-/// An HMM is characterized by a state of sets, transition probabilities, and some output.
-/// The current interface allows for both discrete and continuous observations.
+/// Rabiner (1989) defines a Hidden Markov Model λ as the tiple (*A*, *B*, π) of transition matrix
+/// *A*, emission probabilities *B*, and initial state distribution π.  This has been generalized
+/// in `Model` such that you implement `transition_prob()`, `observation_prob()`, and
+/// `initial_prob()` (and the other methods).
+///
+/// The inference algorithm implementations `viterbi()`, `forward()`, and `backward()` will work
+/// with any implementation.
+///
+/// Consequently, this allows for the implementation of HMMs with both discrete and continuous
+/// emission distributions.
 pub trait Model<Observation> {
     /// The number of states in the model.
     fn num_states(&self) -> usize;
@@ -130,9 +207,9 @@ pub trait Model<Observation> {
 }
 
 /// Compute the probability Viterbi matrix and the pointers to the origin.
-fn viterbi_matrices<Observation>(
-    hmm: &Model<Observation>,
-    observations: &[Observation],
+fn viterbi_matrices<O, M: Model<O>>(
+    hmm: &M,
+    observations: &[O],
 ) -> (Array2<LogProb>, Array2<usize>) {
     // The matrix with probabilities.
     let mut vals = Array2::<LogProb>::zeros((observations.len(), hmm.num_states()));
@@ -205,22 +282,44 @@ fn viterbi_traceback(vals: Array2<LogProb>, from: Array2<usize>) -> (Vec<State>,
 /// Execute Viterbi algorithm on the given slice of `Observation` values to get the maximum a
 /// posteriori (MAP) probability.
 ///
-/// The results is a `Vec` of the most probable states and the `LogProb` of this path
-/// through the Viterbi matrix.
-pub fn viterbi<Observation>(
-    hmm: &Model<Observation>,
-    observations: &[Observation],
-) -> (Vec<State>, LogProb) {
+/// ## Arguments
+///
+/// - `hmm` - the `Model` to run the Viterbi algorithm on
+/// - `observations` - a slice of observation values to use in the algorithm
+///
+/// ## Result
+///
+/// The resulting pair *(s, p)* is the `Vec<State>` of most probable states given `hmm`
+/// and `observations` as well as the probability (as `LogProb`) of path `s`.
+///
+/// ## Type Parameters
+///
+/// - `O` - the observation type
+/// - `M` - type `Model` type
+pub fn viterbi<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Vec<State>, LogProb) {
     let (vals, from) = viterbi_matrices(hmm, observations);
     viterbi_traceback(vals, from)
 }
 
 /// Execute the forward algorithm and return the forward probabilites as `LogProb` values
 /// and the resulting forward probaiblity.
-pub fn forward<Observation>(
-    hmm: &Model<Observation>,
-    observations: &[Observation],
-) -> (Array2<LogProb>, LogProb) {
+///
+/// ## Arguments
+///
+/// - `hmm` - the `Model` to run the forward algorithm on
+/// - `observations` - a slice of observation values to use in the algorithm
+///
+/// ## Result
+///
+/// The resulting pair (*P*, *p*) is the forward probability table (`P[[s, o]]` is the entry
+/// for state `s` and observation `o`) and the overall probability for `observations` (as
+/// `LogProb`).
+///
+/// ## Type Parameters
+///
+/// - `O` - the observation type
+/// - `M` - type `Model` type
+pub fn forward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>, LogProb) {
     // The matrix with probabilities.
     let mut vals = Array2::<LogProb>::zeros((observations.len(), hmm.num_states()));
 
@@ -252,10 +351,23 @@ pub fn forward<Observation>(
 
 /// Execute the backward algorithm and return the backward probabilites as `LogProb` values
 /// and the resulting backward probaiblity.
-pub fn backward<Observation>(
-    hmm: &Model<Observation>,
-    observations: &[Observation],
-) -> (Array2<LogProb>, LogProb) {
+///
+/// ## Arguments
+///
+/// - `hmm` - the `Model` to run the backward algorithm on
+/// - `observations` - a slice of observation values to use in the algorithm
+///
+/// ## Result
+///
+/// The resulting pair (*P*, *p*) is the backward probability table (`P[[s, o]]` is the entry
+/// for state `s` and observation `o`) and the overall probability for `observations` (as
+/// `LogProb`).
+///
+/// ## Type Parameters
+///
+/// - `O` - the observation type
+/// - `M` - type `Model` type
+pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>, LogProb) {
     // The matrix with probabilities.
     let mut vals = Array2::<LogProb>::zeros((observations.len(), hmm.num_states()));
 
