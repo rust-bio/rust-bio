@@ -203,6 +203,10 @@ pub trait Model<Observation> {
     /// Transition probability between two states `from` and `to` for observation with index
     /// `_to_idx` (index of `to`).
     ///
+    /// This feature comes in handy in several applications of HMMs to biological sequences.
+    /// One promiment one is how XHMM by Fromer et al. (2014) uses the distance between target
+    /// regions for adjusting the transition probabilities.
+    ///
     /// The default implementation return the result of the position-independent
     /// `transition_prob()`.
     fn transition_prob_idx(&self, from: State, to: State, _to_idx: usize) -> LogProb {
