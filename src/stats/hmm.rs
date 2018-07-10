@@ -179,7 +179,8 @@ impl Iterator for StateTransitionIter {
 /// Rabiner (1989) defines a Hidden Markov Model λ as the tiple (*A*, *B*, π) of transition matrix
 /// *A*, emission probabilities *B*, and initial state distribution π.  This has been generalized
 /// in `Model` such that you implement `transition_prob()`, `observation_prob()`, and
-/// `initial_prob()` (and the other methods).
+/// `initial_prob()` (and the other methods; implementation of `transition_prob_idx()` can
+/// optionally be implemented and your implementation of `transition_prob()` can then panic).
 ///
 /// The inference algorithm implementations `viterbi()`, `forward()`, and `backward()` will work
 /// with any implementation.
@@ -198,6 +199,19 @@ pub trait Model<Observation> {
 
     /// Transition probability between two states `from` and `to`.
     fn transition_prob(&self, from: State, to: State) -> LogProb;
+
+    /// Transition probability between two states `from` and `to` for observation with index
+    /// `_to_idx` (index of `to`).
+    ///
+    /// This feature comes in handy in several applications of HMMs to biological sequences.
+    /// One promiment one is how XHMM by Fromer et al. (2014) uses the distance between target
+    /// regions for adjusting the transition probabilities.
+    ///
+    /// The default implementation return the result of the position-independent
+    /// `transition_prob()`.
+    fn transition_prob_idx(&self, from: State, to: State, _to_idx: usize) -> LogProb {
+        self.transition_prob(from, to)
+    }
 
     /// Initial probability given the HMM `state`.
     fn initial_prob(&self, state: State) -> LogProb;
@@ -239,14 +253,15 @@ fn viterbi_matrices<O, M: Model<O>>(
                         } else if y.is_zero() {
                             Ordering::Greater
                         } else {
-                            (x + hmm.transition_prob(*a, j))
-                                .partial_cmp(&(y + hmm.transition_prob(*b, j)))
+                            (x + hmm.transition_prob_idx(*a, j, i))
+                                .partial_cmp(&(y + hmm.transition_prob_idx(*b, j, i)))
                                 .unwrap()
                         }
                     })
                     .map(|(x, y)| (x, *y))
                     .unwrap();
-                vals[[i, *j]] = x.1 + hmm.transition_prob(x.0, j) + hmm.observation_prob(j, o);
+                vals[[i, *j]] =
+                    x.1 + hmm.transition_prob_idx(x.0, j, i) + hmm.observation_prob(j, o);
                 from[[i, *j]] = *x.0;
             }
         }
@@ -335,7 +350,9 @@ pub fn forward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>,
             for j in hmm.states() {
                 let xs = hmm.states()
                     .map(|k| {
-                        vals[[i - 1, *k]] + hmm.transition_prob(k, j) + hmm.observation_prob(j, o)
+                        vals[[i - 1, *k]]
+                            + hmm.transition_prob_idx(k, j, i)
+                            + hmm.observation_prob(j, o)
                     })
                     .collect::<Vec<LogProb>>();
                 vals[[i, *j]] = LogProb::ln_sum_exp(&xs);
@@ -372,6 +389,7 @@ pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>
     let mut vals = Array2::<LogProb>::zeros((observations.len(), hmm.num_states()));
 
     // Compute matrix.
+    let n = observations.len();
     for (i, o) in observations.iter().rev().enumerate() {
         if i == 0 {
             for j in hmm.states() {
@@ -393,7 +411,7 @@ pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>
                 let xs = hmm.states()
                     .map(|k| {
                         vals[[i - 1, *k]]
-                            + hmm.transition_prob(j, k)
+                            + hmm.transition_prob_idx(j, k, n - i - 1)
                             + hmm.observation_prob(j, o)
                             + maybe_initial
                     })
