@@ -26,11 +26,10 @@ use std::fs::File;
 use std::io::Write;
 use std::cmp::{max, Ordering};
 
-use alignment::{AlignmentMode, AlignmentOperation};
 use utils::TextSlice;
 
 use petgraph::{Graph, Directed, Incoming};
-use petgraph::graph::{Node, NodeIndex, EdgeIndex};
+use petgraph::graph::NodeIndex;
 use petgraph::visit::Topo;
 use petgraph::dot::Dot;
 
@@ -41,11 +40,6 @@ pub struct POAGraph {
     // the POAGraph struct stores a DAG and labels for the sequences which
     // compose it
     graph: Graph<u8, i32, Directed, usize>,
-    cns: Vec<u8>,
-    cns_path: Vec<NodeIndex>,
-    node_idx: Vec<NodeIndex>,
-    head: NodeIndex<usize>,
-    tail: NodeIndex<usize>,
 }
 
 // Unlike a total order alignment we have different possible successor nodes
@@ -99,13 +93,16 @@ impl Aligner {
         }
     }
 
-    pub fn global(&mut self, g: &Graph<u8, i32, Directed, usize>, query: TextSlice) -> Alignment {
+    // naive Needleman-Wunsch
+    pub fn global(&mut self,
+                  g: &Graph<u8, i32, Directed, usize>,
+                  query: TextSlice) -> Alignment {
         // dimensions of the traceback matrix
         let (m, n) = (g.node_count(), query.len());
 
         // initialize matrix
         let mut traceback: Vec<Vec<Cell>> =
-            vec![vec![Cell { score: 0, op: Op::Del(None) } ; n + 1]; m + 1];
+            vec![vec![Cell { score: 0, op: Op::Match(None) }; n + 1]; m + 1];
         let mut ops: Vec<Op> = vec![];
 
         for i in 1..(m + 1) {
@@ -164,11 +161,11 @@ impl Aligner {
         // Now backtrack through the matrix to construct the optimal path
         let mut i = last.index() + 1;
         let mut j = n;
-        println!("last node: {:?} {:?}", i, j);
-        while (i > 0 && j > 0) {
+        //println!("last node: {:?} {:?}", i, j);
+        while i > 0 && j > 0 {
             // push operation and edge corresponding to (one of the) optimal
             // routes
-            println!("\t{}, {} => {}", i, j, traceback[i][j].score);
+            //println!("\t{}, {} => {}", i, j, traceback[i][j].score);
             ops.push(traceback[i][j].op.clone());
             match traceback[i][j].op {
                 Op::Match(Some((p, _))) => { i = p + 1; j = j - 1; },
@@ -201,11 +198,6 @@ impl POAGraph {
         let graph = POAGraph::seq_to_graph(sequence);
         POAGraph {
             graph: graph,
-            cns: Vec::new(),
-            cns_path: Vec::new(),
-            node_idx: Vec::new(),
-            head: NodeIndex::new(0),
-            tail: NodeIndex::new(0),
         }
     }
 
@@ -272,13 +264,11 @@ impl POAGraph {
                     prev = NodeIndex::new(p);
                     i = i + 1;
                 },
-                Op::Ins(Some(n)) => {
+                Op::Ins(Some(_)) => {
                     let node = self.graph.add_node(seq[i]);
-                    let nn: NodeIndex<usize> = NodeIndex::new(n);
                     println!("(I) linking {:?} and {:?}", prev, node);
                     self.graph.add_edge(prev, node, 1);
                     prev = node;
-//                    prev = NodeIndex::new(n);
                     i = i + 1; },
                 Op::Del(Some((n, _))) => { 
                     println!("(D) skipping link {:?}", n);
@@ -310,6 +300,8 @@ impl POAGraph {
     }
 }
 
+// print out a traceback matrix
+#[allow(dead_code)]
 fn debug(traceback: &Vec<Vec<Cell>>,
          g: &Graph<u8, i32, Directed, usize>,
          query: TextSlice) {
@@ -332,11 +324,6 @@ mod tests {
     use alignment::poa::POAGraph;
     use petgraph::graph::NodeIndex;
 
-//    #[test]
-//    fn test_align_sequence() {
-//        assert_eq!(true, true);
-//    }
-
     #[test]
     fn test_init_graph() {
         // sanity check for String -> Graph
@@ -345,13 +332,6 @@ mod tests {
         assert_eq!(poa.graph.node_count(), 9);
         assert_eq!(poa.graph.edge_count(), 8);
     }
-
-//    #[test]
-//    fn test_incorporate() {
-//        let _seq1 = b"AAAAAA";
-//        let _seq2 = b"ABBBBA";
-//        let _seq3 = b"ABCCBA";
-//    }
 
     #[test]
     fn test_alignment() {
@@ -377,14 +357,11 @@ mod tests {
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
         let alignment = poa.align_sequence(seq2);
-//        assert_eq!(alignment.score, 3);
+        assert_eq!(alignment.score, 3);
     }
 
     #[test]
     fn test_alt_branched_alignment() {
-        //        example from POA paper
-//        let seq1 = b"CCGCTTTTCCGC";
-//        let seq2 = b"CCGCAAAACCGC";
         let seq1 = b"TTCCTTAA";
         let seq2 = b"TTTTGGAA";
         let mut poa = POAGraph::new("seq1", seq1);
@@ -396,21 +373,22 @@ mod tests {
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
         let alignment = poa.align_sequence(seq2);
-//        assert_eq!(alignment.score, 3);
+        assert_eq!(alignment.score, 3);
 //        poa.incorporate_alignment(alignment, "seq2", seq2);
     }
 
     #[test]
     fn test_incorporation() {
+//        example from POA paper
 //        let seq1 = b"CCGCTTTTCCGC";
 //        let seq2 = b"CCGCAAAACCGC";
         let seq1 = b"TTCCGGTTTAA";
         let seq2 = b"TTGGTTTGGGAA";
         let mut poa = POAGraph::new("seq1", seq1);
         let alignment = poa.align_sequence(seq2);
-        poa.write_dot("/tmp/inc1.dot".to_string());
+//        poa.write_dot("/tmp/inc1.dot".to_string());
         poa.incorporate_alignment(alignment, "seq2", seq2);
-        poa.write_dot("/tmp/inc2.dot".to_string());
+//        poa.write_dot("/tmp/inc2.dot".to_string());
 //        assert!(false);
     }
 
@@ -427,12 +405,12 @@ mod tests {
         poa.graph.add_edge(head, node1, 1);
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
-        poa.write_dot("/tmp/qut1.dot".to_string());
+//        poa.write_dot("/tmp/qut1.dot".to_string());
         let alignment = poa.align_sequence(seq2);
         poa.incorporate_alignment(alignment, "seq2", seq2);
-        poa.write_dot("/tmp/qut2.dot".to_string());
+//        poa.write_dot("/tmp/qut2.dot".to_string());
 //        assert_eq!(alignment.score, -4);
-        assert!(false);
+//        assert!(false);
     }
 
 }
