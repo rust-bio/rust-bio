@@ -158,7 +158,7 @@ impl Aligner {
         
 //        debug(&traceback, g, query);
 
-        // Now backtrack through the matrix to construct the optimal path
+        // Now backtrack through the matrix to construct an optimal path
         let mut i = last.index() + 1;
         let mut j = n;
         //println!("last node: {:?} {:?}", i, j);
