@@ -156,16 +156,15 @@ impl Aligner {
             }
         }
         
-//        debug(&traceback, g, query);
+        //debug(&traceback, g, query);
 
         // Now backtrack through the matrix to construct an optimal path
         let mut i = last.index() + 1;
         let mut j = n;
-        //println!("last node: {:?} {:?}", i, j);
+
         while i > 0 && j > 0 {
             // push operation and edge corresponding to (one of the) optimal
             // routes
-            //println!("\t{}, {} => {}", i, j, traceback[i][j].score);
             ops.push(traceback[i][j].op.clone());
             match traceback[i][j].op {
                 Op::Match(Some((p, _))) => { i = p + 1; j = j - 1; },
@@ -252,13 +251,13 @@ impl POAGraph {
         for op in aln.operations {
             match op {
                 Op::Match(None) => { i = i + 1; },
-                Op::Match(Some((0, _))) => {
+                Op::Match(Some((0, n))) => {
                     println!("(M) linking to zeroth node");
-                    prev = NodeIndex::new(0);
+                    prev = NodeIndex::new(n);
                     i = i + 1;
                 }
                 Op::Match(Some((n, p))) => { 
-                    let node = NodeIndex::new(n);
+                    let node = NodeIndex::new(p);
                     println!("(M) linking {:?} and {:?}", prev, node);
                     self.graph.add_edge(prev, node, 1);
                     prev = NodeIndex::new(p);
@@ -389,7 +388,6 @@ mod tests {
 //        poa.write_dot("/tmp/inc1.dot".to_string());
         poa.incorporate_alignment(alignment, "seq2", seq2);
 //        poa.write_dot("/tmp/inc2.dot".to_string());
-//        assert!(false);
     }
 
 
@@ -410,7 +408,6 @@ mod tests {
         poa.incorporate_alignment(alignment, "seq2", seq2);
 //        poa.write_dot("/tmp/qut2.dot".to_string());
 //        assert_eq!(alignment.score, -4);
-//        assert!(false);
     }
 
 }
