@@ -25,4 +25,3 @@ pub mod myers;
 pub mod pssm;
 pub mod shift_and;
 pub mod ukkonen;
-pub mod mating;

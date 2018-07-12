@@ -23,7 +23,8 @@
 //! * an orf research algorithm,
 //! * a rank/select data structure,
 //! * FASTQ and FASTA and BED readers and writers,
-//! * helper functions for combinatorics and dealing with log probabilities.
+//! * helper functions for combinatorics and dealing with log probabilities,
+//! * an implementation of Hidden Markov Model and related algorithms.
 //!
 //! # Example
 //!
@@ -97,6 +98,7 @@ extern crate itertools_num;
 #[macro_use]
 extern crate lazy_static;
 extern crate multimap;
+#[macro_use]
 extern crate ndarray;
 #[macro_use]
 extern crate newtype_derive;
@@ -109,6 +111,7 @@ extern crate regex;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate statrs;
 #[macro_use]
 extern crate bv;
 extern crate vec_map;
