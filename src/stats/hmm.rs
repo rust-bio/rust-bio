@@ -118,6 +118,16 @@ pub struct StateIter {
     max: usize,
 }
 
+impl StateIter {
+    /// Constructor.
+    pub fn new(num_states: usize) -> Self {
+        Self {
+            nxt: 0,
+            max: num_states,
+        }
+    }
+}
+
 impl Iterator for StateIter {
     type Item = State;
 
@@ -153,6 +163,17 @@ pub struct StateTransitionIter {
     nxt_a: usize,
     nxt_b: usize,
     max: usize,
+}
+
+impl StateTransitionIter {
+    /// Constructor.
+    pub fn new(num_states: usize) -> Self {
+        Self {
+            nxt_a: 0,
+            nxt_b: 0,
+            max: num_states,
+        }
+    }
 }
 
 impl Iterator for StateTransitionIter {
