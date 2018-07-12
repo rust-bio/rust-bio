@@ -7,6 +7,7 @@
 
 pub mod bayesian;
 pub mod combinatorics;
+pub mod hmm;
 pub mod pairhmm;
 pub mod probs;
 

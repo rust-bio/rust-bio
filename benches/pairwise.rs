@@ -1,7 +1,6 @@
 #![feature(test)]
 
 extern crate bio;
-extern crate bit_vec;
 extern crate test;
 
 use bio::alignment::pairwise::*;
