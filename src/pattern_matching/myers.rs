@@ -81,7 +81,7 @@ where T: Add<Output=Self> + Sub<Output=Self> +
 
 /// Myers instance based on 32-bit integers (pattern length up to 32)
 pub type Myers32 = Myers<u32>;
-/// Myers instance based on 32-bit integers (pattern length up to 64)
+/// Myers instance based on 64-bit integers (pattern length up to 64)
 pub type Myers64 = Myers<u64>;
 /// Myers instance based on 128-bit integers (pattern length up to 128)
 #[cfg(has_u128)]
