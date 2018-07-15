@@ -85,6 +85,7 @@ pub type Myers32 = Myers<u32>;
 /// Myers instance based on 32-bit integers (pattern length up to 64)
 pub type Myers64 = Myers<u64>;
 /// Myers instance based on 128-bit integers (pattern length up to 128)
+#[cfg(has_u128)]
 pub type Myers128 = Myers<u128>;
 
 

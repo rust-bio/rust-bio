@@ -266,6 +266,7 @@ fn myers_end_64(b: &mut Bencher) {
         assert_eq!(n, N_HITS);    });
 }
 
+#[cfg(has_u128)]
 #[bench]
 fn myers_end_128(b: &mut Bencher) {
     let myers = Myers128::new(PATTERN);
@@ -291,6 +292,7 @@ fn myers_pos_64(b: &mut Bencher) {
     });
 }
 
+#[cfg(has_u128)]
 #[bench]
 fn myers_pos_128(b: &mut Bencher) {
     let mut myers = Myers128::new(PATTERN);
