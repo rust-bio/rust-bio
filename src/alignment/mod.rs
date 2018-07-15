@@ -44,13 +44,19 @@ pub enum AlignmentMode {
     Custom,
 }
 
+impl Default for AlignmentMode {
+    fn default() -> Self {
+        AlignmentMode::Custom
+    }
+}
+
 /// We consider alignment between two sequences x and  y. x is the query or read sequence
 /// and y is the reference or template sequence. An alignment, consisting of a score,
 /// the start and end position of the alignment on sequence x and sequence y, the
 /// lengths of sequences x and y, and the alignment edit operations. The start position
 /// and end position of the alignment does not include the clipped regions. The length
 /// of clipped regions are already encapsulated in the Alignment Operation.
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Default)]
 pub struct Alignment {
     /// Smith-Waterman alignment score
     pub score: i32,
@@ -80,6 +86,15 @@ pub struct Alignment {
 
 
 impl Alignment {
+    /// Returns an 'uninitialized' alignment. All values are
+    /// set to zero and the `operations` vector is empty as well.
+    /// The alignment mode is `AlignmentMode::Custom`.
+    /// Useful if the instance should be reused to increase performance
+    /// (see `myers` module, for instance).
+    pub fn new() -> Self {
+        Alignment::default()
+    }
+
     /// Calculate the cigar string from the alignment struct. x is the target string
     ///
     /// # Example
