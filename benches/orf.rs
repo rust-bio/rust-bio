@@ -1,13 +1,12 @@
 #![feature(test)]
 
-extern crate test;
 extern crate bio;
+extern crate test;
 
 use test::Bencher;
 
-use bio::seq_analysis::orf::Finder;
 use bio::seq_analysis::gc::*;
-
+use bio::seq_analysis::orf::Finder;
 
 // 5,000 random nucleotides, GC content = .55
 static STR_1: &'static [u8] = b"ATCTAACTATTCCCTGTGCCTTATGGGGGCCTGCGCTATCTGCCTGT\

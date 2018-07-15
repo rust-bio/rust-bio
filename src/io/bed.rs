@@ -3,7 +3,6 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! BED format reading and writing.
 //!
 //! # Example
@@ -20,21 +19,20 @@
 //! }
 //! ```
 
-
-use std::io;
-use std::fs;
-use std::path::Path;
 use std::convert::AsRef;
+use std::fs;
+use std::io;
+use std::path::Path;
 
 use csv;
 
 use utils::Strand;
 
 /// A BED reader.
+#[derive(Debug)]
 pub struct Reader<R: io::Read> {
     inner: csv::Reader<R>,
 }
-
 
 impl Reader<fs::File> {
     /// Read from a given file path.
@@ -42,7 +40,6 @@ impl Reader<fs::File> {
         fs::File::open(path).map(Reader::new)
     }
 }
-
 
 impl<R: io::Read> Reader<R> {
     /// Read from a given reader.
@@ -57,42 +54,39 @@ impl<R: io::Read> Reader<R> {
 
     /// Iterate over all records.
     pub fn records(&mut self) -> Records<R> {
-        Records { inner: self.inner.deserialize() }
+        Records {
+            inner: self.inner.deserialize(),
+        }
     }
 }
 
+type BedRecordCsv = (String, u64, u64, Option<Vec<String>>);
 
 /// A BED record.
 pub struct Records<'a, R: 'a + io::Read> {
-    inner: csv::DeserializeRecordsIter<'a, R, (String, u64, u64, Option<Vec<String>>)>,
+    inner: csv::DeserializeRecordsIter<'a, R, BedRecordCsv>,
 }
-
 
 impl<'a, R: io::Read> Iterator for Records<'a, R> {
     type Item = csv::Result<Record>;
 
     fn next(&mut self) -> Option<csv::Result<Record>> {
-        self.inner
-            .next()
-            .map(|res| {
-                res.map(|(chrom, start, end, aux)| {
-                            Record {
-                                chrom: chrom,
-                                start: start,
-                                end: end,
-                                aux: aux.unwrap_or(Vec::new()),
-                            }
-                        })
+        self.inner.next().map(|res| {
+            res.map(|(chrom, start, end, aux)| Record {
+                chrom,
+                start,
+                end,
+                aux: aux.unwrap_or_else(Vec::new),
             })
+        })
     }
 }
 
-
 /// A BED writer.
+#[derive(Debug)]
 pub struct Writer<W: io::Write> {
     inner: csv::Writer<W>,
 }
-
 
 impl Writer<fs::File> {
     /// Write to a given file path.
@@ -100,7 +94,6 @@ impl Writer<fs::File> {
         fs::File::create(path).map(Writer::new)
     }
 }
-
 
 impl<W: io::Write> Writer<W> {
     /// Write to a given writer.
@@ -119,14 +112,11 @@ impl<W: io::Write> Writer<W> {
             self.inner
                 .serialize(&(&record.chrom, record.start, record.end))
         } else {
-            self.inner.serialize(&(&record.chrom,
-                                   record.start,
-                                   record.end,
-                                   &record.aux))
+            self.inner
+                .serialize(&(&record.chrom, record.start, record.end, &record.aux))
         }
     }
 }
-
 
 /// A BED record as defined by BEDtools
 /// (http://bedtools.readthedocs.org/en/latest/content/general-usage.html)
@@ -137,7 +127,6 @@ pub struct Record {
     end: u64,
     aux: Vec<String>,
 }
-
 
 impl Record {
     /// Create a new BED record.
@@ -244,8 +233,7 @@ mod tests {
     const BED_FILE: &'static [u8] = b"1\t5\t5000\tname1\tup
 2\t3\t5005\tname2\tup
 ";
-    const BED_FILE_COMPACT: &'static [u8] = b"1\t5\t5000\n2\t3\t5005\n";
-
+    //const BED_FILE_COMPACT: &'static [u8] = b"1\t5\t5000\n2\t3\t5005\n";
 
     #[test]
     fn test_reader() {
@@ -284,14 +272,14 @@ mod tests {
     //     }
     // }
 
-
     #[test]
     fn test_writer() {
         let mut reader = Reader::new(BED_FILE);
         let mut writer = Writer::new(vec![]);
         for r in reader.records() {
-            writer.write(&r.expect("Error reading record"))
-                  .expect("Error writing record");
+            writer
+                .write(&r.expect("Error reading record"))
+                .expect("Error writing record");
         }
         assert_eq!(writer.inner.into_inner().unwrap(), BED_FILE);
     }

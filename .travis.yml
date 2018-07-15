@@ -1,5 +1,8 @@
 language: rust
 
+rust:
+  - stable
+
 cache: cargo
 
 sudo: false
@@ -19,20 +22,12 @@ addons:
 before_script:
   - cargo install --force cargo-travis
   - export PATH=$HOME/.cargo/bin:$PATH
-
-matrix:
-  include:
-    - rust: stable
-    - rust: beta
-    - rust: nightly
-  allow_failures:
-    - rust: nightly
-    - rust: beta
+  - rustup component add rustfmt-preview
 
 script:
-  - |
-      cargo build &&
-      cargo test
+  - cargo fmt --all -- --write-mode=diff
+  - cargo build
+  - cargo test
 
 after_success:
   - cargo coveralls

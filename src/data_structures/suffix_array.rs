@@ -7,16 +7,16 @@
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
-use std::iter;
 use std;
-use std::fmt::Debug;
-use std::ops::Deref;
 use std::cmp;
+use std::fmt::Debug;
+use std::iter;
+use std::ops::Deref;
 
-use num_traits::{Unsigned, NumCast, cast};
 use num_integer::Integer;
+use num_traits::{cast, NumCast, Unsigned};
 
-use bit_vec::BitVec;
+use bv::{BitVec, Bits, BitsMut};
 use vec_map::VecMap;
 
 use alphabets::{Alphabet, RankTransform};
@@ -25,13 +25,11 @@ use data_structures::smallints::SmallInts;
 pub type LCPArray = SmallInts<i8, isize>;
 pub type RawSuffixArray = Vec<usize>;
 
-
 /// A trait exposing general functionality of suffix arrays.
 pub trait SuffixArray {
     fn get(&self, index: usize) -> Option<usize>;
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool;
-
 
     // /// Sample the suffix array with the given sample rate.
     // ///
@@ -82,7 +80,6 @@ pub trait SuffixArray {
     // }
 }
 
-
 // /// A sampled suffix array.
 // pub struct SampledSuffixArray<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> {
 //     bwt: DBWT,
@@ -91,7 +88,6 @@ pub trait SuffixArray {
 //     sample: Vec<usize>,
 //     s: usize, // Rate of sampling
 // }
-
 
 impl SuffixArray for RawSuffixArray {
     fn get(&self, index: usize) -> Option<usize> {
@@ -128,7 +124,6 @@ impl SuffixArray for RawSuffixArray {
     // }
 }
 
-
 // impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SuffixArray for SampledSuffixArray<DBWT, DLess, DOcc> {
 //     fn get(&self, index: usize) -> Option<usize> {
 //         if index < self.len() {
@@ -163,7 +158,6 @@ impl SuffixArray for RawSuffixArray {
 //         self.s
 //     }
 // }
-
 
 /// Construct suffix array for given text of length n.
 /// Complexity: O(n).
@@ -232,7 +226,6 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
     sais.pos
 }
 
-
 /// Construct lcp array for given text and suffix array of length n.
 /// Complexity: O(n).
 ///
@@ -292,7 +285,6 @@ pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray
     lcp
 }
 
-
 /// Calculate all locally shortest unique substrings from a given suffix and lcp array
 /// (Ohlebusch (2013). "Bioinformatics Algorithms". ISBN 978-3-00-041316-2).
 /// Complexity: O(n)
@@ -339,30 +331,30 @@ pub fn shortest_unique_substrings<SA: SuffixArray>(pos: &SA, lcp: &LCPArray) -> 
     sus
 }
 
-
 /// Return last character of the text (expected to be the sentinel).
 fn sentinel(text: &[u8]) -> u8 {
     text[text.len() - 1]
 }
 
-
 /// Count the sentinels occuring in the text given that the last character is the sentinel.
 fn sentinel_count(text: &[u8]) -> usize {
     let sentinel = sentinel(text);
-    assert!(text.iter().all(|&a| a >= sentinel),
-            "Expecting extra sentinel symbol being lexicographically smallest at the end of the \
-             text.");
+    assert!(
+        text.iter().all(|&a| a >= sentinel),
+        "Expecting extra sentinel symbol being lexicographically smallest at the end of the \
+         text."
+    );
 
     text.iter()
         .fold(0, |count, &a| count + (a == sentinel) as usize)
 }
 
-
 /// Transform the given text into integers for usage in `SAIS`.
-fn transform_text<T: Integer + Unsigned + NumCast + Copy + Debug>(text: &[u8],
-                                                                  alphabet: &Alphabet,
-                                                                  sentinel_count: usize)
-                                                                  -> Vec<T> {
+fn transform_text<T: Integer + Unsigned + NumCast + Copy + Debug>(
+    text: &[u8],
+    alphabet: &Alphabet,
+    sentinel_count: usize,
+) -> Vec<T> {
     let sentinel = sentinel(text);
     let transform = RankTransform::new(alphabet);
     let offset = sentinel_count - 1;
@@ -374,14 +366,13 @@ fn transform_text<T: Integer + Unsigned + NumCast + Copy + Debug>(text: &[u8],
             s -= 1;
             transformed.push(cast(s).unwrap());
         } else {
-            transformed.push(cast(*(transform.ranks.get(a as usize)).unwrap() as usize + offset)
-                                 .unwrap());
+            transformed
+                .push(cast(*(transform.ranks.get(a as usize)).unwrap() as usize + offset).unwrap());
         }
     }
 
     transformed
 }
-
 
 /// SAIS implementation (see function `suffix_array` for description).
 struct SAIS {
@@ -392,7 +383,6 @@ struct SAIS {
     bucket_start: Vec<usize>,
     bucket_end: Vec<usize>,
 }
-
 
 impl SAIS {
     /// Create a new instance.
@@ -436,12 +426,13 @@ impl SAIS {
     }
 
     /// Check if two LMS substrings are equal.
-    fn lms_substring_eq<T: Integer + Unsigned + NumCast + Copy>(&self,
-                                                                text: &[T],
-                                                                pos_types: &PosTypes,
-                                                                i: usize,
-                                                                j: usize)
-                                                                -> bool {
+    fn lms_substring_eq<T: Integer + Unsigned + NumCast + Copy>(
+        &self,
+        text: &[T],
+        pos_types: &PosTypes,
+        i: usize,
+        j: usize,
+    ) -> bool {
         for k in 0.. {
             let lmsi = pos_types.is_lms_pos(i + k);
             let lmsj = pos_types.is_lms_pos(j + k);
@@ -462,13 +453,15 @@ impl SAIS {
     }
 
     /// Sort LMS suffixes.
-    fn sort_lms_suffixes<T: Integer + Unsigned + NumCast + Copy + Debug,
-                         S: Integer + Unsigned + NumCast + Copy + Debug>
-        (&mut self,
-         text: &[T],
-         pos_types: &PosTypes,
-         lms_substring_count: usize) {
-
+    fn sort_lms_suffixes<
+        T: Integer + Unsigned + NumCast + Copy + Debug,
+        S: Integer + Unsigned + NumCast + Copy + Debug,
+    >(
+        &mut self,
+        text: &[T],
+        pos_types: &PosTypes,
+        lms_substring_count: usize,
+    ) {
         // if less than 2 LMS substrings are present, no further sorting is needed
         if lms_substring_count > 1 {
             // sort LMS suffixes by recursively building SA on reduced text
@@ -520,9 +513,11 @@ impl SAIS {
     }
 
     /// Step 1 of the SAIS algorithm.
-    fn calc_lms_pos<T: Integer + Unsigned + NumCast + Copy + Debug>(&mut self,
-                                                                    text: &[T],
-                                                                    pos_types: &PosTypes) {
+    fn calc_lms_pos<T: Integer + Unsigned + NumCast + Copy + Debug>(
+        &mut self,
+        text: &[T],
+        pos_types: &PosTypes,
+    ) {
         let n = text.len();
 
         // collect LMS positions
@@ -553,9 +548,11 @@ impl SAIS {
     }
 
     /// Step 2 of the SAIS algorithm.
-    fn calc_pos<T: Integer + Unsigned + NumCast + Copy>(&mut self,
-                                                        text: &[T],
-                                                        pos_types: &PosTypes) {
+    fn calc_pos<T: Integer + Unsigned + NumCast + Copy>(
+        &mut self,
+        text: &[T],
+        pos_types: &PosTypes,
+    ) {
         let n = text.len();
         self.pos.clear();
 
@@ -610,13 +607,11 @@ impl SAIS {
     }
 }
 
-
 /// Position types (L or S).
 #[derive(Debug)]
 struct PosTypes {
     pos_types: BitVec,
 }
-
 
 impl PosTypes {
     /// Calculate the text position type.
@@ -630,48 +625,47 @@ impl PosTypes {
     /// * `text` - the text, ending with a sentinel.
     fn new<T: Integer + Unsigned + NumCast + Copy>(text: &[T]) -> Self {
         let n = text.len();
-        let mut pos_types = BitVec::from_elem(n, false);
-        pos_types.set(n - 1, true);
+        let mut pos_types = BitVec::new_fill(false, n as u64);
+        pos_types.set_bit(n as u64 - 1, true);
 
         for p in (0..n - 1).rev() {
             if text[p] == text[p + 1] {
                 // if the characters are equal, the next position determines
                 // the lexicographical order
-                let v = pos_types.get(p + 1).unwrap();
-                pos_types.set(p, v);
+                let v = pos_types.get_bit(p as u64 + 1);
+                pos_types.set_bit(p as u64, v);
             } else {
-                pos_types.set(p, text[p] < text[p + 1]);
+                pos_types.set_bit(p as u64, text[p] < text[p + 1]);
             }
         }
 
-        PosTypes { pos_types: pos_types }
+        PosTypes { pos_types }
     }
 
     /// Check if p is S-position.
     fn is_s_pos(&self, p: usize) -> bool {
-        self.pos_types.get(p).unwrap()
+        self.pos_types.get_bit(p as u64)
     }
 
     /// Check if p is L-position.
     fn is_l_pos(&self, p: usize) -> bool {
-        !self.pos_types.get(p).unwrap()
+        !self.pos_types.get_bit(p as u64)
     }
 
     /// Check if p is LMS-position.
     fn is_lms_pos(&self, p: usize) -> bool {
-        !(p == 0) && self.is_s_pos(p) && self.is_l_pos(p - 1)
+        p != 0 && self.is_s_pos(p) && self.is_l_pos(p - 1)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
     // Commented-out imports waiting on re-enabling of sampled suffix array
     // See issue #70
     use super::*;
-    use super::{PosTypes, SAIS, transform_text};
-    use bit_vec::BitVec;
+    use super::{transform_text, PosTypes, SAIS};
     use alphabets::Alphabet;
+    use bv::{BitVec, BitsPush};
     //use data_structures::bwt::{bwt, less, Occ};
     use std::str;
 
@@ -683,13 +677,14 @@ mod tests {
         let n = text.len();
 
         let pos_types = PosTypes::new(&text);
-        let mut test = BitVec::from_bytes(&[0b01100110, 0b10010011, 0b01100100]);
-        test.truncate(n);
+        //let mut test = BitSlice::from_slice(&[0b01100110, 0b10010011, 0b01100100]).to_owned();
+        let mut test = BitVec::new();
+        test.push_block(0b001001101100100101100110);
+        test.truncate(n as u64);
         assert_eq!(pos_types.pos_types, test);
         let lms_pos: Vec<usize> = (0..n).filter(|&p| pos_types.is_lms_pos(p)).collect();
         assert_eq!(lms_pos, vec![1, 5, 8, 11, 14, 17, 21]);
     }
-
 
     #[test]
     fn test_buckets() {
@@ -705,7 +700,6 @@ mod tests {
         assert_eq!(sais.bucket_end, vec![0, 6, 12, 14, 21]);
     }
 
-
     #[test]
     fn test_pos() {
         let orig_text = b"GCCTTAACATTATTACGCCTA$";
@@ -717,11 +711,13 @@ mod tests {
         let pos_types = PosTypes::new(&text);
         sais.lms_pos = vec![21, 5, 14, 8, 11, 17, 1];
         sais.calc_pos(&text, &pos_types);
-        assert_eq!(sais.pos,
-                   vec![21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18, 2, 16, 0, 19, 4, 13, 10, 3,
-                        12, 9]);
+        assert_eq!(
+            sais.pos,
+            vec![
+                21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18, 2, 16, 0, 19, 4, 13, 10, 3, 12, 9,
+            ]
+        );
     }
-
 
     #[test]
     fn test_lms_pos() {
@@ -735,14 +731,12 @@ mod tests {
         sais.calc_lms_pos(&text, &pos_types);
     }
 
-
     #[test]
     fn test_issue10_1() {
         let text = b"TGTGTGTGTG$";
         let pos = suffix_array(text);
         assert_eq!(pos, [10, 9, 7, 5, 3, 1, 8, 6, 4, 2, 0]);
     }
-
 
     #[test]
     fn test_issue10_2() {
@@ -758,11 +752,13 @@ mod tests {
     }
 
     fn str_from_pos(sa: &Vec<usize>, text: &[u8], index: usize) -> String {
-        String::from(str::from_utf8(&text[sa[index]..])
-                         .unwrap()
-                         .split("$")
-                         .next()
-                         .unwrap_or("")) + "$"
+        String::from(
+            str::from_utf8(&text[sa[index]..])
+                .unwrap()
+                .split("$")
+                .next()
+                .unwrap_or(""),
+        ) + "$"
     }
 
     #[test]
@@ -790,14 +786,18 @@ mod tests {
                 let cur = str_from_pos(&pos, &text, i);
                 let next = str_from_pos(&pos, &text, i + 1);
 
-                assert!(cur <= next,
-                        format!("Failed:\n{}\n{}\nat positions {} and {} are out of order in \
-                                 test: {}",
-                                cur,
-                                next,
-                                pos[i],
-                                pos[i + 1],
-                                test_name));
+                assert!(
+                    cur <= next,
+                    format!(
+                        "Failed:\n{}\n{}\nat positions {} and {} are out of order in \
+                         test: {}",
+                        cur,
+                        next,
+                        pos[i],
+                        pos[i + 1],
+                        test_name
+                    )
+                );
             }
         }
     }

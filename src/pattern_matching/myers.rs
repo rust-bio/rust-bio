@@ -27,7 +27,6 @@
 //! # }
 //! ```
 
-
 use std::iter;
 use std::ops::Range;
 use std::u64;
@@ -38,7 +37,7 @@ use std::marker::PhantomData;
 
 use num_traits::*;
 
-use utils::{TextSlice, IntoTextIterator, TextIterator};
+use utils::{IntoTextIterator, TextIterator, TextSlice};
 use alignment::{Alignment, AlignmentOperation, AlignmentMode};
 
 
@@ -396,7 +395,6 @@ impl<T: Num> Myers<T> {
     }
 }
 
-
 /// The current algorithm state.
 #[derive(Clone, Debug, Default)]
 struct State<T = u64> {
@@ -406,7 +404,9 @@ struct State<T = u64> {
 }
 
 
-impl<T> State<T> where T: Num {
+impl<T> State<T>
+where T: Num
+{
     /// Create new state.
     pub fn new(m: usize) -> Self {
         State {
@@ -416,7 +416,6 @@ impl<T> State<T> where T: Num {
         }
     }
 }
-
 
 /// Iterator over pairs of end positions and distance of matches.
 pub struct Matches<'a, T, I>
@@ -820,7 +819,8 @@ mod tests {
 
     #[test]
     fn test_long() {
-        let text = b"ACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAG";
+        let text = b"ACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCG\
+CCATAGACCGTGGATGAGCGCCATAG";
         let pattern = b"TGAGCGTTGAGCGTTGAGCGTTGAGCGTTGAGCGTTGAGCGT";
         let myers = Myers64::new(&pattern[..]);
         let occ = myers.find_all_end(&text[..], 1).collect_vec();

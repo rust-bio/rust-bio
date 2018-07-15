@@ -1,8 +1,7 @@
 #![feature(test)]
 
-extern crate test;
-extern crate bit_vec;
 extern crate bio;
+extern crate test;
 
 use test::Bencher;
 

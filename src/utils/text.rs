@@ -12,7 +12,6 @@ impl<'a, I: Iterator<Item = &'a u8>> TextIterator<'a> for I {}
 pub trait IntoTextIterator<'a>: IntoIterator<Item = &'a u8> {}
 impl<'a, T: IntoIterator<Item = &'a u8>> IntoTextIterator<'a> for T {}
 
-
 /// Remove a trailing newline from the given string in place.
 pub fn trim_newline(s: &mut String) {
     if s.ends_with('\n') {
