@@ -394,20 +394,23 @@ mod tests {
     #[test]
     fn test_insertion_on_branch() {
         let seq1 = b"TTTT";
-        let seq2 = b"TTCCCATT";
+        let seq2 = b"TTCTT";
         let mut poa = POAGraph::new("seq1", seq1);
         let head: NodeIndex<usize> = NodeIndex::new(1);
         let tail: NodeIndex<usize> = NodeIndex::new(2);
         let node1 = poa.graph.add_node(b'C');
         let node2 = poa.graph.add_node(b'C');
+        let node3 = poa.graph.add_node(b'C');
         poa.graph.add_edge(head, node1, 1);
         poa.graph.add_edge(node1, node2, 1);
-        poa.graph.add_edge(node2, tail, 1);
+        poa.graph.add_edge(node2, node3, 1);
+        poa.graph.add_edge(node3, tail, 1);
 //        poa.write_dot("/tmp/qut1.dot".to_string());
         let alignment = poa.align_sequence(seq2);
         poa.incorporate_alignment(alignment, "seq2", seq2);
 //        poa.write_dot("/tmp/qut2.dot".to_string());
 //        assert_eq!(alignment.score, -4);
+
     }
 
 }
