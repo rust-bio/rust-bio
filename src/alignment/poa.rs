@@ -370,26 +370,11 @@ mod tests {
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
         let alignment = poa.align_sequence(seq2);
-        poa.write_dot("/tmp/alt1.dot".to_string());
-
- //       assert_eq!(alignment.score, 3);
         poa.incorporate_alignment(alignment, "seq2", seq2);
-        poa.write_dot("/tmp/alt2.dot".to_string());
-
+        assert_eq!(poa.graph.edge_count(), 17);
+        assert!(poa.graph.contains_edge(NodeIndex::new(5), NodeIndex::new(10)));
+        assert!(poa.graph.contains_edge(NodeIndex::new(11), NodeIndex::new(6)));
     }
-
-    #[test]
-    fn test_incorporation() {
-        let seq1 = b"CCGCTTTTCCGC";
-        let seq2 = b"CCGCAAAACCGC";
-        let mut poa = POAGraph::new("seq1", seq1);
-        let alignment = poa.align_sequence(seq2);
-        poa.write_dot("/tmp/inc1.dot".to_string());
-        poa.incorporate_alignment(alignment, "seq2", seq2);
-        poa.write_dot("/tmp/inc2.dot".to_string());
-//        assert_eq!(EdgeIndex::new(4), poa.graph.find_edges(NodeIndex::new(6), NodeIndex::new(5)));
-    }
-
 
     #[test]
     fn test_insertion_on_branch() {
@@ -406,15 +391,11 @@ mod tests {
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, node3, 1);
         poa.graph.add_edge(node3, tail, 1);
-        poa.write_dot("/tmp/qut1.dot".to_string());
         let alignment = poa.align_sequence(seq2);
         assert_eq!(alignment.score, 4);
         poa.incorporate_alignment(alignment, "seq2", seq2);
-        poa.write_dot("/tmp/qut2.dot".to_string());
         let alignment2 = poa.align_sequence(seq3);
         assert_eq!(alignment2.score, 10);
-        poa.incorporate_alignment(alignment2, "seq3", seq3);
-        poa.write_dot("/tmp/qut3.dot".to_string());
     }
 
 }
