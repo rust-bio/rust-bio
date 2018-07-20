@@ -37,12 +37,15 @@ pub const MIN_SCORE: i32 = -858_993_459; // see alignment/pairwise/mod.rs
 
 /// A Partial-Order Alignment Graph
 pub struct POAGraph {
-    // the POAGraph struct stores a DAG and labels for the sequences which
-    // compose it
+    // a POAGraph struct stores a reference DAG and labels the edges with the
+    // names of the input sequences (TODO)
     graph: Graph<u8, i32, Directed, usize>,
 }
 
-// Unlike a total order alignment we have different possible successor nodes
+// Unlike with a total order we may have arbitrary successors in the
+// traceback matrix. I have not yet figured out what the best level of
+// detail to store is, so Match and Del operations remember In and Out
+// nodes on the reference graph.
 #[derive(Debug, Clone)]
 pub enum Op {
     Match(Option<(usize, usize)>),
@@ -119,19 +122,19 @@ impl Aligner {
         let mut topo = Topo::new(&g);
 
         // store the last visited node in topological order so that
-        // we can index into the end of the alignment
+        // we can index into the end of the alignment when we backtrack
         let mut last: NodeIndex<usize> = NodeIndex::new(0);
         while let Some(node) = topo.next(&g) {
             // reference base and index
             let r = g.raw_nodes()[node.index()].weight; // reference base at previous index
             let i = node.index() + 1;
             last = node;
-            // predecesors of this node
+            // iterate over the predecessors of this node
             let prevs: Vec<NodeIndex<usize>> = g.neighbors_directed(node, Incoming).collect();
-            // query base and index (traceback matrix rows)
+            // query base and its index in the DAG (traceback matrix rows)
             for (j_p, q) in query.iter().enumerate() {
                 let j = j_p + 1;
-                // match and deletion scores for first reference base
+                // match and deletion scores for the first reference base
                 let (mat, del) = if prevs.len() == 0 {
                     (Cell { score: traceback[0][j - 1].score + (self.scoring)(r, *q),
                             op: Op::Match(None) },
@@ -156,7 +159,7 @@ impl Aligner {
             }
         }
         
-        //debug(&traceback, g, query);
+        //dump_traceback(&traceback, g, query);
 
         // Now backtrack through the matrix to construct an optimal path
         let mut i = last.index() + 1;
@@ -246,34 +249,23 @@ impl POAGraph {
     ///
     pub fn incorporate_alignment(&mut self, aln: Alignment, _label: &str, seq: TextSlice) {
         let mut prev: NodeIndex<usize> = NodeIndex::new(0);
-//        let mut i: usize = seq.len();
         let mut i: usize = 0;
         for op in aln.operations {
             match op {
                 Op::Match(None) => { i = i + 1; },
-                Op::Match(Some((0, n))) => {
-                    println!("(M) linking to zeroth node");
-                    prev = NodeIndex::new(n);
-                    i = i + 1;
-                }
-                Op::Match(Some((n, p))) => { 
+                Op::Match(Some((_, p))) => { 
                     let node = NodeIndex::new(p);
-                    println!("(M) linking {:?} and {:?}", prev, node);
                     self.graph.add_edge(prev, node, 1);
                     prev = NodeIndex::new(p);
                     i = i + 1;
                 },
+                Op::Ins(None) => { i = i + 1; },
                 Op::Ins(Some(_)) => {
                     let node = self.graph.add_node(seq[i]);
-                    println!("(I) linking {:?} and {:?}", prev, node);
                     self.graph.add_edge(prev, node, 1);
                     prev = node;
                     i = i + 1; },
-                Op::Del(Some((n, _))) => { 
-                    println!("(D) skipping link {:?}", n);
-                },
-                Op::Ins(None) => {},
-                Op::Del(None) => {},
+                Op::Del(_) => { }, // we should only have to skip over deleted nodes
             }
         }
     }
@@ -301,7 +293,7 @@ impl POAGraph {
 
 // print out a traceback matrix
 #[allow(dead_code)]
-fn debug(traceback: &Vec<Vec<Cell>>,
+fn dump_traceback(traceback: &Vec<Vec<Cell>>,
          g: &Graph<u8, i32, Directed, usize>,
          query: TextSlice) {
     let (m, n) = (g.node_count(), query.len());
@@ -334,13 +326,19 @@ mod tests {
 
     #[test]
     fn test_alignment() {
-        // example from Wikipedia's Needleman-Wunsch distance article
+        // examples from the POA paper
         //let _seq1 = b"PKMIVRPQKNETV";
         //let _seq2 = b"THKMLVRNETIM";
-        let mut poa = POAGraph::new("seq1", b"GATTACA");
+        let poa = POAGraph::new("seq1", b"GATTACA");
         let alignment = poa.align_sequence(b"GCATGCU");
         assert_eq!(alignment.score, 0);
-        poa.incorporate_alignment(alignment, "seq2", b"GCATCGU");
+
+        let alignment = poa.align_sequence(b"GCATGCUx");
+        assert_eq!(alignment.score, -1);
+ 
+        let alignment = poa.align_sequence(b"xCATGCU");
+        assert_eq!(alignment.score, -2);
+ 
     }
 
     #[test]
@@ -372,29 +370,32 @@ mod tests {
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
         let alignment = poa.align_sequence(seq2);
-        assert_eq!(alignment.score, 3);
-//        poa.incorporate_alignment(alignment, "seq2", seq2);
+        poa.write_dot("/tmp/alt1.dot".to_string());
+
+ //       assert_eq!(alignment.score, 3);
+        poa.incorporate_alignment(alignment, "seq2", seq2);
+        poa.write_dot("/tmp/alt2.dot".to_string());
+
     }
 
     #[test]
     fn test_incorporation() {
-//        example from POA paper
-//        let seq1 = b"CCGCTTTTCCGC";
-//        let seq2 = b"CCGCAAAACCGC";
-        let seq1 = b"TTCCGGTTTAA";
-        let seq2 = b"TTGGTTTGGGAA";
+        let seq1 = b"CCGCTTTTCCGC";
+        let seq2 = b"CCGCAAAACCGC";
         let mut poa = POAGraph::new("seq1", seq1);
         let alignment = poa.align_sequence(seq2);
-//        poa.write_dot("/tmp/inc1.dot".to_string());
+        poa.write_dot("/tmp/inc1.dot".to_string());
         poa.incorporate_alignment(alignment, "seq2", seq2);
-//        poa.write_dot("/tmp/inc2.dot".to_string());
+        poa.write_dot("/tmp/inc2.dot".to_string());
+//        assert_eq!(EdgeIndex::new(4), poa.graph.find_edges(NodeIndex::new(6), NodeIndex::new(5)));
     }
 
 
     #[test]
     fn test_insertion_on_branch() {
-        let seq1 = b"TTTT";
-        let seq2 = b"TTCTT";
+        let seq1 = b"TTCCGGTTTAA";
+        let seq2 = b"TTGGTTTGGGAA";
+        let seq3 = b"TTGGTTTGCGAA";
         let mut poa = POAGraph::new("seq1", seq1);
         let head: NodeIndex<usize> = NodeIndex::new(1);
         let tail: NodeIndex<usize> = NodeIndex::new(2);
@@ -405,12 +406,15 @@ mod tests {
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, node3, 1);
         poa.graph.add_edge(node3, tail, 1);
-//        poa.write_dot("/tmp/qut1.dot".to_string());
+        poa.write_dot("/tmp/qut1.dot".to_string());
         let alignment = poa.align_sequence(seq2);
+        assert_eq!(alignment.score, 4);
         poa.incorporate_alignment(alignment, "seq2", seq2);
-//        poa.write_dot("/tmp/qut2.dot".to_string());
-//        assert_eq!(alignment.score, -4);
-
+        poa.write_dot("/tmp/qut2.dot".to_string());
+        let alignment2 = poa.align_sequence(seq3);
+        assert_eq!(alignment2.score, 10);
+        poa.incorporate_alignment(alignment2, "seq3", seq3);
+        poa.write_dot("/tmp/qut3.dot".to_string());
     }
 
 }
