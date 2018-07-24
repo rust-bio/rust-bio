@@ -255,8 +255,14 @@ impl POAGraph {
                 Op::Match(None) => { i = i + 1; },
                 Op::Match(Some((_, p))) => { 
                     let node = NodeIndex::new(p);
-                    self.graph.add_edge(prev, node, 1);
-                    prev = NodeIndex::new(p);
+                    if seq[i] != self.graph.raw_nodes()[p].weight {
+                        let node = self.graph.add_node(seq[i]);
+                        self.graph.add_edge(prev, node, 1);
+                        prev = node;
+                    } else {
+                        self.graph.add_edge(prev, node, 1);
+                        prev = NodeIndex::new(p);
+                    }
                     i = i + 1;
                 },
                 Op::Ins(None) => { i = i + 1; },
@@ -379,7 +385,7 @@ mod tests {
     #[test]
     fn test_insertion_on_branch() {
         let seq1 = b"TTCCGGTTTAA";
-        let seq2 = b"TTGGTTTGGGAA";
+        let seq2 = b"TTGGTATGGGAA";
         let seq3 = b"TTGGTTTGCGAA";
         let mut poa = POAGraph::new("seq1", seq1);
         let head: NodeIndex<usize> = NodeIndex::new(1);
@@ -392,10 +398,12 @@ mod tests {
         poa.graph.add_edge(node2, node3, 1);
         poa.graph.add_edge(node3, tail, 1);
         let alignment = poa.align_sequence(seq2);
-        assert_eq!(alignment.score, 4);
+//        assert_eq!(alignment.score, 4);
         poa.incorporate_alignment(alignment, "seq2", seq2);
         let alignment2 = poa.align_sequence(seq3);
-        assert_eq!(alignment2.score, 10);
+//        assert_eq!(alignment2.score, 10);
+        poa.write_dot("/tmp/mm.dot".to_string());
+        assert!(false);
     }
 
 }
