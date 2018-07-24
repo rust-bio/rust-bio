@@ -260,7 +260,15 @@ impl POAGraph {
                         self.graph.add_edge(prev, node, 1);
                         prev = node;
                     } else {
-                        self.graph.add_edge(prev, node, 1);
+                        // increment node weight
+                        match self.graph.find_edge(prev, node) {
+                            Some(edge) => {
+                                *self.graph.edge_weight_mut(edge).unwrap() += 1;
+                            }
+                            None => {
+                                self.graph.add_edge(prev, node, 1);
+                            }
+                        }
                         prev = NodeIndex::new(p);
                     }
                     i = i + 1;
