@@ -385,7 +385,7 @@ mod tests {
         poa.graph.add_edge(node2, tail, 1);
         let alignment = poa.align_sequence(seq2);
         poa.incorporate_alignment(alignment, "seq2", seq2);
-        assert_eq!(poa.graph.edge_count(), 17);
+        assert_eq!(poa.graph.edge_count(), 14);
         assert!(poa.graph.contains_edge(NodeIndex::new(5), NodeIndex::new(10)));
         assert!(poa.graph.contains_edge(NodeIndex::new(11), NodeIndex::new(6)));
     }
@@ -406,12 +406,9 @@ mod tests {
         poa.graph.add_edge(node2, node3, 1);
         poa.graph.add_edge(node3, tail, 1);
         let alignment = poa.align_sequence(seq2);
-//        assert_eq!(alignment.score, 4);
+        assert_eq!(alignment.score, 2);
         poa.incorporate_alignment(alignment, "seq2", seq2);
         let alignment2 = poa.align_sequence(seq3);
-//        assert_eq!(alignment2.score, 10);
-        poa.write_dot("/tmp/mm.dot".to_string());
-        assert!(false);
+        assert_eq!(alignment2.score, 10);
     }
-
 }
