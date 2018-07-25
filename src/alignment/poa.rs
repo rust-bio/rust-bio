@@ -96,7 +96,9 @@ impl Aligner {
         }
     }
 
-    // naive Needleman-Wunsch
+    /// Naive Needleman-Wunsch
+    /// Populates the traceback matrix in $O(n^2)$ time, assuming using
+    /// petgraph's constant time topological traversal
     pub fn global(&mut self,
                   g: &Graph<u8, i32, Directed, usize>,
                   query: TextSlice) -> Alignment {
@@ -266,6 +268,7 @@ impl POAGraph {
                                 *self.graph.edge_weight_mut(edge).unwrap() += 1;
                             }
                             None => {
+                                // where the previous node was newly added
                                 self.graph.add_edge(prev, node, 1);
                             }
                         }
