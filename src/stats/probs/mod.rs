@@ -25,7 +25,7 @@ const PHRED_TO_LOG_FACTOR: f64 = -0.230_258_509_299_404_56; // 1 / (-10 * log10(
 
 /// Calculate log(1 - p) with p given in log space without loss of precision as described in
 /// http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf.
-#[cfg_attr(feature="flame_it", flame)]
+#[cfg_attr(feature="flame_it_details", flame)]
 fn ln_1m_exp(p: f64) -> f64 {
     assert!(p <= 0.0);
     if p < -0.693 {
@@ -239,7 +239,7 @@ impl LogProb {
     }
 
     /// Numerically stable addition probabilities in log-space.
-    #[cfg_attr(feature="flame_it", flame)]
+    #[cfg_attr(feature="flame_it_details", flame)]
     pub fn ln_add_exp(self, other: LogProb) -> LogProb {
         let (mut p0, mut p1) = (self, other);
         if p1 > p0 {

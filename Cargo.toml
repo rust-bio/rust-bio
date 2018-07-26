@@ -13,7 +13,7 @@ license = "MIT"
 [features]
 avx-accel = ["bytecount/avx-accel"]
 simd-accel = ["bytecount/simd-accel"]
-flame_it = ["flame", "flamer"]
+flame_it_details = ["flame", "flamer"]
 
 [dependencies]
 bytecount = "0.3.1"
