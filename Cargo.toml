@@ -10,6 +10,7 @@ documentation = "https://docs.rs/bio"
 readme = "README.md"
 license = "MIT"
 
+
 [features]
 avx-accel = ["bytecount/avx-accel"]
 simd-accel = ["bytecount/simd-accel"]
@@ -36,6 +37,7 @@ regex = "0.2"
 multimap = "0.4"
 fxhash = "0.2"
 statrs = "0.9.0"
+bio-types = ">=0.1.1"
 
 [dependencies.vec_map]
 version = "0.8"
