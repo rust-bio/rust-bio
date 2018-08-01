@@ -2,8 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-# HEAD
-- Added HMM implementation.
+# [0.22.0] - 2018-08-01
+- Added HMM implementation (thanks to @holtgrewe).
+- Moved Alignment types to `bio_types` crate (thanks to @pmarks).
+- Ignore comment lines in GTF/GFF files (thanks to Yasunobu Okamura).
+- API usability improvements.
 
 # [0.21.0] - 2018-06-19
 - Added PSSM implementation (thanks to @hervold).
