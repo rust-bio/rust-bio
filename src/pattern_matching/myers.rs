@@ -30,14 +30,15 @@
 use std::iter;
 use std::ops::Range;
 use std::u64;
-use std::borrow::Borrow;
 use std::mem::size_of;
 use std::ops::*;
 use std::marker::PhantomData;
+use std::collections::HashMap;
+use std::borrow::Borrow;
 
 use num_traits::{PrimInt, WrappingAdd};
 
-use utils::{IntoTextIterator, TextIterator, TextSlice};
+use utils::{IntoTextIterator, TextIterator};
 use alignment::{Alignment, AlignmentOperation, AlignmentMode};
 
 
@@ -61,17 +62,188 @@ where T: Copy + Clone +
     PrimInt + WrappingAdd {}
 
 
-/// Myers instance based on 32-bit integers (pattern length up to 32)
-pub type Myers32 = Myers<u32>;
-/// Myers instance based on 64-bit integers (pattern length up to 64)
+/// Myers instance using `u64` as bit vectors (pattern length up to 64)
 pub type Myers64 = Myers<u64>;
-/// Myers instance based on 128-bit integers (pattern length up to 128)
+/// Myers instance using `u128` as bit vectors (pattern length up to 128)
 #[cfg(has_u128)]
 pub type Myers128 = Myers<u128>;
 
 
+/// Builds a Myers instance, allowing to specify ambiguities.
+///
+/// # Example:
+///
+/// This example shows how recognition of IUPAC ambiguities in patterns.
+/// can be implemented. Ambiguities in the text are not recognized; this
+/// would require specifying additional ambiguities (A = MRWVHDN, etc.).
+///
+/// ```
+/// # extern crate bio;
+/// use bio::pattern_matching::myers::MyersBuilder;
+///
+/// # fn main() {
+/// let ambigs = [
+///     (b'M', &b"ACM"[..]),
+///     (b'R', &b"AGR"[..]),
+///     (b'W', &b"ATW"[..]),
+///     (b'S', &b"CGS"[..]),
+///     (b'Y', &b"CTY"[..]),
+///     (b'K', &b"GTK"[..]),
+///     (b'V', &b"ACGMRSV"[..]),
+///     (b'H', &b"ACTMWYH"[..]),
+///     (b'D', &b"AGTRWKD"[..]),
+///     (b'B', &b"CGTSYKB"[..]),
+///     (b'N', &b"ACGTMRWSYKVHDBN"[..])
+/// ];
+///
+/// let mut builder = MyersBuilder::new();
+///
+/// for &(base, equivalents) in &ambigs {
+///     builder = builder.ambig(base, equivalents);
+/// }
+///
+/// let text = b"ACCGTGGATGNGCGCCATAG";
+/// let pattern =      b"TRANCGG";
+/// //                     *   * (mismatch)
+///
+/// let myers = builder.build(pattern);
+/// assert_eq!(myers.distance(text), 2);
+/// # }
+/// ```
+pub struct MyersBuilder {
+    ambigs: HashMap<u8, Vec<u8>>,
+    wildcards: Vec<u8>
+}
+
+
+impl MyersBuilder {
+    pub fn new() -> MyersBuilder {
+        MyersBuilder {
+            ambigs: HashMap::new(),
+            wildcards: vec![]
+        }
+    }
+
+    /// Specify ambiguous characters.
+    ///
+    /// # Example:
+    ///
+    /// ```
+    /// # extern crate bio;
+    /// use bio::pattern_matching::myers::MyersBuilder;
+    ///
+    /// # fn main() {
+    /// let text = b"ACCGTGGATGAGCGCCATAG";
+    /// let pattern =      b"TGAGCGN";
+    ///
+    /// let myers = MyersBuilder::new()
+    ///     .ambig(b'N', b"AGTC")
+    ///     .build(pattern);
+    ///
+    /// assert_eq!(myers.distance(text), 0);
+    /// # }
+    pub fn ambig<'a, I, B>(mut self, byte: u8, equivalents: I) -> Self
+    where I: IntoIterator<Item=B>,
+          B: Borrow<u8>
+    {
+        let eq = equivalents
+            .into_iter()
+            .map(|b| *b.borrow())
+            .collect();
+        self.ambigs.insert(byte, eq);
+        self
+    }
+
+    /// Specify a wildcard character in the text that shall be matched by any character in the
+    /// pattern. Multiple wildcards are possible. For the reverse (wildcards in pattern), use
+    /// `ambig(byte, 0..255)`
+    ///
+    /// # Example:
+    ///
+    /// ```
+    /// # extern crate bio;
+    /// use bio::pattern_matching::myers::MyersBuilder;
+    ///
+    /// # fn main() {
+    /// let text = b"ACCGTGGATGAGCG*CATAG";
+    /// let pattern =      b"TGAGCGT";
+    ///
+    /// let myers = MyersBuilder::new()
+    ///     .text_wildcard(b'*')
+    ///     .build(pattern);
+    ///
+    /// assert_eq!(myers.distance(text), 0);
+    /// # }
+    pub fn text_wildcard(mut self, wildcard: u8) -> Self {
+        self.wildcards.push(wildcard);
+        self
+    }
+
+    /// Create a Myers instance given a pattern, using `u64` as type for bit vectors
+    pub fn build<'a, P: IntoTextIterator<'a>>(&self, pattern: P) -> Myers<u64> {
+        self.build_other(pattern)
+    }
+
+    /// Create a Myers instance given a pattern, using `u128` as type for bit vectors
+    #[cfg(has_u128)]
+    pub fn build128<'a, P: IntoTextIterator<'a>>(&self, pattern: P) -> Myers<u128> {
+        self.build_other(pattern)
+    }
+
+    /// Create a Myers instance given a pattern, using any desired type for bit vectors
+    ///
+    /// # Example:
+    ///
+    /// ```
+    /// # extern crate bio;
+    /// use bio::pattern_matching::myers::{MyersBuilder, Myers};
+    ///
+    /// # fn main() {
+    /// let myers: Myers<u32> = MyersBuilder::new()
+    ///     .text_wildcard(b'*')
+    ///     .build_other(b"TGAGCG*");
+    /// // ...
+    /// # }
+    pub fn build_other<'a, T, P>(&self, pattern: P) -> Myers<T>
+    where T: BitVec,
+          P: IntoTextIterator<'a>,
+    {
+        let mut peq = [T::zero(); 256];
+        let maxsize = size_of::<T>() * 8;
+        let mut m = 0;
+
+        for (i, &a) in pattern.into_iter().enumerate() {
+            m += 1;
+            let mask = T::one() << i;
+            // equivalent
+            peq[a as usize] |= mask;
+            // ambiguities
+            if let Some(equivalents) = self.ambigs.get(&a) {
+                for &eq in equivalents {
+                    peq[eq as usize] |= mask;
+                }
+            }
+        }
+
+        assert!(m <= maxsize, "Pattern too long");
+        assert!(m > 0, "Pattern is empty");
+
+        for &w in &self.wildcards {
+            peq[w as usize ] = T::max_value();
+        }
+
+        Myers {
+            peq: peq,
+            bound: T::one() << (m - 1),
+            m: m,
+            tb: Traceback::new(),
+        }
+    }
+}
+
+
 /// Myers algorithm.
-pub struct Myers<T = u64>
+pub struct Myers<T>
 where T: BitVec
 {
     peq: [T; 256],
@@ -83,143 +255,27 @@ where T: BitVec
 
 impl<T: BitVec> Myers<T> {
     /// Create a new instance of Myers algorithm for a given pattern.
-    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self {
-        Self::with_ambig(pattern.into_iter().map(Some))
-    }
-
-    // TODO: eventually move to module docs and use shorter example
-    /// Like `Myers64::new()`, but additionally allows for specifying
-    /// multiple matching characters in a pattern.
-    /// As in `new`, an iterator over pattern positions is supplied. However, a nested iterable
-    /// additionally allows to return multiple characters which should be recognized
-    /// as matching at a given position. Unambiguous positions can be specified as iterables
-    /// with a single element (see below). Even positions that don't match any character are
-    /// possible by specifying an empty iterable.
-    ///
-    /// *Note*: Only a single indirection is possible, thus patterns with 'double borrows' like
-    ///  this one: `&[&b"abc"[..], &b"de"[..]]` are not possible. The outer slice could be replaced
-    /// by a `vec!` to make it work.
-    ///
-    /// # Example:
-    ///
-    /// ```
-    /// # extern crate bio;
-    /// use bio::pattern_matching::myers::Myers64;
-    ///
-    /// # fn main() {
-    /// let text =    b"TGACGNTGA";
-    /// let pattern = b"TGANGCTGA";
-    ///
-    /// // 'N' has no special meaning:
-    /// let myers = Myers64::new(pattern);
-    /// assert_eq!(myers.distance(text), 2);
-    ///
-    /// // 'N' in a pattern matches all four bases, but 'N' in
-    /// // the text does not match any (asymmetric matching):
-    /// let myers_ambig_asymm = Myers64::with_ambig(pattern.into_iter().map(|&b| {
-    ///     // replacing N with all possible bases.
-    ///     // Using vectors. Otherwise, the ref_slice crate could be used
-    ///     if b == b'N' { b"ACGT".to_vec() } else { vec![b] }
-    /// }));
-    /// assert_eq!(myers_ambig_asymm.distance(text), 1);
-    ///
-    /// // 'N' matches both ways:
-    /// let myers_ambig_symm = Myers64::with_ambig(pattern.into_iter().map(|&b| {
-    ///     if b == b'N' { b"ACGT".to_vec() } else { vec![b, b'N'] }
-    /// }));
-    /// assert_eq!(myers_ambig_symm.distance(text), 0);
-    /// # }
-    pub fn with_ambig<P, I, C>(pattern: P) -> Self
-        where P: IntoIterator<Item=I>,
-              I: IntoIterator<Item=C>,
-              C: Borrow<u8>,
-    {
-        Self::with_ambig_results::<_, I, C, ()>(
-            pattern.into_iter().map(Ok)
-        ).unwrap()
-    }
-
-    // TODO: eventually move to module docs and use shorter example
-    /// Like `Myers64::with_ambig()`, but allows returning a `Result` during iteration
-    /// of the pattern. The following example enables matching all ambiguous characters according
-    /// to the IUPAC nomenclature.
-    ///
-    /// # Example:
-    ///
-    /// ```
-    /// # extern crate bio;
-    /// use bio::pattern_matching::myers::Myers64;
-    ///
-    /// # fn main() {
-    ///
-    /// use std::collections::HashMap;
-    ///
-    /// let text =    b"TGACGNTGA";
-    /// let pattern = b"TGANGCTGR";
-    ///
-    /// // HashMap containing all character definitions.
-    /// // Note: using the 'maplit' crate could make this less wordy.
-    /// let ambig_map: HashMap<_, _> = [
-    ///     (b'A', &b"A"[..]),
-    ///     (b'C', &b"C"[..]),
-    ///     (b'G', &b"G"[..]),
-    ///     (b'T', &b"T"[..]),
-    ///     (b'M', &b"ACM"[..]),
-    ///     (b'R', &b"AGR"[..]),
-    ///     (b'W', &b"ATW"[..]),
-    ///     (b'S', &b"CGS"[..]),
-    ///     (b'Y', &b"CTY"[..]),
-    ///     (b'K', &b"GTK"[..]),
-    ///     (b'V', &b"ACGMRSV"[..]),
-    ///     (b'H', &b"ACTMWYH"[..]),
-    ///     (b'D', &b"AGTRWKD"[..]),
-    ///     (b'B', &b"CGTSYKB"[..]),
-    ///     (b'N', &b"ACGTMRWSYKVHDBN"[..])
-    /// ].into_iter()
-    ///  .map(|(b1, b2)| (*b1, b2.to_vec()))
-    ///  .collect();
-    ///
-    /// let myers = Myers64::with_ambig_results(pattern.into_iter().map(|b| {
-    ///     ambig_map.get(b).ok_or(format!("Invalid base found: {}", *b as char))
-    /// })).unwrap();
-    ///
-    /// assert_eq!(myers.distance(text), 1);
-    /// # }
-    /// ```
-    pub fn with_ambig_results<P, I, C, E>(pattern: P) -> Result<Self, E>
-        where P: IntoIterator<Item=Result<I, E>>,
-              I: IntoIterator<Item=C>,
-              C: Borrow<u8>,
+    pub fn new<'a, P>(pattern: P) -> Self
+        where P: IntoTextIterator<'a>,
     {
         let mut peq = [T::zero(); 256];
-        let w = size_of::<T>() * 8;
+        let maxsize = size_of::<T>() * 8;
         let mut m = 0;
-        for (i, var) in pattern.into_iter().enumerate() {
+
+        for (i, &a) in pattern.into_iter().enumerate() {
             m += 1;
-            assert!(m <= w, "Pattern too long");
-            for a in var?.into_iter() {
-                peq[*a.borrow() as usize] |= T::one() << i;
-            }
+            peq[a as usize] |= T::one() << i;
         }
 
+        assert!(m <= maxsize, "Pattern too long");
         assert!(m > 0, "Pattern is empty");
 
-        Ok(Myers {
+        Myers {
             peq: peq,
             bound: T::one() << (m - 1),
             m: m,
             tb: Traceback::new(),
-        })
-    }
-
-    /// Create a new instance of Myers algorithm for a given pattern and a wildcard character
-    /// that shall match any character.
-    pub fn with_wildcard(pattern: TextSlice, wildcard: u8) -> Self {
-        let mut myers = Self::new(pattern);
-        // wildcard matches all symbols of the pattern.
-        myers.peq[wildcard as usize] = T::max_value();
-
-        myers
+        }
     }
 
     #[inline]
@@ -794,7 +850,9 @@ mod tests {
         let myers = Myers64::new(pattern);
         assert_eq!(myers.distance(text), 1);
 
-        let myers_wildcard = Myers64::with_wildcard(pattern, b'N');
+        let myers_wildcard = MyersBuilder::new()
+            .text_wildcard(b'N')
+            .build(pattern);
         assert_eq!(myers_wildcard.distance(text), 0);
     }
 
@@ -977,9 +1035,9 @@ CCATAGACCGTGGATGAGCGCCATAG";
         //                x  x
         // Matching is asymmetric here (A matches R and G matches N, but the reverse is not true)
 
-        let myers = Myers64::with_ambig(pattern.into_iter().map(|&b| {
-            if b == b'R' { b"AG".to_vec() } else { vec![b] }
-        }));
+        let myers = MyersBuilder::new()
+            .ambig(b'R', b"AG")
+            .build(pattern);
         assert_eq!(myers.distance(text), 2);
     }
 }
