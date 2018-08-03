@@ -35,7 +35,7 @@ use std::mem::size_of;
 use std::ops::*;
 use std::marker::PhantomData;
 
-use num_traits::*;
+use num_traits::{PrimInt, WrappingAdd};
 
 use utils::{IntoTextIterator, TextIterator, TextSlice};
 use alignment::{Alignment, AlignmentOperation, AlignmentMode};
@@ -43,41 +43,23 @@ use alignment::{Alignment, AlignmentOperation, AlignmentMode};
 
 
 /// Integer types serving as bit vectors must implement this trait.
-pub trait Num: Add<Output=Self> + Sub<Output=Self> +
-    BitOr<Output=Self> + BitOrAssign + BitAnd<Output=Self> + BitXor<Output=Self> + Not<Output=Self> +
+pub trait BitVec: Copy + Clone +
+    Add<Output=Self> + Sub<Output=Self> +
+    BitOr<Output=Self> + BitOrAssign + BitAnd<Output=Self> +
+    BitXor<Output=Self> + Not<Output=Self> +
     Shl<usize, Output=Self> + ShlAssign<usize> + ShrAssign<usize> +
-    Copy + Clone + PartialOrd
-{
-    fn max_value() -> Self;
-    fn zero() -> Self;
-    fn one() -> Self;
-    fn count_ones(self) -> u32;
-    fn wrapping_add(&self, other: &Self) -> Self;
-}
+    // These num_traits traits are required; in addition there are Bounded, Zero and One,
+    // which are all required by PrimInt and thus included
+    PrimInt + WrappingAdd {}
 
-// Implementation using num_traits types
-impl<T> Num for T
-where T: Add<Output=Self> + Sub<Output=Self> +
-    BitOr<Output=Self> + BitOrAssign + BitAnd<Output=Self> + BitXor<Output=Self> + Not<Output=Self> +
+impl<T> BitVec for T
+where T: Copy + Clone +
+    Add<Output=Self> + Sub<Output=Self> +
+    BitOr<Output=Self> + BitOrAssign + BitAnd<Output=Self> +
+    BitXor<Output=Self> + Not<Output=Self> +
     Shl<usize, Output=Self> + ShlAssign<usize> + ShrAssign<usize> +
-    Copy + PartialOrd +
-    Bounded + PrimInt + Zero + One + WrappingAdd {
-    fn max_value() -> T {
-        <Self as Bounded>::max_value()
-    }
-    fn zero() -> Self {
-        <Self as Zero>::zero()
-    }
-    fn one() -> Self {
-        <Self as One>::one()
-    }
-    fn count_ones(self) -> u32 {
-        <Self as PrimInt>::count_ones(self)
-    }
-    fn wrapping_add(&self, other: &T) -> T {
-        <Self as WrappingAdd>::wrapping_add(&self, other)
-    }
-}
+    PrimInt + WrappingAdd {}
+
 
 /// Myers instance based on 32-bit integers (pattern length up to 32)
 pub type Myers32 = Myers<u32>;
@@ -90,7 +72,7 @@ pub type Myers128 = Myers<u128>;
 
 /// Myers algorithm.
 pub struct Myers<T = u64>
-where T: Num
+where T: BitVec
 {
     peq: [T; 256],
     bound: T,
@@ -99,8 +81,7 @@ where T: Num
 }
 
 
-
-impl<T: Num> Myers<T> {
+impl<T: BitVec> Myers<T> {
     /// Create a new instance of Myers algorithm for a given pattern.
     pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self {
         Self::with_ambig(pattern.into_iter().map(Some))
@@ -405,7 +386,7 @@ struct State<T = u64> {
 
 
 impl<T> State<T>
-where T: Num
+where T: BitVec
 {
     /// Create new state.
     pub fn new(m: usize) -> Self {
@@ -419,7 +400,7 @@ where T: Num
 
 /// Iterator over pairs of end positions and distance of matches.
 pub struct Matches<'a, T, I>
-where T: 'a + Num,
+where T: 'a + BitVec,
       I: TextIterator<'a>
 {
     myers: &'a Myers<T>,
@@ -430,7 +411,7 @@ where T: 'a + Num,
 
 
 impl<'a, T, I> Iterator for Matches<'a, T, I>
-where T: Num,
+where T: BitVec,
       I: TextIterator<'a>
  {
     type Item = (usize, usize);
@@ -454,7 +435,7 @@ pub struct NoRemember;
 /// Iterator over tuples of starting position, end position and distance of matches. In addition,
 /// methods for obtaining the hit alignment are provided.
 pub struct FullMatches<'a, T, I, S>
-where T: 'a + Num,
+where T: 'a + BitVec,
       I: TextIterator<'a>
 {
     myers: &'a mut Myers<T>,
@@ -467,7 +448,7 @@ where T: 'a + Num,
 }
 
 impl<'a, T, I, S> FullMatches<'a, T, I, S>
-where T: 'a + Num,
+where T: 'a + BitVec,
       I: TextIterator<'a>
 {
     /// Searches the next match and returns a tuple of end position and distance
@@ -538,7 +519,7 @@ where T: 'a + Num,
 
 
 impl<'a, T, I, S> Iterator for FullMatches<'a, T, I, S>
-where T: 'a + Num,
+where T: 'a + BitVec,
       I: TextIterator<'a>
 {
     type Item = (usize, usize, usize);
@@ -552,7 +533,7 @@ where T: 'a + Num,
 
 
 impl<'a, T, I> FullMatches<'a, T, I, Remember>
-where T: 'a + Num,
+where T: 'a + BitVec,
       I: TextIterator<'a>,
 {
     /// Takes the end position of a hit and returns a tuple of the corresponding starting position
@@ -599,7 +580,7 @@ fn update_aln_positions(end_pos: usize, aln_len: usize, dist: usize, m: usize, a
 }
 
 
-struct Traceback<T: Num> {
+struct Traceback<T: BitVec> {
     states: Vec<State<T>>,
     positions: iter::Cycle<Range<usize>>,
     pos: usize,
@@ -607,7 +588,7 @@ struct Traceback<T: Num> {
 }
 
 impl<T> Traceback<T>
-where T: Num
+where T: BitVec
 {
     fn new() -> Traceback<T> {
         Traceback {
