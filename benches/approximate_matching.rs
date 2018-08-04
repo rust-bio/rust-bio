@@ -245,7 +245,7 @@ fn ukkonen(b: &mut Bencher) {
 
 #[bench]
 fn myers_end_32(b: &mut Bencher) {
-    let myers = Myers32::new(PATTERN);
+    let myers: Myers<u32> = Myers::new(PATTERN);
     b.iter(|| {
         let mut n = 0;
         for _ in myers.find_all_end(TEXT, K) {
