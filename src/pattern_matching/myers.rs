@@ -492,7 +492,8 @@ where T: BitVec,
     }
 }
 
-// 'Marker' traits
+// 'Marker' structs used to differentiate the FullMatches type depending on whether
+// only current or all states are saved
 pub struct Remember;
 pub struct NoRemember;
 
