@@ -933,7 +933,19 @@ CCATAGACCGTGGATGAGCGCCATAG";
             mode: AlignmentMode::Semiglobal,
         };
 
-        let mut aln = Alignment::new();
+        // TODO: a constructor for bio_types::alignment::Alignment
+        // would be very convenient
+        let mut aln = Alignment {
+            score: 0,
+            ystart: 0,
+            xstart: 0,
+            yend: 0,
+            xend: 0,
+            ylen: 0,
+            xlen: 0,
+            operations: vec![],
+            mode: AlignmentMode::Custom,
+        };
         assert!(matches.next_alignment(&mut aln));
         assert_eq!(&aln, &expected);
 
