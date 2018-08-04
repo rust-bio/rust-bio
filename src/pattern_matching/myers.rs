@@ -308,10 +308,14 @@ impl<T: BitVec> Myers<T> {
     /// Calculate the global distance of the pattern to the given text.
     pub fn distance<'a, I: IntoTextIterator<'a>>(&self, text: I) -> usize {
         let mut state = State::new(self.m);
+        let mut dist = ::std::usize::MAX;
         for &a in text {
             self.step(&mut state, a);
+            if state.dist < dist {
+                dist = state.dist;
+            }
         }
-        state.dist
+        dist
     }
 
     /// Find all matches of pattern in the given text up to a given maximum distance.
@@ -844,7 +848,7 @@ mod tests {
 
     #[test]
     fn test_distance() {
-        let text =    b"TGAGCNT";
+        let text =    b"TGAGCNTA";
         let pattern = b"TGAGCGT";
 
         let myers = Myers64::new(pattern);
