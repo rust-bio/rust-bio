@@ -748,14 +748,14 @@ where T: BitVec
             o.clear();
         }
 
-        // Mask with one bit switched on at the current position
-        let max_mask = T::one() << (self.m - 1);
+        // Covers all positions of the pattern (like Myers::bound)
+        let bound = T::one() << (self.m - 1);
 
         macro_rules! move_up {
             ($state:expr) => {
-                if $state.pv & max_mask != T::zero() {
+                if $state.pv & bound != T::zero() {
                     $state.dist -= 1
-                } else if $state.mv & max_mask != T::zero() {
+                } else if $state.mv & bound != T::zero() {
                     $state.dist += 1
                 }
                 // Sometimes slower, sometimes faster:
@@ -795,7 +795,7 @@ where T: BitVec
 
         while v_offset < self.m {
             let op =
-                if state.pv & max_mask != T::zero() {
+                if state.pv & bound != T::zero() {
                     // up
                     v_offset += 1;
                     move_up!(state);
