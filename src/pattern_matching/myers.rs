@@ -367,19 +367,23 @@ impl<T: BitVec> Myers<T> {
     /// assert_eq!(matches.next_path(&mut aln).unwrap(), (8, 15, 1));
     /// assert_eq!(aln, &[Match, Match, Match, Match, Match, Match, Subst]);
     /// # }
-    pub fn find_all_pos<'a, I: IntoTextIterator<'a>>(
+    pub fn find_all_pos<'a, I>(
         &'a mut self,
          text: I,
          max_dist: usize
     )
     -> FullMatches<'a, T, I::IntoIter, NoRemember>
+    where I: IntoTextIterator<'a>,
+          I::IntoIter: ExactSizeIterator,
     {
         self.tb.init(self.m + max_dist, self.m);
+        let text_iter = text.into_iter();
         FullMatches {
             state: State::new(self.m),
             m: self.m,
             myers: self,
-            text: text.into_iter().enumerate(),
+            text_len: text_iter.len(),
+            text: text_iter.enumerate(),
             max_dist: max_dist,
             pos: 0,
             _remember: PhantomData,
@@ -428,6 +432,7 @@ impl<T: BitVec> Myers<T> {
             state: State::new(self.m),
             m: self.m,
             myers: self,
+            text_len: text_iter.len(),
             text: text_iter.enumerate(),
             max_dist: max_dist,
             pos: 0,
@@ -501,6 +506,7 @@ where T: 'a + BitVec,
     myers: &'a mut Myers<T>,
     state: State<T>,
     text: iter::Enumerate<I>,
+    text_len: usize,
     m: usize,
     max_dist: usize,
     pos: usize, // current end position, has to be stored for alignment() method
@@ -573,7 +579,7 @@ where T: 'a + BitVec,
     #[inline]
     pub fn alignment(&mut self, aln: &mut Alignment) {
         let (len, _) = self.myers.tb.traceback(Some(&mut aln.operations));
-        update_aln_positions(self.pos, len, self.state.dist, self.m, aln);
+        update_aln_positions(self.pos, len, self.text_len, self.state.dist, self.m, aln);
     }
 }
 
@@ -619,7 +625,7 @@ where T: 'a + BitVec,
     /// If the end position has not yet been searched, nothing is done and `false` is returned.
     pub fn alignment_at(&self, end_pos: usize, aln: &mut Alignment) -> bool {
         if let Some((aln_len, dist)) = self.myers.tb.traceback_at(end_pos, Some(&mut aln.operations)) {
-            update_aln_positions(end_pos, aln_len, dist, self.m, aln);
+            update_aln_positions(end_pos, aln_len, self.text_len, dist, self.m, aln);
             return true;
         }
         false
@@ -628,13 +634,15 @@ where T: 'a + BitVec,
 
 // Assumes *0-based* end positions, the coordinates will be converted to 1-based
 #[inline(always)]
-fn update_aln_positions(end_pos: usize, aln_len: usize, dist: usize, m: usize, aln: &mut Alignment) {
+fn update_aln_positions(end_pos: usize, aln_len: usize, text_len: usize, dist: usize, m: usize,
+                        aln: &mut Alignment)
+{
     aln.xstart = 0;
     aln.xend = m;
     aln.xlen = m;
-    aln.ylen = aln_len;
+    aln.ylen = text_len;
     aln.yend = end_pos + 1;
-    aln.ystart = aln.yend - aln.ylen;
+    aln.ystart = aln.yend - aln_len;
     aln.mode = AlignmentMode::Semiglobal;
     aln.score = dist as i32;
 }
@@ -907,20 +915,20 @@ CCATAGACCGTGGATGAGCGCCATAG";
 
     #[test]
     fn test_alignment() {
-        let text =    "GGTCCTGAGGGA".replace('-', "");
-        let pattern =    "CCT-AGGG".replace('-', "");
+        let text =    "GGTCCTGAGGGATTA".replace('-', "");
+        let pattern =   "TCCT-AGGGA".replace('-', "");
 
         let mut myers = Myers64::new(pattern.as_bytes());
         let mut matches = myers.find_all_pos(text.as_bytes(), 1);
         let expected = Alignment {
             score: 1,
             xstart: 0,
-            xend: 7,
-            xlen: 7,
-            ystart: 3,
-            yend: 11,
-            ylen: 8,
-            operations: vec![Match, Match, Match, Del, Match, Match, Match, Match],
+            xend: 9,
+            xlen: 9,
+            ystart: 2,
+            yend: 12,
+            ylen: 15,
+            operations: vec![Match, Match, Match, Match, Del, Match, Match, Match, Match, Match],
             mode: AlignmentMode::Semiglobal,
         };
 
