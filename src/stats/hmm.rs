@@ -262,7 +262,8 @@ fn viterbi_matrices<O, M: Model<O>>(
         } else {
             // Subsequent columns.
             for j in hmm.states() {
-                let x = vals.subview(Axis(0), i - 1)
+                let x = vals
+                    .subview(Axis(0), i - 1)
                     .iter()
                     .enumerate()
                     .map(|(a, p)| (State(a), p))
@@ -299,7 +300,8 @@ fn viterbi_traceback(vals: Array2<LogProb>, from: Array2<usize>) -> (Vec<State>,
     let mut res_prob = LogProb::ln_zero();
     for (i, col) in vals.axis_iter(Axis(0)).rev().enumerate() {
         if i == 0 {
-            let tmp = col.iter()
+            let tmp = col
+                .iter()
                 .enumerate()
                 .max_by_key(|&(_, item)| OrderedFloat(**item))
                 .unwrap();
@@ -369,7 +371,8 @@ pub fn forward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>,
         } else {
             // Subsequent columns.
             for j in hmm.states() {
-                let xs = hmm.states()
+                let xs = hmm
+                    .states()
                     .map(|k| {
                         vals[[i - 1, *k]]
                             + hmm.transition_prob_idx(k, j, i)
@@ -429,7 +432,8 @@ pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>
                 } else {
                     LogProb::ln_one()
                 };
-                let xs = hmm.states()
+                let xs = hmm
+                    .states()
                     .map(|k| {
                         vals[[i - 1, *k]]
                             + hmm.transition_prob_idx(j, k, n - i - 1)
