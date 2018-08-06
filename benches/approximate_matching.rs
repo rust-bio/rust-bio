@@ -323,7 +323,7 @@ fn myers_path_64(b: &mut Bencher) {
 #[bench]
 fn myers_alignment_64(b: &mut Bencher) {
     let mut myers = Myers64::new(PATTERN);
-    let mut aln = Alignment::new();
+    let mut aln = new_alignment();
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all_pos(TEXT, K);
@@ -342,7 +342,7 @@ fn myers_alignment_alloc_64(b: &mut Bencher) {
         let mut n = 0;
         let mut matches = myers.find_all_pos(TEXT, K);
         loop {
-            let mut aln = Alignment::new();
+            let mut aln = new_alignment();
             if !matches.next_alignment(&mut aln) {
                 break;
             }
@@ -381,7 +381,7 @@ fn myers_ends_remember_64(b: &mut Bencher) {
 #[bench]
 fn myers_best_alignment_64(b: &mut Bencher) {
     let mut myers = Myers64::new(PATTERN);
-    let mut aln = Alignment::new();
+    let mut aln = new_alignment();
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all_pos_remember(TEXT, K);
@@ -404,7 +404,7 @@ fn myers_best_alignment_itertools_64(b: &mut Bencher) {
     use itertools::Itertools;
 
     let mut myers = Myers64::new(PATTERN);
-    let mut aln = Alignment::new();
+    let mut aln = new_alignment();
     b.iter(|| {
         let mut matches = myers.find_all_pos_remember(TEXT, K);
         let (best_end, _) = itertools::repeat_call(|| matches.next_end())

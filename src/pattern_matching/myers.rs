@@ -839,6 +839,23 @@ where T: BitVec
 }
 
 
+// temporary impl to create new 'empty' alignment
+// This may be added to bio_types in some form
+pub fn new_alignment() -> Alignment {
+    Alignment {
+        score: 0,
+        ystart: 0,
+        xstart: 0,
+        yend: 0,
+        xend: 0,
+        ylen: 0,
+        xlen: 0,
+        operations: vec![],
+        mode: AlignmentMode::Custom,
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -935,17 +952,7 @@ CCATAGACCGTGGATGAGCGCCATAG";
 
         // TODO: a constructor for bio_types::alignment::Alignment
         // would be very convenient
-        let mut aln = Alignment {
-            score: 0,
-            ystart: 0,
-            xstart: 0,
-            yend: 0,
-            xend: 0,
-            ylen: 0,
-            xlen: 0,
-            operations: vec![],
-            mode: AlignmentMode::Custom,
-        };
+        let mut aln = new_alignment();
         assert!(matches.next_alignment(&mut aln));
         assert_eq!(&aln, &expected);
 
