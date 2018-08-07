@@ -1076,9 +1076,9 @@ CCATAGACCGTGGATGAGCGCCATAG";
     #[test]
     fn test_shorter() {
         let text = "ATG";
-        let pattern = "CATGC";
+        let pat = "CATGC";
 
-        let mut myers = Myers64::new(pattern.as_bytes());
+        let mut myers = Myers64::new(pat.as_bytes());
         let mut matches = myers.find_all_pos(text.as_bytes(), 2);
         let mut aln = vec![];
         assert_eq!(matches.next_path(&mut aln).unwrap(), (0, 3, 2));
@@ -1098,11 +1098,11 @@ CCATAGACCGTGGATGAGCGCCATAG";
     #[test]
     fn test_ambig() {
         let text = b"TGABCNT";
-        let pattern = b"TGRRCGT";
+        let patt = b"TGRRCGT";
         //                x  x
         // Matching is asymmetric here (A matches R and G matches N, but the reverse is not true)
 
-        let myers = MyersBuilder::new().ambig(b'R', b"AG").build(pattern);
+        let myers = MyersBuilder::new().ambig(b'R', b"AG").build(patt);
         assert_eq!(myers.distance(text), 2);
     }
 }
