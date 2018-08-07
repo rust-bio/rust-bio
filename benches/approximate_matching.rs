@@ -1,8 +1,8 @@
 #![feature(test)]
 
-extern crate test;
 extern crate bio;
 extern crate itertools;
+extern crate test;
 
 use test::Bencher;
 
@@ -230,7 +230,6 @@ static K: usize = 6;
 // used with assertions to ensure correct code and to prevent over-optimization
 static N_HITS: usize = 78; // at given K
 
-
 #[bench]
 fn ukkonen(b: &mut Bencher) {
     let mut ukkonen = Ukkonen::with_capacity(PATTERN.len(), unit_cost);
@@ -263,7 +262,8 @@ fn myers_end_64(b: &mut Bencher) {
         for _ in myers.find_all_end(TEXT, K) {
             n += 1;
         }
-        assert_eq!(n, N_HITS);    });
+        assert_eq!(n, N_HITS);
+    });
 }
 
 #[cfg(has_u128)]
