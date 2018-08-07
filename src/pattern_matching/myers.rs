@@ -27,47 +27,60 @@
 //! # }
 //! ```
 
-use std::iter;
-use std::ops::Range;
-use std::u64;
-use std::mem::size_of;
-use std::ops::*;
-use std::marker::PhantomData;
-use std::collections::HashMap;
 use std::borrow::Borrow;
+use std::collections::HashMap;
+use std::iter;
+use std::marker::PhantomData;
+use std::mem::size_of;
+use std::ops::Range;
+use std::ops::*;
+use std::u64;
 
 use num_traits::{PrimInt, WrappingAdd};
 
+use alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use utils::{IntoTextIterator, TextIterator};
-use alignment::{Alignment, AlignmentOperation, AlignmentMode};
-
-
 
 /// Integer types serving as bit vectors must implement this trait.
-pub trait BitVec: Copy + Clone +
-    Add<Output=Self> + Sub<Output=Self> +
-    BitOr<Output=Self> + BitOrAssign + BitAnd<Output=Self> +
-    BitXor<Output=Self> + Not<Output=Self> +
-    Shl<usize, Output=Self> + ShlAssign<usize> + ShrAssign<usize> +
+pub trait BitVec: Copy
+    + Clone
+    + Add<Output = Self>
+    + Sub<Output = Self>
+    + BitOr<Output = Self>
+    + BitOrAssign
+    + BitAnd<Output = Self>
+    + BitXor<Output = Self>
+    + Not<Output = Self>
+    + Shl<usize, Output = Self>
+    + ShlAssign<usize>
+    + ShrAssign<usize>
     // These num_traits traits are required; in addition there are Bounded, Zero and One,
     // which are all required by PrimInt and thus included
-    PrimInt + WrappingAdd {}
+    + PrimInt
+    + WrappingAdd {}
 
-impl<T> BitVec for T
-where T: Copy + Clone +
-    Add<Output=Self> + Sub<Output=Self> +
-    BitOr<Output=Self> + BitOrAssign + BitAnd<Output=Self> +
-    BitXor<Output=Self> + Not<Output=Self> +
-    Shl<usize, Output=Self> + ShlAssign<usize> + ShrAssign<usize> +
-    PrimInt + WrappingAdd {}
-
+impl<T> BitVec for T where
+    T: Copy
+        + Clone
+        + Add<Output = Self>
+        + Sub<Output = Self>
+        + BitOr<Output = Self>
+        + BitOrAssign
+        + BitAnd<Output = Self>
+        + BitXor<Output = Self>
+        + Not<Output = Self>
+        + Shl<usize, Output = Self>
+        + ShlAssign<usize>
+        + ShrAssign<usize>
+        + PrimInt
+        + WrappingAdd
+{}
 
 /// Myers instance using `u64` as bit vectors (pattern length up to 64)
 pub type Myers64 = Myers<u64>;
 /// Myers instance using `u128` as bit vectors (pattern length up to 128)
 #[cfg(has_u128)]
 pub type Myers128 = Myers<u128>;
-
 
 /// Builds a Myers instance, allowing to specify ambiguities.
 ///
@@ -112,15 +125,14 @@ pub type Myers128 = Myers<u128>;
 /// ```
 pub struct MyersBuilder {
     ambigs: HashMap<u8, Vec<u8>>,
-    wildcards: Vec<u8>
+    wildcards: Vec<u8>,
 }
-
 
 impl MyersBuilder {
     pub fn new() -> MyersBuilder {
         MyersBuilder {
             ambigs: HashMap::new(),
-            wildcards: vec![]
+            wildcards: vec![],
         }
     }
 
@@ -143,13 +155,11 @@ impl MyersBuilder {
     /// assert_eq!(myers.distance(text), 0);
     /// # }
     pub fn ambig<'a, I, B>(mut self, byte: u8, equivalents: I) -> Self
-    where I: IntoIterator<Item=B>,
-          B: Borrow<u8>
+    where
+        I: IntoIterator<Item = B>,
+        B: Borrow<u8>,
     {
-        let eq = equivalents
-            .into_iter()
-            .map(|b| *b.borrow())
-            .collect();
+        let eq = equivalents.into_iter().map(|b| *b.borrow()).collect();
         self.ambigs.insert(byte, eq);
         self
     }
@@ -205,8 +215,9 @@ impl MyersBuilder {
     /// // ...
     /// # }
     pub fn build_other<'a, T, P>(&self, pattern: P) -> Myers<T>
-    where T: BitVec,
-          P: IntoTextIterator<'a>,
+    where
+        T: BitVec,
+        P: IntoTextIterator<'a>,
     {
         let mut peq = [T::zero(); 256];
         let maxsize = size_of::<T>() * 8;
@@ -229,7 +240,7 @@ impl MyersBuilder {
         assert!(m > 0, "Pattern is empty");
 
         for &w in &self.wildcards {
-            peq[w as usize ] = T::max_value();
+            peq[w as usize] = T::max_value();
         }
 
         Myers {
@@ -241,10 +252,10 @@ impl MyersBuilder {
     }
 }
 
-
 /// Myers algorithm.
 pub struct Myers<T>
-where T: BitVec
+where
+    T: BitVec,
 {
     peq: [T; 256],
     bound: T,
@@ -252,11 +263,11 @@ where T: BitVec
     tb: Traceback<T>,
 }
 
-
 impl<T: BitVec> Myers<T> {
     /// Create a new instance of Myers algorithm for a given pattern.
     pub fn new<'a, P>(pattern: P) -> Self
-        where P: IntoTextIterator<'a>,
+    where
+        P: IntoTextIterator<'a>,
     {
         let mut peq = [T::zero(); 256];
         let maxsize = size_of::<T>() * 8;
@@ -323,10 +334,8 @@ impl<T: BitVec> Myers<T> {
     pub fn find_all_end<'a, I: IntoTextIterator<'a>>(
         &'a self,
         text: I,
-        max_dist: usize
-    )
-    -> Matches<T, I::IntoIter>
-    {
+        max_dist: usize,
+    ) -> Matches<T, I::IntoIter> {
         let state = State::new(self.m);
         Matches {
             myers: self,
@@ -369,12 +378,12 @@ impl<T: BitVec> Myers<T> {
     /// # }
     pub fn find_all_pos<'a, I>(
         &'a mut self,
-         text: I,
-         max_dist: usize
-    )
-    -> FullMatches<'a, T, I::IntoIter, NoRemember>
-    where I: IntoTextIterator<'a>,
-          I::IntoIter: ExactSizeIterator,
+        text: I,
+        max_dist: usize,
+    ) -> FullMatches<'a, T, I::IntoIter, NoRemember>
+    where
+        I: IntoTextIterator<'a>,
+        I::IntoIter: ExactSizeIterator,
     {
         self.tb.init(self.m + max_dist, self.m);
         let text_iter = text.into_iter();
@@ -419,12 +428,12 @@ impl<T: BitVec> Myers<T> {
     /// # }
     pub fn find_all_pos_remember<'a, I>(
         &'a mut self,
-         text: I,
-         max_dist: usize
-    )
-    -> FullMatches<'a, T, I::IntoIter, Remember>
-    where I: IntoTextIterator<'a>,
-          I::IntoIter: ExactSizeIterator,
+        text: I,
+        max_dist: usize,
+    ) -> FullMatches<'a, T, I::IntoIter, Remember>
+    where
+        I: IntoTextIterator<'a>,
+        I::IntoIter: ExactSizeIterator,
     {
         let text_iter = text.into_iter();
         self.tb.init(text_iter.len() + max_dist, self.m);
@@ -449,9 +458,9 @@ struct State<T = u64> {
     dist: usize,
 }
 
-
 impl<T> State<T>
-where T: BitVec
+where
+    T: BitVec,
 {
     /// Create new state.
     pub fn new(m: usize) -> Self {
@@ -465,8 +474,9 @@ where T: BitVec
 
 /// Iterator over pairs of end positions and distance of matches.
 pub struct Matches<'a, T, I>
-where T: 'a + BitVec,
-      I: TextIterator<'a>
+where
+    T: 'a + BitVec,
+    I: TextIterator<'a>,
 {
     myers: &'a Myers<T>,
     state: State<T>,
@@ -474,11 +484,11 @@ where T: 'a + BitVec,
     max_dist: usize,
 }
 
-
 impl<'a, T, I> Iterator for Matches<'a, T, I>
-where T: BitVec,
-      I: TextIterator<'a>
- {
+where
+    T: BitVec,
+    I: TextIterator<'a>,
+{
     type Item = (usize, usize);
 
     fn next(&mut self) -> Option<(usize, usize)> {
@@ -497,12 +507,12 @@ where T: BitVec,
 pub struct Remember;
 pub struct NoRemember;
 
-
 /// Iterator over tuples of starting position, end position and distance of matches. In addition,
 /// methods for obtaining the hit alignment are provided.
 pub struct FullMatches<'a, T, I, S>
-where T: 'a + BitVec,
-      I: TextIterator<'a>
+where
+    T: 'a + BitVec,
+    I: TextIterator<'a>,
 {
     myers: &'a mut Myers<T>,
     state: State<T>,
@@ -515,8 +525,9 @@ where T: 'a + BitVec,
 }
 
 impl<'a, T, I, S> FullMatches<'a, T, I, S>
-where T: 'a + BitVec,
-      I: TextIterator<'a>
+where
+    T: 'a + BitVec,
+    I: TextIterator<'a>,
 {
     /// Searches the next match and returns a tuple of end position and distance
     /// if found. This involves *no* searching for a starting position and is thus
@@ -536,7 +547,10 @@ where T: 'a + BitVec,
     /// Searches the next match and returns a tuple of starting position, end position and distance.
     /// if found. In addition, the alignment path is added to `ops`
     #[inline]
-    pub fn next_path(&mut self, ops: &mut Vec<AlignmentOperation>) -> Option<(usize, usize, usize)> {
+    pub fn next_path(
+        &mut self,
+        ops: &mut Vec<AlignmentOperation>,
+    ) -> Option<(usize, usize, usize)> {
         self.next_end()
             .map(|(end, dist)| (self.path(ops), end + 1, dist))
     }
@@ -584,10 +598,10 @@ where T: 'a + BitVec,
     }
 }
 
-
 impl<'a, T, I, S> Iterator for FullMatches<'a, T, I, S>
-where T: 'a + BitVec,
-      I: TextIterator<'a>
+where
+    T: 'a + BitVec,
+    I: TextIterator<'a>,
 {
     type Item = (usize, usize, usize);
 
@@ -598,25 +612,33 @@ where T: 'a + BitVec,
     }
 }
 
-
 impl<'a, T, I> FullMatches<'a, T, I, Remember>
-where T: 'a + BitVec,
-      I: TextIterator<'a>,
+where
+    T: 'a + BitVec,
+    I: TextIterator<'a>,
 {
     /// Takes the end position of a hit and returns a tuple of the corresponding starting position
     /// and the hit distance. If the end position is greater than the end position of the previously
     /// returned hit, `None` is returned.
     /// *Note:* A 0-based end position is expected (as returned by `next_end`).
     pub fn hit_at(&self, end_pos: usize) -> Option<(usize, usize)> {
-        self.myers.tb.traceback_at(end_pos, None)
+        self.myers
+            .tb
+            .traceback_at(end_pos, None)
             .map(|(len, dist)| (end_pos + 1 - len, dist))
     }
 
     /// Takes the end position of a hit and returns a tuple of the corresponding starting position
     /// and the hit distance. The alignment path is added to `ops`.
     /// As in `hit_at`, the end position has to be searched already, otherwise `None` is returned.
-    pub fn path_at(&self, end_pos: usize, ops: &mut Vec<AlignmentOperation>) -> Option<(usize, usize)> {
-        self.myers.tb.traceback_at(end_pos, Some(ops))
+    pub fn path_at(
+        &self,
+        end_pos: usize,
+        ops: &mut Vec<AlignmentOperation>,
+    ) -> Option<(usize, usize)> {
+        self.myers
+            .tb
+            .traceback_at(end_pos, Some(ops))
             .map(|(len, dist)| (end_pos + 1 - len, dist))
     }
 
@@ -625,7 +647,11 @@ where T: 'a + BitVec,
     /// and distance (stored in `Alignment::score`).
     /// If the end position has not yet been searched, nothing is done and `false` is returned.
     pub fn alignment_at(&self, end_pos: usize, aln: &mut Alignment) -> bool {
-        if let Some((aln_len, dist)) = self.myers.tb.traceback_at(end_pos, Some(&mut aln.operations)) {
+        if let Some((aln_len, dist)) = self
+            .myers
+            .tb
+            .traceback_at(end_pos, Some(&mut aln.operations))
+        {
             update_aln_positions(end_pos, aln_len, self.text_len, dist, self.m, aln);
             return true;
         }
@@ -635,9 +661,14 @@ where T: 'a + BitVec,
 
 // Assumes *0-based* end positions, the coordinates will be converted to 1-based
 #[inline(always)]
-fn update_aln_positions(end_pos: usize, aln_len: usize, text_len: usize, dist: usize, m: usize,
-                        aln: &mut Alignment)
-{
+fn update_aln_positions(
+    end_pos: usize,
+    aln_len: usize,
+    text_len: usize,
+    dist: usize,
+    m: usize,
+    aln: &mut Alignment,
+) {
     aln.xstart = 0;
     aln.xend = m;
     aln.xlen = m;
@@ -648,7 +679,6 @@ fn update_aln_positions(end_pos: usize, aln_len: usize, text_len: usize, dist: u
     aln.score = dist as i32;
 }
 
-
 struct Traceback<T: BitVec> {
     states: Vec<State<T>>,
     positions: iter::Cycle<Range<usize>>,
@@ -657,7 +687,8 @@ struct Traceback<T: BitVec> {
 }
 
 impl<T> Traceback<T>
-where T: BitVec
+where
+    T: BitVec,
 {
     fn new() -> Traceback<T> {
         Traceback {
@@ -669,14 +700,14 @@ where T: BitVec
     }
 
     fn init(&mut self, num_cols: usize, m: usize) {
-
         self.positions = (0..num_cols).cycle();
 
         // extend or truncate states vector
         let curr_len = self.states.len();
         if num_cols > curr_len {
             self.states.reserve(num_cols);
-            self.states.extend((0..num_cols - curr_len).map(|_| State::new(0)));
+            self.states
+                .extend((0..num_cols - curr_len).map(|_| State::new(0)));
         } else {
             self.states.truncate(num_cols);
         }
@@ -689,7 +720,7 @@ where T: BitVec
         let state0 = &mut self.states[0];
         state0.dist = m;
         state0.pv = T::max_value(); // all 1s
-        // the first position is 1, not 0 (after call to add_state)
+                                    // the first position is 1, not 0 (after call to add_state)
         self.pos = self.positions.next().unwrap();
 
         self.m = m;
@@ -714,7 +745,11 @@ where T: BitVec
     // Returns the length of a match with a given end position, optionally adding the
     // alignment path to `ops`
     // only to be called if the `states` vec contains all states of the text
-    fn traceback_at(&self, pos: usize, ops: Option<&mut Vec<AlignmentOperation>>) -> Option<(usize, usize)> {
+    fn traceback_at(
+        &self,
+        pos: usize,
+        ops: Option<&mut Vec<AlignmentOperation>>,
+    ) -> Option<(usize, usize)> {
         let pos = pos + 1; // in order to be comparable since self.pos starts with 1, not 0
         if pos <= self.pos {
             return Some(self._traceback_at(pos, ops));
@@ -728,19 +763,17 @@ where T: BitVec
     fn _traceback_at(
         &self,
         pos: usize,
-        mut ops: Option<&mut Vec<AlignmentOperation>>
-    )
-    -> (usize, usize)
-    {
-
+        mut ops: Option<&mut Vec<AlignmentOperation>>,
+    ) -> (usize, usize) {
         use self::AlignmentOperation::*;
 
         // Reverse iterator over states. If remembering all positions,
         // the chain() and cycle() are not actually needed, but there seems
         // to be almost no performance loss.
-        let mut states = self.states[..pos + 1].iter().rev().chain(
-            self.states.iter().rev().cycle()
-        );
+        let mut states = self.states[..pos + 1]
+            .iter()
+            .rev()
+            .chain(self.states.iter().rev().cycle());
         // // Simpler alternative using skip() is slower in some cases:
         // let mut states = self.states.iter().rev().cycle().skip(self.states.len() - pos - 1);
 
@@ -770,8 +803,8 @@ where T: BitVec
         macro_rules! move_up_many {
             ($state:expr, $n:expr) => {
                 let mask = ((T::one() << $n) - T::one()) << (self.m - $n);
-                $state.dist += (($state.mv & mask)).count_ones() as usize;
-                $state.dist -= (($state.pv & mask)).count_ones() as usize;
+                $state.dist += ($state.mv & mask).count_ones() as usize;
+                $state.dist -= ($state.pv & mask).count_ones() as usize;
                 $state.mv <<= $n;
                 $state.pv <<= $n;
 
@@ -795,35 +828,33 @@ where T: BitVec
         let mut lstate = states.next().unwrap().clone();
 
         while v_offset < self.m {
-            let op =
-                if state.pv & bound != T::zero() {
-                    // up
-                    v_offset += 1;
-                    move_up!(state);
-                    move_up!(lstate);
-                    Ins
+            let op = if state.pv & bound != T::zero() {
+                // up
+                v_offset += 1;
+                move_up!(state);
+                move_up!(lstate);
+                Ins
+            } else {
+                let op = if lstate.dist + 1 == state.dist {
+                    // left
+                    Del
                 } else {
-                    let op =
-                        if lstate.dist + 1 == state.dist {
-                            // left
-                            Del
-                        } else {
-                            // diagonal
-                            v_offset += 1;
-                            move_up!(lstate);
-                            if lstate.dist == state.dist {
-                                Match
-                            } else {
-                                Subst
-                            }
-                        };
-                    // move left
-                    state = lstate;
-                    lstate = states.next().unwrap().clone();
-                    move_up_many!(lstate, v_offset);
-                    h_offset += 1;
-                    op
+                    // diagonal
+                    v_offset += 1;
+                    move_up!(lstate);
+                    if lstate.dist == state.dist {
+                        Match
+                    } else {
+                        Subst
+                    }
                 };
+                // move left
+                state = lstate;
+                lstate = states.next().unwrap().clone();
+                move_up_many!(lstate, v_offset);
+                h_offset += 1;
+                op
+            };
 
             if let Some(o) = ops.as_mut() {
                 o.push(op);
@@ -837,7 +868,6 @@ where T: BitVec
         (h_offset, dist)
     }
 }
-
 
 // temporary impl to create new 'empty' alignment
 // This may be added to bio_types in some form
@@ -854,7 +884,6 @@ pub fn new_alignment() -> Alignment {
         mode: AlignmentMode::Custom,
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -874,15 +903,13 @@ mod tests {
 
     #[test]
     fn test_distance() {
-        let text =    b"TGAGCNTA";
+        let text = b"TGAGCNTA";
         let pattern = b"TGAGCGT";
 
         let myers = Myers64::new(pattern);
         assert_eq!(myers.distance(text), 1);
 
-        let myers_wildcard = MyersBuilder::new()
-            .text_wildcard(b'N')
-            .build(pattern);
+        let myers_wildcard = MyersBuilder::new().text_wildcard(b'N').build(pattern);
         assert_eq!(myers_wildcard.distance(text), 0);
     }
 
@@ -909,35 +936,41 @@ CCATAGACCGTGGATGAGCGCCATAG";
 
     #[test]
     fn test_traceback_path() {
-        let text =    "TCAGACAT-CTT".replace('-', "").into_bytes();
-        let pattern = "TC-GACGTGCT".replace('-', "").into_bytes();
+        let text = "TCAGACAT-CTT".replace('-', "").into_bytes();
+        let patt = "TC-GACGTGCT".replace('-', "").into_bytes();
 
-        let mut myers = Myers64::new(&pattern);
+        let mut myers = Myers64::new(&patt);
         let mut matches = myers.find_all_pos(&text, 3);
         let mut aln = vec![];
         assert_eq!(matches.next_path(&mut aln).unwrap(), (0, 10, 3));
-        assert_eq!(aln, &[Match, Match, Del, Match, Match, Match, Subst, Match, Ins, Match, Match]);
+        assert_eq!(
+            aln,
+            &[Match, Match, Del, Match, Match, Match, Subst, Match, Ins, Match, Match]
+        );
     }
 
     #[test]
     fn test_traceback_path2() {
-        let text =    "TCAG--CAGATGGAGCTC".replace('-', "").into_bytes();
-        let pattern = "TCAGAGCAG".replace('-', "").into_bytes();
+        let text = "TCAG--CAGATGGAGCTC".replace('-', "").into_bytes();
+        let patt = "TCAGAGCAG".replace('-', "").into_bytes();
 
-        let mut myers = Myers64::new(&pattern);
+        let mut myers = Myers64::new(&patt);
         let mut matches = myers.find_all_pos(&text, 2);
         let mut aln = vec![];
         assert_eq!(matches.next_path(&mut aln).unwrap(), (0, 7, 2));
-        assert_eq!(aln, &[Match, Match, Match, Match, Ins, Ins, Match, Match, Match]);
+        assert_eq!(
+            aln,
+            &[Match, Match, Match, Match, Ins, Ins, Match, Match, Match]
+        );
     }
 
     #[test]
     fn test_alignment() {
-        let text =    "GGTCCTGAGGGATTA".replace('-', "");
-        let pattern =   "TCCT-AGGGA".replace('-', "");
+        let tx = "GGTCCTGAGGGATTA".replace('-', "");
+        let patt = "TCCT-AGGGA".replace('-', "");
 
-        let mut myers = Myers64::new(pattern.as_bytes());
-        let mut matches = myers.find_all_pos(text.as_bytes(), 1);
+        let mut myers = Myers64::new(patt.as_bytes());
+        let mut matches = myers.find_all_pos(tx.as_bytes(), 1);
         let expected = Alignment {
             score: 1,
             xstart: 0,
@@ -946,7 +979,9 @@ CCATAGACCGTGGATGAGCGCCATAG";
             ystart: 2,
             yend: 12,
             ylen: 15,
-            operations: vec![Match, Match, Match, Match, Del, Match, Match, Match, Match, Match],
+            operations: vec![
+                Match, Match, Match, Match, Del, Match, Match, Match, Match, Match,
+            ],
             mode: AlignmentMode::Semiglobal,
         };
 
@@ -964,18 +999,18 @@ CCATAGACCGTGGATGAGCGCCATAG";
     #[test]
     fn test_position0_at() {
         // same as position_at, but 0-based positions from
-        let text = b"CAGACATCTT";
-        let pattern = b"AGA";
+        let txt = b"CAGACATCTT";
+        let patt = b"AGA";
         let expected_hits = &[(1, 3, 1), (1, 4, 0), (1, 5, 1), (3, 6, 1)];
 
-        let mut myers = Myers64::new(pattern);
+        let mut myers = Myers64::new(patt);
 
         // first, use the standard iterator with 1-based ends
-        let matches: Vec<_> = myers.find_all_pos_remember(text, 1).collect();
+        let matches: Vec<_> = myers.find_all_pos_remember(txt, 1).collect();
         assert_eq!(&matches, expected_hits);
 
         // then, iterate over 0-based ends
-        let mut myers_m = myers.find_all_pos_remember(text, 1);
+        let mut myers_m = myers.find_all_pos_remember(txt, 1);
         let mut ends = vec![];
         while let Some(item) = myers_m.next_end() {
             ends.push(item);
@@ -992,7 +1027,7 @@ CCATAGACCGTGGATGAGCGCCATAG";
 
     #[test]
     fn test_position_at() {
-        let text =   b"CAGACATCTT";
+        let text = b"CAGACATCTT";
         let pattern = b"AGA";
 
         let mut myers = Myers64::new(pattern);
@@ -1008,7 +1043,7 @@ CCATAGACCGTGGATGAGCGCCATAG";
 
     #[test]
     fn test_path_at() {
-        let text =   b"CAGACATCTT";
+        let text = b"CAGACATCTT";
         let pattern = b"AGA";
 
         let mut myers = Myers64::new(pattern);
@@ -1040,7 +1075,7 @@ CCATAGACCGTGGATGAGCGCCATAG";
 
     #[test]
     fn test_shorter() {
-        let text =     "ATG";
+        let text = "ATG";
         let pattern = "CATGC";
 
         let mut myers = Myers64::new(pattern.as_bytes());
@@ -1052,8 +1087,8 @@ CCATAGACCGTGGATGAGCGCCATAG";
 
     #[test]
     fn test_long_shorter() {
-        let text =           "CCACGCGTGGGTCCTGAGGGAGCTCGTCGGTGTGGGGTTCGGGGGGGTTTGT";
-        let pattern ="CGCGGTGTCCACGCGTGGGTCCTGAGGGAGCTCGTCGGTGTGGGGTTCGGGGGGGTTTGT";
+        let text = "CCACGCGTGGGTCCTGAGGGAGCTCGTCGGTGTGGGGTTCGGGGGGGTTTGT";
+        let pattern = "CGCGGTGTCCACGCGTGGGTCCTGAGGGAGCTCGTCGGTGTGGGGTTCGGGGGGGTTTGT";
 
         let mut myers = Myers64::new(pattern.as_bytes());
         let mut matches = myers.find_all_pos(text.as_bytes(), 8);
@@ -1062,14 +1097,12 @@ CCATAGACCGTGGATGAGCGCCATAG";
 
     #[test]
     fn test_ambig() {
-        let text =    b"TGABCNT";
+        let text = b"TGABCNT";
         let pattern = b"TGRRCGT";
         //                x  x
         // Matching is asymmetric here (A matches R and G matches N, but the reverse is not true)
 
-        let myers = MyersBuilder::new()
-            .ambig(b'R', b"AG")
-            .build(pattern);
+        let myers = MyersBuilder::new().ambig(b'R', b"AG").build(pattern);
         assert_eq!(myers.distance(text), 2);
     }
 }
