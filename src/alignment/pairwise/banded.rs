@@ -98,7 +98,7 @@ const DEFAULT_MATCH_SCORE: i32 = 2;
 /// A banded implementation of Smith-Waterman aligner (SWA).
 /// Unlike the full SWA, this implementation computes the alignment between a pair of sequences
 /// only inside a 'band' withing the dynamic programming matrix. The band is constructed using the
-/// Sparse DP routie (see sparse::sdpkpp), which uses kmer matches to build the best common
+/// Sparse DP routine (see sparse::sdpkpp), which uses kmer matches to build the best common
 /// subsequence (including gap penalties) between the two strings. The band is constructed around
 /// this subsequence (using the window length 'w'), filling in the gaps.
 ///
@@ -640,7 +640,7 @@ impl<F: MatchFunc> Aligner<F> {
         }
 
         // Since there could be a change in the last column of S,
-        // recompute the last colum of I as this could also change
+        // recompute the last column of I as this could also change
         for i in max(1, self.band.ranges[n].start)..self.band.ranges[n].end {
             let j = n;
             let curr = j % 2;

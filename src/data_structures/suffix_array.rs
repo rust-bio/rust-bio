@@ -173,7 +173,7 @@ impl SuffixArray for RawSuffixArray {
 /// The algorithm works as follows:
 ///
 /// 1. Sort LMS positions: first step 2 is applied to the unsorted sequence
-///    of positions. Suprisingly, this sorts the LMS substrings. If all substrings
+///    of positions. Surprisingly, this sorts the LMS substrings. If all substrings
 ///    are different, LMS positions (and their suffixes) are sorted. Else, a reduced
 ///    text is build (at most half the size of the original text) and we recurse into
 ///    suffix array construction on the reduced text, yielding the sorted LMS positions.
@@ -336,7 +336,7 @@ fn sentinel(text: &[u8]) -> u8 {
     text[text.len() - 1]
 }
 
-/// Count the sentinels occuring in the text given that the last character is the sentinel.
+/// Count the sentinels occurring in the text given that the last character is the sentinel.
 fn sentinel_count(text: &[u8]) -> usize {
     let sentinel = sentinel(text);
     assert!(

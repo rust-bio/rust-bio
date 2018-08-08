@@ -77,7 +77,7 @@ pub fn lcskpp(matches: &[(u32, u32)], k: usize) -> SparseAlignmentResult {
 
     let k = k as u32;
 
-    // incoming matches must be sorted to let us find the predecssor kmers by binary search.
+    // incoming matches must be sorted to let us find the predecessor kmers by binary search.
     for i in 1..matches.len() {
         assert!(matches[i - 1] < matches[i]);
     }
@@ -115,7 +115,7 @@ pub fn lcskpp(matches: &[(u32, u32)], k: usize) -> SparseAlignmentResult {
                 best_dp = max(best_dp, (dp[p].0, p as i32));
             }
         } else {
-            // See if this kmer continues a diffent kmer
+            // See if this kmer continues a different kmer
             if ev.0 > k && ev.1 > k {
                 if let Ok(cont_idx) = matches.binary_search(&(ev.0 - k - 1, ev.1 - k - 1)) {
                     let prev_score = dp[cont_idx].0;
@@ -208,7 +208,7 @@ pub fn sdpkpp(
     let _gap_open = (-gap_open) as u32;
     let _gap_extend = (-gap_extend) as u32;
 
-    // incoming matches must be sorted to let us find the predecssor kmers by binary search.
+    // incoming matches must be sorted to let us find the predecessor kmers by binary search.
     for i in 1..matches.len() {
         assert!(matches[i - 1] < matches[i]);
     }
@@ -263,7 +263,7 @@ pub fn sdpkpp(
                 best_dp = max(best_dp, (dp[p].0, p as i32));
             }
         } else {
-            // See if this kmer continues a diffent kmer
+            // See if this kmer continues a different kmer
             if ev.0 > k && ev.1 > k {
                 if let Ok(cont_idx) = matches.binary_search(&(ev.0 - k - 1, ev.1 - k - 1)) {
                     let prev_score = dp[cont_idx].0;

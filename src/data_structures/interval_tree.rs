@@ -129,7 +129,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> EntryMut<'a, N, D> {
 }
 
 /// An `IntervalTreeIteratorMut` is returned by `Intervaltree::find_mut` and iterates over the entries
-/// overlapping the query allowing mutable access to the data `D`, not the the `Interval`.
+/// overlapping the query allowing mutable access to the data `D`, not the `Interval`.
 pub struct IntervalTreeIteratorMut<'a, N: Ord + Clone + 'a, D: 'a> {
     nodes: Vec<&'a mut Node<N, D>>,
     interval: Interval<N>,
