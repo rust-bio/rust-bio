@@ -87,10 +87,10 @@
 //! Documentation and further examples for each module can be found in the module descriptions below.
 
 // activate flame for the whole crate
-#![cfg_attr(feature="flame_it_details", feature(plugin))]
-#![cfg_attr(feature="flame_it_details", plugin(flamer))]
+#![cfg_attr(feature = "flame_it_details", feature(plugin))]
+#![cfg_attr(feature = "flame_it_details", plugin(flamer))]
 
-#[cfg(feature="flame_it_details")]
+#[cfg(feature = "flame_it_details")]
 extern crate flame;
 
 extern crate bio_types;

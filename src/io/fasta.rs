@@ -367,7 +367,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     /// whitespace per line, the current `line_offset`, and the amount of bytes
     /// returned from `BufReader::fill_buf`, this function may return Ok(0)
     /// multiple times in a row.
-    #[cfg_attr(feature="flame_it_details", flame)]
+    #[cfg_attr(feature = "flame_it_details", flame)]
     fn read_line(
         &mut self,
         idx: &IndexRecord,
