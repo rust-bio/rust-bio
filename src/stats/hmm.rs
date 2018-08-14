@@ -436,7 +436,7 @@ pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>
                     .states()
                     .map(|k| {
                         vals[[i - 1, *k]]
-                            + hmm.transition_prob_idx(j, k, n - i - 1)
+                            + hmm.transition_prob_idx(j, k, n - i)
                             + hmm.observation_prob(j, o)
                             + maybe_initial
                     })
