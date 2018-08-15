@@ -201,10 +201,12 @@ impl<T: Ord> CDF<T> {
         let margin = 1.0 - width;
         let p_lower = OrderedFloat((margin / 2.0).ln());
         let p_upper = OrderedFloat((1.0 - margin / 2.0).ln());
-        let lower = self.inner
+        let lower = self
+            .inner
             .binary_search_by(|e| OrderedFloat(*e.prob).cmp(&p_lower))
             .unwrap_or_else(|i| if i > 0 { i - 1 } else { 0 });
-        let mut upper = self.inner
+        let mut upper = self
+            .inner
             .binary_search_by(|e| OrderedFloat(*e.prob).cmp(&p_upper))
             .unwrap_or_else(|i| i);
         if upper == self.inner.len() {

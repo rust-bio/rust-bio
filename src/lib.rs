@@ -86,6 +86,8 @@
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.
 
+extern crate bio_types;
+
 #[macro_use]
 extern crate approx;
 extern crate bit_set;

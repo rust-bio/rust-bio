@@ -93,7 +93,8 @@ impl RankTransform {
     pub fn transform<'a, T: IntoTextIterator<'a>>(&self, text: T) -> Vec<u8> {
         text.into_iter()
             .map(|&c| {
-                *self.ranks
+                *self
+                    .ranks
                     .get(c as usize)
                     .expect("Unexpected character in text.")
             })

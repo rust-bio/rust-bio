@@ -68,10 +68,10 @@
 //!     [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match]);
 //!
 //! // Similarly if the clip penalties are both set to 0, we have local alignment mode. The scoring
-//! // struct also lets users set different penalties for prefix/suffix clipping, therby letting
+//! // struct also lets users set different penalties for prefix/suffix clipping, thereby letting
 //! // users have the flexibility to create a wide variety of boundary conditions. The xclip() and
-//! // yclip() methods sets the prefix and suffix penalties to be equal. The scoring stuct can be
-//! // explicitly constructed fo full flexibility.
+//! // yclip() methods sets the prefix and suffix penalties to be equal. The scoring struct can be
+//! // explicitly constructed for full flexibility.
 //!
 //! // The following example considers a modification of the semiglobal mode where you are allowed
 //! // to skip a prefix of the target sequence x, for a penalty of -10, but you have to consume
@@ -617,7 +617,8 @@ impl<F: MatchFunc> Aligner<F> {
                     tb.set_s_bits(TB_XCLIP_PREFIX);
                 }
 
-                let yclip_score = self.scoring.yclip_prefix + self.scoring.gap_open
+                let yclip_score = self.scoring.yclip_prefix
+                    + self.scoring.gap_open
                     + self.scoring.gap_extend * (i as i32);
                 if yclip_score > best_s_score {
                     best_s_score = yclip_score;
@@ -660,7 +661,7 @@ impl<F: MatchFunc> Aligner<F> {
         }
 
         // Since there could be a change in the last column of S,
-        // recompute the last colum of I as this could also change
+        // recompute the last column of I as this could also change
         for i in 1..m + 1 {
             let j = n;
             let curr = j % 2;

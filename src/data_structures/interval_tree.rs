@@ -129,7 +129,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> EntryMut<'a, N, D> {
 }
 
 /// An `IntervalTreeIteratorMut` is returned by `Intervaltree::find_mut` and iterates over the entries
-/// overlapping the query allowing mutable access to the data `D`, not the the `Interval`.
+/// overlapping the query allowing mutable access to the data `D`, not the `Interval`.
 pub struct IntervalTreeIteratorMut<'a, N: Ord + Clone + 'a, D: 'a> {
     nodes: Vec<&'a mut Node<N, D>>,
     interval: Interval<N>,
@@ -297,7 +297,8 @@ impl<N: Ord + Clone, D> Node<N, D> {
             self.update_max();
         } else if right_h > left_h {
             {
-                let right = self.right
+                let right = self
+                    .right
                     .as_mut()
                     .expect("Invalid tree: leaf is taller than its sibling.");
                 let right_left_h = right.left.as_ref().map_or(0, |n| n.height);
@@ -309,7 +310,8 @@ impl<N: Ord + Clone, D> Node<N, D> {
             self.rotate_left();
         } else {
             {
-                let left = self.left
+                let left = self
+                    .left
                     .as_mut()
                     .expect("Invalid tree: leaf is taller than its sibling.");
                 let left_right_h = left.right.as_ref().map_or(0, |n| n.height);
@@ -365,7 +367,9 @@ fn swap_interval_data<N: Ord + Clone, D>(node_1: &mut Node<N, D>, node_2: &mut N
 }
 
 fn intersect<N: Ord + Clone>(range_1: &Interval<N>, range_2: &Interval<N>) -> bool {
-    range_1.start < range_1.end && range_2.start < range_2.end && range_1.end > range_2.start
+    range_1.start < range_1.end
+        && range_2.start < range_2.end
+        && range_1.end > range_2.start
         && range_1.start < range_2.end
 }
 
@@ -597,7 +601,8 @@ mod tests {
             .into_iter()
             .collect();
         assert_eq!(tree.find(&(0..1000)).count(), 3);
-        let tree2: IntervalTree<_, _> = tree.find(&(11..30))
+        let tree2: IntervalTree<_, _> = tree
+            .find(&(11..30))
             .map(|e| (e.interval().clone(), e.data().clone()))
             .collect();
         assert_eq!(tree2.find(&(0..1000)).count(), 2);

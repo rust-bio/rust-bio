@@ -1,7 +1,7 @@
 [package]
 
 name = "bio"
-version = "0.21.1-alpha.0"
+version = "0.22.1-alpha.0"
 authors = ["Johannes Köster <johannes.koester@tu-dortmund.de>"]
 description = "A bioinformatics library for Rust. This library provides implementations of many algorithms and data structures that are useful for bioinformatics, but also in other fields."
 homepage = "https://rust-bio.github.io"
@@ -10,6 +10,7 @@ documentation = "https://docs.rs/bio"
 readme = "README.md"
 license = "MIT"
 
+
 [features]
 avx-accel = ["bytecount/avx-accel"]
 simd-accel = ["bytecount/simd-accel"]
@@ -17,14 +18,14 @@ simd-accel = ["bytecount/simd-accel"]
 [dependencies]
 bytecount = "0.3.1"
 csv = "1.0.0-beta.5"
-num-traits = "0.1"
+num-traits = "0.2"
 num-integer = "0.1"
-itertools = "0.6"
+itertools = "0.7"
 itertools-num = "0.1"
-bv = { version = "0.7", features = ["serde"] }
-bit-set = "0.4"
-ndarray= "0.9"
-lazy_static = "0.2"
+bv = { version = "0.10", features = ["serde"] }
+bit-set = "0.5"
+ndarray= "0.11"
+lazy_static = "1.0"
 serde = "1.0"
 serde_derive = "1.0"
 approx = "0.1"
@@ -32,10 +33,11 @@ custom_derive = "0.1"
 newtype_derive = "0.1"
 ordered-float = "0.5"
 quick-error = "1.2"
-regex = "0.2"
+regex = "1.0"
 multimap = "0.4"
 fxhash = "0.2"
 statrs = "0.9.0"
+bio-types = ">=0.1.1"
 
 [dependencies.vec_map]
 version = "0.8"
