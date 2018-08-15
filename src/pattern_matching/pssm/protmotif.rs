@@ -22,7 +22,7 @@ pub struct ProtMotif {
 impl ProtMotif {
     /// Returns a Motif representing the sequences provided.
     /// # Arguments
-    /// * `seqs` - sequences incorportated into motif
+    /// * `seqs` - sequences incorporated into motif
     /// * `pseudos` - array slice with a pseudocount for each monomer;
     ///    defaults to pssm::DEF_PSEUDO for all if None is supplied
     ///
@@ -139,7 +139,7 @@ impl Motif for ProtMotif {
 
 /// Return a ProtMotif wrapping an Array2 representing amino acid
 /// weights at each position.  The dimensions and contents of this
-/// array are unchecked, and it is incumbant on the user to ensure
+/// array are unchecked, and it is incumbent on the user to ensure
 /// the correct dimensions are used (ie, SEQ_LEN x 20), and no zeros
 /// appear in the array.
 impl From<Array2<f32>> for ProtMotif {

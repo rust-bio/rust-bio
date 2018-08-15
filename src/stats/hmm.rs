@@ -225,7 +225,7 @@ pub trait Model<Observation> {
     /// `_to_idx` (index of `to`).
     ///
     /// This feature comes in handy in several applications of HMMs to biological sequences.
-    /// One promiment one is how XHMM by Fromer et al. (2014) uses the distance between target
+    /// One prominent one is how XHMM by Fromer et al. (2014) uses the distance between target
     /// regions for adjusting the transition probabilities.
     ///
     /// The default implementation return the result of the position-independent
@@ -262,7 +262,8 @@ fn viterbi_matrices<O, M: Model<O>>(
         } else {
             // Subsequent columns.
             for j in hmm.states() {
-                let x = vals.subview(Axis(0), i - 1)
+                let x = vals
+                    .subview(Axis(0), i - 1)
                     .iter()
                     .enumerate()
                     .map(|(a, p)| (State(a), p))
@@ -299,7 +300,8 @@ fn viterbi_traceback(vals: Array2<LogProb>, from: Array2<usize>) -> (Vec<State>,
     let mut res_prob = LogProb::ln_zero();
     for (i, col) in vals.axis_iter(Axis(0)).rev().enumerate() {
         if i == 0 {
-            let tmp = col.iter()
+            let tmp = col
+                .iter()
                 .enumerate()
                 .max_by_key(|&(_, item)| OrderedFloat(**item))
                 .unwrap();
@@ -338,7 +340,7 @@ pub fn viterbi<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Vec<State>, LogP
 }
 
 /// Execute the forward algorithm and return the forward probabilites as `LogProb` values
-/// and the resulting forward probaiblity.
+/// and the resulting forward probability.
 ///
 /// ## Arguments
 ///
@@ -369,7 +371,8 @@ pub fn forward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>,
         } else {
             // Subsequent columns.
             for j in hmm.states() {
-                let xs = hmm.states()
+                let xs = hmm
+                    .states()
                     .map(|k| {
                         vals[[i - 1, *k]]
                             + hmm.transition_prob_idx(k, j, i)
@@ -387,8 +390,8 @@ pub fn forward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>,
     (vals, prob)
 }
 
-/// Execute the backward algorithm and return the backward probabilites as `LogProb` values
-/// and the resulting backward probaiblity.
+/// Execute the backward algorithm and return the backward probabilities as `LogProb` values
+/// and the resulting backward probability.
 ///
 /// ## Arguments
 ///
@@ -429,10 +432,11 @@ pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>
                 } else {
                     LogProb::ln_one()
                 };
-                let xs = hmm.states()
+                let xs = hmm
+                    .states()
                     .map(|k| {
                         vals[[i - 1, *k]]
-                            + hmm.transition_prob_idx(j, k, n - i - 1)
+                            + hmm.transition_prob_idx(j, k, n - i)
                             + hmm.observation_prob(j, o)
                             + maybe_initial
                     })
@@ -459,7 +463,7 @@ pub mod discrete_emission {
     ///
     /// In Rabiner's tutorial, a discrete emission value HMM has `N` states and `M` output symbols.
     /// The state transition matrix with dimensions `NxN` is `A`, the observation probability
-    /// distribution is the matrix `B` with dimensions `NxM` and the inital state distribution `pi`
+    /// distribution is the matrix `B` with dimensions `NxM` and the initial state distribution `pi`
     /// has length `N`.
     #[derive(Debug, PartialEq)]
     pub struct Model {
@@ -566,7 +570,7 @@ pub mod univariate_continuous_emission {
     use super::*;
     use statrs;
 
-    /// Implementation of a `hmm::Model` with emission values from univariate contiuous distributions.
+    /// Implementation of a `hmm::Model` with emission values from univariate continuous distributions.
     ///
     /// Log-scale probabilities are used for numeric stability.
     pub struct Model<Dist: Continuous<f64, f64>> {
