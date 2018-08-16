@@ -7,8 +7,8 @@
 
 pub mod distance;
 pub mod pairwise;
-pub mod sparse;
 pub mod poa;
+pub mod sparse;
 
 // Re-export the alignment types.
 pub use bio_types::alignment::*;
