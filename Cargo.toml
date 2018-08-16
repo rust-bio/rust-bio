@@ -38,7 +38,7 @@ multimap = "0.4"
 fxhash = "0.2"
 statrs = "0.9.0"
 bio-types = ">=0.1.1"
-flame = { git = "https://github.com/TyOverby/flame.git", branch = "master", optional = true }
+flame = { version = "0.2.1-pre2", optional = true }
 flamer = { version = "^0.2.3", optional = true }
 
 [dependencies.vec_map]
