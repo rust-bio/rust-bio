@@ -86,9 +86,9 @@ pub type Myers128 = Myers<u128>;
 ///
 /// # Example:
 ///
-/// This example shows how recognition of IUPAC ambiguities in patterns.
-/// can be implemented. Ambiguities in the text are not recognized; this
-/// would require specifying additional ambiguities (A = MRWVHDN, etc.).
+/// This example shows how recognition of IUPAC ambiguities in patterns
+/// can be implemented. Ambiguities in the searched text are not recognized; this
+/// would require specifying additional ambiguities (A = MRWVHDN, etc...).
 ///
 /// ```
 /// # extern crate bio;
@@ -116,13 +116,14 @@ pub type Myers128 = Myers<u128>;
 /// }
 ///
 /// let text = b"ACCGTGGATGNGCGCCATAG";
-/// let pattern =      b"TRANCGG";
+/// let pattern =     b"TRANCGG";
 /// //                     *   * (mismatch)
 ///
 /// let myers = builder.build(pattern);
 /// assert_eq!(myers.distance(text), 2);
 /// # }
 /// ```
+#[derive(Default, Clone, Eq, PartialEq)]
 pub struct MyersBuilder {
     ambigs: HashMap<u8, Vec<u8>>,
     wildcards: Vec<u8>,
@@ -130,13 +131,10 @@ pub struct MyersBuilder {
 
 impl MyersBuilder {
     pub fn new() -> MyersBuilder {
-        MyersBuilder {
-            ambigs: HashMap::new(),
-            wildcards: vec![],
-        }
+        Self::default()
     }
 
-    /// Specify ambiguous characters.
+    /// Allows to specify ambiguous characters and their equivalents.
     ///
     /// # Example:
     ///
@@ -149,12 +147,12 @@ impl MyersBuilder {
     /// let pattern =      b"TGAGCGN";
     ///
     /// let myers = MyersBuilder::new()
-    ///     .ambig(b'N', b"AGTC")
+    ///     .ambig(b'N', b"ACGT")
     ///     .build(pattern);
     ///
     /// assert_eq!(myers.distance(text), 0);
     /// # }
-    pub fn ambig<'a, I, B>(&mut self, byte: u8, equivalents: I) -> &mut Self
+    pub fn ambig<I, B>(&mut self, byte: u8, equivalents: I) -> &mut Self
     where
         I: IntoIterator<Item = B>,
         B: Borrow<u8>,
@@ -164,9 +162,10 @@ impl MyersBuilder {
         self
     }
 
-    /// Specify a wildcard character in the text that shall be matched by any character in the
-    /// pattern. Multiple wildcards are possible. For the reverse (wildcards in pattern), use
-    /// `ambig(byte, 0..255)`
+    /// Allows to specify a wildcard character, that upon appearance in the search text
+    /// shall be matched by any character of the pattern. Multiple wildcards are possible.
+    /// For the inverse, that is, wildcards in the pattern matching any character in search
+    /// text, use `ambig(byte, 0..255)`.
     ///
     /// # Example:
     ///
@@ -189,18 +188,18 @@ impl MyersBuilder {
         self
     }
 
-    /// Create a Myers instance given a pattern, using `u64` as type for bit vectors
+    /// Creates a Myers instance given a pattern, using `u64` as bit vector type
     pub fn build<'a, P: IntoTextIterator<'a>>(&self, pattern: P) -> Myers<u64> {
         self.build_other(pattern)
     }
 
-    /// Create a Myers instance given a pattern, using `u128` as type for bit vectors
+    /// Creates a Myers instance given a pattern, using `u128` as bit vector type
     #[cfg(has_u128)]
     pub fn build128<'a, P: IntoTextIterator<'a>>(&self, pattern: P) -> Myers<u128> {
         self.build_other(pattern)
     }
 
-    /// Create a Myers instance given a pattern, using any desired type for bit vectors
+    /// Creates a Myers instance given a pattern, using any desired type for bit vectors
     ///
     /// # Example:
     ///
@@ -270,7 +269,6 @@ impl<T: BitVec> Myers<T> {
         P: IntoTextIterator<'a>,
     {
         let mut peq = [T::zero(); 256];
-        let maxsize = size_of::<T>() * 8;
         let mut m = 0;
 
         for (i, &a) in pattern.into_iter().enumerate() {
@@ -278,6 +276,7 @@ impl<T: BitVec> Myers<T> {
             peq[a as usize] |= T::one() << i;
         }
 
+        let maxsize = size_of::<T>() * 8;
         assert!(m <= maxsize, "Pattern too long");
         assert!(m > 0, "Pattern is empty");
 
@@ -329,7 +328,7 @@ impl<T: BitVec> Myers<T> {
         dist
     }
 
-    /// Find all matches of pattern in the given text up to a given maximum distance.
+    /// Finds all matches of pattern in the given text up to a given maximum distance.
     /// Matches are returned as an iterator over pairs of end position and distance.
     pub fn find_all_end<'a, I: IntoTextIterator<'a>>(
         &'a self,
@@ -345,12 +344,11 @@ impl<T: BitVec> Myers<T> {
         }
     }
 
-    /// Find all matches of pattern in the given text up to a given maximum distance.
+    /// Finds all matches of pattern in the given text up to a given maximum distance.
     /// In contrast to `find_all_end`, matches are returned as an iterator over ranges
     /// of (start, end, distance). Note that the end coordinate is a range coordinate,
     /// not included in the range (end index + 1) and is thus not equivalent to the end
-    /// position returned by `find_all_end()`. In order to obtain an alignment, use
-    ///
+    /// position returned by `find_all_end()`.
     ///
     /// # Example:
     ///
