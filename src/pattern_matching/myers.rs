@@ -112,7 +112,7 @@ pub type Myers128 = Myers<u128>;
 /// let mut builder = MyersBuilder::new();
 ///
 /// for &(base, equivalents) in &ambigs {
-///     builder = builder.ambig(base, equivalents);
+///     builder.ambig(base, equivalents);
 /// }
 ///
 /// let text = b"ACCGTGGATGNGCGCCATAG";
@@ -154,7 +154,7 @@ impl MyersBuilder {
     ///
     /// assert_eq!(myers.distance(text), 0);
     /// # }
-    pub fn ambig<'a, I, B>(mut self, byte: u8, equivalents: I) -> Self
+    pub fn ambig<'a, I, B>(&mut self, byte: u8, equivalents: I) -> &mut Self
     where
         I: IntoIterator<Item = B>,
         B: Borrow<u8>,
@@ -184,7 +184,7 @@ impl MyersBuilder {
     ///
     /// assert_eq!(myers.distance(text), 0);
     /// # }
-    pub fn text_wildcard(mut self, wildcard: u8) -> Self {
+    pub fn text_wildcard(&mut self, wildcard: u8) -> &mut Self {
         self.wildcards.push(wildcard);
         self
     }
