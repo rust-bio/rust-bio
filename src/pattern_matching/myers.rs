@@ -558,7 +558,7 @@ where
     /// If no next hit is found, `false` is returned and `aln` remains unchanged.
     #[inline]
     pub fn next_alignment(&mut self, aln: &mut Alignment) -> bool {
-        if let Some(_) = self.next_end() {
+        if self.next_end().is_some() {
             self.alignment(aln);
             return true;
         }
