@@ -44,14 +44,14 @@ use utils::{IntoTextIterator, TextIterator};
 /// Integer types serving as bit vectors must implement this trait.
 pub trait BitVec: Copy
     + Clone
-    + Add<Output = Self>
-    + Sub<Output = Self>
-    + BitOr<Output = Self>
+    + Add
+    + Sub
+    + BitOr
     + BitOrAssign
-    + BitAnd<Output = Self>
-    + BitXor<Output = Self>
-    + Not<Output = Self>
-    + Shl<usize, Output = Self>
+    + BitAnd
+    + BitXor
+    + Not
+    + Shl<usize>
     + ShlAssign<usize>
     + ShrAssign<usize>
     // These num_traits traits are required; in addition there are Bounded, Zero and One,
@@ -62,14 +62,14 @@ pub trait BitVec: Copy
 impl<T> BitVec for T where
     T: Copy
         + Clone
-        + Add<Output = Self>
-        + Sub<Output = Self>
-        + BitOr<Output = Self>
+        + Add
+        + Sub
+        + BitOr
         + BitOrAssign
-        + BitAnd<Output = Self>
-        + BitXor<Output = Self>
-        + Not<Output = Self>
-        + Shl<usize, Output = Self>
+        + BitAnd
+        + BitXor
+        + Not
+        + Shl<usize>
         + ShlAssign<usize>
         + ShrAssign<usize>
         + PrimInt
