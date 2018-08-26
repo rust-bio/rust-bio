@@ -716,6 +716,9 @@ where
     }
 
     fn init(&mut self, num_cols: usize, m: usize) {
+        // ensure that empty text does not cause panic
+        let num_cols = num_cols + 1;
+
         self.positions = (0..num_cols).cycle();
 
         // extend or truncate states vector
