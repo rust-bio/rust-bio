@@ -472,8 +472,16 @@ where
 {
     /// Create new state.
     pub fn new(m: usize) -> Self {
+
+        let maxsize = 8 * size_of::<T>();
+        let pv = if m == maxsize {
+            T::max_value()
+        } else {
+            (T::one() << m) - T::one()
+        };
+
         State {
-            pv: (T::one() << m) - T::one(),
+            pv,
             mv: T::zero(),
             dist: m,
         }
