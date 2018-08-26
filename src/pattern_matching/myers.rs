@@ -798,14 +798,15 @@ where
             o.clear();
         }
 
-        // Covers all positions of the pattern (like Myers::bound)
-        let bound = T::one() << (self.m - 1);
+        // Mask for testing current position
+        // (mv and pv are shifted, not the mask)
+        let upper_pos = T::one() << (self.m - 1);
 
         macro_rules! move_up {
             ($state:expr) => {
-                if $state.pv & bound != T::zero() {
+                if $state.pv & upper_pos != T::zero() {
                     $state.dist -= 1
-                } else if $state.mv & bound != T::zero() {
+                } else if $state.mv & upper_pos != T::zero() {
                     $state.dist += 1
                 }
                 // Sometimes slower, sometimes faster:
@@ -844,7 +845,7 @@ where
         let mut lstate = states.next().unwrap().clone();
 
         while v_offset < self.m {
-            let op = if state.pv & bound != T::zero() {
+            let op = if state.pv & upper_pos != T::zero() {
                 // up
                 v_offset += 1;
                 move_up!(state);
