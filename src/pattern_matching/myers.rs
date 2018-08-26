@@ -868,7 +868,11 @@ where
                 // move left
                 state = lstate;
                 lstate = states.next().unwrap().clone();
-                move_up_many!(lstate, v_offset);
+                if v_offset != self.m && v_offset > 0 {
+                    // Not moving up left state if finished, since this can lead to
+                    // a panic with patterns of maximum possible length
+                    move_up_many!(lstate, v_offset);
+                }
                 h_offset += 1;
                 op
             };
@@ -1121,5 +1125,13 @@ CCATAGACCGTGGATGAGCGCCATAG";
 
         let myers = MyersBuilder::new().ambig(b'R', b"AG").build(patt);
         assert_eq!(myers.distance(text), 2);
+    }
+
+    #[test]
+    fn test_longest_possible() {
+        let text = b"CCACGCGT";
+
+        let mut myers: Myers<u8> = Myers::new(text);
+        assert_eq!(myers.find_all_pos(text, 0).next(), Some((0, 8, 0)));
     }
 }
