@@ -5,7 +5,7 @@
 
 //! Create a weight matrix representing a set of aligned reference sequences
 //! that constitute a motif, and use this matrix to scan query sequences for
-//! occurances of this motif.
+//! occurrences of this motif.
 //! Complexity: O(n*m) for motif length n and query length m
 //!
 //! The position-specific scoring matrix (PSSM), aka position weight matrix (PWM),
@@ -45,7 +45,7 @@ pub use self::protmotif::ProtMotif;
 
 /// default pseudocount - used to prevent 0 tallies
 pub const DEF_PSEUDO: f32 = 0.5;
-/// aproximately zero
+/// approximately zero
 pub const EPSILON: f32 = 1e-5;
 /// value representing an invalid monomer in lookup table
 pub const INVALID_MONO: u8 = 255;
@@ -112,7 +112,7 @@ pub trait Motif {
     /// Returns a weight matrix representing the sequences provided.
     /// This code is shared by implementations of `from_seqs`
     /// # Arguments
-    /// * `seqs` - sequences incorportated into motif
+    /// * `seqs` - sequences incorporated into motif
     /// * `pseudos` - array slice with a pseudocount for each monomer;
     ///    defaults to DEF_PSEUDO for all if None is supplied
     ///
