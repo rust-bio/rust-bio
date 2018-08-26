@@ -283,7 +283,7 @@ fn myers_pos_64(b: &mut Bencher) {
     let mut myers = Myers64::new(PATTERN);
     b.iter(|| {
         let mut n = 0;
-        let matches = myers.find_all_pos(TEXT, K);
+        let matches = myers.find_all(TEXT, K);
         for _ in matches {
             n += 1;
         }
@@ -297,7 +297,7 @@ fn myers_pos_128(b: &mut Bencher) {
     let mut myers = Myers128::new(PATTERN);
     b.iter(|| {
         let mut n = 0;
-        let matches = myers.find_all_pos(TEXT, K);
+        let matches = myers.find_all(TEXT, K);
         for _ in matches {
             n += 1;
         }
@@ -311,7 +311,7 @@ fn myers_path_64(b: &mut Bencher) {
     let mut ops = vec![];
     b.iter(|| {
         let mut n = 0;
-        let mut matches = myers.find_all_pos(TEXT, K);
+        let mut matches = myers.find_all(TEXT, K);
         while let Some(_) = matches.next_path(&mut ops) {
             n += 1;
         }
@@ -325,7 +325,7 @@ fn myers_alignment_64(b: &mut Bencher) {
     let mut aln = new_alignment();
     b.iter(|| {
         let mut n = 0;
-        let mut matches = myers.find_all_pos(TEXT, K);
+        let mut matches = myers.find_all(TEXT, K);
         while matches.next_alignment(&mut aln) {
             n += 1;
         }
@@ -339,7 +339,7 @@ fn myers_alignment_alloc_64(b: &mut Bencher) {
     let mut myers = Myers64::new(PATTERN);
     b.iter(|| {
         let mut n = 0;
-        let mut matches = myers.find_all_pos(TEXT, K);
+        let mut matches = myers.find_all(TEXT, K);
         loop {
             let mut aln = new_alignment();
             if !matches.next_alignment(&mut aln) {
@@ -356,7 +356,7 @@ fn myers_ends_noremember_64(b: &mut Bencher) {
     let mut myers = Myers64::new(PATTERN);
     b.iter(|| {
         let mut n = 0;
-        let mut matches = myers.find_all_pos(TEXT, K);
+        let mut matches = myers.find_all(TEXT, K);
         while let Some(_) = matches.next_end() {
             n += 1;
         }

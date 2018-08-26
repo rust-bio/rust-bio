@@ -381,18 +381,18 @@ impl<T: BitVec> Myers<T> {
     ///
     /// // only range coordinates required
     /// let mut myers = Myers64::new(pattern);
-    /// let occ: Vec<_> = myers.find_all_pos(text, 1).collect();
+    /// let occ: Vec<_> = myers.find_all(text, 1).collect();
     /// assert_eq!(occ, [(8, 14, 1), (8, 15, 1)]);
     ///
     /// let mut myers = Myers64::new(pattern);
     /// let mut aln = vec![];
-    /// let mut matches = myers.find_all_pos(text, 1);
+    /// let mut matches = myers.find_all(text, 1);
     /// assert_eq!(matches.next_path(&mut aln).unwrap(), (8, 14, 1));
     /// assert_eq!(aln, &[Match, Match, Match, Match, Match, Match, Ins]);
     /// assert_eq!(matches.next_path(&mut aln).unwrap(), (8, 15, 1));
     /// assert_eq!(aln, &[Match, Match, Match, Match, Match, Match, Subst]);
     /// # }
-    pub fn find_all_pos<'a, I>(
+    pub fn find_all<'a, I>(
         &'a mut self,
         text: I,
         max_dist: T::DistType,
@@ -416,7 +416,7 @@ impl<T: BitVec> Myers<T> {
         }
     }
 
-    /// Like `find_all_pos`, but additionally allows for obtaining the starting positions and/or
+    /// Like `find_all`, but additionally allows for obtaining the starting positions and/or
     /// the alignment at *any* position that was already searched.
     ///
     /// # Example:
@@ -432,12 +432,12 @@ impl<T: BitVec> Myers<T> {
     ///
     /// // only range coordinates required
     /// let mut myers = Myers64::new(pattern);
-    /// let occ: Vec<_> = myers.find_all_pos(text, 1).collect();
+    /// let occ: Vec<_> = myers.find_all(text, 1).collect();
     /// assert_eq!(occ, [(8, 14, 1), (8, 15, 1)]);
     ///
     /// let mut myers = Myers64::new(pattern);
     /// let mut aln = vec![];
-    /// let mut matches = myers.find_all_pos(text, 1);
+    /// let mut matches = myers.find_all(text, 1);
     /// assert_eq!(matches.next_path(&mut aln).unwrap(), (8, 14, 1));
     /// assert_eq!(aln, &[Match, Match, Match, Match, Match, Match, Ins]);
     /// assert_eq!(matches.next_path(&mut aln).unwrap(), (8, 15, 1));
@@ -981,7 +981,7 @@ CCATAGACCGTGGATGAGCGCCATAG";
         let pattern = b"AGA";
 
         let mut myers = Myers64::new(pattern);
-        let matches: Vec<_> = myers.find_all_pos(text, 1).collect();
+        let matches: Vec<_> = myers.find_all(text, 1).collect();
         assert_eq!(&matches, &[(1, 3, 1), (1, 4, 0), (1, 5, 1), (3, 6, 1)]);
     }
 
@@ -991,7 +991,7 @@ CCATAGACCGTGGATGAGCGCCATAG";
         let patt = "TC-GACGTGCT".replace('-', "").into_bytes();
 
         let mut myers = Myers64::new(&patt);
-        let mut matches = myers.find_all_pos(&text, 3);
+        let mut matches = myers.find_all(&text, 3);
         let mut aln = vec![];
         assert_eq!(matches.next_path(&mut aln).unwrap(), (0, 10, 3));
         assert_eq!(
@@ -1006,7 +1006,7 @@ CCATAGACCGTGGATGAGCGCCATAG";
         let patt = "TCAGAGCAG".replace('-', "").into_bytes();
 
         let mut myers = Myers64::new(&patt);
-        let mut matches = myers.find_all_pos(&text, 2);
+        let mut matches = myers.find_all(&text, 2);
         let mut aln = vec![];
         assert_eq!(matches.next_path(&mut aln).unwrap(), (0, 7, 2));
         assert_eq!(
@@ -1021,7 +1021,7 @@ CCATAGACCGTGGATGAGCGCCATAG";
         let patt = "TCCT-AGGGA".replace('-', "");
 
         let mut myers = Myers64::new(patt.as_bytes());
-        let mut matches = myers.find_all_pos(tx.as_bytes(), 1);
+        let mut matches = myers.find_all(tx.as_bytes(), 1);
         let expected = Alignment {
             score: 1,
             xstart: 0,
@@ -1130,7 +1130,7 @@ CCATAGACCGTGGATGAGCGCCATAG";
         let pat = "CATGC";
 
         let mut myers = Myers64::new(pat.as_bytes());
-        let mut matches = myers.find_all_pos(text.as_bytes(), 2);
+        let mut matches = myers.find_all(text.as_bytes(), 2);
         let mut aln = vec![];
         assert_eq!(matches.next_path(&mut aln).unwrap(), (0, 3, 2));
         assert_eq!(aln, &[Ins, Match, Match, Match, Ins]);
@@ -1142,7 +1142,7 @@ CCATAGACCGTGGATGAGCGCCATAG";
         let pattern = "CGCGGTGTCCACGCGTGGGTCCTGAGGGAGCTCGTCGGTGTGGGGTTCGGGGGGGTTTGT";
 
         let mut myers = Myers64::new(pattern.as_bytes());
-        let mut matches = myers.find_all_pos(text.as_bytes(), 8);
+        let mut matches = myers.find_all(text.as_bytes(), 8);
         assert_eq!(matches.next().unwrap(), (0, 52, 8));
     }
 
@@ -1162,7 +1162,7 @@ CCATAGACCGTGGATGAGCGCCATAG";
         let text = b"CCACGCGT";
 
         let mut myers: Myers<u8> = Myers::new(text);
-        assert_eq!(myers.find_all_pos(text, 0).next(), Some((0, 8, 0)));
+        assert_eq!(myers.find_all(text, 0).next(), Some((0, 8, 0)));
     }
 
     #[test]
@@ -1179,7 +1179,7 @@ CCATAGACCGTGGATGAGCGCCATAG";
         assert_eq!(max_dist, 64);
 
         let max_dist = myers
-            .find_all_pos(&text, 64)
+            .find_all(&text, 64)
             .max_by_key(|&(_, _, dist)| dist)
             .unwrap()
             .1;
