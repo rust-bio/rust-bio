@@ -189,13 +189,21 @@ impl MyersBuilder {
     }
 
     /// Creates a Myers instance given a pattern, using `u64` as bit vector type
-    pub fn build<'a, P: IntoTextIterator<'a>>(&self, pattern: P) -> Myers<u64> {
+    pub fn build<'a, P>(&self, pattern: P) -> Myers<u64>
+    where
+        P: IntoTextIterator<'a>,
+        P::IntoIter: ExactSizeIterator,
+    {
         self.build_other(pattern)
     }
 
     /// Creates a Myers instance given a pattern, using `u128` as bit vector type
     #[cfg(has_u128)]
-    pub fn build128<'a, P: IntoTextIterator<'a>>(&self, pattern: P) -> Myers<u128> {
+    pub fn build128<'a, P>(&self, pattern: P) -> Myers<u128>
+    where
+        P: IntoTextIterator<'a>,
+        P::IntoIter: ExactSizeIterator,
+    {
         self.build_other(pattern)
     }
 
@@ -217,13 +225,17 @@ impl MyersBuilder {
     where
         T: BitVec,
         P: IntoTextIterator<'a>,
+        P::IntoIter: ExactSizeIterator,
     {
-        let mut peq = [T::zero(); 256];
         let maxsize = size_of::<T>() * 8;
-        let mut m = 0;
+        let pattern = pattern.into_iter();
+        let m = pattern.len();
+        assert!(m <= maxsize, "Pattern too long");
+        assert!(m > 0, "Pattern is empty");
+
+        let mut peq = [T::zero(); 256];
 
         for (i, &a) in pattern.into_iter().enumerate() {
-            m += 1;
             let mask = T::one() << i;
             // equivalent
             peq[a as usize] |= mask;
@@ -234,9 +246,6 @@ impl MyersBuilder {
                 }
             }
         }
-
-        assert!(m <= maxsize, "Pattern too long");
-        assert!(m > 0, "Pattern is empty");
 
         for &w in &self.wildcards {
             peq[w as usize] = T::max_value();
@@ -267,18 +276,19 @@ impl<T: BitVec> Myers<T> {
     pub fn new<'a, P>(pattern: P) -> Self
     where
         P: IntoTextIterator<'a>,
+        P::IntoIter: ExactSizeIterator,
     {
-        let mut peq = [T::zero(); 256];
-        let mut m = 0;
-
-        for (i, &a) in pattern.into_iter().enumerate() {
-            m += 1;
-            peq[a as usize] |= T::one() << i;
-        }
-
         let maxsize = size_of::<T>() * 8;
+        let pattern = pattern.into_iter();
+        let m = pattern.len();
         assert!(m <= maxsize, "Pattern too long");
         assert!(m > 0, "Pattern is empty");
+
+        let mut peq = [T::zero(); 256];
+
+        for (i, &a) in pattern.enumerate() {
+            peq[a as usize] |= T::one() << i;
+        }
 
         Myers {
             peq: peq,
