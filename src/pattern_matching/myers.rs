@@ -36,14 +36,14 @@ use std::ops::Range;
 use std::ops::*;
 use std::u64;
 
-use num_traits::{PrimInt, WrappingAdd};
+use num_traits::{Bounded, FromPrimitive, One, PrimInt, ToPrimitive, WrappingAdd, Zero};
 
 use alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use utils::{IntoTextIterator, TextIterator};
 
 /// Integer types serving as bit vectors must implement this trait.
+/// Only unsigned integers will work correctly.
 pub trait BitVec: Copy
-    + Clone
     + Add
     + Sub
     + BitOr
@@ -57,24 +57,32 @@ pub trait BitVec: Copy
     // These num_traits traits are required; in addition there are Bounded, Zero and One,
     // which are all required by PrimInt and thus included
     + PrimInt
-    + WrappingAdd {}
+    + WrappingAdd
+{
+    /// For all currently implemented BitVec types, the maximum possible distance
+    /// can be stored in `u8`. Custom implementations using bigger integers can
+    /// adjust `DistType` to hold bigger numbers.
+    type DistType: Copy
+            + AddAssign
+            + SubAssign
+            + PrimInt // includes Bounded, Num, Zero, One
+            + FromPrimitive;
+}
 
-impl<T> BitVec for T where
-    T: Copy
-        + Clone
-        + Add
-        + Sub
-        + BitOr
-        + BitOrAssign
-        + BitAnd
-        + BitXor
-        + Not
-        + Shl<usize>
-        + ShlAssign<usize>
-        + ShrAssign<usize>
-        + PrimInt
-        + WrappingAdd
-{}
+macro_rules! impl_bitvec {
+    ($type:ty, $dist:ty) => {
+        impl BitVec for $type {
+            type DistType = $dist;
+        }
+    };
+}
+
+impl_bitvec!(u8, u8);
+impl_bitvec!(u16, u8);
+impl_bitvec!(u32, u8);
+impl_bitvec!(u64, u8);
+#[cfg(has_u128)]
+impl_bitvec!(u128, u8);
 
 /// Myers instance using `u64` as bit vectors (pattern length up to 64)
 pub type Myers64 = Myers<u64>;
@@ -227,15 +235,15 @@ impl MyersBuilder {
         P: IntoTextIterator<'a>,
         P::IntoIter: ExactSizeIterator,
     {
-        let maxsize = size_of::<T>() * 8;
+        let maxsize = T::DistType::from_usize(size_of::<T>() * 8).unwrap();
         let pattern = pattern.into_iter();
-        let m = pattern.len();
+        let m = T::DistType::from_usize(pattern.len()).unwrap();
         assert!(m <= maxsize, "Pattern too long");
-        assert!(m > 0, "Pattern is empty");
+        assert!(m > T::DistType::zero(), "Pattern is empty");
 
         let mut peq = [T::zero(); 256];
 
-        for (i, &a) in pattern.into_iter().enumerate() {
+        for (i, &a) in pattern.enumerate() {
             let mask = T::one() << i;
             // equivalent
             peq[a as usize] |= mask;
@@ -253,7 +261,7 @@ impl MyersBuilder {
 
         Myers {
             peq: peq,
-            bound: T::one() << (m - 1),
+            bound: T::one() << (m.to_usize().unwrap() - 1),
             m: m,
             tb: Traceback::new(),
         }
@@ -267,7 +275,7 @@ where
 {
     peq: [T; 256],
     bound: T,
-    m: usize,
+    m: T::DistType,
     tb: Traceback<T>,
 }
 
@@ -278,11 +286,11 @@ impl<T: BitVec> Myers<T> {
         P: IntoTextIterator<'a>,
         P::IntoIter: ExactSizeIterator,
     {
-        let maxsize = size_of::<T>() * 8;
+        let maxsize = T::DistType::from_usize(size_of::<T>() * 8).unwrap();
         let pattern = pattern.into_iter();
-        let m = pattern.len();
+        let m = T::DistType::from_usize(pattern.len()).unwrap();
         assert!(m <= maxsize, "Pattern too long");
-        assert!(m > 0, "Pattern is empty");
+        assert!(m > T::DistType::zero(), "Pattern is empty");
 
         let mut peq = [T::zero(); 256];
 
@@ -292,7 +300,7 @@ impl<T: BitVec> Myers<T> {
 
         Myers {
             peq: peq,
-            bound: T::one() << (m - 1),
+            bound: T::one() << (m.to_usize().unwrap() - 1),
             m: m,
             tb: Traceback::new(),
         }
@@ -308,9 +316,9 @@ impl<T: BitVec> Myers<T> {
         let mut mh = state.pv & xh;
 
         if ph & self.bound > T::zero() {
-            state.dist += 1;
+            state.dist += T::DistType::one();
         } else if mh & self.bound > T::zero() {
-            state.dist -= 1;
+            state.dist -= T::DistType::one();
         }
 
         ph <<= 1;
@@ -326,9 +334,9 @@ impl<T: BitVec> Myers<T> {
     }
 
     /// Calculate the global distance of the pattern to the given text.
-    pub fn distance<'a, I: IntoTextIterator<'a>>(&self, text: I) -> usize {
+    pub fn distance<'a, I: IntoTextIterator<'a>>(&self, text: I) -> T::DistType {
         let mut state = State::new(self.m);
-        let mut dist = ::std::usize::MAX;
+        let mut dist = T::DistType::max_value();
         for &a in text {
             self.step(&mut state, a);
             if state.dist < dist {
@@ -343,7 +351,7 @@ impl<T: BitVec> Myers<T> {
     pub fn find_all_end<'a, I: IntoTextIterator<'a>>(
         &'a self,
         text: I,
-        max_dist: usize,
+        max_dist: T::DistType,
     ) -> Matches<T, I::IntoIter> {
         let state = State::new(self.m);
         Matches {
@@ -387,13 +395,14 @@ impl<T: BitVec> Myers<T> {
     pub fn find_all_pos<'a, I>(
         &'a mut self,
         text: I,
-        max_dist: usize,
+        max_dist: T::DistType,
     ) -> FullMatches<'a, T, I::IntoIter, NoRemember>
     where
         I: IntoTextIterator<'a>,
         I::IntoIter: ExactSizeIterator,
     {
-        self.tb.init(self.m + max_dist, self.m);
+        self.tb
+            .init((self.m + max_dist).to_usize().unwrap(), self.m);
         let text_iter = text.into_iter();
         FullMatches {
             state: State::new(self.m),
@@ -437,14 +446,15 @@ impl<T: BitVec> Myers<T> {
     pub fn find_all_pos_remember<'a, I>(
         &'a mut self,
         text: I,
-        max_dist: usize,
+        max_dist: T::DistType,
     ) -> FullMatches<'a, T, I::IntoIter, Remember>
     where
         I: IntoTextIterator<'a>,
         I::IntoIter: ExactSizeIterator,
     {
         let text_iter = text.into_iter();
-        self.tb.init(text_iter.len() + max_dist, self.m);
+        self.tb
+            .init(text_iter.len() + max_dist.to_usize().unwrap(), self.m);
         FullMatches {
             state: State::new(self.m),
             m: self.m,
@@ -460,10 +470,13 @@ impl<T: BitVec> Myers<T> {
 
 /// The current algorithm state.
 #[derive(Clone, Debug, Default)]
-struct State<T = u64> {
+struct State<T = u64>
+where
+    T: BitVec,
+{
     pv: T,
     mv: T,
-    dist: usize,
+    dist: T::DistType,
 }
 
 impl<T> State<T>
@@ -471,13 +484,12 @@ where
     T: BitVec,
 {
     /// Create new state.
-    pub fn new(m: usize) -> Self {
-
-        let maxsize = 8 * size_of::<T>();
+    pub fn new(m: T::DistType) -> Self {
+        let maxsize = T::DistType::from_usize(8 * size_of::<T>()).unwrap();
         let pv = if m == maxsize {
             T::max_value()
         } else {
-            (T::one() << m) - T::one()
+            (T::one() << m.to_usize().unwrap()) - T::one()
         };
 
         State {
@@ -497,7 +509,7 @@ where
     myers: &'a Myers<T>,
     state: State<T>,
     text: iter::Enumerate<I>,
-    max_dist: usize,
+    max_dist: T::DistType,
 }
 
 impl<'a, T, I> Iterator for Matches<'a, T, I>
@@ -505,9 +517,9 @@ where
     T: BitVec,
     I: TextIterator<'a>,
 {
-    type Item = (usize, usize);
+    type Item = (usize, T::DistType);
 
-    fn next(&mut self) -> Option<(usize, usize)> {
+    fn next(&mut self) -> Option<(usize, T::DistType)> {
         for (i, &a) in self.text.by_ref() {
             self.myers.step(&mut self.state, a);
             if self.state.dist <= self.max_dist {
@@ -534,8 +546,8 @@ where
     state: State<T>,
     text: iter::Enumerate<I>,
     text_len: usize,
-    m: usize,
-    max_dist: usize,
+    m: T::DistType,
+    max_dist: T::DistType,
     pos: usize, // current end position, has to be stored for alignment() method
     _remember: PhantomData<S>,
 }
@@ -549,7 +561,7 @@ where
     /// if found. This involves *no* searching for a starting position and is thus
     /// faster than just iterating over `FullMatches`
     #[inline]
-    pub fn next_end(&mut self) -> Option<(usize, usize)> {
+    pub fn next_end(&mut self) -> Option<(usize, T::DistType)> {
         for (i, &a) in self.text.by_ref() {
             self.pos = i; // used in alignment() TODO: where?
             self.myers.step_trace(&mut self.state, a);
@@ -566,7 +578,7 @@ where
     pub fn next_path(
         &mut self,
         ops: &mut Vec<AlignmentOperation>,
-    ) -> Option<(usize, usize, usize)> {
+    ) -> Option<(usize, usize, T::DistType)> {
         self.next_end()
             .map(|(end, dist)| (self.path(ops), end + 1, dist))
     }
@@ -610,7 +622,14 @@ where
     #[inline]
     pub fn alignment(&mut self, aln: &mut Alignment) {
         let (len, _) = self.myers.tb.traceback(Some(&mut aln.operations));
-        update_aln_positions(self.pos, len, self.text_len, self.state.dist, self.m, aln);
+        update_aln_positions(
+            self.pos,
+            len,
+            self.text_len,
+            self.state.dist.to_usize().unwrap(),
+            self.m.to_usize().unwrap(),
+            aln,
+        );
     }
 }
 
@@ -619,7 +638,7 @@ where
     T: 'a + BitVec,
     I: TextIterator<'a>,
 {
-    type Item = (usize, usize, usize);
+    type Item = (usize, usize, T::DistType);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -637,7 +656,7 @@ where
     /// and the hit distance. If the end position is greater than the end position of the previously
     /// returned hit, `None` is returned.
     /// *Note:* A 0-based end position is expected (as returned by `next_end`).
-    pub fn hit_at(&self, end_pos: usize) -> Option<(usize, usize)> {
+    pub fn hit_at(&self, end_pos: usize) -> Option<(usize, T::DistType)> {
         self.myers
             .tb
             .traceback_at(end_pos, None)
@@ -651,7 +670,7 @@ where
         &self,
         end_pos: usize,
         ops: &mut Vec<AlignmentOperation>,
-    ) -> Option<(usize, usize)> {
+    ) -> Option<(usize, T::DistType)> {
         self.myers
             .tb
             .traceback_at(end_pos, Some(ops))
@@ -668,7 +687,14 @@ where
             .tb
             .traceback_at(end_pos, Some(&mut aln.operations))
         {
-            update_aln_positions(end_pos, aln_len, self.text_len, dist, self.m, aln);
+            update_aln_positions(
+                end_pos,
+                aln_len,
+                self.text_len,
+                dist.to_usize().unwrap(),
+                self.m.to_usize().unwrap(),
+                aln,
+            );
             return true;
         }
         false
@@ -699,7 +725,7 @@ struct Traceback<T: BitVec> {
     states: Vec<State<T>>,
     positions: iter::Cycle<Range<usize>>,
     pos: usize,
-    m: usize,
+    m: T::DistType,
 }
 
 impl<T> Traceback<T>
@@ -710,12 +736,12 @@ where
         Traceback {
             states: vec![],
             positions: (0..0).cycle(),
-            m: 0,
+            m: T::DistType::zero(),
             pos: 0,
         }
     }
 
-    fn init(&mut self, num_cols: usize, m: usize) {
+    fn init(&mut self, num_cols: usize, m: T::DistType) {
         // ensure that empty text does not cause panic
         let num_cols = num_cols + 1;
 
@@ -726,7 +752,7 @@ where
         if num_cols > curr_len {
             self.states.reserve(num_cols);
             self.states
-                .extend((0..num_cols - curr_len).map(|_| State::new(0)));
+                .extend((0..num_cols - curr_len).map(|_| State::new(T::DistType::zero())));
         } else {
             self.states.truncate(num_cols);
         }
@@ -757,7 +783,7 @@ where
 
     // Returns the length of the current match, optionally adding the
     // alignment path to `ops`
-    fn traceback(&self, ops: Option<&mut Vec<AlignmentOperation>>) -> (usize, usize) {
+    fn traceback(&self, ops: Option<&mut Vec<AlignmentOperation>>) -> (usize, T::DistType) {
         self._traceback_at(self.pos, ops)
     }
 
@@ -768,7 +794,7 @@ where
         &self,
         pos: usize,
         ops: Option<&mut Vec<AlignmentOperation>>,
-    ) -> Option<(usize, usize)> {
+    ) -> Option<(usize, T::DistType)> {
         let pos = pos + 1; // in order to be comparable since self.pos starts with 1, not 0
         if pos <= self.pos {
             return Some(self._traceback_at(pos, ops));
@@ -783,7 +809,7 @@ where
         &self,
         pos: usize,
         mut ops: Option<&mut Vec<AlignmentOperation>>,
-    ) -> (usize, usize) {
+    ) -> (usize, T::DistType) {
         use self::AlignmentOperation::*;
 
         // Reverse iterator over states. If remembering all positions,
@@ -803,14 +829,14 @@ where
 
         // Mask for testing current position
         // (mv and pv are shifted, not the mask)
-        let upper_pos = T::one() << (self.m - 1);
+        let upper_pos = T::one() << (self.m.to_usize().unwrap() - 1);
 
         macro_rules! move_up {
             ($state:expr) => {
                 if $state.pv & upper_pos != T::zero() {
-                    $state.dist -= 1
+                    $state.dist -= T::DistType::one()
                 } else if $state.mv & upper_pos != T::zero() {
-                    $state.dist += 1
+                    $state.dist += T::DistType::one()
                 }
                 // Sometimes slower, sometimes faster:
                 //$state.dist += ($state.mv & max_mask != T::zero()) as usize;
@@ -822,9 +848,9 @@ where
 
         macro_rules! move_up_many {
             ($state:expr, $n:expr) => {
-                let mask = (!(T::max_value() << $n)) << (self.m - $n);
-                $state.dist += ($state.mv & mask).count_ones() as usize;
-                $state.dist -= ($state.pv & mask).count_ones() as usize;
+                let mask = (!(T::max_value() << $n)) << (self.m.to_usize().unwrap() - $n);
+                $state.dist += T::DistType::from_u32(($state.mv & mask).count_ones()).unwrap();
+                $state.dist -= T::DistType::from_u32(($state.pv & mask).count_ones()).unwrap();
                 $state.mv <<= $n;
                 $state.pv <<= $n;
 
@@ -847,7 +873,7 @@ where
         // state left to the current state
         let mut lstate = states.next().unwrap().clone();
 
-        while v_offset < self.m {
+        while v_offset < self.m.to_usize().unwrap() {
             let op = if state.pv & upper_pos != T::zero() {
                 // up
                 v_offset += 1;
@@ -855,7 +881,7 @@ where
                 move_up!(lstate);
                 Ins
             } else {
-                let op = if lstate.dist + 1 == state.dist {
+                let op = if lstate.dist + T::DistType::one() == state.dist {
                     // left
                     Del
                 } else {
@@ -871,7 +897,7 @@ where
                 // move left
                 state = lstate;
                 lstate = states.next().unwrap().clone();
-                if v_offset != self.m && v_offset > 0 {
+                if v_offset != self.m.to_usize().unwrap() && v_offset > 0 {
                     // Not moving up left state if finished, since this can lead to
                     // a panic with patterns of maximum possible length
                     move_up_many!(lstate, v_offset);
@@ -915,6 +941,7 @@ mod tests {
     use alignment::AlignmentOperation::*;
     use alignment::{Alignment, AlignmentMode};
     use itertools::Itertools;
+    use std::iter::repeat;
 
     #[test]
     fn test_find_all_end() {
@@ -1136,5 +1163,26 @@ CCATAGACCGTGGATGAGCGCCATAG";
 
         let mut myers: Myers<u8> = Myers::new(text);
         assert_eq!(myers.find_all_pos(text, 0).next(), Some((0, 8, 0)));
+    }
+
+    #[test]
+    fn test_large_dist() {
+        let pattern: Vec<_> = repeat(b'T').take(64).collect();
+        let text: Vec<_> = repeat(b'A').take(64).collect();
+
+        let mut myers = Myers64::new(&pattern);
+        let max_dist = myers
+            .find_all_end(&text, 64)
+            .max_by_key(|&(_, dist)| dist)
+            .unwrap()
+            .1;
+        assert_eq!(max_dist, 64);
+
+        let max_dist = myers
+            .find_all_pos(&text, 64)
+            .max_by_key(|&(_, _, dist)| dist)
+            .unwrap()
+            .1;
+        assert_eq!(max_dist, 64);
     }
 }

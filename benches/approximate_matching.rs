@@ -6,7 +6,6 @@ extern crate test;
 
 use test::Bencher;
 
-use bio::alignment::*;
 use bio::pattern_matching::myers::*;
 use bio::pattern_matching::ukkonen::*;
 
@@ -226,7 +225,7 @@ CATCACGATG";
 // With k = 5 there are 14 hits, with k = 6, there are 78 hits (most are overlapping)
 static PATTERN: &'static [u8] = b"GCGCGTCCACACCGCTCG";
 
-static K: usize = 6;
+static K: u8 = 6;
 // used with assertions to ensure correct code and to prevent over-optimization
 static N_HITS: usize = 78; // at given K
 
@@ -235,7 +234,7 @@ fn ukkonen(b: &mut Bencher) {
     let mut ukkonen = Ukkonen::with_capacity(PATTERN.len(), unit_cost);
     b.iter(|| {
         let mut n = 0;
-        for _ in ukkonen.find_all_end(PATTERN, TEXT, K) {
+        for _ in ukkonen.find_all_end(PATTERN, TEXT, K as usize) {
             n += 1;
         }
         assert_eq!(n, N_HITS);
@@ -385,7 +384,7 @@ fn myers_best_alignment_64(b: &mut Bencher) {
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all_pos_remember(TEXT, K);
-        let mut best_dist = ::std::usize::MAX;
+        let mut best_dist = ::std::u8::MAX;
         let mut best_end = 0;
         while let Some((end, dist)) = matches.next_end() {
             if dist < best_dist {
