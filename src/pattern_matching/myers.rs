@@ -819,7 +819,7 @@ where
 
         macro_rules! move_up_many {
             ($state:expr, $n:expr) => {
-                let mask = ((T::one() << $n) - T::one()) << (self.m - $n);
+                let mask = (!(T::max_value() << $n)) << (self.m - $n);
                 $state.dist += ($state.mv & mask).count_ones() as usize;
                 $state.dist -= ($state.pv & mask).count_ones() as usize;
                 $state.mv <<= $n;
