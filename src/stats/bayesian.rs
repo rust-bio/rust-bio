@@ -56,8 +56,8 @@ mod tests {
         let fdrs = expected_fdr(&peps);
         println!("{:?}", fdrs);
 
-        assert_relative_eq!(*fdrs[1], *LogProb::ln_zero());
-        assert_relative_eq!(*fdrs[0], *LogProb(0.05f64.ln()));
+        assert_relative_eq!(*fdrs[0], *LogProb::ln_zero());
+        assert_relative_eq!(*fdrs[1], *LogProb(0.05f64.ln()));
         assert_relative_eq!(*fdrs[2], *LogProb((0.35 / 3.0f64).ln()));
     }
 }
