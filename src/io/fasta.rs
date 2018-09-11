@@ -44,6 +44,18 @@ impl Reader<fs::File> {
 
 impl<R: io::Read> Reader<R> {
     /// Create a new Fasta reader given an instance of `io::Read`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use std::io;
+    /// # use bio::io::fasta::Reader;
+    /// # fn main() {
+    /// # const fasta_file: &'static [u8] = b">id desc
+    /// # AAAA
+    /// # ";
+    /// let reader = Reader::new(fasta_file);
+    /// # }
+    /// ```
     pub fn new(reader: R) -> Self {
         Reader {
             reader: io::BufReader::new(reader),
@@ -52,6 +64,25 @@ impl<R: io::Read> Reader<R> {
     }
 
     /// Read next FASTA record into the given `Record`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use std::io;
+    /// # use bio::io::fasta::Reader;
+    /// # use bio::io::fasta::Record;
+    /// # fn main() {
+    /// # const fasta_file: &'static [u8] = b">id desc
+    /// # AAAA
+    /// # ";
+    /// # let mut reader = Reader::new(fasta_file);
+    /// let mut record = Record::new();
+    /// reader.read(&mut record);
+    ///
+    /// assert_eq!(record.id(), "id");
+    /// assert_eq!(record.desc().unwrap(), "desc");
+    /// assert_eq!(record.seq().to_vec(), b"AAAA");
+    /// # }
+    /// ```
     pub fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
         if self.line.is_empty() {
@@ -91,6 +122,25 @@ impl<R: io::Read> Reader<R> {
     }
 
     /// Return an iterator over the records of this Fasta file.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use std::io;
+    /// # use bio::io::fasta::Reader;
+    /// # use bio::io::fasta::Record;
+    /// # fn main() {
+    /// # const fasta_file: &'static [u8] = b">id desc
+    /// # AAAA
+    /// # ";
+    /// # let reader = Reader::new(fasta_file);
+    /// for record in reader.records() {
+    ///     let record = record.unwrap();
+    ///     assert_eq!(record.id(), "id");
+    ///     assert_eq!(record.desc().unwrap(), "desc");
+    ///     assert_eq!(record.seq().to_vec(), b"AAAA");
+    /// }
+    /// # }
+    /// ```
     pub fn records(self) -> Records<R> {
         Records {
             reader: self,
