@@ -49,7 +49,7 @@ pub struct Alignment {
 pub struct Aligner<F: MatchFunc> {
     scoring: Scoring<F>,
     traceback: Traceback,
-    graph: Graph<u8, i32, Directed, usize>,
+    pub graph: Graph<u8, i32, Directed, usize>,
 }
 
 #[derive(Debug, Clone)]
