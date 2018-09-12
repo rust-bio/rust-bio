@@ -30,12 +30,6 @@ use petgraph::{Directed, Graph, Incoming};
 
 pub const MIN_SCORE: i32 = -858_993_459; // negative infinity; see alignment/pairwise/mod.rs
 
-/// A Partial-Order Alignment Graph
-pub struct POAGraph {
-    // a POAGraph struct stores a reference DAG and labels the edges with the
-    // count or names of the input sequences (TODO)
-    graph: }
-
 // Unlike with a total order we may have arbitrary successors in the
 // traceback matrix. I have not yet figured out what the best level of
 // detail to store is, so Match and Del operations remember In and Out
@@ -49,7 +43,7 @@ pub enum AlignmentOperation {
 
 pub struct Alignment {
     score: i32,
-//    xstart: Edge,
+    //    xstart: Edge,
     operations: Vec<AlignmentOperation>,
     mode: AlignmentMode,
 }
@@ -70,7 +64,7 @@ where
     F: Fn(u8, u8) -> i32,
 {
     fn score(&self, a: u8, b: u8) -> i32 {
-        (self)(a,b)
+        (self)(a, b)
     }
 }
 
@@ -85,9 +79,11 @@ impl Scoring<MatchParams> {
         gap_extend: i32,
         match_score: i32,
         mismatch_score: i32,
-        ) -> Self {
-        Scoring { gap_open, match_fn: MatchParams::new(match_score, mismatch_score),
-        match_scores: Some((match_score, mismatch_score)),
+    ) -> Self {
+        Scoring {
+            gap_open,
+            match_fn: MatchParams::new(match_score, mismatch_score),
+            match_scores: Some((match_score, mismatch_score)),
         }
     }
 }
@@ -95,7 +91,7 @@ impl Scoring<MatchParams> {
 pub struct Aligner<F: MatchFunc> {
     scoring: Scoring<F>,
     traceback: Traceback,
-    mut graph: Graph<u8, i32, Directed, usize>,
+    graph: Graph<u8, i32, Directed, usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -129,7 +125,7 @@ impl Eq for TracebackCell {}
 struct Traceback {
     rows: usize,
     cols: usize,
-    mut matrix: Vec<Vec<TracebackCell>>,
+    matrix: Vec<Vec<TracebackCell>>,
 }
 
 impl Traceback {
@@ -140,7 +136,7 @@ impl Traceback {
                     score: 0,
                     op: AlignmentOperation::Match(None)
                 };
-            n + 1
+                n + 1
             ];
             m + 1
         ];
@@ -158,14 +154,16 @@ impl Traceback {
             };
         }
 
-        Traceback { rows: m, cols: n, matrix: matrix }
-    
+        Traceback {
+            rows: m,
+            cols: n,
+            matrix: matrix,
+        }
     }
 }
 
 impl<F: MatchFunc<N>> Aligner<F, N, E> {
     pub fn from_string(reference: TextSlice, gap_open: i32, match_fn: F<N>) -> Self {
-
         let mut poa: Graph<N, E, Directed, usize> =
             Graph::with_capacity(reference.len(), reference.len() - 1);
         let mut prev: NodeIndex<usize> = graph.add_node(reference[0]);
@@ -175,10 +173,10 @@ impl<F: MatchFunc<N>> Aligner<F, N, E> {
             graph.add_edge(prev, node, 1);
             prev = node;
         }
- 
-        Aligner { 
+
+        Aligner {
             scoring: Scoring::new(gap_open, match_fn),
-            mut traceback: Traceback::new(reference.len() + 1, n),
+            traceback: Traceback::new(reference.len() + 1, n),
             poa: poa,
         }
     }
@@ -186,15 +184,15 @@ impl<F: MatchFunc<N>> Aligner<F, N, E> {
     pub fn from_graph(poa: Graph<N, E, Directed, usize>, gap_open: i32, match_fn: F<N>) -> Self {
         Aligner {
             scoring: Scoring::new(gap_open, match_fn),
-            mut traceback: Traceback::new(),
+            traceback: Traceback::new(),
             poa: poa,
         }
     }
-    
+
     /// Naive Needleman-Wunsch
     /// Populates the traceback matrix in $O(n^2)$ time using
     /// petgraph's constant time topological traversal
-    pub fn global(&mut self query: TextSlice) -> Alignment {
+    pub fn global(&mut self, query: TextSlice) -> Alignment {
         // dimensions of the traceback matrix
         let (m, n) = (g.node_count(), query.len());
         self.traceback.init(m, n);
@@ -225,40 +223,40 @@ impl<F: MatchFunc<N>> Aligner<F, N, E> {
                 let j = j_p + 1;
                 // match and deletion scores for the first reference base
                 let max_cell = if prevs.len() == 0 {
-                        TracebackCell {
-                            score: self.traceback[0][j - 1].score + (self.scoring)(r, *q),
-                            op: AlignmentOperation::Match(None),
-                        },
+                    TracebackCell {
+                        score: self.traceback[0][j - 1].score + (self.scoring)(r, *q),
+                        op: AlignmentOperation::Match(None),
+                    }
                 } else {
                     let mut max_cell = TracebackCell {
                         score: MIN_SCORE,
                         op: AlignmentOperation::Match(None),
-                    }
+                    };
                     for prev_n in 0..prevs.len() {
                         let i_p: usize = prevs[prev_n].index() + 1; // index of previous node
-                        max_cell = max(max_cell,
-                            max( 
-                            TracebackCell {
-                                score: self.traceback[i_p][j - 1].score + (self.scoring)(r, *q),
-                                op: AlignmentOperation::Match(Some((i_p - 1, i - 1))),
-                            },
-                            TracebackCell {
-                                score: self.traceback[i_p][j].score - 1i32,
-                                op: AlignmentOperation::Del(Some((i_p - 1, i))),
-                            },
-                            );
+                        max_cell = max(
+                            max_cell,
+                            max(
+                                TracebackCell {
+                                    score: self.traceback[i_p][j - 1].score + (self.scoring)(r, *q),
+                                    op: AlignmentOperation::Match(Some((i_p - 1, i - 1))),
+                                },
+                                TracebackCell {
+                                    score: self.traceback[i_p][j].score - 1i32,
+                                    op: AlignmentOperation::Del(Some((i_p - 1, i))),
+                                },
+                            ),
                         );
                     }
-                    max_cell 
+                    max_cell
                 };
-                
+
                 let score = max(
                     max_cell,
-                        TracebackCell {
-                            score: self.traceback[i][j - 1].score - 1i32,
-                            op: AlignmentOperation::Ins(Some(i - 1)),
-                        },
-                    ),
+                    TracebackCell {
+                        score: self.traceback[i][j - 1].score - 1i32,
+                        op: AlignmentOperation::Ins(Some(i - 1)),
+                    },
                 );
                 self.traceback[i][j] = score;
             }
@@ -356,9 +354,6 @@ impl<F: MatchFunc<N>> Aligner<F, N, E> {
             }
         }
     }
-
-
-
 }
 
 /// Write the current graph to a specified filepath in dot format for
@@ -368,16 +363,15 @@ impl<F: MatchFunc<N>> Aligner<F, N, E> {
 ///
 /// * `filename` - The filepath to write the dot file to, as a String
 ///
-fn write_dot(graph, filename: String) {
-        let mut file = match File::create(&filename) {
-            Err(why) => panic!("couldn't open file {}: {}", filename, why.description()),
-            Ok(file) => file,
-        };
-        let g = self.graph.map(|_, nw| *nw as char, |_, ew| ew);
-        match file.write_all(Dot::new(&g).to_string().as_bytes()) {
-            Err(why) => panic!("couldn't write to file {}: {}", filename, why.description()),
-            _ => (),
-        }
+fn write_dot(graph: Graph, filename: String) {
+    let mut file = match File::create(&filename) {
+        Err(why) => panic!("couldn't open file {}: {}", filename, why.description()),
+        Ok(file) => file,
+    };
+    let g = graph.map(|_, nw| *nw as char, |_, ew| ew);
+    match file.write_all(Dot::new(&g).to_string().as_bytes()) {
+        Err(why) => panic!("couldn't write to file {}: {}", filename, why.description()),
+        _ => (),
     }
 }
 
