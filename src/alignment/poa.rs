@@ -15,17 +15,12 @@
 //! https://github.com/ljdursi/poapy
 
 use std::cmp::{max, Ordering};
-use std::error::Error;
-use std::fs::File;
-use std::io::Write;
-use std::str;
 
 use utils::TextSlice;
 
-use alignment::pairwise::{MatchFunc, MatchParams, Scoring};
+use alignment::pairwise::{MatchFunc, Scoring};
 use alignment::AlignmentMode;
 
-use petgraph::dot::Dot;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::Topo;
 
@@ -324,25 +319,6 @@ impl<F: MatchFunc> Aligner<F> {
     }
 }
 
-/// Write the current graph to a specified filepath in dot format for
-/// visualization, primarily for debugging / diagnostics
-///
-/// # Arguments
-///
-/// * `filename` - The filepath to write the dot file to, as a String
-///
-fn write_dot(graph: Graph<u8, i32, Directed, usize>, filename: String) {
-    let mut file = match File::create(&filename) {
-        Err(why) => panic!("couldn't open file {}: {}", filename, why.description()),
-        Ok(file) => file,
-    };
-    let g = graph.map(|_, nw| *nw as char, |_, ew| ew);
-    match file.write_all(Dot::new(&g).to_string().as_bytes()) {
-        Err(why) => panic!("couldn't write to file {}: {}", filename, why.description()),
-        _ => (),
-    }
-}
-
 // print out a traceback matrix
 #[allow(dead_code)]
 fn dump_traceback(
@@ -367,7 +343,31 @@ fn dump_traceback(
 #[cfg(test)]
 mod tests {
     use alignment::poa::Aligner;
+    use petgraph::dot::Dot;
     use petgraph::graph::NodeIndex;
+    use petgraph::{Directed, Graph};
+    use std::error::Error;
+    use std::fs::File;
+    use std::io::Write;
+
+    /// Write the current graph to a specified filepath in dot format for
+    /// visualization, primarily for debugging / diagnostics
+    ///
+    /// # Arguments
+    ///
+    /// * `filename` - The filepath to write the dot file to, as a String
+    ///
+    fn write_dot(graph: Graph<u8, i32, Directed, usize>, filename: String) {
+        let mut file = match File::create(&filename) {
+            Err(why) => panic!("couldn't open file {}: {}", filename, why.description()),
+            Ok(file) => file,
+        };
+        let g = graph.map(|_, nw| *nw as char, |_, ew| ew);
+        match file.write_all(Dot::new(&g).to_string().as_bytes()) {
+            Err(why) => panic!("couldn't write to file {}: {}", filename, why.description()),
+            _ => (),
+        }
+    }
 
     #[test]
     fn test_init_graph() {
@@ -463,6 +463,7 @@ mod tests {
         assert_eq!(alignment.score, 2);
         poa.incorporate_alignment(alignment, seq2);
         let alignment2 = poa.global(seq3);
+
         assert_eq!(alignment2.score, 10);
     }
 }
