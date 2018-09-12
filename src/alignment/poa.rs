@@ -22,6 +22,9 @@ use std::str;
 
 use utils::TextSlice;
 
+use alignment::pairwise::{MatchFunc, MatchParams, Scoring};
+use alignment::AlignmentMode;
+
 use petgraph::dot::Dot;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::Topo;
@@ -46,46 +49,6 @@ pub struct Alignment {
     //    xstart: Edge,
     operations: Vec<AlignmentOperation>,
     mode: AlignmentMode,
-}
-
-impl MatchFunc for MatchParams {
-    #[inline]
-    fn score(&self, a: u8, b: u8) -> i32 {
-        if a == b {
-            self.match_score
-        } else {
-            self.mismatch_score
-        }
-    }
-}
-
-impl<F> MatchFunc for F
-where
-    F: Fn(u8, u8) -> i32,
-{
-    fn score(&self, a: u8, b: u8) -> i32 {
-        (self)(a, b)
-    }
-}
-
-struct Scoring<F: MatchFunc> {
-    gap_open: i32, // indel penalty
-    match_fn: F,
-}
-
-impl Scoring<MatchParams> {
-    pub fn from_scores(
-        gap_open: i32,
-        gap_extend: i32,
-        match_score: i32,
-        mismatch_score: i32,
-    ) -> Self {
-        Scoring {
-            gap_open,
-            match_fn: MatchParams::new(match_score, mismatch_score),
-            match_scores: Some((match_score, mismatch_score)),
-        }
-    }
 }
 
 pub struct Aligner<F: MatchFunc> {
@@ -129,7 +92,7 @@ struct Traceback {
 }
 
 impl Traceback {
-    fn init(&mut self, m: usize, n: usize) -> Self {
+    fn with_capacity(m: usize, n: usize) -> Self {
         let mut matrix = vec![
             vec![
                 TracebackCell {
@@ -142,13 +105,13 @@ impl Traceback {
         ];
         for i in 1..(m + 1) {
             // TODO: these should be -1 * distance from head node
-            traceback[i][0] = TracebackCell {
-                score: -1 * i as i32,
+            matrix[i][0] = TracebackCell {
+                score: -1 * i as i32, // gap_open penalty
                 op: AlignmentOperation::Del(None),
             };
         }
         for j in 1..(n + 1) {
-            traceback[0][j] = TracebackCell {
+            matrix[0][j] = TracebackCell {
                 score: -1 * j as i32,
                 op: AlignmentOperation::Ins(None),
             };
@@ -162,69 +125,71 @@ impl Traceback {
     }
 }
 
-impl<F: MatchFunc<N>> Aligner<F, N, E> {
-    pub fn from_string(reference: TextSlice, gap_open: i32, match_fn: F<N>) -> Self {
-        let mut poa: Graph<N, E, Directed, usize> =
+impl<F: MatchFunc> Aligner<F> {
+    pub fn from_string(reference: TextSlice, gap_open: i32, match_fn: F) -> Self {
+        let mut graph: Graph<u8, i32, Directed, usize> =
             Graph::with_capacity(reference.len(), reference.len() - 1);
         let mut prev: NodeIndex<usize> = graph.add_node(reference[0]);
         let mut node: NodeIndex<usize>;
         for i in 1..reference.len() {
-            node = poa.add_node(reference[i]);
+            node = graph.add_node(reference[i]);
             graph.add_edge(prev, node, 1);
             prev = node;
         }
 
         Aligner {
-            scoring: Scoring::new(gap_open, match_fn),
-            traceback: Traceback::new(reference.len() + 1, n),
-            poa: poa,
+            scoring: Scoring::new(gap_open, 0, match_fn),
+            traceback: Traceback::with_capacity(0, 0),
+            graph: graph,
         }
     }
 
-    pub fn from_graph(poa: Graph<N, E, Directed, usize>, gap_open: i32, match_fn: F<N>) -> Self {
-        Aligner {
-            scoring: Scoring::new(gap_open, match_fn),
-            traceback: Traceback::new(),
-            poa: poa,
-        }
-    }
+    //    pub fn from_graph(poa: Graph<u8, i32, Directed, usize>, gap_open: i32, match_fn: F) -> Self {
+    //        Aligner {
+    //            scoring: Scoring::new(gap_open, match_fn),
+    //            traceback: Traceback::new(),
+    //            poa: poa,
+    //        }
+    //    }
 
     /// Naive Needleman-Wunsch
     /// Populates the traceback matrix in $O(n^2)$ time using
     /// petgraph's constant time topological traversal
     pub fn global(&mut self, query: TextSlice) -> Alignment {
         // dimensions of the traceback matrix
-        let (m, n) = (g.node_count(), query.len());
-        self.traceback.init(m, n);
+        let (m, n) = (self.graph.node_count(), query.len());
+        self.traceback = Traceback::with_capacity(m, n);
 
         // optimal AlignmentOperation path
         let mut ops: Vec<AlignmentOperation> = vec![];
 
-        self.traceback[0][0] = TracebackCell {
+        self.traceback.matrix[0][0] = TracebackCell {
             score: 0,
             op: AlignmentOperation::Match(None),
         };
 
         // construct the score matrix (naive)
-        let mut topo = Topo::new(&g);
+        let mut topo = Topo::new(&self.graph);
 
         // store the last visited node in topological order so that
         // we can index into the end of the alignment when we backtrack
         let mut last: NodeIndex<usize> = NodeIndex::new(0);
-        while let Some(node) = topo.next(&g) {
+        while let Some(node) = topo.next(&self.graph) {
             // reference base and index
-            let r = g.raw_nodes()[node.index()].weight; // reference base at previous index
+            let r = self.graph.raw_nodes()[node.index()].weight; // reference base at previous index
             let i = node.index() + 1;
             last = node;
             // iterate over the predecessors of this node
-            let prevs: Vec<NodeIndex<usize>> = g.neighbors_directed(node, Incoming).collect();
+            let prevs: Vec<NodeIndex<usize>> =
+                self.graph.neighbors_directed(node, Incoming).collect();
             // query base and its index in the DAG (traceback matrix rows)
             for (j_p, q) in query.iter().enumerate() {
                 let j = j_p + 1;
                 // match and deletion scores for the first reference base
                 let max_cell = if prevs.len() == 0 {
                     TracebackCell {
-                        score: self.traceback[0][j - 1].score + (self.scoring)(r, *q),
+                        score: self.traceback.matrix[0][j - 1].score
+                            + self.scoring.match_fn.score(r, *q),
                         op: AlignmentOperation::Match(None),
                     }
                 } else {
@@ -238,11 +203,13 @@ impl<F: MatchFunc<N>> Aligner<F, N, E> {
                             max_cell,
                             max(
                                 TracebackCell {
-                                    score: self.traceback[i_p][j - 1].score + (self.scoring)(r, *q),
+                                    score: self.traceback.matrix[i_p][j - 1].score
+                                        + self.scoring.match_fn.score(r, *q),
                                     op: AlignmentOperation::Match(Some((i_p - 1, i - 1))),
                                 },
                                 TracebackCell {
-                                    score: self.traceback[i_p][j].score - 1i32,
+                                    score: self.traceback.matrix[i_p][j].score
+                                        + self.scoring.gap_open,
                                     op: AlignmentOperation::Del(Some((i_p - 1, i))),
                                 },
                             ),
@@ -254,11 +221,11 @@ impl<F: MatchFunc<N>> Aligner<F, N, E> {
                 let score = max(
                     max_cell,
                     TracebackCell {
-                        score: self.traceback[i][j - 1].score - 1i32,
+                        score: self.traceback.matrix[i][j - 1].score + self.scoring.gap_open,
                         op: AlignmentOperation::Ins(Some(i - 1)),
                     },
                 );
-                self.traceback[i][j] = score;
+                self.traceback.matrix[i][j] = score;
             }
         }
 
@@ -271,8 +238,8 @@ impl<F: MatchFunc<N>> Aligner<F, N, E> {
         while i > 0 && j > 0 {
             // push operation and edge corresponding to (one of the) optimal
             // routes
-            ops.push(self.traceback[i][j].op.clone());
-            match self.traceback[i][j].op {
+            ops.push(self.traceback.matrix[i][j].op.clone());
+            match self.traceback.matrix[i][j].op {
                 AlignmentOperation::Match(Some((p, _))) => {
                     i = p + 1;
                     j = j - 1;
@@ -299,8 +266,9 @@ impl<F: MatchFunc<N>> Aligner<F, N, E> {
         ops.reverse();
 
         Alignment {
-            score: self.traceback[last.index() + 1][n].score,
+            score: self.traceback.matrix[last.index() + 1][n].score,
             operations: ops,
+            mode: AlignmentMode::Custom,
         }
     }
 
@@ -312,7 +280,7 @@ impl<F: MatchFunc<N>> Aligner<F, N, E> {
     /// * `label` - The name of the new sequence being added to the graph
     /// * `seq` - The complete sequence of the read being incorporated
     ///
-    pub fn incorporate_alignment(&mut self, aln: Alignment, _label: &str, seq: TextSlice) {
+    pub fn incorporate_alignment(&mut self, aln: Alignment, seq: TextSlice) {
         let mut prev: NodeIndex<usize> = NodeIndex::new(0);
         let mut i: usize = 0;
         for op in aln.operations {
@@ -363,7 +331,7 @@ impl<F: MatchFunc<N>> Aligner<F, N, E> {
 ///
 /// * `filename` - The filepath to write the dot file to, as a String
 ///
-fn write_dot(graph: Graph, filename: String) {
+fn write_dot(graph: Graph<u8, i32, Directed, usize>, filename: String) {
     let mut file = match File::create(&filename) {
         Err(why) => panic!("couldn't open file {}: {}", filename, why.description()),
         Ok(file) => file,
@@ -404,7 +372,9 @@ mod tests {
     #[test]
     fn test_init_graph() {
         // sanity check for String -> Graph
-        let poa = POAGraph::new("seq1", b"123456789");
+
+        let match_fn = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let poa = Aligner::from_string(b"123456789", -1, match_fn);
         assert!(poa.graph.is_directed());
         assert_eq!(poa.graph.node_count(), 9);
         assert_eq!(poa.graph.edge_count(), 8);
@@ -412,25 +382,28 @@ mod tests {
 
     #[test]
     fn test_alignment() {
+        let match_fn = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
         // examples from the POA paper
         //let _seq1 = b"PKMIVRPQKNETV";
         //let _seq2 = b"THKMLVRNETIM";
-        let poa = POAGraph::new("seq1", b"GATTACA");
-        let alignment = poa.align_sequence(b"GCATGCU");
+        let mut poa = Aligner::from_string(b"GATTACA", -1, match_fn);
+        let alignment = poa.global(b"GCATGCU");
         assert_eq!(alignment.score, 0);
 
-        let alignment = poa.align_sequence(b"GCATGCUx");
+        let alignment = poa.global(b"GCATGCUx");
         assert_eq!(alignment.score, -1);
 
-        let alignment = poa.align_sequence(b"xCATGCU");
+        let alignment = poa.global(b"xCATGCU");
         assert_eq!(alignment.score, -2);
     }
 
     #[test]
     fn test_branched_alignment() {
+        let match_fn = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+
         let seq1 = b"TTTTT";
         let seq2 = b"TTATT";
-        let mut poa = POAGraph::new("seq1", seq1);
+        let mut poa = Aligner::from_string(seq1, -1, match_fn);
         let head: NodeIndex<usize> = NodeIndex::new(1);
         let tail: NodeIndex<usize> = NodeIndex::new(2);
         let node1 = poa.graph.add_node(b'A');
@@ -438,15 +411,17 @@ mod tests {
         poa.graph.add_edge(head, node1, 1);
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
-        let alignment = poa.align_sequence(seq2);
+        let alignment = poa.global(seq2);
         assert_eq!(alignment.score, 3);
     }
 
     #[test]
     fn test_alt_branched_alignment() {
+        let match_fn = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+
         let seq1 = b"TTCCTTAA";
         let seq2 = b"TTTTGGAA";
-        let mut poa = POAGraph::new("seq1", seq1);
+        let mut poa = Aligner::from_string(seq1, -1, match_fn);
         let head: NodeIndex<usize> = NodeIndex::new(1);
         let tail: NodeIndex<usize> = NodeIndex::new(2);
         let node1 = poa.graph.add_node(b'A');
@@ -454,8 +429,8 @@ mod tests {
         poa.graph.add_edge(head, node1, 1);
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
-        let alignment = poa.align_sequence(seq2);
-        poa.incorporate_alignment(alignment, "seq2", seq2);
+        let alignment = poa.global(seq2);
+        poa.incorporate_alignment(alignment, seq2);
         assert_eq!(poa.graph.edge_count(), 14);
         assert!(
             poa.graph
@@ -469,10 +444,12 @@ mod tests {
 
     #[test]
     fn test_insertion_on_branch() {
+        let match_fn = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+
         let seq1 = b"TTCCGGTTTAA";
         let seq2 = b"TTGGTATGGGAA";
         let seq3 = b"TTGGTTTGCGAA";
-        let mut poa = POAGraph::new("seq1", seq1);
+        let mut poa = Aligner::from_string(seq1, -1, match_fn);
         let head: NodeIndex<usize> = NodeIndex::new(1);
         let tail: NodeIndex<usize> = NodeIndex::new(2);
         let node1 = poa.graph.add_node(b'C');
@@ -482,10 +459,10 @@ mod tests {
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, node3, 1);
         poa.graph.add_edge(node3, tail, 1);
-        let alignment = poa.align_sequence(seq2);
+        let alignment = poa.global(seq2);
         assert_eq!(alignment.score, 2);
-        poa.incorporate_alignment(alignment, "seq2", seq2);
-        let alignment2 = poa.align_sequence(seq3);
+        poa.incorporate_alignment(alignment, seq2);
+        let alignment2 = poa.global(seq3);
         assert_eq!(alignment2.score, 10);
     }
 }
