@@ -25,6 +25,7 @@ use utils::TextSlice;
 use petgraph::dot::Dot;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::Topo;
+
 use petgraph::{Directed, Graph, Incoming};
 
 pub const MIN_SCORE: i32 = -858_993_459; // negative infinity; see alignment/pairwise/mod.rs
@@ -33,15 +34,14 @@ pub const MIN_SCORE: i32 = -858_993_459; // negative infinity; see alignment/pai
 pub struct POAGraph {
     // a POAGraph struct stores a reference DAG and labels the edges with the
     // count or names of the input sequences (TODO)
-    graph: Graph<u8, i32, Directed, usize>,
-}
+    graph: }
 
 // Unlike with a total order we may have arbitrary successors in the
 // traceback matrix. I have not yet figured out what the best level of
 // detail to store is, so Match and Del operations remember In and Out
 // nodes on the reference graph.
 #[derive(Debug, Clone)]
-pub enum Op {
+pub enum AlignmentOperation {
     Match(Option<(usize, usize)>),
     Del(Option<(usize, usize)>),
     Ins(Option<usize>),
@@ -49,17 +49,59 @@ pub enum Op {
 
 pub struct Alignment {
     score: i32,
-    operations: Vec<Op>,
+//    xstart: Edge,
+    operations: Vec<AlignmentOperation>,
+    mode: AlignmentMode,
 }
 
-pub struct Aligner {
-    scoring: fn(u8, u8) -> i32,
+impl MatchFunc for MatchParams {
+    #[inline]
+    fn score(&self, a: u8, b: u8) -> i32 {
+        if a == b {
+            self.match_score
+        } else {
+            self.mismatch_score
+        }
+    }
+}
+
+impl<F> MatchFunc for F
+where
+    F: Fn(u8, u8) -> i32,
+{
+    fn score(&self, a: u8, b: u8) -> i32 {
+        (self)(a,b)
+    }
+}
+
+struct Scoring<F: MatchFunc> {
+    gap_open: i32, // indel penalty
+    match_fn: F,
+}
+
+impl Scoring<MatchParams> {
+    pub fn from_scores(
+        gap_open: i32,
+        gap_extend: i32,
+        match_score: i32,
+        mismatch_score: i32,
+        ) -> Self {
+        Scoring { gap_open, match_fn: MatchParams::new(match_score, mismatch_score),
+        match_scores: Some((match_score, mismatch_score)),
+        }
+    }
+}
+
+pub struct Aligner<F: MatchFunc> {
+    scoring: Scoring<F>,
+    traceback: Traceback,
+    mut graph: Graph<u8, i32, Directed, usize>,
 }
 
 #[derive(Debug, Clone)]
 struct TracebackCell {
     score: i32,
-    op: Op,
+    op: AlignmentOperation,
 }
 
 impl Ord for TracebackCell {
@@ -80,51 +122,89 @@ impl PartialEq for TracebackCell {
     }
 }
 
+//impl Default for TracebackCell { }
+
 impl Eq for TracebackCell {}
 
-impl Aligner {
-    pub fn new() -> Self {
-        let score_fn = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        Aligner { scoring: score_fn }
-    }
+struct Traceback {
+    rows: usize,
+    cols: usize,
+    mut matrix: Vec<Vec<TracebackCell>>,
+}
 
-    /// Naive Needleman-Wunsch
-    /// Populates the traceback matrix in $O(n^2)$ time using
-    /// petgraph's constant time topological traversal
-    pub fn global(&mut self, g: &Graph<u8, i32, Directed, usize>, query: TextSlice) -> Alignment {
-        // dimensions of the traceback matrix
-        let (m, n) = (g.node_count(), query.len());
-
-        // initialize matrix
-        let mut traceback: Vec<Vec<TracebackCell>> = vec![
+impl Traceback {
+    fn init(&mut self, m: usize, n: usize) -> Self {
+        let mut matrix = vec![
             vec![
                 TracebackCell {
                     score: 0,
-                    op: Op::Match(None)
+                    op: AlignmentOperation::Match(None)
                 };
-                n + 1
+            n + 1
             ];
             m + 1
         ];
-        let mut ops: Vec<Op> = vec![];
-
         for i in 1..(m + 1) {
             // TODO: these should be -1 * distance from head node
             traceback[i][0] = TracebackCell {
                 score: -1 * i as i32,
-                op: Op::Del(None),
+                op: AlignmentOperation::Del(None),
             };
         }
         for j in 1..(n + 1) {
             traceback[0][j] = TracebackCell {
                 score: -1 * j as i32,
-                op: Op::Ins(None),
+                op: AlignmentOperation::Ins(None),
             };
         }
 
-        traceback[0][0] = TracebackCell {
+        Traceback { rows: m, cols: n, matrix: matrix }
+    
+    }
+}
+
+impl<F: MatchFunc<N>> Aligner<F, N, E> {
+    pub fn from_string(reference: TextSlice, gap_open: i32, match_fn: F<N>) -> Self {
+
+        let mut poa: Graph<N, E, Directed, usize> =
+            Graph::with_capacity(reference.len(), reference.len() - 1);
+        let mut prev: NodeIndex<usize> = graph.add_node(reference[0]);
+        let mut node: NodeIndex<usize>;
+        for i in 1..reference.len() {
+            node = poa.add_node(reference[i]);
+            graph.add_edge(prev, node, 1);
+            prev = node;
+        }
+ 
+        Aligner { 
+            scoring: Scoring::new(gap_open, match_fn),
+            mut traceback: Traceback::new(reference.len() + 1, n),
+            poa: poa,
+        }
+    }
+
+    pub fn from_graph(poa: Graph<N, E, Directed, usize>, gap_open: i32, match_fn: F<N>) -> Self {
+        Aligner {
+            scoring: Scoring::new(gap_open, match_fn),
+            mut traceback: Traceback::new(),
+            poa: poa,
+        }
+    }
+    
+    /// Naive Needleman-Wunsch
+    /// Populates the traceback matrix in $O(n^2)$ time using
+    /// petgraph's constant time topological traversal
+    pub fn global(&mut self query: TextSlice) -> Alignment {
+        // dimensions of the traceback matrix
+        let (m, n) = (g.node_count(), query.len());
+        self.traceback.init(m, n);
+
+        // optimal AlignmentOperation path
+        let mut ops: Vec<AlignmentOperation> = vec![];
+
+        self.traceback[0][0] = TracebackCell {
             score: 0,
-            op: Op::Match(None),
+            op: AlignmentOperation::Match(None),
         };
 
         // construct the score matrix (naive)
@@ -144,60 +224,47 @@ impl Aligner {
             for (j_p, q) in query.iter().enumerate() {
                 let j = j_p + 1;
                 // match and deletion scores for the first reference base
-                let (mat, del) = if prevs.len() == 0 {
-                    (
+                let max_cell = if prevs.len() == 0 {
                         TracebackCell {
-                            score: traceback[0][j - 1].score + (self.scoring)(r, *q),
-                            op: Op::Match(None),
+                            score: self.traceback[0][j - 1].score + (self.scoring)(r, *q),
+                            op: AlignmentOperation::Match(None),
                         },
-                        TracebackCell {
-                            score: traceback[0][j].score - 1i32,
-                            op: Op::Del(None),
-                        },
-                    )
                 } else {
-                    let mut mat_max = TracebackCell {
+                    let mut max_cell = TracebackCell {
                         score: MIN_SCORE,
-                        op: Op::Match(None),
-                    };
-                    let mut del_max = TracebackCell {
-                        score: MIN_SCORE,
-                        op: Op::Del(None),
-                    };
+                        op: AlignmentOperation::Match(None),
+                    }
                     for prev_n in 0..prevs.len() {
                         let i_p: usize = prevs[prev_n].index() + 1; // index of previous node
-                        mat_max = max(
-                            mat_max,
+                        max_cell = max(max_cell,
+                            max( 
                             TracebackCell {
-                                score: traceback[i_p][j - 1].score + (self.scoring)(r, *q),
-                                op: Op::Match(Some((i_p - 1, i - 1))),
+                                score: self.traceback[i_p][j - 1].score + (self.scoring)(r, *q),
+                                op: AlignmentOperation::Match(Some((i_p - 1, i - 1))),
                             },
-                        );
-                        del_max = max(
-                            del_max,
                             TracebackCell {
-                                score: traceback[i_p][j].score - 1i32,
-                                op: Op::Del(Some((i_p - 1, i))),
+                                score: self.traceback[i_p][j].score - 1i32,
+                                op: AlignmentOperation::Del(Some((i_p - 1, i))),
                             },
+                            );
                         );
                     }
-                    (mat_max, del_max)
+                    max_cell 
                 };
+                
                 let score = max(
-                    mat,
-                    max(
-                        del,
+                    max_cell,
                         TracebackCell {
-                            score: traceback[i][j - 1].score - 1i32,
-                            op: Op::Ins(Some(i - 1)),
+                            score: self.traceback[i][j - 1].score - 1i32,
+                            op: AlignmentOperation::Ins(Some(i - 1)),
                         },
                     ),
                 );
-                traceback[i][j] = score;
+                self.traceback[i][j] = score;
             }
         }
 
-        //dump_traceback(&traceback, g, query);
+        //dump_traceback(&self.traceback, g, query);
 
         // Now backtrack through the matrix to construct an optimal path
         let mut i = last.index() + 1;
@@ -206,26 +273,26 @@ impl Aligner {
         while i > 0 && j > 0 {
             // push operation and edge corresponding to (one of the) optimal
             // routes
-            ops.push(traceback[i][j].op.clone());
-            match traceback[i][j].op {
-                Op::Match(Some((p, _))) => {
+            ops.push(self.traceback[i][j].op.clone());
+            match self.traceback[i][j].op {
+                AlignmentOperation::Match(Some((p, _))) => {
                     i = p + 1;
                     j = j - 1;
                 }
-                Op::Del(Some((p, _))) => {
+                AlignmentOperation::Del(Some((p, _))) => {
                     i = p + 1;
                 }
-                Op::Ins(Some(p)) => {
+                AlignmentOperation::Ins(Some(p)) => {
                     i = p + 1;
                     j = j - 1;
                 }
-                Op::Match(None) => {
+                AlignmentOperation::Match(None) => {
                     break;
                 }
-                Op::Del(None) => {
+                AlignmentOperation::Del(None) => {
                     j = j - 1;
                 }
-                Op::Ins(None) => {
+                AlignmentOperation::Ins(None) => {
                     i = i - 1;
                 }
             }
@@ -234,62 +301,12 @@ impl Aligner {
         ops.reverse();
 
         Alignment {
-            score: traceback[last.index() + 1][n].score,
+            score: self.traceback[last.index() + 1][n].score,
             operations: ops,
         }
     }
-}
 
-impl POAGraph {
-    /// Create new POAGraph instance initialized with a sequence
-    ///
-    /// # Arguments
-    ///
-    /// * `label` - sequence label for an initial sequence
-    /// * `sequence` - TextSlice from which to initialize the POA
-    ///
-    pub fn new(_label: &str, sequence: TextSlice) -> POAGraph {
-        let graph = POAGraph::seq_to_graph(sequence);
-        POAGraph { graph: graph }
-    }
-
-    /// Add a new unaligned sequence to the underlying graph.
-    /// Useful for both initializing the graph with its first sequence, as
-    /// well as adding unaligned prefix or suffix sequence from partially
-    /// aligned reads.
-    ///
-    /// # Arguments
-    ///
-    /// * `label` - the id of the sequence to be added
-    /// * `sequence` - The sequence to be added
-    ///
-    fn seq_to_graph(sequence: TextSlice) -> Graph<u8, i32, Directed, usize> {
-        // this should return a POAGraph
-        let mut graph: Graph<u8, i32, Directed, usize> =
-            Graph::with_capacity(sequence.len(), sequence.len() - 1);
-        let mut prev: NodeIndex<usize> = graph.add_node(sequence[0]);
-        let mut node: NodeIndex<usize>;
-        for i in 1..sequence.len() {
-            node = graph.add_node(sequence[i]);
-            graph.add_edge(prev, node, 1);
-            prev = node;
-        }
-        graph
-    }
-
-    /// Align a sequence to the current graph and return the
-    /// resulting alignment object
-    ///
-    /// # Arguments
-    ///
-    /// * `sequence` - The new sequence to align as a text slice
-    ///
-    pub fn align_sequence(&self, seq: &[u8]) -> Alignment {
-        let mut aligner = Aligner::new();
-        aligner.global(&self.graph, seq)
-    }
-
-    /// Incorporate a new sequence into the graph from an alignment
+    /// Incorporate a new sequence into a graph from an alignment
     ///
     /// # Arguments
     ///
@@ -302,10 +319,10 @@ impl POAGraph {
         let mut i: usize = 0;
         for op in aln.operations {
             match op {
-                Op::Match(None) => {
+                AlignmentOperation::Match(None) => {
                     i = i + 1;
                 }
-                Op::Match(Some((_, p))) => {
+                AlignmentOperation::Match(Some((_, p))) => {
                     let node = NodeIndex::new(p);
                     if seq[i] != self.graph.raw_nodes()[p].weight {
                         let node = self.graph.add_node(seq[i]);
@@ -326,28 +343,32 @@ impl POAGraph {
                     }
                     i = i + 1;
                 }
-                Op::Ins(None) => {
+                AlignmentOperation::Ins(None) => {
                     i = i + 1;
                 }
-                Op::Ins(Some(_)) => {
+                AlignmentOperation::Ins(Some(_)) => {
                     let node = self.graph.add_node(seq[i]);
                     self.graph.add_edge(prev, node, 1);
                     prev = node;
                     i = i + 1;
                 }
-                Op::Del(_) => {} // we should only have to skip over deleted nodes
+                AlignmentOperation::Del(_) => {} // we should only have to skip over deleted nodes
             }
         }
     }
 
-    /// Write the current graph to a specified filepath in dot format for
-    /// visualization, primarily for debugging / diagnostics
-    ///
-    /// # Arguments
-    ///
-    /// * `filename` - The filepath to write the dot file to, as a String
-    ///
-    pub fn write_dot(&self, filename: String) {
+
+
+}
+
+/// Write the current graph to a specified filepath in dot format for
+/// visualization, primarily for debugging / diagnostics
+///
+/// # Arguments
+///
+/// * `filename` - The filepath to write the dot file to, as a String
+///
+fn write_dot(graph, filename: String) {
         let mut file = match File::create(&filename) {
             Err(why) => panic!("couldn't open file {}: {}", filename, why.description()),
             Ok(file) => file,
@@ -383,7 +404,7 @@ fn dump_traceback(
 
 #[cfg(test)]
 mod tests {
-    use alignment::poa::POAGraph;
+    use alignment::poa::Aligner;
     use petgraph::graph::NodeIndex;
 
     #[test]
