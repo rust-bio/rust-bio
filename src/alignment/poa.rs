@@ -1,9 +1,10 @@
-// Copyright 2017 Brett Bowman
+// Copyright 2017-2018 Brett Bowman, Jeff Knaggs
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Partial-Order Alignment for fast alignment and consensus of long homologous sequences.
+//! Partial-Order Alignment for fast alignment and consensus of multiple homologous sequences.
+//! Alignment complexity: **O(n * m)** for a graph of n nodes and a sequence length m.
 //!
 //! For the original concept and theory, see:
 //! * Lee, Christopher, Catherine Grasso, and Mark F. Sharlow. "Multiple sequence alignment using
@@ -11,8 +12,24 @@
 //! * Lee, Christopher. "Generating consensus sequences from partial order multiple sequence
 //! alignment graphs." Bioinformatics 19.8 (2003): 999-1008.
 //!
-//! For a reference implementation that inspired this code, see poapy:
+//! For a modern reference implementation, see poapy:
 //! https://github.com/ljdursi/poapy
+//!
+//! # Example
+//!
+//! ```
+//! use bio::alignment::poa::*;
+//! let x = b"AAAAAAA";
+//! let y = b"AABBBAA";
+//! let z = b"AABCBAA";
+//!
+//! let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+//! let mut aligner = Aligner::from_string(x, -1, &score);
+//! assert_eq!(aligner.global(z).score, 1);
+//! aligner.add_sequence(y);
+//! // z differs from its closest homologue in the graph by one base
+//! assert_eq!(aligner.global(z).score, 5);
+//! ```
 
 use std::cmp::{max, Ordering};
 
@@ -40,16 +57,10 @@ pub enum AlignmentOperation {
 }
 
 pub struct Alignment {
-    score: i32,
+    pub score: i32,
     //    xstart: Edge,
     operations: Vec<AlignmentOperation>,
     mode: AlignmentMode,
-}
-
-pub struct Aligner<F: MatchFunc> {
-    scoring: Scoring<F>,
-    traceback: Traceback,
-    pub graph: Graph<u8, i32, Directed, usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -87,6 +98,13 @@ struct Traceback {
 }
 
 impl Traceback {
+    /// Create a Traceback matrix with given maximum sizes
+    ///
+    /// # Arguments
+    ///
+    /// * `m` - the number of nodes in the DAG
+    /// * `n` - the length of the query sequence
+    ///
     fn with_capacity(m: usize, n: usize) -> Self {
         let mut matrix = vec![
             vec![
@@ -120,7 +138,30 @@ impl Traceback {
     }
 }
 
+/// A global aligner on partially ordered graphs
+///
+/// Internally stores a directed acyclic graph datastructure that informs the topology of the
+/// traceback matrix. A mutable Aligner may have additional sequences added to the internal
+/// partially ordered graph.
+///
+/// The partial order is expressed with a directed acyclic graph and informs the traversal of the
+/// traceback matrix.
+///
+pub struct Aligner<F: MatchFunc> {
+    scoring: Scoring<F>,
+    traceback: Traceback,
+    pub graph: Graph<u8, i32, Directed, usize>,
+}
+
 impl<F: MatchFunc> Aligner<F> {
+    /// Create a new aligner instance from an initial reference sequence and alignment penalties.
+    ///
+    /// # Arguments
+    ///
+    /// * `reference` - a reference TextSlice to populate the initial reference graph
+    /// * `gap_open` - the negative score assigned when branching from the reference graph
+    /// * `match_fn` - the pairwise score for substitutions (see bio::scores)
+    ///
     pub fn from_string(reference: TextSlice, gap_open: i32, match_fn: F) -> Self {
         let mut graph: Graph<u8, i32, Directed, usize> =
             Graph::with_capacity(reference.len(), reference.len() - 1);
@@ -139,17 +180,27 @@ impl<F: MatchFunc> Aligner<F> {
         }
     }
 
-    //    pub fn from_graph(poa: Graph<u8, i32, Directed, usize>, gap_open: i32, match_fn: F) -> Self {
-    //        Aligner {
-    //            scoring: Scoring::new(gap_open, match_fn),
-    //            traceback: Traceback::new(),
-    //            poa: poa,
-    //        }
-    //    }
+    /// Create a new aligner instance from the directed acyclic graph of another.
+    ///
+    /// # Arguments
+    ///
+    /// * `poa` - the partially ordered reference alignment
+    /// * `gap_open` - the negative score assigned when branch from the reference graph
+    /// * `match_fn` - the pairwise score for substitutions (see bio::scores)
+    ///
+    pub fn from_graph(poa: Graph<u8, i32, Directed, usize>, gap_open: i32, match_fn: F) -> Self {
+        Aligner {
+            scoring: Scoring::new(gap_open, 0, match_fn),
+            traceback: Traceback::with_capacity(0, 0),
+            graph: poa,
+        }
+    }
 
-    /// Naive Needleman-Wunsch
-    /// Populates the traceback matrix in $O(n^2)$ time using
-    /// petgraph's constant time topological traversal
+    /// A global Needleman-Wunsch aligner on partially ordered graphs.
+    ///
+    /// # Arguments
+    /// * `query` - the query TextSlice to align against the internal graph member
+    ///
     pub fn global(&mut self, query: TextSlice) -> Alignment {
         // dimensions of the traceback matrix
         let (m, n) = (self.graph.node_count(), query.len());
@@ -271,11 +322,10 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     /// # Arguments
     ///
-    /// * `aln` - The alignment object of the new sequence to the graph
-    /// * `label` - The name of the new sequence being added to the graph
-    /// * `seq` - The complete sequence of the read being incorporated
+    /// * `aln` - The alignment of the new sequence to the graph
+    /// * `seq` - The sequence being incorporated
     ///
-    pub fn incorporate_alignment(&mut self, aln: Alignment, seq: TextSlice) {
+    pub fn add_alignment(&mut self, aln: Alignment, seq: TextSlice) {
         let mut prev: NodeIndex<usize> = NodeIndex::new(0);
         let mut i: usize = 0;
         for op in aln.operations {
@@ -317,6 +367,16 @@ impl<F: MatchFunc> Aligner<F> {
             }
         }
     }
+
+    /// Align and incorporate a sequence to the partially ordered graph from a TextSlice
+    ///
+    /// # Arguments
+    /// * `seq` - TextSlice to incorporate into the partial order aligner's graph
+    ///
+    pub fn add_sequence(&mut self, seq: TextSlice) {
+        let alignment = self.global(seq);
+        self.add_alignment(alignment, seq);
+    }
 }
 
 // print out a traceback matrix
@@ -357,6 +417,7 @@ mod tests {
     ///
     /// * `filename` - The filepath to write the dot file to, as a String
     ///
+    #[allow(dead_code)]
     fn write_dot(graph: Graph<u8, i32, Directed, usize>, filename: String) {
         let mut file = match File::create(&filename) {
             Err(why) => panic!("couldn't open file {}: {}", filename, why.description()),
@@ -430,7 +491,7 @@ mod tests {
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
         let alignment = poa.global(seq2);
-        poa.incorporate_alignment(alignment, seq2);
+        poa.add_alignment(alignment, seq2);
         assert_eq!(poa.graph.edge_count(), 14);
         assert!(
             poa.graph
@@ -461,7 +522,7 @@ mod tests {
         poa.graph.add_edge(node3, tail, 1);
         let alignment = poa.global(seq2);
         assert_eq!(alignment.score, 2);
-        poa.incorporate_alignment(alignment, seq2);
+        poa.add_alignment(alignment, seq2);
         let alignment2 = poa.global(seq3);
 
         assert_eq!(alignment2.score, 10);
