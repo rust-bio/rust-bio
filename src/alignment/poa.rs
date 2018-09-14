@@ -4,7 +4,6 @@
 // except according to those terms.
 
 //! Partial-Order Alignment for fast alignment and consensus of multiple homologous sequences.
-//! Alignment complexity: **O(n * m)** for a graph of n nodes and a sequence length m.
 //!
 //! For the original concept and theory, see:
 //! * Lee, Christopher, Catherine Grasso, and Mark F. Sharlow. "Multiple sequence alignment using
