@@ -23,10 +23,12 @@
 //! let z = b"AABCBAA";
 //!
 //! let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-//! let mut aligner = Aligner::from_string(x, -1, &score);
+//! let mut aligner = Aligner::new(-1, &score);
+//! aligner.add_sequence(x);
+//! // z differs from x in 3 locations
 //! assert_eq!(aligner.global(z).score, 1);
 //! aligner.add_sequence(y);
-//! // z differs from its closest homologue in the graph by one base
+//! // z differs from x and y's partial order alignment by 1 base
 //! assert_eq!(aligner.global(z).score, 5);
 //! ```
 
@@ -135,6 +137,14 @@ impl Traceback {
             matrix: matrix,
         }
     }
+
+    fn new() -> Self {
+        Traceback {
+            rows: 0,
+            cols: 0,
+            matrix: Vec::new(),
+        }
+    }
 }
 
 /// A global aligner on partially ordered graphs
@@ -153,6 +163,13 @@ pub struct Aligner<F: MatchFunc> {
 }
 
 impl<F: MatchFunc> Aligner<F> {
+    pub fn new(gap_open: i32, match_fn: F) -> Self {
+        Aligner {
+            scoring: Scoring::new(gap_open, 0, match_fn),
+            traceback: Traceback::new(),
+            graph: Graph::with_capacity(0, 0),
+        }
+    }
     /// Create a new aligner instance from an initial reference sequence and alignment penalties.
     ///
     /// # Arguments
@@ -161,20 +178,20 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `gap_open` - the negative score assigned when branching from the reference graph
     /// * `match_fn` - the pairwise score for substitutions (see bio::scores)
     ///
-    pub fn from_string(reference: TextSlice, gap_open: i32, match_fn: F) -> Self {
+    pub fn from_string(seq: TextSlice, gap_open: i32, match_fn: F) -> Self {
         let mut graph: Graph<u8, i32, Directed, usize> =
-            Graph::with_capacity(reference.len(), reference.len() - 1);
-        let mut prev: NodeIndex<usize> = graph.add_node(reference[0]);
+            Graph::with_capacity(seq.len(), seq.len() - 1);
+        let mut prev: NodeIndex<usize> = graph.add_node(seq[0]);
         let mut node: NodeIndex<usize>;
-        for i in 1..reference.len() {
-            node = graph.add_node(reference[i]);
+        for i in 1..seq.len() {
+            node = graph.add_node(seq[i]);
             graph.add_edge(prev, node, 1);
             prev = node;
         }
 
         Aligner {
             scoring: Scoring::new(gap_open, 0, match_fn),
-            traceback: Traceback::with_capacity(0, 0),
+            traceback: Traceback::new(),
             graph: graph,
         }
     }
@@ -190,7 +207,7 @@ impl<F: MatchFunc> Aligner<F> {
     pub fn from_graph(poa: Graph<u8, i32, Directed, usize>, gap_open: i32, match_fn: F) -> Self {
         Aligner {
             scoring: Scoring::new(gap_open, 0, match_fn),
-            traceback: Traceback::with_capacity(0, 0),
+            traceback: Traceback::new(),
             graph: poa,
         }
     }
@@ -213,7 +230,7 @@ impl<F: MatchFunc> Aligner<F> {
             op: AlignmentOperation::Match(None),
         };
 
-        // construct the score matrix (naive)
+        // construct the score matrix (O(n^2) space)
         let mut topo = Topo::new(&self.graph);
 
         // store the last visited node in topological order so that
@@ -373,6 +390,17 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `seq` - TextSlice to incorporate into the partial order aligner's graph
     ///
     pub fn add_sequence(&mut self, seq: TextSlice) {
+        // if the Aligner has not been initialized with any sequence yet
+        if self.graph.node_count() == 0 {
+            self.graph = Graph::with_capacity(seq.len(), seq.len() - 1);
+            let mut prev: NodeIndex<usize> = self.graph.add_node(seq[0]);
+            let mut node: NodeIndex<usize>;
+            for i in 1..seq.len() {
+                node = self.graph.add_node(seq[i]);
+                self.graph.add_edge(prev, node, 1);
+                prev = node;
+            }
+        }
         let alignment = self.global(seq);
         self.add_alignment(alignment, seq);
     }
