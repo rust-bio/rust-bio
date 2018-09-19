@@ -30,6 +30,11 @@
 //! aligner.add_sequence(y);
 //! // z differs from x and y's partial order alignment by 1 base
 //! assert_eq!(aligner.global(z).score, 5);
+//!
+//! // an alignment can be recycled to add a sequence to the graph
+//! let alignment = aligner.global(z);
+//! aligner.add_alignment(alignment, z);
+//! assert_eq!(aligner.global(z).score, 7); // a complete match
 //! ```
 
 use std::cmp::{max, Ordering};
