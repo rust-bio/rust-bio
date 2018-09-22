@@ -26,9 +26,11 @@ pub fn expected_fdr(peps: &[LogProb]) -> Vec<LogProb> {
         (0..peps.len()).sorted_by(|&i, &j| OrderedFloat(*peps[i]).cmp(&OrderedFloat(*peps[j])));
     // estimate FDR
     let mut expected_fdr = vec![LogProb::ln_zero(); peps.len()];
-    for (i, expected_fp) in LogProb::ln_cumsum_exp(sorted_idx.iter().map(|&i| peps[i])).enumerate()
+    for (j, (expected_fp, &i)) in LogProb::ln_cumsum_exp(sorted_idx.iter().map(|&i| peps[i]))
+        .zip(sorted_idx.iter())
+        .enumerate()
     {
-        let fdr = LogProb(*expected_fp - ((i + 1) as f64).ln());
+        let fdr = LogProb(*expected_fp - ((j + 1) as f64).ln());
         expected_fdr[i] = if fdr <= LogProb::ln_one() {
             fdr
         } else {

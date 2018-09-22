@@ -137,7 +137,7 @@ impl PairHMM {
         // iterate over x
         for i in 0..emission_params.len_x() {
             // allow alignment to start from offset in x (if prob_start_gap_x is set accordingly)
-            self.fm[prev][0] = gap_params.prob_start_gap_x(i);
+            self.fm[prev][0] = self.fm[prev][0].ln_add_exp(gap_params.prob_start_gap_x(i));
 
             let prob_emit_x = emission_params.prob_emit_x(i);
 
@@ -296,7 +296,7 @@ mod tests {
         let x = b"AGCTCGATCGATCGATC";
         let y = b"AGCTCGATCGATCGATC";
 
-        let emission_params = TestEmissionParams { x: x, y: y };
+        let emission_params = TestEmissionParams { x, y };
         let gap_params = TestGapParams;
 
         let mut pair_hmm = PairHMM::new();
