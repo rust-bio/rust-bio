@@ -27,7 +27,7 @@ use std::path::Path;
 
 use csv;
 
-use utils::Strand;
+use bio_types::strand::Strand;
 
 /// `GffType`
 ///
@@ -355,7 +355,7 @@ impl Record {
 mod tests {
     use super::*;
     use multimap::MultiMap;
-    use utils::Strand;
+    use bio_types::strand::Strand;
 
     const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t\
 Note=Removed,Obsolete;ID=test
