@@ -146,25 +146,25 @@ impl PairHMM {
                 let j_ = j + 1;
 
                 // match or mismatch
-                self.fm[curr][j_] = emission_params.prob_emit_xy(i, j)
-                    + LogProb::ln_sum_exp(&[
-                        // coming from state M
-                        prob_no_gap + self.fm[prev][j_ - 1],
-                        // coming from state X
-                        prob_no_gap_x_extend + self.fx[prev][j_ - 1],
-                        // coming from state Y
-                        prob_no_gap_y_extend + self.fy[prev][j_ - 1],
-                    ]);
+                self.fm[curr][j_] = emission_params.prob_emit_xy(i, j) + LogProb::ln_sum_exp(&[
+                    // coming from state M
+                    prob_no_gap + self.fm[prev][j_ - 1],
+                    // coming from state X
+                    prob_no_gap_x_extend + self.fx[prev][j_ - 1],
+                    // coming from state Y
+                    prob_no_gap_y_extend + self.fy[prev][j_ - 1],
+                ]);
 
                 // gap in y
                 self.fx[curr][j_] = prob_emit_x
                     + (
                     // open gap
                     prob_gap_y + self.fm[prev][j_]
-                ).ln_add_exp(
-                        // extend gap
-                        prob_gap_y_extend + self.fx[prev][j_],
-                    );
+                )
+                        .ln_add_exp(
+                            // extend gap
+                            prob_gap_y_extend + self.fx[prev][j_],
+                        );
 
                 // gap in x
                 self.fy[curr][j_] = emission_params.prob_emit_y(j)

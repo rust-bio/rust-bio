@@ -519,11 +519,10 @@ impl<F: MatchFunc> Aligner<F> {
             self.S[curr][m] = MIN_SCORE;
 
             let q = y[j - 1];
-            let xclip_score = self.scoring.xclip_prefix
-                + max(
-                    self.scoring.yclip_prefix,
-                    self.scoring.gap_open + self.scoring.gap_extend * (j as i32),
-                );
+            let xclip_score = self.scoring.xclip_prefix + max(
+                self.scoring.yclip_prefix,
+                self.scoring.gap_open + self.scoring.gap_extend * (j as i32),
+            );
 
             for i in max(1, i_start)..i_end {
                 let p = x[i - 1];
