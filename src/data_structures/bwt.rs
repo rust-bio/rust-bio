@@ -106,7 +106,8 @@ impl Occ {
         let n = bwt.len();
         let m = alphabet
             .max_symbol()
-            .expect("Expecting non-empty alphabet.") as usize + 1;
+            .expect("Expecting non-empty alphabet.") as usize
+            + 1;
         let mut occ = Vec::with_capacity(n / k as usize);
         let mut curr_occ: Vec<usize> = repeat(0).take(m).collect();
         for (i, &c) in bwt.iter().enumerate() {
@@ -164,7 +165,8 @@ impl Occ {
 pub fn less(bwt: &BWTSlice, alphabet: &Alphabet) -> Less {
     let m = alphabet
         .max_symbol()
-        .expect("Expecting non-empty alphabet.") as usize + 2;
+        .expect("Expecting non-empty alphabet.") as usize
+        + 2;
     let mut less: Less = repeat(0).take(m).collect();
     for &c in bwt.iter() {
         less[c as usize] += 1;

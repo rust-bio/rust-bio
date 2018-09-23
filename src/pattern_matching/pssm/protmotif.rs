@@ -177,7 +177,7 @@ mod tests {
             0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.81, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
             0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
         ]).into_shape((4, 20))
-            .unwrap();
+        .unwrap();
         let pssm: ProtMotif = m.into();
         let scored_pos = pssm.score(b"AAAAARNDAAA").unwrap();
         assert_eq!(scored_pos.loc, 4);
