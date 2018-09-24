@@ -229,7 +229,10 @@ impl Record {
     pub fn push_aux(&mut self, field: &str) {
         self.aux.push(field.to_owned());
     }
+}
 
+impl <'a> From<&'a Record> for annot::contig::Contig<String,strand::Strand>
+{
     /// Returns a `Contig` annotation for the BED record.
     ///
     /// ``` 
@@ -243,14 +246,14 @@ impl Record {
     /// let example = b"chr1\t5\t5000\tname1\t0.5";
     /// let mut reader = bed::Reader::new(&example[..]);
     /// let rec = reader.records().next().ok_or("No record available!")??;
-    /// let loc = rec.to_contig();
+    /// let loc = Contig::from(&rec);
     /// assert_eq!(loc.to_string(), "chr1:5-5000");
     /// # Ok(())
     /// # }
     /// # fn main() { try_main().unwrap(); }
     /// ```
-    pub fn to_contig(&self) -> annot::contig::Contig<String, strand::Strand> {
-        annot::contig::Contig::new(self.chrom.to_string(), self.start as isize, (self.end - self.start) as usize, self.strand().unwrap_or(strand::Strand::Unknown))
+    fn from(rec: &Record) -> Self {
+        annot::contig::Contig::new(rec.chrom.to_string(), rec.start as isize, (rec.end - rec.start) as usize, rec.strand().unwrap_or(strand::Strand::Unknown))
     }
 }
 
