@@ -49,6 +49,12 @@ where
 
     /// Inserts an object into the container at a specified location.
     ///
+    /// # Arguments
+    ///
+    /// `data` is the data item to be inserted into the annotation map
+    ///
+    /// `location` is the location associated with the data item.
+    ///
     /// ```
     /// extern crate bio_types;
     /// extern crate bio;
@@ -61,21 +67,27 @@ where
     /// let tma19 = Contig::new("chrXI".to_owned(), 334412, (334916 - 334412), ReqStrand::Reverse);
     /// genes.insert_at("TMA19".to_owned(), &tma19);
     /// ```
-    pub fn insert_at<L>(&mut self, t: T, l: &L)
+    pub fn insert_at<L>(&mut self, data: T, location: &L)
     where
         R: Eq + Hash + Clone,
         L: Loc<RefID = R>,
     {
         let itree = self
             .refid_itrees
-            .entry(l.refid().clone())
+            .entry(location.refid().clone())
             .or_insert_with(|| IntervalTree::new());
-        let rng = l.start()..(l.start() + (l.length() as isize));
-        itree.insert(rng, t);
+        let rng = location.start()..(location.start() + (location.length() as isize));
+        itree.insert(rng, data);
     }
 
     /// Creates an `Iterator` that will visit all entries that overlap
     /// a query location.
+    ///
+    ///
+    /// # Arguments
+    ///
+    /// `location` is the annotation location to be searched for
+    /// overlapping data items.
     ///
     /// ```
     /// extern crate bio_types;
@@ -95,21 +107,21 @@ where
     /// let hits: Vec<&String> = genes.find(&query).map(|e| e.data()).collect();
     /// assert_eq!(hits, vec!["TMA19"]);
     /// ```
-    pub fn find<'a, L>(&'a self, l: &'a L) -> AnnotMapIterator<'a, R, T>
+    pub fn find<'a, L>(&'a self, location: &'a L) -> AnnotMapIterator<'a, R, T>
     where
         L: Loc<RefID = R>,
     {
-        if let Some(itree) = self.refid_itrees.get(l.refid()) {
-            let interval = l.start()..(l.start() + (l.length() as isize));
+        if let Some(itree) = self.refid_itrees.get(location.refid()) {
+            let interval = location.start()..(location.start() + (location.length() as isize));
             let itree_iter = itree.find(interval);
             AnnotMapIterator {
                 itree_iter: Some(itree_iter),
-                refid: l.refid(),
+                refid: location.refid(),
             }
         } else {
             AnnotMapIterator {
                 itree_iter: None,
-                refid: l.refid(),
+                refid: location.refid(),
             }
         }
     }
@@ -123,14 +135,18 @@ where
     /// Inserts an object with the `Loc` trait into the container at
     /// its location.
     ///
-    /// Equivalent to inserting `t` at `t.contig()`.
-    pub fn insert_loc(&mut self, t: T) {
+    /// # Argument
+    ///
+    /// `data` is the data to be inserted based on its location.
+    ///
+    /// Equivalent to inserting `data` at `data.contig()`.
+    pub fn insert_loc(&mut self, data: T) {
         let itree = self
             .refid_itrees
-            .entry(t.refid().clone())
+            .entry(data.refid().clone())
             .or_insert_with(|| IntervalTree::new());
-        let rng = t.start()..(t.start() + (t.length() as isize));
-        itree.insert(rng, t);
+        let rng = data.start()..(data.start() + (data.length() as isize));
+        itree.insert(rng, data);
     }
 }
 
