@@ -404,8 +404,11 @@ impl<T: BitVec> Myers<T> {
         I::IntoIter: ExactSizeIterator,
     {
         let state = State::init(self.m);
-        self.tb
-            .init(state.clone(), (self.m + max_dist).to_usize().unwrap(), self.m);
+        self.tb.init(
+            state.clone(),
+            (self.m + max_dist).to_usize().unwrap(),
+            self.m,
+        );
         let text_iter = text.into_iter();
         FullMatches {
             state: state,
@@ -457,8 +460,11 @@ impl<T: BitVec> Myers<T> {
     {
         let text_iter = text.into_iter();
         let state = State::init(self.m);
-        self.tb
-            .init(state.clone(), text_iter.len() + max_dist.to_usize().unwrap(), self.m);
+        self.tb.init(
+            state.clone(),
+            text_iter.len() + max_dist.to_usize().unwrap(),
+            self.m,
+        );
         FullMatches {
             state: state,
             m: self.m,
@@ -745,12 +751,7 @@ where
         }
     }
 
-    fn init(
-        &mut self,
-        initial_state: State<T>,
-        num_cols: usize,
-        m: T::DistType,
-    ) {
+    fn init(&mut self, initial_state: State<T>, num_cols: usize, m: T::DistType) {
         // ensure that empty text does not cause panic
         let num_cols = num_cols + 2;
 
@@ -774,7 +775,7 @@ where
         self.add_state(State {
             dist: T::DistType::max_value(),
             pv: T::max_value(), // all 1s
-            mv: T::zero()
+            mv: T::zero(),
         });
 
         // initial state (not added by step_trace, therefore added separately here)
@@ -924,7 +925,6 @@ where
 
         // Loop for finding the traceback path
         while v_offset < self.m.to_usize().unwrap() {
-
             let op = if lstate.dist + T::DistType::one() == state.dist {
                 // Diagonal (substitution)
                 // Since cursor of left state is always in the diagonal position,
@@ -972,11 +972,11 @@ where
 
         let m = self.m.to_usize().unwrap();
 
-        let mut out: Vec<_> = (0 .. m+1).map(|_| vec![]).collect();
+        let mut out: Vec<_> = (0..m + 1).map(|_| vec![]).collect();
         for mut s in states.into_iter().cloned() {
             let mut current_pos = T::one() << (m - 1);
             let mut dist = s.dist;
-            for i in 0..m+1 {
+            for i in 0..m + 1 {
                 out[i].push(dist.to_usize().unwrap());
                 if s.pv & current_pos != T::zero() {
                     dist -= T::DistType::one();
@@ -999,7 +999,6 @@ where
         }
     }
 }
-
 
 // temporary impl to create new 'empty' alignment
 // This may be added to bio_types in some form
