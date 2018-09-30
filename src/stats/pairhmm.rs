@@ -137,7 +137,7 @@ impl PairHMM {
         // iterate over x
         for i in 0..emission_params.len_x() {
             // allow alignment to start from offset in x (if prob_start_gap_x is set accordingly)
-            self.fm[prev][0] = gap_params.prob_start_gap_x(i);
+            self.fm[prev][0] = self.fm[prev][0].ln_add_exp(gap_params.prob_start_gap_x(i));
 
             let prob_emit_x = emission_params.prob_emit_x(i);
 
@@ -146,25 +146,25 @@ impl PairHMM {
                 let j_ = j + 1;
 
                 // match or mismatch
-                self.fm[curr][j_] = emission_params.prob_emit_xy(i, j)
-                    + LogProb::ln_sum_exp(&[
-                        // coming from state M
-                        prob_no_gap + self.fm[prev][j_ - 1],
-                        // coming from state X
-                        prob_no_gap_x_extend + self.fx[prev][j_ - 1],
-                        // coming from state Y
-                        prob_no_gap_y_extend + self.fy[prev][j_ - 1],
-                    ]);
+                self.fm[curr][j_] = emission_params.prob_emit_xy(i, j) + LogProb::ln_sum_exp(&[
+                    // coming from state M
+                    prob_no_gap + self.fm[prev][j_ - 1],
+                    // coming from state X
+                    prob_no_gap_x_extend + self.fx[prev][j_ - 1],
+                    // coming from state Y
+                    prob_no_gap_y_extend + self.fy[prev][j_ - 1],
+                ]);
 
                 // gap in y
                 self.fx[curr][j_] = prob_emit_x
                     + (
                     // open gap
                     prob_gap_y + self.fm[prev][j_]
-                ).ln_add_exp(
-                        // extend gap
-                        prob_gap_y_extend + self.fx[prev][j_],
-                    );
+                )
+                        .ln_add_exp(
+                            // extend gap
+                            prob_gap_y_extend + self.fx[prev][j_],
+                        );
 
                 // gap in x
                 self.fy[curr][j_] = emission_params.prob_emit_y(j)
@@ -296,7 +296,7 @@ mod tests {
         let x = b"AGCTCGATCGATCGATC";
         let y = b"AGCTCGATCGATCGATC";
 
-        let emission_params = TestEmissionParams { x: x, y: y };
+        let emission_params = TestEmissionParams { x, y };
         let gap_params = TestGapParams;
 
         let mut pair_hmm = PairHMM::new();
