@@ -44,6 +44,7 @@ use utils::{IntoTextIterator, TextIterator};
 /// Integer types serving as bit vectors must implement this trait.
 /// Only unsigned integers will work correctly.
 pub trait BitVec: Copy
+    + Default
     + Add
     + Sub
     + BitOr
@@ -63,6 +64,7 @@ pub trait BitVec: Copy
     /// can be stored in `u8`. Custom implementations using bigger integers can
     /// adjust `DistType` to hold bigger numbers.
     type DistType: Copy
+            + Default
             + AddAssign
             + SubAssign
             + PrimInt // includes Bounded, Num, Zero, One
@@ -335,7 +337,7 @@ impl<T: BitVec> Myers<T> {
 
     /// Calculate the global distance of the pattern to the given text.
     pub fn distance<'a, I: IntoTextIterator<'a>>(&self, text: I) -> T::DistType {
-        let mut state = State::new(self.m);
+        let mut state = State::init(self.m);
         let mut dist = T::DistType::max_value();
         for &a in text {
             self.step(&mut state, a);
@@ -353,7 +355,7 @@ impl<T: BitVec> Myers<T> {
         text: I,
         max_dist: T::DistType,
     ) -> Matches<T, I::IntoIter> {
-        let state = State::new(self.m);
+        let state = State::init(self.m);
         Matches {
             myers: self,
             state: state,
@@ -401,11 +403,12 @@ impl<T: BitVec> Myers<T> {
         I: IntoTextIterator<'a>,
         I::IntoIter: ExactSizeIterator,
     {
+        let state = State::init(self.m);
         self.tb
-            .init((self.m + max_dist).to_usize().unwrap(), self.m);
+            .init(state.clone(), (self.m + max_dist).to_usize().unwrap(), self.m);
         let text_iter = text.into_iter();
         FullMatches {
-            state: State::new(self.m),
+            state: state,
             m: self.m,
             myers: self,
             text_len: text_iter.len(),
@@ -453,10 +456,11 @@ impl<T: BitVec> Myers<T> {
         I::IntoIter: ExactSizeIterator,
     {
         let text_iter = text.into_iter();
+        let state = State::init(self.m);
         self.tb
-            .init(text_iter.len() + max_dist.to_usize().unwrap(), self.m);
+            .init(state.clone(), text_iter.len() + max_dist.to_usize().unwrap(), self.m);
         FullMatches {
-            state: State::new(self.m),
+            state: state,
             m: self.m,
             myers: self,
             text_len: text_iter.len(),
@@ -483,8 +487,8 @@ impl<T> State<T>
 where
     T: BitVec,
 {
-    /// Create new state.
-    pub fn new(m: T::DistType) -> Self {
+    /// Create new state, initiating it
+    pub fn init(m: T::DistType) -> Self {
         let maxsize = T::DistType::from_usize(8 * size_of::<T>()).unwrap();
         let pv = if m == maxsize {
             T::max_value()
@@ -563,7 +567,7 @@ where
     #[inline]
     pub fn next_end(&mut self) -> Option<(usize, T::DistType)> {
         for (i, &a) in self.text.by_ref() {
-            self.pos = i; // used in alignment() TODO: where?
+            self.pos = i; // used in alignment()
             self.myers.step_trace(&mut self.state, a);
             if self.state.dist <= self.max_dist {
                 return Some((i, self.state.dist));
@@ -741,9 +745,14 @@ where
         }
     }
 
-    fn init(&mut self, num_cols: usize, m: T::DistType) {
+    fn init(
+        &mut self,
+        initial_state: State<T>,
+        num_cols: usize,
+        m: T::DistType,
+    ) {
         // ensure that empty text does not cause panic
-        let num_cols = num_cols + 1;
+        let num_cols = num_cols + 2;
 
         self.positions = (0..num_cols).cycle();
 
@@ -752,21 +761,24 @@ where
         if num_cols > curr_len {
             self.states.reserve(num_cols);
             self.states
-                .extend((0..num_cols - curr_len).map(|_| State::new(T::DistType::zero())));
+                .extend((0..num_cols - curr_len).map(|_| State::default()));
         } else {
             self.states.truncate(num_cols);
         }
-        // important if using unsafe in add_state()
+        // important if using unsafe in add_state(), and also for correct functioning of traceback
         debug_assert!(self.states.len() == num_cols);
 
         // first column is used to ensure a correct path if the text
         // is shorter than the pattern
         // Actual leftmost column starts at second position
-        let state0 = &mut self.states[0];
-        state0.dist = m;
-        state0.pv = T::max_value(); // all 1s
-                                    // the first position is 1, not 0 (after call to add_state)
-        self.pos = self.positions.next().unwrap();
+        self.add_state(State {
+            dist: T::DistType::max_value(),
+            pv: T::max_value(), // all 1s
+            mv: T::zero()
+        });
+
+        // initial state (not added by step_trace, therefore added separately here)
+        self.add_state(initial_state);
 
         self.m = m;
     }
@@ -795,7 +807,7 @@ where
         pos: usize,
         ops: Option<&mut Vec<AlignmentOperation>>,
     ) -> Option<(usize, T::DistType)> {
-        let pos = pos + 1; // in order to be comparable since self.pos starts with 1, not 0
+        let pos = pos + 2; // in order to be comparable since self.pos starts at 2, not 0
         if pos <= self.pos {
             return Some(self._traceback_at(pos, ops));
         }
@@ -822,49 +834,57 @@ where
         // // Simpler alternative using skip() is slower in some cases:
         // let mut states = self.states.iter().rev().cycle().skip(self.states.len() - pos - 1);
 
+        // self.print_tb_matrix(pos);
+
         let ops = &mut ops;
         if let Some(o) = ops.as_mut() {
             o.clear();
         }
 
-        // Mask for testing current position
-        // (mv and pv are shifted, not the mask)
-        let upper_pos = T::one() << (self.m.to_usize().unwrap() - 1);
-
-        macro_rules! move_up {
-            ($state:expr) => {
-                if $state.pv & upper_pos != T::zero() {
-                    $state.dist -= T::DistType::one()
-                } else if $state.mv & upper_pos != T::zero() {
-                    $state.dist += T::DistType::one()
-                }
-                // Sometimes slower, sometimes faster:
-                //$state.dist += ($state.mv & max_mask != T::zero()) as usize;
-                //$state.dist -= ($state.pv & max_mask != T::zero()) as usize;
-                $state.pv <<= 1;
-                $state.mv <<= 1;
-            };
-        }
-
-        macro_rules! move_up_many {
-            ($state:expr, $n:expr) => {
-                let mask = (!(T::max_value() << $n)) << (self.m.to_usize().unwrap() - $n);
-                $state.dist += T::DistType::from_u32(($state.mv & mask).count_ones()).unwrap();
-                $state.dist -= T::DistType::from_u32(($state.pv & mask).count_ones()).unwrap();
-                $state.mv <<= $n;
-                $state.pv <<= $n;
-
-                // A loop seems always slower (not sure about systems without popcnt):
-                // for _ in 0..$n {
-                //     move_up!($state);
-                // }
-            };
-        }
+        // Mask for testing current position. The mask is moved
+        // along mv / pv for testing all positions
+        let mut current_pos = T::one() << (self.m.to_usize().unwrap() - 1);
 
         // horizontal distance from right end
         let mut h_offset = 0;
         // vertical offset from bottom of table
         let mut v_offset = 0;
+
+        // Macro for moving up one cell in traceback matrix, adjusting the distance of the state
+        // of the state. Expects a bit mask indicating the current row position in the matrix.
+        macro_rules! move_state_up {
+            ($state:expr, $pos_mask:expr) => {
+                if $state.pv & $pos_mask != T::zero() {
+                    $state.dist -= T::DistType::one()
+                } else if $state.mv & $pos_mask != T::zero() {
+                    $state.dist += T::DistType::one()
+                }
+            };
+        }
+
+        // Macro for moving up 'n' cells in traceback matrix, adjusting the distance of the state.
+        macro_rules! move_up_many {
+            ($state:expr, $n:expr) => {
+                // construct mask covering bits to check
+                let m = self.m.to_usize().unwrap();
+                let mask = if $n.to_usize().unwrap() == size_of::<T>() * 8 {
+                    T::max_value()
+                } else {
+                    (!(T::max_value() << $n)) << (m - $n)
+                };
+                // adjust distance
+                let p = ($state.pv & mask).count_ones() as i32;
+                let m = ($state.mv & mask).count_ones() as i32;
+                $state.dist = T::DistType::from_i32($state.dist.to_i32().unwrap() - p + m).unwrap();
+
+                // // A loop seems always slower (not sure about systems without popcnt):
+                // let mut p =  T::one() << (self.m.to_usize().unwrap() - 1);
+                // for _ in 0..$n {
+                //     move_state_up!($state, p);
+                //     p >>= 1;
+                // }
+            };
+        }
 
         // current state
         let mut state = states.next().unwrap().clone();
@@ -872,38 +892,62 @@ where
         let dist = state.dist;
         // state left to the current state
         let mut lstate = states.next().unwrap().clone();
+        // The distance of the left state is always for diagonal of to the current position
+        // in the traceback matrix. This allows checking for a substitution by a simple
+        // comparison.
+        move_state_up!(lstate, current_pos);
 
-        while v_offset < self.m.to_usize().unwrap() {
-            let op = if state.pv & upper_pos != T::zero() {
-                // up
+        // Macro for collectively moving up the cursor (adjusting the distance) of both
+        // the left and the current state in the traceback matrix
+        macro_rules! move_up {
+            () => {
                 v_offset += 1;
-                move_up!(state);
-                move_up!(lstate);
-                Ins
-            } else {
-                let op = if lstate.dist + T::DistType::one() == state.dist {
-                    // left
-                    Del
-                } else {
-                    // diagonal
-                    v_offset += 1;
-                    move_up!(lstate);
-                    if lstate.dist == state.dist {
-                        Match
-                    } else {
-                        Subst
-                    }
-                };
-                // move left
+                move_state_up!(state, current_pos);
+                current_pos >>= 1;
+                move_state_up!(lstate, current_pos);
+            };
+        }
+
+        // Macro for moving to the left, adjusting h_offset
+        macro_rules! move_left {
+            () => {
+                h_offset += 1;
                 state = lstate;
                 lstate = states.next().unwrap().clone();
-                if v_offset != self.m.to_usize().unwrap() && v_offset > 0 {
-                    // Not moving up left state if finished, since this can lead to
-                    // a panic with patterns of maximum possible length
-                    move_up_many!(lstate, v_offset);
+                if v_offset != self.m.to_usize().unwrap() {
+                    // move up v_offset + 1 (not only v_offset) because left state
+                    // is always in diagonal position
+                    move_up_many!(lstate, v_offset + 1);
                 }
-                h_offset += 1;
-                op
+            };
+        }
+
+        // Loop for finding the traceback path
+        while v_offset < self.m.to_usize().unwrap() {
+
+            let op = if lstate.dist + T::DistType::one() == state.dist {
+                // Diagonal (substitution)
+                // Since cursor of left state is always in the diagonal position,
+                // this is a simple comparison of distances.
+                v_offset += 1;
+                current_pos >>= 1;
+                move_left!();
+                Subst
+            } else if state.pv & current_pos != T::zero() {
+                // Up
+                move_up!();
+                Ins
+            } else if lstate.mv & current_pos != T::zero() {
+                // Left
+                move_left!();
+                state.dist -= T::DistType::one();
+                Del
+            } else {
+                // Diagonal (match)
+                v_offset += 1;
+                current_pos >>= 1;
+                move_left!();
+                Match
             };
 
             if let Some(o) = ops.as_mut() {
@@ -917,7 +961,45 @@ where
 
         (h_offset, dist)
     }
+
+    // Useful for debugging
+    #[allow(dead_code)]
+    fn print_tb_matrix(&self, pos: usize) {
+        let states = self.states[..pos + 1]
+            .iter()
+            .rev()
+            .chain(self.states.iter().rev().cycle());
+
+        let m = self.m.to_usize().unwrap();
+
+        let mut out: Vec<_> = (0 .. m+1).map(|_| vec![]).collect();
+        for mut s in states.into_iter().cloned() {
+            let mut current_pos = T::one() << (m - 1);
+            let mut dist = s.dist;
+            for i in 0..m+1 {
+                out[i].push(dist.to_usize().unwrap());
+                if s.pv & current_pos != T::zero() {
+                    dist -= T::DistType::one();
+                } else if s.mv & current_pos != T::zero() {
+                    dist += T::DistType::one();
+                }
+                current_pos >>= 1;
+            }
+            if s.dist == T::DistType::max_value() {
+                break;
+            }
+        }
+        out.reverse();
+        for mut line in out {
+            line.reverse();
+            for dist in line {
+                print!("{:<4}", dist);
+            }
+            print!("\n");
+        }
+    }
 }
+
 
 // temporary impl to create new 'empty' alignment
 // This may be added to bio_types in some form
