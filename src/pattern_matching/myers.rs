@@ -876,7 +876,8 @@ where
                 // adjust distance
                 let p = ($state.pv & mask).count_ones() as i32;
                 let m = ($state.mv & mask).count_ones() as i32;
-                $state.dist = T::DistType::from_i32($state.dist.to_i32().unwrap() - p + m).unwrap();
+                $state.dist =
+                    T::DistType::from_i32($state.dist.to_i32().unwrap() - p + m).unwrap();
 
                 // // A loop seems always slower (not sure about systems without popcnt):
                 // let mut p =  T::one() << (self.m.to_usize().unwrap() - 1);
