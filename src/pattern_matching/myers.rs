@@ -5,32 +5,180 @@
 
 //! Myers bit-parallel approximate pattern matching algorithm.
 //! Finds all matches up to a given edit distance. The pattern has to fit into a bitvector,
-//! and is here limited to 64 symbols.
+//! and is thus limited to 64 or (since Rust version 1.26) to 128 symbols.
 //! Complexity: O(n)
 //!
 //! # Example
 //!
+//! Iterating over matches in pairs of `(end, distance)` using `u64` as bitvector type:
+//!
 //! ```
-//! # extern crate itertools;
 //! # extern crate bio;
 //! use bio::pattern_matching::myers::Myers64;
-//! use itertools::Itertools;
 //!
 //! # fn main() {
-//! let text = b"ACCGTGGATGAGCGCCATAG";
-//! let pattern = b"TGAGCGT";
+//! let text = b"CGGTCCTGAGGGATTAGCAC";
+//! let pattern = b"TCCTAGGGC";
 //!
 //! let myers = Myers64::new(pattern);
-//! let occ = myers.find_all_end(text, 1).collect_vec();
+//! let occ: Vec<_> = myers.find_all_end(text, 2).collect();
 //!
-//! assert_eq!(occ, [(13, 1), (14, 1)]);
+//! assert_eq!(occ, [(11, 2), (12, 2)]);
 //! # }
 //! ```
+//!
+//! Starting with Rust 1.26, it is also possible to use `u128` as bitvector (`Myers128`), which
+//! will is somewhat slower.
+//!
+//! # Obtaining the starting position of a match
+//!
+//! The `Myers::find_all` method provides an iterator over tuples of `(start, end, distance)`.
+//! This is slower, since the alignment path has to be calculated if the starting position is
+//! required. Note that the end positions differ from above by one. This is intentional,
+//! representing a range, which does not includde the end position.
+//!
+//! ```
+//! # extern crate bio;
+//! use bio::pattern_matching::myers::Myers64;
+//!
+//! # fn main() {
+//! let text = b"CGGTCCTGAGGGATTAGCAC";
+//! let pattern = b"TCCTAGGGC";
+//!
+//! let mut myers = Myers64::new(pattern);
+//! let occ: Vec<_> = myers.find_all(text, 2).collect();
+//!
+//! assert_eq!(occ, [(3, 12, 2), (3, 13, 2)]);
+//! # }
+//! ```
+//!
+//! # Obtaining alignments
+//!
+//! [FullMatches](struct.FullMatches.html) returned by `Myers::find_all()` also allow obtaining
+//! an alignment path:
+//!
+//! ```
+//! # extern crate bio;
+//! use bio::pattern_matching::myers::{Myers64, new_alignment};
+//!
+//! # fn main() {
+//! let text = b"CGGTCCTGAGGGATTAGCAC";
+//! let pattern = b"TCCTAGGGC";
+//!
+//! let mut myers = Myers64::new(pattern);
+//! // create an 'empty' alignment instance, which can be reused
+//! let mut aln = new_alignment(); // TODO: change
+//!
+//! let mut matches = myers.find_all(text, 3);
+//! while matches.next_alignment(&mut aln) {
+//!     println!("Hit fond in range: {}..{} (distance: {})", aln.ystart, aln.yend, aln.score);
+//!     println!("{}", aln.pretty(pattern, text));
+//! }
+//! # }
+//! ```
+//! **Output:**
+//!
+//! <pre>
+//! Hit fond in range: 3..10 (distance: 3)
+//!    TCCTAGGGC
+//!    ||||+|\|+
+//! TCCTCCT-GAG-GGATTAGCAC
+//!
+//! Hit fond in range: 3..11 (distance: 3)
+//!    TCCTAGGGC
+//!    ||||+|\|\
+//! TCCTCCT-GAGGGATTAGCAC
+//!
+//! Hit fond in range: 3..12 (distance: 2)
+//!    TCCT-AGGGC
+//!    ||||x||||+
+//! TCCTCCTGAGGG-ATTAGCAC
+//!
+//! Hit fond in range: 3..13 (distance: 2)
+//!    TCCT-AGGGC
+//!    ||||x||||\
+//! TCCTCCTGAGGGATTAGCAC
+//!
+//! (rest omitted)
+//!
+//! </pre>
+//!
+//! **Note** that the [Alignment](../../alignment/struct.Alignment.html) instance is only created
+//! once and then reused. Because the Myers algorithm is very fast, the allocation necessary for
+//! `Alignment::operations` can have a non-negligible performance impact.
+//!
+//! # Finding the best hit
+//!
+//! In many cases, only the match with the smallest edit distance is actually of interest.
+//! Calculating an alignment for every hit is therefore not necessary. `Myers::find_all_lazy()`
+//! iterates over tuples of `(end, distance)` like `Myers::find_all_end()`, but additionally
+//! keeps the data necessary for calculating the alignment path later at any desired position.
+//! Storing the data itself has a slight performance impact and requires more memory
+//! compared to `Myers::find_all_end()` [O(n + m)].
+//!
+//! ```
+//! # extern crate bio;
+//! use bio::pattern_matching::myers::{Myers64, new_alignment};
+//!
+//! # fn main() {
+//! let text = b"CGGTCCTGAGGGATTAGCAC";
+//! let pattern = b"TCCTAGGGC";
+//!
+//! let mut myers = Myers64::new(pattern);
+//! let mut aln = new_alignment(); // TODO: change
+//!
+//! let mut matches = myers.find_all_lazy(text, 2);
+//!
+//! // first, find the best hit
+//! let (best_end, _) = matches
+//!     .by_ref()
+//!     .min_by_key(|&(_, dist)| dist)
+//!     .unwrap();
+//!
+//! // now calculate the alignment
+//! matches.alignment_at(best_end, &mut aln);
+//! println!("Best alignment at {}..{} (distance: {})", aln.ystart, aln.yend, aln.score);
+//! println!("{}", aln.pretty(pattern, text));
+//! # }
+//! ```
+//!
+//! **Output:**
+//!
+//! <pre>
+//! Best alignment at 3..12 (distance: 2)
+//!    TCCT-AGGGC
+//!    ||||x||||+
+//! TCCTCCTGAGGG-ATTAGCAC
+//! </pre>
+//!
+//! Actually as seen in the previous chapters, there are two hits with the same distance of 2.
+//! It may make sense to consider both of them.
+//!
+//! # Dealing with ambiguities
+//!
+//! Matching multiple or all symbols at once can be achieved using `MyersBuilder`. This example
+//! allows `N` in the search pattern to match all four DNA bases in the text:
+//!
+//! ```
+//! # extern crate bio;
+//! use bio::pattern_matching::myers::MyersBuilder;
+//!
+//! # fn main() {
+//! let text = b"GTCTGATCTTACC";
+//! let pattern = b"TGATCNT";
+//!
+//! let myers = MyersBuilder::new()
+//!     .ambig(b'N', b"ACGT")
+//!     .build(pattern);
+//! assert_eq!(myers.distance(text), 0);
+//! # }
+//! ```
+//!
+//! For more examples see the documentation of [MyersBuilder](struct.MyersBuilder.html).
 
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::iter;
-use std::marker::PhantomData;
 use std::mem::size_of;
 use std::ops::Range;
 use std::ops::*;
@@ -125,9 +273,9 @@ pub type Myers128 = Myers<u128>;
 ///     builder.ambig(base, equivalents);
 /// }
 ///
-/// let text = b"ACCGTGGATGNGCGCCATAG";
-/// let pattern =     b"TRANCGG";
-/// //                     *   * (mismatch)
+/// let text = b"GGATGNGCGCCATAG";
+/// let pattern = b"TRANCGG";
+/// //                *   * (mismatch)
 ///
 /// let myers = builder.build(pattern);
 /// assert_eq!(myers.distance(text), 2);
@@ -355,126 +503,39 @@ impl<T: BitVec> Myers<T> {
         text: I,
         max_dist: T::DistType,
     ) -> Matches<T, I::IntoIter> {
-        let state = State::init(self.m);
-        Matches {
-            myers: self,
-            state: state,
-            text: text.into_iter().enumerate(),
-            max_dist: max_dist,
-        }
+        Matches::new(self, text.into_iter(), max_dist)
     }
 
     /// Finds all matches of pattern in the given text up to a given maximum distance.
     /// In contrast to `find_all_end`, matches are returned as an iterator over ranges
-    /// of (start, end, distance). Note that the end coordinate is a range coordinate,
-    /// not included in the range (end index + 1) and is thus not equivalent to the end
-    /// position returned by `find_all_end()`.
-    ///
-    /// # Example:
-    ///
-    /// ```
-    /// # extern crate bio;
-    /// use bio::pattern_matching::myers::Myers64;
-    /// use bio::alignment::AlignmentOperation::*;
-    ///
-    /// # fn main() {
-    /// let text = b"ACCGTGGATGAGCGCCATAG";
-    /// let pattern =      b"TGAGCGT";
-    ///
-    /// // only range coordinates required
-    /// let mut myers = Myers64::new(pattern);
-    /// let occ: Vec<_> = myers.find_all(text, 1).collect();
-    /// assert_eq!(occ, [(8, 14, 1), (8, 15, 1)]);
-    ///
-    /// let mut myers = Myers64::new(pattern);
-    /// let mut aln = vec![];
-    /// let mut matches = myers.find_all(text, 1);
-    /// assert_eq!(matches.next_path(&mut aln).unwrap(), (8, 14, 1));
-    /// assert_eq!(aln, &[Match, Match, Match, Match, Match, Match, Ins]);
-    /// assert_eq!(matches.next_path(&mut aln).unwrap(), (8, 15, 1));
-    /// assert_eq!(aln, &[Match, Match, Match, Match, Match, Match, Subst]);
-    /// # }
+    /// of `(start, end, distance)`. Note that the end coordinate is not included in the
+    /// range and thus and thus greater by one compared to the end index returned by
+    /// `find_all_end()`.
     pub fn find_all<'a, I>(
         &'a mut self,
         text: I,
         max_dist: T::DistType,
-    ) -> FullMatches<'a, T, I::IntoIter, NoRemember>
+    ) -> FullMatches<'a, T, I::IntoIter>
     where
         I: IntoTextIterator<'a>,
         I::IntoIter: ExactSizeIterator,
     {
-        let state = State::init(self.m);
-        self.tb.init(
-            state.clone(),
-            (self.m + max_dist).to_usize().unwrap(),
-            self.m,
-        );
-        let text_iter = text.into_iter();
-        FullMatches {
-            state: state,
-            m: self.m,
-            myers: self,
-            text_len: text_iter.len(),
-            text: text_iter.enumerate(),
-            max_dist: max_dist,
-            pos: 0,
-            _remember: PhantomData,
-        }
+        FullMatches::new(self, text.into_iter(), max_dist)
     }
 
-    /// Like `find_all`, but additionally allows for obtaining the starting positions and/or
-    /// the alignment at *any* position that was already searched.
-    ///
-    /// # Example:
-    ///
-    /// ```
-    /// # extern crate bio;
-    /// use bio::pattern_matching::myers::Myers64;
-    /// use bio::alignment::AlignmentOperation::*;
-    ///
-    /// # fn main() {
-    /// let text = b"ACCGTGGATGAGCGCCATAG";
-    /// let pattern =      b"TGAGCGT";
-    ///
-    /// // only range coordinates required
-    /// let mut myers = Myers64::new(pattern);
-    /// let occ: Vec<_> = myers.find_all(text, 1).collect();
-    /// assert_eq!(occ, [(8, 14, 1), (8, 15, 1)]);
-    ///
-    /// let mut myers = Myers64::new(pattern);
-    /// let mut aln = vec![];
-    /// let mut matches = myers.find_all(text, 1);
-    /// assert_eq!(matches.next_path(&mut aln).unwrap(), (8, 14, 1));
-    /// assert_eq!(aln, &[Match, Match, Match, Match, Match, Match, Ins]);
-    /// assert_eq!(matches.next_path(&mut aln).unwrap(), (8, 15, 1));
-    /// assert_eq!(aln, &[Match, Match, Match, Match, Match, Match, Subst]);
-    /// # }
-    pub fn find_all_pos_remember<'a, I>(
+    /// As `find_all_end`, this function returns an iterator over tuples of `(end, distance)`.
+    /// Additionally, it keeps the data necessary for later obtaining the starting positions and/or
+    /// the alignment path at *any* position that was already searched.
+    pub fn find_all_lazy<'a, I>(
         &'a mut self,
         text: I,
         max_dist: T::DistType,
-    ) -> FullMatches<'a, T, I::IntoIter, Remember>
+    ) -> LazyMatches<'a, T, I::IntoIter>
     where
         I: IntoTextIterator<'a>,
         I::IntoIter: ExactSizeIterator,
     {
-        let text_iter = text.into_iter();
-        let state = State::init(self.m);
-        self.tb.init(
-            state.clone(),
-            text_iter.len() + max_dist.to_usize().unwrap(),
-            self.m,
-        );
-        FullMatches {
-            state: state,
-            m: self.m,
-            myers: self,
-            text_len: text_iter.len(),
-            text: text_iter.enumerate(),
-            max_dist: max_dist,
-            pos: 0,
-            _remember: PhantomData,
-        }
+        LazyMatches::new(self, text.into_iter(), max_dist)
     }
 }
 
@@ -522,6 +583,22 @@ where
     max_dist: T::DistType,
 }
 
+impl<'a, T, I> Matches<'a, T, I>
+where
+    T: BitVec,
+    I: TextIterator<'a>,
+{
+    fn new(myers: &'a Myers<T>, text: I, max_dist: T::DistType) -> Self {
+        let state = State::init(myers.m);
+        Matches {
+            myers: myers,
+            state: state,
+            text: text.enumerate(),
+            max_dist: max_dist,
+        }
+    }
+}
+
 impl<'a, T, I> Iterator for Matches<'a, T, I>
 where
     T: BitVec,
@@ -540,14 +617,9 @@ where
     }
 }
 
-// 'Marker' structs used to differentiate the FullMatches type depending on whether
-// only current or all states are saved
-pub struct Remember;
-pub struct NoRemember;
-
 /// Iterator over tuples of starting position, end position and distance of matches. In addition,
-/// methods for obtaining the hit alignment are provided.
-pub struct FullMatches<'a, T, I, S>
+/// methods for obtaining the hit alignment path are provided.
+pub struct FullMatches<'a, T, I>
 where
     T: 'a + BitVec,
     I: TextIterator<'a>,
@@ -559,14 +631,30 @@ where
     m: T::DistType,
     max_dist: T::DistType,
     pos: usize, // current end position, has to be stored for alignment() method
-    _remember: PhantomData<S>,
 }
 
-impl<'a, T, I, S> FullMatches<'a, T, I, S>
+impl<'a, T, I> FullMatches<'a, T, I>
 where
     T: 'a + BitVec,
-    I: TextIterator<'a>,
+    I: TextIterator<'a> + ExactSizeIterator,
 {
+    fn new(myers: &'a mut Myers<T>, text_iter: I, max_dist: T::DistType) -> Self {
+        let state = State::init(myers.m);
+        myers.tb.init(
+            state.clone(),
+            (myers.m + max_dist).to_usize().unwrap(),
+            myers.m,
+        );
+        FullMatches {
+            state: state,
+            m: myers.m,
+            myers: myers,
+            text_len: text_iter.len(),
+            text: text_iter.enumerate(),
+            max_dist: max_dist,
+            pos: 0,
+        }
+    }
     /// Searches the next match and returns a tuple of end position and distance
     /// if found. This involves *no* searching for a starting position and is thus
     /// faster than just iterating over `FullMatches`
@@ -632,7 +720,7 @@ where
     #[inline]
     pub fn alignment(&mut self, aln: &mut Alignment) {
         let (len, _) = self.myers.tb.traceback(Some(&mut aln.operations));
-        update_aln_positions(
+        update_aln(
             self.pos,
             len,
             self.text_len,
@@ -643,10 +731,10 @@ where
     }
 }
 
-impl<'a, T, I, S> Iterator for FullMatches<'a, T, I, S>
+impl<'a, T, I> Iterator for FullMatches<'a, T, I>
 where
     T: 'a + BitVec,
-    I: TextIterator<'a>,
+    I: TextIterator<'a> + ExactSizeIterator,
 {
     type Item = (usize, usize, T::DistType);
 
@@ -657,11 +745,61 @@ where
     }
 }
 
-impl<'a, T, I> FullMatches<'a, T, I, Remember>
+/// Iterator over tuples of end position and distance of matches. In addition,
+/// methods for obtaining the hit alignment path are provided.
+pub struct LazyMatches<'a, T, I>
 where
     T: 'a + BitVec,
     I: TextIterator<'a>,
 {
+    myers: &'a mut Myers<T>,
+    state: State<T>,
+    text: iter::Enumerate<I>,
+    text_len: usize,
+    m: T::DistType,
+    max_dist: T::DistType,
+}
+
+impl<'a, T, I> Iterator for LazyMatches<'a, T, I>
+where
+    T: BitVec,
+    I: TextIterator<'a> + ExactSizeIterator,
+{
+    type Item = (usize, T::DistType);
+
+    fn next(&mut self) -> Option<(usize, T::DistType)> {
+        for (i, &a) in self.text.by_ref() {
+            self.myers.step_trace(&mut self.state, a);
+            if self.state.dist <= self.max_dist {
+                return Some((i, self.state.dist));
+            }
+        }
+        None
+    }
+}
+
+impl<'a, T, I> LazyMatches<'a, T, I>
+where
+    T: 'a + BitVec,
+    I: TextIterator<'a> + ExactSizeIterator,
+{
+    fn new(myers: &'a mut Myers<T>, text_iter: I, max_dist: T::DistType) -> Self {
+        let state = State::init(myers.m);
+        myers.tb.init(
+            state.clone(),
+            text_iter.len() + max_dist.to_usize().unwrap(),
+            myers.m,
+        );
+        LazyMatches {
+            state: state,
+            m: myers.m,
+            myers: myers,
+            text_len: text_iter.len(),
+            text: text_iter.enumerate(),
+            max_dist: max_dist,
+        }
+    }
+
     /// Takes the end position of a hit and returns a tuple of the corresponding starting position
     /// and the hit distance. If the end position is greater than the end position of the previously
     /// returned hit, `None` is returned.
@@ -697,7 +835,7 @@ where
             .tb
             .traceback_at(end_pos, Some(&mut aln.operations))
         {
-            update_aln_positions(
+            update_aln(
                 end_pos,
                 aln_len,
                 self.text_len,
@@ -713,7 +851,7 @@ where
 
 // Assumes *0-based* end positions, the coordinates will be converted to 1-based
 #[inline(always)]
-fn update_aln_positions(
+fn update_aln(
     end_pos: usize,
     aln_len: usize,
     text_len: usize,
@@ -778,7 +916,7 @@ where
             mv: T::zero(),
         });
 
-        // initial state (not added by step_trace, therefore added separately here)
+        // initial state
         self.add_state(initial_state);
 
         self.m = m;
@@ -846,9 +984,9 @@ where
         // along mv / pv for testing all positions
         let mut current_pos = T::one() << (self.m.to_usize().unwrap() - 1);
 
-        // horizontal distance from right end
+        // horizontal column offset from starting point of traceback matrix (bottom right)
         let mut h_offset = 0;
-        // vertical offset from bottom of table
+        // vertical column offset from starting point of traceback matrix (bottom right)
         let mut v_offset = 0;
 
         // Macro for moving up one cell in traceback matrix, adjusting the distance of the state
@@ -876,8 +1014,7 @@ where
                 // adjust distance
                 let p = ($state.pv & mask).count_ones() as i32;
                 let m = ($state.mv & mask).count_ones() as i32;
-                $state.dist =
-                    T::DistType::from_i32($state.dist.to_i32().unwrap() - p + m).unwrap();
+                $state.dist = T::DistType::from_i32($state.dist.to_i32().unwrap() - p + m).unwrap();
 
                 // // A loop seems always slower (not sure about systems without popcnt):
                 // let mut p =  T::one() << (self.m.to_usize().unwrap() - 1);
@@ -1037,24 +1174,13 @@ mod tests {
     #[test]
     fn test_distance() {
         let text = b"TGAGCNTA";
-        let pattern = b"TGAGCGT";
+        let patt = b"TGAGCGT";
 
-        let myers = Myers64::new(pattern);
+        let myers = Myers64::new(patt);
         assert_eq!(myers.distance(text), 1);
 
-        let myers_wildcard = MyersBuilder::new().text_wildcard(b'N').build(pattern);
+        let myers_wildcard = MyersBuilder::new().text_wildcard(b'N').build(patt);
         assert_eq!(myers_wildcard.distance(text), 0);
-    }
-
-    #[test]
-    fn test_long() {
-        let text = b"ACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCGCCATAGACCGTGGATGAGCG\
-CCATAGACCGTGGATGAGCGCCATAG";
-        let pattern = b"TGAGCGTTGAGCGTTGAGCGTTGAGCGTTGAGCGTTGAGCGT";
-        let myers = Myers64::new(&pattern[..]);
-        let occ = myers.find_all_end(&text[..], 1).collect_vec();
-        // TODO: what is the correct result?
-        println!("{:?}", occ);
     }
 
     #[test]
@@ -1098,12 +1224,12 @@ CCATAGACCGTGGATGAGCGCCATAG";
     }
 
     #[test]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     fn test_alignment() {
-        let tx = "GGTCCTGAGGGATTA".replace('-', "");
-        let patt = "TCCT-AGGGA".replace('-', "");
+        let text =  "GGTCCTGAGGGATTA".replace('-', "");
+        let pattern = "TCCT-AGGGA".replace('-', "");
 
-        let mut myers = Myers64::new(patt.as_bytes());
-        let mut matches = myers.find_all(tx.as_bytes(), 1);
+        let mut myers = Myers64::new(pattern.as_bytes());
         let expected = Alignment {
             score: 1,
             xstart: 0,
@@ -1117,60 +1243,66 @@ CCATAGACCGTGGATGAGCGCCATAG";
             ],
             mode: AlignmentMode::Semiglobal,
         };
-
-        // TODO: a constructor for bio_types::alignment::Alignment
-        // would be very convenient
         let mut aln = new_alignment();
-        assert!(matches.next_alignment(&mut aln));
-        assert_eq!(&aln, &expected);
 
+        {
+            // TODO: a constructor for bio_types::alignment::Alignment
+            // would be very convenient
+            let mut matches = myers.find_all(text.as_bytes(), 1);
+            assert!(matches.next_alignment(&mut aln));
+            assert_eq!(&aln, &expected);
+
+            aln.score = -1;
+            matches.alignment(&mut aln);
+            assert_eq!(&aln, &expected);
+        }
+        // Lazy API
         aln.score = -1;
-        matches.alignment(&mut aln);
+        let end = expected.yend - 1;
+        let mut lazy_matches = myers.find_all_lazy(text.as_bytes(), 1);
+        assert!(!lazy_matches.alignment_at(end, &mut aln));
+        // now search positions
+        aln.score = -1;
+        assert_eq!(lazy_matches.next(), Some((end, expected.score as u8)));
+        assert!(lazy_matches.alignment_at(end, &mut aln));
         assert_eq!(&aln, &expected);
     }
 
     #[test]
-    fn test_position0_at() {
+    fn test_position_cmp() {
         // same as position_at, but 0-based positions from
-        let txt = b"CAGACATCTT";
-        let patt = b"AGA";
-        let expected_hits = &[(1, 3, 1), (1, 4, 0), (1, 5, 1), (3, 6, 1)];
-
-        let mut myers = Myers64::new(patt);
-
-        // first, use the standard iterator with 1-based ends
-        let matches: Vec<_> = myers.find_all_pos_remember(txt, 1).collect();
-        assert_eq!(&matches, expected_hits);
-
-        // then, iterate over 0-based ends
-        let mut myers_m = myers.find_all_pos_remember(txt, 1);
-        let mut ends = vec![];
-        while let Some(item) = myers_m.next_end() {
-            ends.push(item);
-        }
-
-        // retrieve start and distance and compare
-        for (&(end0, dist), &(exp_start, exp_end1, exp_dist)) in ends.iter().zip(expected_hits) {
-            // note: range end is not 0-based position -> supply end - 1
-            assert_eq!(end0 + 1, exp_end1);
-            assert_eq!(dist, exp_dist);
-            assert_eq!(myers_m.hit_at(end0), Some((exp_start, dist)));
-        }
-    }
-
-    #[test]
-    fn test_position_at() {
         let text = b"CAGACATCTT";
         let pattern = b"AGA";
+        let starts_exp = [1, 1, 1, 3];
+        let end_dist_exp = [(2, 1), (3, 0), (4, 1), (5, 1)];
 
         let mut myers = Myers64::new(pattern);
-        let mut myers_m = myers.find_all_pos_remember(text, 1);
-        let matches: Vec<_> = (&mut myers_m).collect();
-        assert_eq!(&matches, &[(1, 3, 1), (1, 4, 0), (1, 5, 1), (3, 6, 1)]);
 
-        for (start, end, dist) in matches {
-            // note: range end is not 0-based position -> supply end - 1
-            assert_eq!(myers_m.hit_at(end - 1), Some((start, dist)));
+        // standard iterator with 0-based ends
+        let end_dist: Vec<_> = myers.find_all_end(text, 1).collect();
+        assert_eq!(&end_dist, &end_dist_exp);
+
+        // iterator over full ranges where ends are + 1
+        let full_hits: Vec<_> = myers.find_all(text, 1).collect();
+
+        // allows to retrive starting position later
+        let mut lazy_matches = myers.find_all_lazy(text, 1);
+
+        // compare with each other and lazy matches
+        for ((&start, (end, dist)), (f_start, f_end, f_dist)) in
+            starts_exp.into_iter().zip(end_dist).zip(full_hits)
+        {
+            assert_eq!(start, f_start);
+            assert_eq!(dist, f_dist);
+            assert_eq!(end + 1, f_end);
+
+            // lazy API
+            let (lazy_end, lazy_dist) = lazy_matches.next().unwrap();
+            assert_eq!(end, lazy_end);
+            assert_eq!(dist, lazy_dist);
+            assert_eq!(lazy_matches.hit_at(end), Some((start, dist)));
+            // For positions above, information is not (yet) available
+            assert_eq!(lazy_matches.hit_at(end + 1), None);
         }
     }
 
@@ -1180,14 +1312,13 @@ CCATAGACCGTGGATGAGCGCCATAG";
         let pattern = b"AGA";
 
         let mut myers = Myers64::new(pattern);
-        let mut matches = myers.find_all_pos_remember(text, 1);
+        let mut matches = myers.find_all_lazy(text, 1);
 
         let expected = &[Match, Match, Ins];
-        // search first hit
         let mut path = vec![];
-        assert_eq!(matches.next_path(&mut path).unwrap(), (1, 3, 1));
-        assert_eq!(&path, expected);
-        path.clear();
+
+        // search first hit
+        assert_eq!(matches.next(), Some((2, 1)));
 
         // retrieve first hit at 0-based end position (2)
         assert_eq!(matches.hit_at(2), Some((1, 1)));
@@ -1200,7 +1331,7 @@ CCATAGACCGTGGATGAGCGCCATAG";
         assert!(path.is_empty());
 
         // now search the next hit
-        assert_eq!(matches.next_path(&mut path).unwrap(), (1, 4, 0));
+        assert_eq!(matches.next(), Some((3, 0)));
         // position 3 is now searched -> path can be retrieved
         assert_eq!(matches.path_at(3, &mut path), Some((1, 0)));
         assert_eq!(&path, &[Match, Match, Match])

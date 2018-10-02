@@ -1,7 +1,6 @@
 #![feature(test)]
 
 extern crate bio;
-extern crate itertools;
 extern crate test;
 
 use test::Bencher;
@@ -242,6 +241,18 @@ fn ukkonen(b: &mut Bencher) {
 }
 
 #[bench]
+fn pairwise_align(b: &mut Bencher) {
+    use bio::alignment::pairwise;
+
+    let s = pairwise::Scoring::new(-1, -1, |a, b| if a == b { 1 } else { -1 });
+    let mut aligner = pairwise::Aligner::with_scoring(s);
+
+    b.iter(|| {
+        let _ = aligner.semiglobal(PATTERN, TEXT);
+    });
+}
+
+#[bench]
 fn myers_end_32(b: &mut Bencher) {
     let myers: Myers<u32> = Myers::new(PATTERN);
     b.iter(|| {
@@ -351,8 +362,9 @@ fn myers_alignment_alloc_64(b: &mut Bencher) {
     });
 }
 
+// test impact of storing traceback information
 #[bench]
-fn myers_ends_noremember_64(b: &mut Bencher) {
+fn myers_no_alignment_64(b: &mut Bencher) {
     let mut myers = Myers64::new(PATTERN);
     b.iter(|| {
         let mut n = 0;
@@ -364,29 +376,26 @@ fn myers_ends_noremember_64(b: &mut Bencher) {
     });
 }
 
+// test impact of storing traceback information
 #[bench]
-fn myers_ends_remember_64(b: &mut Bencher) {
+fn myers_no_alignment_lazy_64(b: &mut Bencher) {
     let mut myers = Myers64::new(PATTERN);
     b.iter(|| {
-        let mut n = 0;
-        let mut matches = myers.find_all_pos_remember(TEXT, K);
-        while let Some(_) = matches.next_end() {
-            n += 1;
-        }
+        let n = myers.find_all_lazy(TEXT, K).count();
         assert_eq!(n, N_HITS);
     });
 }
 
 #[bench]
-fn myers_best_alignment_64(b: &mut Bencher) {
+fn myers_lazy_best_alignment_64(b: &mut Bencher) {
     let mut myers = Myers64::new(PATTERN);
     let mut aln = new_alignment();
     b.iter(|| {
         let mut n = 0;
-        let mut matches = myers.find_all_pos_remember(TEXT, K);
+        let mut matches = myers.find_all_lazy(TEXT, K);
         let mut best_dist = ::std::u8::MAX;
         let mut best_end = 0;
-        while let Some((end, dist)) = matches.next_end() {
+        for (end, dist) in matches.by_ref() {
             if dist < best_dist {
                 best_dist = dist;
                 best_end = end;
@@ -399,17 +408,18 @@ fn myers_best_alignment_64(b: &mut Bencher) {
 }
 
 #[bench]
-fn myers_best_alignment_itertools_64(b: &mut Bencher) {
-    use itertools::Itertools;
-
+fn myers_lazy_best_alignment_iter_min_64(b: &mut Bencher) {
     let mut myers = Myers64::new(PATTERN);
     let mut aln = new_alignment();
     b.iter(|| {
-        let mut matches = myers.find_all_pos_remember(TEXT, K);
-        let (best_end, _) = itertools::repeat_call(|| matches.next_end())
-            .while_some()
+        let mut n = 0;
+        let mut matches = myers.find_all_lazy(TEXT, K);
+        let (best_end, _) = matches
+            .by_ref()
+            .inspect(|_| n += 1)
             .min_by_key(|&(_, dist)| dist)
             .unwrap();
         matches.alignment_at(best_end, &mut aln);
+        assert_eq!(n, N_HITS);
     });
 }
