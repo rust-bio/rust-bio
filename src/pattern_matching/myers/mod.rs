@@ -5,7 +5,7 @@
 
 //! Myers bit-parallel approximate pattern matching algorithm.
 //! Finds all matches up to a given edit distance. The pattern has to fit into a bitvector,
-//! and is thus limited to 64 or (since Rust version 1.26) to 128 symbols.
+//! and is thus limited to 64 or (since stable Rust version 1.26) to 128 symbols.
 //! Complexity: O(n)
 //!
 //! # Example
@@ -27,15 +27,16 @@
 //! # }
 //! ```
 //!
-//! Starting with Rust 1.26, it is also possible to use `u128` as bitvector (`Myers128`), which
-//! will is somewhat slower.
+//! Starting with stable Rust 1.26, it is also possible to use `u128` as bitvector (`Myers128`),
+//! which enables longer patterns, but is somewhat slower.
 //!
 //! # Obtaining the starting position of a match
 //!
 //! The `Myers::find_all` method provides an iterator over tuples of `(start, end, distance)`.
-//! This is slower, since the alignment path has to be calculated if the starting position is
-//! required. Note that the end positions differ from above by one. This is intentional,
-//! representing a range, which does not includde the end position.
+//! Calculating the starting position requires finding the alignment path, therefore this is
+//! slower than `Myers::find_all_end`. Note that the end positions differ from above by one.
+//! This is intentional, as the iterator returns a range rather an index, and ranges in Rust
+//! do not include the end position by default.
 //!
 //! ```
 //! # extern crate bio;
@@ -54,8 +55,8 @@
 //!
 //! # Obtaining alignments
 //!
-//! [FullMatches](struct.FullMatches.html) returned by `Myers::find_all()` also allow obtaining
-//! an alignment path:
+//! [`FullMatches`](struct.FullMatches.html) returned by `Myers::find_all()` also provide a methods
+//! for obtaining an alignment path:
 //!
 //! ```
 //! # extern crate bio;
@@ -99,22 +100,25 @@
 //!    ||||x||||\
 //! TCCTCCTGAGGGATTAGCAC
 //!
-//! (rest omitted)
+//! ... (truncated)
 //!
 //! </pre>
 //!
-//! **Note** that the [Alignment](../../alignment/struct.Alignment.html) instance is only created
+//! **Note** that the [`Alignment`](../../alignment/struct.Alignment.html) instance is only created
 //! once and then reused. Because the Myers algorithm is very fast, the allocation necessary for
-//! `Alignment::operations` can have a non-negligible performance impact.
+//! `Alignment::operations` can have a non-negligible impact on performance, and thus, recycling
+//! makes sense.
 //!
 //! # Finding the best hit
 //!
 //! In many cases, only the match with the smallest edit distance is actually of interest.
-//! Calculating an alignment for every hit is therefore not necessary. `Myers::find_all_lazy()`
-//! iterates over tuples of `(end, distance)` like `Myers::find_all_end()`, but additionally
-//! keeps the data necessary for calculating the alignment path later at any desired position.
-//! Storing the data itself has a slight performance impact and requires more memory
-//! compared to `Myers::find_all_end()` [O(n + m)].
+//! Calculating an alignment for every hit is therefore not necessary.
+//! [`LazyMatches`](struct.LazyMatches.html) returned by `Myers::find_all_lazy()`
+//! provide an iterator over tuples of `(end, distance)` like `Myers::find_all_end()`, but
+//! additionally keep the data necessary for calculating the alignment path later at any desired
+//! position. Storing the data itself has a slight performance impact and requires more memory
+//! compared to `Myers::find_all_end()` [O(n) as opposed to O(m + k)]. Still the following code
+//! is faster than using `FullMatches`:
 //!
 //! ```
 //! # extern crate bio;
@@ -174,7 +178,7 @@
 //! # }
 //! ```
 //!
-//! For more examples see the documentation of [MyersBuilder](struct.MyersBuilder.html).
+//! For more examples see the documentation of [`MyersBuilder`](struct.MyersBuilder.html).
 
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -217,7 +221,11 @@ pub trait BitVec: Copy
 {
     /// For all currently implemented BitVec types, the maximum possible distance
     /// can be stored in `u8`. Custom implementations using bigger integers can
-    /// adjust `DistType` to hold bigger numbers.
+    /// adjust `DistType` to hold bigger numbers. Note that due to how the traceback
+    /// algorithm currently works, `DistType` should be able to represent numbers larger
+    /// than the bit-width of the `BitVec` type. For instance, a hypothetical `BitVec` type
+    /// of `u256` should use `u16` as distance, since `u8` cannot represent numbers larger
+    /// than 256.
     type DistType: Copy
             + Default
             + AddAssign
@@ -475,6 +483,7 @@ where
             pos: 0,
         }
     }
+
     /// Searches the next match and returns a tuple of end position and distance
     /// if found. This involves *no* searching for a starting position and is thus
     /// faster than just iterating over `FullMatches`
@@ -490,8 +499,9 @@ where
         None
     }
 
-    /// Searches the next match and returns a tuple of starting position, end position and distance.
-    /// if found. In addition, the alignment path is added to `ops`
+    /// Searches the next match and returns a tuple of starting position, end position and
+    /// distance, or `None` if no match was found. In addition, the alignment path is added to
+    /// `ops`.
     #[inline]
     pub fn next_path(
         &mut self,
@@ -514,29 +524,29 @@ where
     }
 
     /// Returns the starting position of the current hit.
-    /// There are two corner cases with maybe 'unexpected' return values:
-    /// - if searching was not yet started, `0` will be returned.
-    /// - if the search is completed and no hit was found, the starting position
-    ///   of the hit at the last position of the text will be returned, regardless
-    ///   of how many mismatches there are.
+    /// Note that if the search returned no hit at all, the starting position of the hit at the
+    /// last position of the text will be returned, regardless of how large the edit distance of
+    /// the hit may be.
     #[inline]
     pub fn start(&self) -> usize {
         let (len, _) = self.myers.tb.traceback(None);
         self.pos + 1 - len
     }
 
-    /// Adds the path of the current hit alignment to `ops`
-    /// and returns the starting position of the current hit.
-    /// See `start()` for a description of corner cases.
+    /// Adds the path of the current hit alignment to `ops` and returns the starting position of
+    /// the current hit.
+    /// Note that if the search returned no hit at all, an alignment for the last position of the
+    /// text will be done, regardless of how large the edit distance at this position.
     #[inline]
     pub fn path(&self, ops: &mut Vec<AlignmentOperation>) -> usize {
         let (len, _) = self.myers.tb.traceback(Some(ops));
         self.pos + 1 - len
     }
 
-    /// Updates the given `Alignment` with its position
-    /// and alignment path if found. The distance is stored in `Alignment::score`.
-    /// See `start()` for a description of corner cases.
+    /// Updates the given `Alignment` with its position and alignment path, if found.
+    /// The distance is stored in `Alignment::score`.
+    /// Note that if the search returned no hit at all, an alignment for the last position of the
+    /// text will be done, regardless of how large the edit distance at this position.
     #[inline]
     pub fn alignment(&mut self, aln: &mut Alignment) {
         let (len, _) = self.myers.tb.traceback(Some(&mut aln.operations));
@@ -665,7 +675,7 @@ where
     }
 }
 
-// Assumes *0-based* end positions, the coordinates will be converted to 1-based
+/// Assumes *0-based* end positions, the coordinates will be converted to 1-based
 #[inline(always)]
 fn update_aln(
     end_pos: usize,

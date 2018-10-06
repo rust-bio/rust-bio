@@ -64,15 +64,15 @@ where
         *unsafe { self.states.get_unchecked_mut(self.pos) } = s;
     }
 
-    // Returns the length of the current match, optionally adding the
-    // alignment path to `ops`
+    /// Returns the length of the current match, optionally adding the
+    /// alignment path to `ops`
     pub fn traceback(&self, ops: Option<&mut Vec<AlignmentOperation>>) -> (usize, T::DistType) {
         self._traceback_at(self.pos, ops)
     }
 
-    // Returns the length of a match with a given end position, optionally adding the
-    // alignment path to `ops`
-    // only to be called if the `states` vec contains all states of the text
+    /// Returns the length of a match with a given end position, optionally adding the
+    /// alignment path to `ops`
+    /// only to be called if the `states` vec contains all states of the text
     pub fn traceback_at(
         &self,
         pos: usize,
@@ -85,8 +85,8 @@ where
         None
     }
 
-    // returns a tuple of alignment length and hit distance, optionally adding the alignment path
-    // to `ops`
+    /// returns a tuple of alignment length and hit distance, optionally adding the alignment path
+    /// to `ops`
     #[inline]
     fn _traceback_at(
         &self,
@@ -169,17 +169,6 @@ where
         // comparison.
         move_state_up!(lstate, current_pos);
 
-        // Macro for collectively moving up the cursor (adjusting the distance) of both
-        // the left and the current state in the traceback matrix
-        macro_rules! move_up {
-            () => {
-                v_offset += 1;
-                move_state_up!(state, current_pos);
-                current_pos >>= 1;
-                move_state_up!(lstate, current_pos);
-            };
-        }
-
         // Macro for moving to the left, adjusting h_offset
         macro_rules! move_left {
             () => {
@@ -195,6 +184,8 @@ where
         }
 
         // Loop for finding the traceback path
+        // Note: Substitutions are always preferred over insertions,
+        // but the order of the Ins / Del blocks could easily be swapped
         while v_offset < self.m.to_usize().unwrap() {
             let op = if lstate.dist + T::DistType::one() == state.dist {
                 // Diagonal (substitution)
@@ -206,7 +197,10 @@ where
                 Subst
             } else if state.pv & current_pos != T::zero() {
                 // Up
-                move_up!();
+                v_offset += 1;
+                move_state_up!(state, current_pos);
+                current_pos >>= 1;
+                move_state_up!(lstate, current_pos);
                 Ins
             } else if lstate.mv & current_pos != T::zero() {
                 // Left

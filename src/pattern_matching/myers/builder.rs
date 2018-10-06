@@ -4,9 +4,7 @@ use super::*;
 ///
 /// # Example:
 ///
-/// This example shows how recognition of IUPAC ambiguities in patterns
-/// can be implemented. Ambiguities in the searched text are not recognized; this
-/// would require specifying additional ambiguities (A = MRWVHDN, etc...).
+/// This example shows how recognition of IUPAC ambiguities in patterns can be implemented:
 ///
 /// ```
 /// # extern crate bio;
@@ -41,6 +39,10 @@ use super::*;
 /// assert_eq!(myers.distance(text), 2);
 /// # }
 /// ```
+///
+/// Note that only ambiguities in the pattern are recognized. The reverse is not true; ambiguities
+/// in the search text are not matched by multiple symbols in the pattern. This would require
+/// specifying additional ambiguities (`builder.ambig(b'A', b"MRWVHDN")`, etc...).
 #[derive(Default, Clone, Eq, PartialEq)]
 pub struct MyersBuilder {
     ambigs: HashMap<u8, Vec<u8>>,
