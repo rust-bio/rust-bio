@@ -181,13 +181,13 @@
 //! For more examples see the documentation of [`MyersBuilder`](struct.MyersBuilder.html).
 
 use std::borrow::Borrow;
+use std::cmp::min;
 use std::collections::HashMap;
 use std::iter;
 use std::mem::size_of;
 use std::ops::Range;
 use std::ops::*;
 use std::u64;
-use std::cmp::min;
 
 use num_traits::{Bounded, FromPrimitive, One, PrimInt, ToPrimitive, WrappingAdd, Zero};
 
