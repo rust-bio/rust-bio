@@ -183,6 +183,7 @@ use std::mem::size_of;
 use std::ops::Range;
 use std::ops::*;
 use std::u64;
+use std::cmp::min;
 
 use num_traits::{Bounded, FromPrimitive, One, PrimInt, ToPrimitive, WrappingAdd, Zero};
 
@@ -468,11 +469,9 @@ where
 {
     fn new(myers: &'a mut Myers<T>, text_iter: I, max_dist: T::DistType) -> Self {
         let state = State::init(myers.m);
-        myers.tb.init(
-            state.clone(),
-            (myers.m + max_dist).to_usize().unwrap(),
-            myers.m,
-        );
+        // Maximum number of traceback columns possibly used by a match
+        let num_cols = (myers.m + min(max_dist, myers.m)).to_usize().unwrap();
+        myers.tb.init(state.clone(), num_cols, myers.m);
         FullMatches {
             state: state,
             m: myers.m,
@@ -613,11 +612,7 @@ where
 {
     fn new(myers: &'a mut Myers<T>, text_iter: I, max_dist: T::DistType) -> Self {
         let state = State::init(myers.m);
-        myers.tb.init(
-            state.clone(),
-            text_iter.len() + max_dist.to_usize().unwrap(),
-            myers.m,
-        );
+        myers.tb.init(state.clone(), text_iter.len(), myers.m);
         LazyMatches {
             state: state,
             m: myers.m,

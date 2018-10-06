@@ -38,6 +38,7 @@ fuzz_target!(|data: &[u8]| {
     let mut aln = new_alignment();
     {
         let mut matches = myers.find_all(text, max_dist);
+        matches.alignment(&mut aln); // all insertions to text
         let mut end_dist_iter = end_dist.iter();
         while matches.next_alignment(&mut aln) {
             let d = get_alignment_dist(

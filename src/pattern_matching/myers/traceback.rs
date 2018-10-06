@@ -21,7 +21,8 @@ where
     }
 
     pub fn init(&mut self, initial_state: State<T>, num_cols: usize, m: T::DistType) {
-        // ensure that empty text does not cause panic
+        // Correct traceback needs two additional columns at the left of the matrix (see below).
+        // Therefore reserving additional space.
         let num_cols = num_cols + 2;
 
         self.positions = (0..num_cols).cycle();
