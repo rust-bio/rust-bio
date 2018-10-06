@@ -385,15 +385,8 @@ where
 {
     /// Create new state, initiating it
     pub fn init(m: T::DistType) -> Self {
-        let maxsize = T::DistType::from_usize(8 * size_of::<T>()).unwrap();
-        let pv = if m == maxsize {
-            T::max_value()
-        } else {
-            (T::one() << m.to_usize().unwrap()) - T::one()
-        };
-
         State {
-            pv,
+            pv: T::max_value(),
             mv: T::zero(),
             dist: m,
         }
