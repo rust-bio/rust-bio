@@ -918,8 +918,8 @@ mod tests {
 
     #[test]
     fn test_ambig() {
-        let text = b"TGABCNT";
-        let patt = b"TGRRCGT";
+        let text = b"TGABCNTR";
+        let patt = b"TGRRCGTR";
         //                x  x
         // Matching is asymmetric here (A matches R and G matches N, but the reverse is not true)
 

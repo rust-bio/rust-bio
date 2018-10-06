@@ -12,17 +12,17 @@ use super::*;
 ///
 /// # fn main() {
 /// let ambigs = [
-///     (b'M', &b"ACM"[..]),
-///     (b'R', &b"AGR"[..]),
-///     (b'W', &b"ATW"[..]),
-///     (b'S', &b"CGS"[..]),
-///     (b'Y', &b"CTY"[..]),
-///     (b'K', &b"GTK"[..]),
-///     (b'V', &b"ACGMRSV"[..]),
-///     (b'H', &b"ACTMWYH"[..]),
-///     (b'D', &b"AGTRWKD"[..]),
-///     (b'B', &b"CGTSYKB"[..]),
-///     (b'N', &b"ACGTMRWSYKVHDBN"[..])
+///     (b'M', &b"AC"[..]),
+///     (b'R', &b"AG"[..]),
+///     (b'W', &b"AT"[..]),
+///     (b'S', &b"CG"[..]),
+///     (b'Y', &b"CT"[..]),
+///     (b'K', &b"GT"[..]),
+///     (b'V', &b"ACGMRS"[..]),
+///     (b'H', &b"ACTMWY"[..]),
+///     (b'D', &b"AGTRWK"[..]),
+///     (b'B', &b"CGTSYK"[..]),
+///     (b'N', &b"ACGTMRWSYKVHDB"[..])
 /// ];
 ///
 /// let mut builder = MyersBuilder::new();
@@ -54,7 +54,9 @@ impl MyersBuilder {
         Self::default()
     }
 
-    /// Allows to specify ambiguous characters and their equivalents.
+    /// Allows to specify ambiguous symbols and their equivalents. Note that the ambiguous symbol
+    /// will always be matched by itself. Explicitly including it in the equivalents is not
+    /// necessary.
     ///
     /// # Example:
     ///
@@ -77,14 +79,18 @@ impl MyersBuilder {
         I: IntoIterator<Item = B>,
         B: Borrow<u8>,
     {
-        let eq = equivalents.into_iter().map(|b| *b.borrow()).collect();
+        let eq = equivalents
+            .into_iter()
+            .map(|b| *b.borrow())
+            .chain(Some(byte))
+            .collect();
         self.ambigs.insert(byte, eq);
         self
     }
 
-    /// Allows to specify a wildcard character, that upon appearance in the search text
-    /// shall be matched by any character of the pattern. Multiple wildcards are possible.
-    /// For the inverse, that is, wildcards in the pattern matching any character in search
+    /// Allows to specify a wildcard symbol, that upon appearance in the search text
+    /// shall be matched by any symbol of the pattern. Multiple wildcards are possible.
+    /// For the inverse, that is, wildcards in the pattern matching any symbol in search
     /// text, use `ambig(byte, 0..255)`.
     ///
     /// # Example:
