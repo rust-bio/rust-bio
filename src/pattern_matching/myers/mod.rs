@@ -461,6 +461,7 @@ where
     m: T::DistType,
     max_dist: T::DistType,
     pos: usize, // current end position, has to be stored for alignment() method
+    finished: bool,
 }
 
 impl<'a, T, I> FullMatches<'a, T, I>
@@ -481,6 +482,7 @@ where
             text: text_iter.enumerate(),
             max_dist: max_dist,
             pos: 0,
+            finished: false,
         }
     }
 
@@ -496,6 +498,7 @@ where
                 return Some((i, self.state.dist));
             }
         }
+        self.finished = true;
         None
     }
 
@@ -508,7 +511,7 @@ where
         ops: &mut Vec<AlignmentOperation>,
     ) -> Option<(usize, usize, T::DistType)> {
         self.next_end()
-            .map(|(end, dist)| (self.path(ops), end + 1, dist))
+            .map(|(end, dist)| (self.path(ops).unwrap(), end + 1, dist))
     }
 
     /// Searches the next match and updates the given `Alignment` with its position
@@ -523,32 +526,36 @@ where
         false
     }
 
-    /// Returns the starting position of the current hit.
-    /// Note that if the search returned no hit at all, the starting position of the hit at the
-    /// last position of the text will be returned, regardless of how large the edit distance of
-    /// the hit may be.
+    /// Returns the starting position of the current hit. If the search is finished and no hit was
+    /// found, `None` is returned.
     #[inline]
-    pub fn start(&self) -> usize {
+    pub fn start(&self) -> Option<usize> {
+        if self.finished {
+            return None;
+        }
         let (len, _) = self.myers.tb.traceback(None);
-        self.pos + 1 - len
+        Some(self.pos + 1 - len)
     }
 
     /// Adds the path of the current hit alignment to `ops` and returns the starting position of
-    /// the current hit.
-    /// Note that if the search returned no hit at all, an alignment for the last position of the
-    /// text will be done, regardless of how large the edit distance at this position.
+    /// the current hit. If the search is finished and no hit was found, `None` is returned.
     #[inline]
-    pub fn path(&self, ops: &mut Vec<AlignmentOperation>) -> usize {
+    pub fn path(&self, ops: &mut Vec<AlignmentOperation>) -> Option<usize> {
+        if self.finished {
+            return None;
+        }
         let (len, _) = self.myers.tb.traceback(Some(ops));
-        self.pos + 1 - len
+        Some(self.pos + 1 - len)
     }
 
-    /// Updates the given `Alignment` with its position and alignment path, if found.
-    /// The distance is stored in `Alignment::score`.
-    /// Note that if the search returned no hit at all, an alignment for the last position of the
-    /// text will be done, regardless of how large the edit distance at this position.
+    /// Updates the given `Alignment` with its position and alignment path. The edit distance is
+    /// stored in `Alignment::score`. If no hit has been found, then `false` will be returned
+    /// and nothing is done.
     #[inline]
-    pub fn alignment(&mut self, aln: &mut Alignment) {
+    pub fn alignment(&mut self, aln: &mut Alignment) -> bool {
+        if self.finished {
+            return false;
+        }
         let (len, _) = self.myers.tb.traceback(Some(&mut aln.operations));
         update_aln(
             self.pos,
@@ -558,6 +565,7 @@ where
             self.m.to_usize().unwrap(),
             aln,
         );
+        true
     }
 }
 
@@ -571,7 +579,7 @@ where
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.next_end()
-            .map(|(end, dist)| (self.start(), end + 1, dist))
+            .map(|(end, dist)| (self.start().unwrap(), end + 1, dist))
     }
 }
 
