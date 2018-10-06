@@ -952,4 +952,18 @@ mod tests {
             .1;
         assert_eq!(max_dist, 64);
     }
+
+    #[test]
+    #[should_panic(expected = "Pattern too long")]
+    fn test_pattern_too_long() {
+        let pattern: Vec<_> = repeat(b'T').take(65).collect();
+        Myers64::new(&pattern);
+    }
+
+    #[test]
+    #[should_panic(expected = "Pattern too long")]
+    fn test_pattern_too_long_builder() {
+        let pattern: Vec<_> = repeat(b'T').take(65).collect();
+        MyersBuilder::new().build(&pattern);
+    }
 }
