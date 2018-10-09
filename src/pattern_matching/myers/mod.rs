@@ -55,7 +55,7 @@
 //!
 //! # Obtaining alignments
 //!
-//! [`FullMatches`](struct.FullMatches.html) returned by `Myers::find_all()` also provide a methods
+//! [`FullMatches`](struct.FullMatches.html) returned by `Myers::find_all()` also provide a method
 //! for obtaining an alignment path:
 //!
 //! ```
@@ -107,7 +107,7 @@
 //!
 //! **Note** that the [`Alignment`](../../alignment/struct.Alignment.html) instance is only created
 //! once and then reused. Because the Myers algorithm is very fast, the allocation necessary for
-//! `Alignment::operations` can have a non-negligible impact on performance, and thus, recycling
+//! `Alignment::operations` can have a non-negligible impact on performance; and thus, recycling
 //! makes sense.
 //!
 //! # Finding the best hit
@@ -202,7 +202,7 @@ mod traceback;
 pub use self::builder::MyersBuilder;
 use self::traceback::Traceback;
 
-/// Integer types serving as bit vectors must implement this trait.
+/// This trait must be implemented for integer types serving as bit vectors.
 /// Only unsigned integers will work correctly.
 pub trait BitVec: Copy
     + Default
