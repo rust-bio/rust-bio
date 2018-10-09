@@ -3,8 +3,8 @@
 extern crate bio;
 
 use std::cmp::{min, max};
-use bio::pattern_matching::myers::{MyersBuilder, Myers64, new_alignment};
-use bio::alignment::AlignmentOperation;
+use bio::pattern_matching::myers::{MyersBuilder, Myers64};
+use bio::alignment::{Alignment, AlignmentOperation};
 use bio::alignment::AlignmentOperation::*;
 
 
@@ -35,7 +35,7 @@ fuzz_target!(|data: &[u8]| {
     // are equal, then the traceback found a valid alignment path.
     // Additionally, the actual pattern and text are inspected; matches / substitutions
     // that are unexpectedly (un)equal will cause a panic.
-    let mut aln = new_alignment();
+    let mut aln = Alignment::default();
     {
         let mut matches = myers.find_all(text, max_dist);
         matches.alignment(&mut aln); // all insertions to text

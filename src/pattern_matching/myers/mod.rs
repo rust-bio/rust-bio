@@ -60,7 +60,8 @@
 //!
 //! ```
 //! # extern crate bio;
-//! use bio::pattern_matching::myers::{Myers64, new_alignment};
+//! use bio::pattern_matching::myers::Myers64;
+//! use bio::alignment::Alignment;
 //!
 //! # fn main() {
 //! let text = b"CGGTCCTGAGGGATTAGCAC";
@@ -68,7 +69,7 @@
 //!
 //! let mut myers = Myers64::new(pattern);
 //! // create an 'empty' alignment instance, which can be reused
-//! let mut aln = new_alignment(); // TODO: change
+//! let mut aln = Alignment::default();
 //!
 //! let mut matches = myers.find_all(text, 3);
 //! while matches.next_alignment(&mut aln) {
@@ -122,14 +123,15 @@
 //!
 //! ```
 //! # extern crate bio;
-//! use bio::pattern_matching::myers::{Myers64, new_alignment};
+//! use bio::pattern_matching::myers::Myers64;
+//! use bio::alignment::Alignment;
 //!
 //! # fn main() {
 //! let text = b"CGGTCCTGAGGGATTAGCAC";
 //! let pattern = b"TCCTAGGGC";
 //!
 //! let mut myers = Myers64::new(pattern);
-//! let mut aln = new_alignment(); // TODO: change
+//! let mut aln = Alignment::default();
 //!
 //! let mut matches = myers.find_all_lazy(text, 2);
 //!
@@ -173,7 +175,7 @@
 //!
 //! let myers = MyersBuilder::new()
 //!     .ambig(b'N', b"ACGT")
-//!     .build(pattern);
+//!     .build_64(pattern);
 //! assert_eq!(myers.distance(text), 0);
 //! # }
 //! ```
@@ -703,22 +705,6 @@ fn update_aln(
     aln.score = dist as i32;
 }
 
-// temporary impl to create new 'empty' alignment
-// This may be added to bio_types in some form
-pub fn new_alignment() -> Alignment {
-    Alignment {
-        score: 0,
-        ystart: 0,
-        xstart: 0,
-        yend: 0,
-        xend: 0,
-        ylen: 0,
-        xlen: 0,
-        operations: vec![],
-        mode: AlignmentMode::Custom,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -744,7 +730,7 @@ mod tests {
         let myers = Myers64::new(patt);
         assert_eq!(myers.distance(text), 1);
 
-        let myers_wildcard = MyersBuilder::new().text_wildcard(b'N').build(patt);
+        let myers_wildcard = MyersBuilder::new().text_wildcard(b'N').build_64(patt);
         assert_eq!(myers_wildcard.distance(text), 0);
     }
 
@@ -808,11 +794,9 @@ mod tests {
             ],
             mode: AlignmentMode::Semiglobal,
         };
-        let mut aln = new_alignment();
 
+        let mut aln = Alignment::default();
         {
-            // TODO: a constructor for bio_types::alignment::Alignment
-            // would be very convenient
             let mut matches = myers.find_all(text.as_bytes(), 1);
             assert!(matches.next_alignment(&mut aln));
             assert_eq!(&aln, &expected);
@@ -931,7 +915,7 @@ mod tests {
         //                x  x
         // Matching is asymmetric here (A matches R and G matches N, but the reverse is not true)
 
-        let myers = MyersBuilder::new().ambig(b'R', b"AG").build(patt);
+        let myers = MyersBuilder::new().ambig(b'R', b"AG").build_64(patt);
         assert_eq!(myers.distance(text), 2);
     }
 
@@ -975,6 +959,6 @@ mod tests {
     #[should_panic(expected = "Pattern too long")]
     fn test_pattern_too_long_builder() {
         let pattern: Vec<_> = repeat(b'T').take(65).collect();
-        MyersBuilder::new().build(&pattern);
+        MyersBuilder::new().build_64(&pattern);
     }
 }

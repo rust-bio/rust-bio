@@ -35,7 +35,7 @@ use super::*;
 /// let pattern = b"TRANCGG";
 /// //                *   * (mismatch)
 ///
-/// let myers = builder.build(pattern);
+/// let myers = builder.build_64(pattern);
 /// assert_eq!(myers.distance(text), 2);
 /// # }
 /// ```
@@ -65,12 +65,12 @@ impl MyersBuilder {
     /// use bio::pattern_matching::myers::MyersBuilder;
     ///
     /// # fn main() {
-    /// let text = b"ACCGTGGATGAGCGCCATAG";
-    /// let pattern =      b"TGAGCGN";
+    /// let text = b"GGATGAGCGCCATAG";
+    /// let pattern = b"TGAGCGN";
     ///
     /// let myers = MyersBuilder::new()
     ///     .ambig(b'N', b"ACGT")
-    ///     .build(pattern);
+    ///     .build_64(pattern);
     ///
     /// assert_eq!(myers.distance(text), 0);
     /// # }
@@ -100,12 +100,12 @@ impl MyersBuilder {
     /// use bio::pattern_matching::myers::MyersBuilder;
     ///
     /// # fn main() {
-    /// let text = b"ACCGTGGATGAGCG*CATAG";
-    /// let pattern =      b"TGAGCGT";
+    /// let text = b"GGATGAGCG*CATAG";
+    /// let pattern = b"TGAGCGT";
     ///
     /// let myers = MyersBuilder::new()
     ///     .text_wildcard(b'*')
-    ///     .build(pattern);
+    ///     .build_64(pattern);
     ///
     /// assert_eq!(myers.distance(text), 0);
     /// # }
@@ -115,22 +115,22 @@ impl MyersBuilder {
     }
 
     /// Creates a Myers instance given a pattern, using `u64` as bit vector type
-    pub fn build<'a, P>(&self, pattern: P) -> Myers<u64>
+    pub fn build_64<'a, P>(&self, pattern: P) -> Myers<u64>
     where
         P: IntoTextIterator<'a>,
         P::IntoIter: ExactSizeIterator,
     {
-        self.build_other(pattern)
+        self.build(pattern)
     }
 
     /// Creates a Myers instance given a pattern, using `u128` as bit vector type
     #[cfg(has_u128)]
-    pub fn build128<'a, P>(&self, pattern: P) -> Myers<u128>
+    pub fn build_128<'a, P>(&self, pattern: P) -> Myers<u128>
     where
         P: IntoTextIterator<'a>,
         P::IntoIter: ExactSizeIterator,
     {
-        self.build_other(pattern)
+        self.build(pattern)
     }
 
     /// Creates a Myers instance given a pattern, using any desired type for bit vectors
@@ -144,10 +144,10 @@ impl MyersBuilder {
     /// # fn main() {
     /// let myers: Myers<u32> = MyersBuilder::new()
     ///     .text_wildcard(b'*')
-    ///     .build_other(b"TGAGCG*");
+    ///     .build(b"TGAGCG*");
     /// // ...
     /// # }
-    pub fn build_other<'a, T, P>(&self, pattern: P) -> Myers<T>
+    pub fn build<'a, T, P>(&self, pattern: P) -> Myers<T>
     where
         T: BitVec,
         P: IntoTextIterator<'a>,

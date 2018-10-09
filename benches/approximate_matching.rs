@@ -5,6 +5,7 @@ extern crate test;
 
 use test::Bencher;
 
+use bio::alignment::Alignment;
 use bio::pattern_matching::myers::*;
 use bio::pattern_matching::ukkonen::*;
 
@@ -333,7 +334,7 @@ fn myers_path_64(b: &mut Bencher) {
 #[bench]
 fn myers_alignment_64(b: &mut Bencher) {
     let mut myers = Myers64::new(PATTERN);
-    let mut aln = new_alignment();
+    let mut aln = Alignment::default();
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all(TEXT, K);
@@ -352,7 +353,7 @@ fn myers_alignment_alloc_64(b: &mut Bencher) {
         let mut n = 0;
         let mut matches = myers.find_all(TEXT, K);
         loop {
-            let mut aln = new_alignment();
+            let mut aln = Alignment::default();
             if !matches.next_alignment(&mut aln) {
                 break;
             }
@@ -389,7 +390,7 @@ fn myers_no_alignment_lazy_64(b: &mut Bencher) {
 #[bench]
 fn myers_lazy_best_alignment_64(b: &mut Bencher) {
     let mut myers = Myers64::new(PATTERN);
-    let mut aln = new_alignment();
+    let mut aln = Alignment::default();
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all_lazy(TEXT, K);
@@ -410,7 +411,7 @@ fn myers_lazy_best_alignment_64(b: &mut Bencher) {
 #[bench]
 fn myers_lazy_best_alignment_iter_min_64(b: &mut Bencher) {
     let mut myers = Myers64::new(PATTERN);
-    let mut aln = new_alignment();
+    let mut aln = Alignment::default();
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all_lazy(TEXT, K);
