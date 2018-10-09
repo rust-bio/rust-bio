@@ -258,7 +258,7 @@ pub type Myers64 = Myers<u64>;
 pub type Myers128 = Myers<u128>;
 
 /// Myers algorithm.
-pub struct Myers<T>
+pub struct Myers<T = u64>
 where
     T: BitVec,
 {
