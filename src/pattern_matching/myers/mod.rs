@@ -14,13 +14,13 @@
 //!
 //! ```
 //! # extern crate bio;
-//! use bio::pattern_matching::myers::Myers64;
+//! use bio::pattern_matching::myers::Myers;
 //!
 //! # fn main() {
 //! let text = b"CGGTCCTGAGGGATTAGCAC";
 //! let pattern = b"TCCTAGGGC";
 //!
-//! let myers = Myers64::new(pattern);
+//! let myers = Myers::<u64>::new(pattern);
 //! let occ: Vec<_> = myers.find_all_end(text, 2).collect();
 //!
 //! assert_eq!(occ, [(11, 2), (12, 2)]);
@@ -40,13 +40,13 @@
 //!
 //! ```
 //! # extern crate bio;
-//! use bio::pattern_matching::myers::Myers64;
+//! use bio::pattern_matching::myers::Myers;
 //!
 //! # fn main() {
 //! let text = b"CGGTCCTGAGGGATTAGCAC";
 //! let pattern = b"TCCTAGGGC";
 //!
-//! let mut myers = Myers64::new(pattern);
+//! let mut myers = Myers::<u64>::new(pattern);
 //! let occ: Vec<_> = myers.find_all(text, 2).collect();
 //!
 //! assert_eq!(occ, [(3, 12, 2), (3, 13, 2)]);
@@ -60,14 +60,14 @@
 //!
 //! ```
 //! # extern crate bio;
-//! use bio::pattern_matching::myers::Myers64;
+//! use bio::pattern_matching::myers::Myers;
 //! use bio::alignment::Alignment;
 //!
 //! # fn main() {
 //! let text = b"CGGTCCTGAGGGATTAGCAC";
 //! let pattern = b"TCCTAGGGC";
 //!
-//! let mut myers = Myers64::new(pattern);
+//! let mut myers = Myers::<u64>::new(pattern);
 //! // create an 'empty' alignment instance, which can be reused
 //! let mut aln = Alignment::default();
 //!
@@ -123,14 +123,14 @@
 //!
 //! ```
 //! # extern crate bio;
-//! use bio::pattern_matching::myers::Myers64;
+//! use bio::pattern_matching::myers::Myers;
 //! use bio::alignment::Alignment;
 //!
 //! # fn main() {
 //! let text = b"CGGTCCTGAGGGATTAGCAC";
 //! let pattern = b"TCCTAGGGC";
 //!
-//! let mut myers = Myers64::new(pattern);
+//! let mut myers = Myers::<u64>::new(pattern);
 //! let mut aln = Alignment::default();
 //!
 //! let mut matches = myers.find_all_lazy(text, 2);
@@ -251,11 +251,6 @@ impl_bitvec!(u64, u8);
 #[cfg(has_u128)]
 impl_bitvec!(u128, u8);
 
-/// Myers instance using `u64` as bit vectors (pattern length up to 64)
-pub type Myers64 = Myers<u64>;
-/// Myers instance using `u128` as bit vectors (pattern length up to 128)
-#[cfg(has_u128)]
-pub type Myers128 = Myers<u128>;
 
 /// Myers algorithm.
 pub struct Myers<T = u64>
@@ -717,7 +712,7 @@ mod tests {
     fn test_find_all_end() {
         let text = b"ACCGTGGATGAGCGCCATAG";
         let pattern = b"TGAGCGT";
-        let myers = Myers64::new(pattern);
+        let myers = Myers::<u64>::new(pattern);
         let occ = myers.find_all_end(text, 1).collect_vec();
         assert_eq!(occ, [(13, 1), (14, 1)]);
     }
@@ -727,7 +722,7 @@ mod tests {
         let text = b"TGAGCNTA";
         let patt = b"TGAGCGT";
 
-        let myers = Myers64::new(patt);
+        let myers = Myers::<u64>::new(patt);
         assert_eq!(myers.distance(text), 1);
 
         let myers_wildcard = MyersBuilder::new().text_wildcard(b'N').build_64(patt);
@@ -739,7 +734,7 @@ mod tests {
         let text = b"CAGACATCTT";
         let pattern = b"AGA";
 
-        let mut myers = Myers64::new(pattern);
+        let mut myers = Myers::<u64>::new(pattern);
         let matches: Vec<_> = myers.find_all(text, 1).collect();
         assert_eq!(&matches, &[(1, 3, 1), (1, 4, 0), (1, 5, 1), (3, 6, 1)]);
     }
@@ -749,7 +744,7 @@ mod tests {
         let text = "TCAGACAT-CTT".replace('-', "").into_bytes();
         let patt = "TC-GACGTGCT".replace('-', "").into_bytes();
 
-        let mut myers = Myers64::new(&patt);
+        let mut myers = Myers::<u64>::new(&patt);
         let mut matches = myers.find_all(&text, 3);
         let mut aln = vec![];
         assert_eq!(matches.next_path(&mut aln).unwrap(), (0, 10, 3));
@@ -764,7 +759,7 @@ mod tests {
         let text = "TCAG--CAGATGGAGCTC".replace('-', "").into_bytes();
         let patt = "TCAGAGCAG".replace('-', "").into_bytes();
 
-        let mut myers = Myers64::new(&patt);
+        let mut myers = Myers::<u64>::new(&patt);
         let mut matches = myers.find_all(&text, 2);
         let mut aln = vec![];
         assert_eq!(matches.next_path(&mut aln).unwrap(), (0, 7, 2));
@@ -780,7 +775,7 @@ mod tests {
         let text =  "GGTCCTGAGGGATTA".replace('-', "");
         let pattern = "TCCT-AGGGA".replace('-', "");
 
-        let mut myers = Myers64::new(pattern.as_bytes());
+        let mut myers = Myers::<u64>::new(pattern.as_bytes());
         let expected = Alignment {
             score: 1,
             xstart: 0,
@@ -825,7 +820,7 @@ mod tests {
         let starts_exp = [1, 1, 1, 3];
         let end_dist_exp = [(2, 1), (3, 0), (4, 1), (5, 1)];
 
-        let mut myers = Myers64::new(pattern);
+        let mut myers = Myers::<u64>::new(pattern);
 
         // standard iterator with 0-based ends
         let end_dist: Vec<_> = myers.find_all_end(text, 1).collect();
@@ -860,7 +855,7 @@ mod tests {
         let text = b"CAGACATCTT";
         let pattern = b"AGA";
 
-        let mut myers = Myers64::new(pattern);
+        let mut myers = Myers::<u64>::new(pattern);
         let mut matches = myers.find_all_lazy(text, 1);
 
         let expected = &[Match, Match, Ins];
@@ -891,7 +886,7 @@ mod tests {
         let text = "ATG";
         let pat = "CATGC";
 
-        let mut myers = Myers64::new(pat.as_bytes());
+        let mut myers = Myers::<u64>::new(pat.as_bytes());
         let mut matches = myers.find_all(text.as_bytes(), 2);
         let mut aln = vec![];
         assert_eq!(matches.next_path(&mut aln).unwrap(), (0, 3, 2));
@@ -903,7 +898,7 @@ mod tests {
         let text = "CCACGCGTGGGTCCTGAGGGAGCTCGTCGGTGTGGGGTTCGGGGGGGTTTGT";
         let pattern = "CGCGGTGTCCACGCGTGGGTCCTGAGGGAGCTCGTCGGTGTGGGGTTCGGGGGGGTTTGT";
 
-        let mut myers = Myers64::new(pattern.as_bytes());
+        let mut myers = Myers::<u64>::new(pattern.as_bytes());
         let mut matches = myers.find_all(text.as_bytes(), 8);
         assert_eq!(matches.next().unwrap(), (0, 52, 8));
     }
@@ -932,7 +927,7 @@ mod tests {
         let pattern: Vec<_> = repeat(b'T').take(64).collect();
         let text: Vec<_> = repeat(b'A').take(64).collect();
 
-        let mut myers = Myers64::new(&pattern);
+        let mut myers = Myers::<u64>::new(&pattern);
         let max_dist = myers
             .find_all_end(&text, 64)
             .max_by_key(|&(_, dist)| dist)
@@ -952,7 +947,7 @@ mod tests {
     #[should_panic(expected = "Pattern too long")]
     fn test_pattern_too_long() {
         let pattern: Vec<_> = repeat(b'T').take(65).collect();
-        Myers64::new(&pattern);
+        Myers::<u64>::new(&pattern);
     }
 
     #[test]

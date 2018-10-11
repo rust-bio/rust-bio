@@ -3,7 +3,7 @@
 extern crate bio;
 
 use std::cmp::{min, max};
-use bio::pattern_matching::myers::{MyersBuilder, Myers64};
+use bio::pattern_matching::myers::{MyersBuilder, Myers};
 use bio::alignment::{Alignment, AlignmentOperation};
 use bio::alignment::AlignmentOperation::*;
 
@@ -24,9 +24,9 @@ fuzz_target!(|data: &[u8]| {
 
     let (pattern, text) = data.split_at(pattern_len);
 
-    let _ = MyersBuilder::new().build(pattern);
+    let _ = MyersBuilder::new().build_64(pattern);
 
-    let mut myers = Myers64::new(pattern);
+    let mut myers = Myers::<u64>::new(pattern);
 
     let end_dist: Vec<_> = myers.find_all_end(text, max_dist).collect();
 

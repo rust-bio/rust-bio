@@ -267,7 +267,7 @@ fn myers_end_32(b: &mut Bencher) {
 
 #[bench]
 fn myers_end_64(b: &mut Bencher) {
-    let myers = Myers64::new(PATTERN);
+    let myers = Myers::<u64>::new(PATTERN);
     b.iter(|| {
         let mut n = 0;
         for _ in myers.find_all_end(TEXT, K) {
@@ -280,7 +280,7 @@ fn myers_end_64(b: &mut Bencher) {
 #[cfg(has_u128)]
 #[bench]
 fn myers_end_128(b: &mut Bencher) {
-    let myers = Myers128::new(PATTERN);
+    let myers = Myers::<u128>::new(PATTERN);
     b.iter(|| {
         let mut n = 0;
         for _ in myers.find_all_end(TEXT, K) {
@@ -292,7 +292,7 @@ fn myers_end_128(b: &mut Bencher) {
 
 #[bench]
 fn myers_pos_64(b: &mut Bencher) {
-    let mut myers = Myers64::new(PATTERN);
+    let mut myers = Myers::<u64>::new(PATTERN);
     b.iter(|| {
         let mut n = 0;
         let matches = myers.find_all(TEXT, K);
@@ -306,7 +306,7 @@ fn myers_pos_64(b: &mut Bencher) {
 #[cfg(has_u128)]
 #[bench]
 fn myers_pos_128(b: &mut Bencher) {
-    let mut myers = Myers128::new(PATTERN);
+    let mut myers = Myers::<u128>::new(PATTERN);
     b.iter(|| {
         let mut n = 0;
         let matches = myers.find_all(TEXT, K);
@@ -319,7 +319,7 @@ fn myers_pos_128(b: &mut Bencher) {
 
 #[bench]
 fn myers_path_64(b: &mut Bencher) {
-    let mut myers = Myers64::new(PATTERN);
+    let mut myers = Myers::<u64>::new(PATTERN);
     let mut ops = vec![];
     b.iter(|| {
         let mut n = 0;
@@ -333,7 +333,7 @@ fn myers_path_64(b: &mut Bencher) {
 
 #[bench]
 fn myers_alignment_64(b: &mut Bencher) {
-    let mut myers = Myers64::new(PATTERN);
+    let mut myers = Myers::<u64>::new(PATTERN);
     let mut aln = Alignment::default();
     b.iter(|| {
         let mut n = 0;
@@ -348,7 +348,7 @@ fn myers_alignment_64(b: &mut Bencher) {
 // Allocates a new Alignment instance in each loop
 #[bench]
 fn myers_alignment_alloc_64(b: &mut Bencher) {
-    let mut myers = Myers64::new(PATTERN);
+    let mut myers = Myers::<u64>::new(PATTERN);
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all(TEXT, K);
@@ -366,7 +366,7 @@ fn myers_alignment_alloc_64(b: &mut Bencher) {
 // test impact of storing traceback information
 #[bench]
 fn myers_no_alignment_64(b: &mut Bencher) {
-    let mut myers = Myers64::new(PATTERN);
+    let mut myers = Myers::<u64>::new(PATTERN);
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all(TEXT, K);
@@ -380,7 +380,7 @@ fn myers_no_alignment_64(b: &mut Bencher) {
 // test impact of storing traceback information
 #[bench]
 fn myers_no_alignment_lazy_64(b: &mut Bencher) {
-    let mut myers = Myers64::new(PATTERN);
+    let mut myers = Myers::<u64>::new(PATTERN);
     b.iter(|| {
         let n = myers.find_all_lazy(TEXT, K).count();
         assert_eq!(n, N_HITS);
@@ -389,7 +389,7 @@ fn myers_no_alignment_lazy_64(b: &mut Bencher) {
 
 #[bench]
 fn myers_lazy_best_alignment_64(b: &mut Bencher) {
-    let mut myers = Myers64::new(PATTERN);
+    let mut myers = Myers::<u64>::new(PATTERN);
     let mut aln = Alignment::default();
     b.iter(|| {
         let mut n = 0;
@@ -410,7 +410,7 @@ fn myers_lazy_best_alignment_64(b: &mut Bencher) {
 
 #[bench]
 fn myers_lazy_best_alignment_iter_min_64(b: &mut Bencher) {
-    let mut myers = Myers64::new(PATTERN);
+    let mut myers = Myers::<u64>::new(PATTERN);
     let mut aln = Alignment::default();
     b.iter(|| {
         let mut n = 0;

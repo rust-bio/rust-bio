@@ -41,7 +41,6 @@ where
 
         // first column is used to ensure a correct path if the text
         // is shorter than the pattern
-        // Actual leftmost column starts at second position
         self.add_state(State {
             dist: T::DistType::max_value(),
             pv: T::max_value(), // all 1s
