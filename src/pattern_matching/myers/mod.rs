@@ -251,7 +251,6 @@ impl_bitvec!(u64, u8);
 #[cfg(has_u128)]
 impl_bitvec!(u128, u8);
 
-
 /// Myers algorithm.
 pub struct Myers<T = u64>
 where
