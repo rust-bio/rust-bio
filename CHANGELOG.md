@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [dev]
+- Generalized Myers pattern matching algorithm to arbitrary unsigned integer types (u64, u128) (thanks to @markschl).
+- Implemented optional traceback and alignment output for Myers pattern matching algorithm (thanks to @markschl).
+
 # [0.22.0] - 2018-08-01
 - Added HMM implementation (thanks to @holtgrewe).
 - Moved Alignment types to `bio_types` crate (thanks to @pmarks).
