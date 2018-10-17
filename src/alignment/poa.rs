@@ -161,13 +161,13 @@ pub struct POA<F: MatchFunc> {
 }
 
 impl<F: MatchFunc> POA<F> {
-//    pub fn new() -> POA {
-//        POA { aligner: Aligner }
-//
+    //    pub fn new() -> POA {
+    //        POA { aligner: Aligner }
+    //
 
-//    pub fn add_sequence() -> {
-//        POA { aligner: Aligner::new(self.scoring). }
-//    }
+    //    pub fn add_sequence() -> {
+    //        POA { aligner: Aligner::new(self.scoring). }
+    //    }
 }
 
 /// A global aligner on partially ordered graphs
@@ -188,7 +188,7 @@ impl<F: MatchFunc> Aligner<F> {
     pub fn new(gap_open: i32, match_fn: F) -> Self {
         Aligner {
             scoring: Scoring::new(gap_open, 0, match_fn),
-//            traceback: Traceback::new(),
+            //            traceback: Traceback::new(),
             graph: Graph::with_capacity(0, 0),
         }
     }
@@ -291,8 +291,7 @@ impl<F: MatchFunc> Aligner<F> {
                                     op: AlignmentOperation::Match(Some((i_p - 1, i - 1))),
                                 },
                                 TracebackCell {
-                                    score: traceback.matrix[i_p][j].score
-                                        + self.scoring.gap_open,
+                                    score: traceback.matrix[i_p][j].score + self.scoring.gap_open,
                                     op: AlignmentOperation::Del(Some((i_p - 1, i))),
                                 },
                             ),
