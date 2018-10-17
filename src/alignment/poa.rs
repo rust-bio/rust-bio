@@ -152,6 +152,24 @@ impl Traceback {
     }
 }
 
+/// A multiple sequence aligner builder
+///
+/// Uses builder pattern for constructing partial order alignments with method chainging
+pub struct POA<F: MatchFunc> {
+    aligner: Aligner<F>,
+    refs: Vec<String>,
+}
+
+impl<F: MatchFunc> POA<F> {
+//    pub fn new() -> POA {
+//        POA { aligner: Aligner }
+//
+
+//    pub fn add_sequence() -> {
+//        POA { aligner: Aligner::new(self.scoring). }
+//    }
+}
+
 /// A global aligner on partially ordered graphs
 ///
 /// Internally stores a directed acyclic graph datastructure that informs the topology of the
@@ -163,7 +181,6 @@ impl Traceback {
 ///
 pub struct Aligner<F: MatchFunc> {
     scoring: Scoring<F>,
-    traceback: Traceback,
     pub graph: Graph<u8, i32, Directed, usize>,
 }
 
@@ -171,7 +188,7 @@ impl<F: MatchFunc> Aligner<F> {
     pub fn new(gap_open: i32, match_fn: F) -> Self {
         Aligner {
             scoring: Scoring::new(gap_open, 0, match_fn),
-            traceback: Traceback::new(),
+//            traceback: Traceback::new(),
             graph: Graph::with_capacity(0, 0),
         }
     }
@@ -196,7 +213,6 @@ impl<F: MatchFunc> Aligner<F> {
 
         Aligner {
             scoring: Scoring::new(gap_open, 0, match_fn),
-            traceback: Traceback::new(),
             graph: graph,
         }
     }
@@ -212,7 +228,6 @@ impl<F: MatchFunc> Aligner<F> {
     pub fn from_graph(poa: Graph<u8, i32, Directed, usize>, gap_open: i32, match_fn: F) -> Self {
         Aligner {
             scoring: Scoring::new(gap_open, 0, match_fn),
-            traceback: Traceback::new(),
             graph: poa,
         }
     }
@@ -226,12 +241,12 @@ impl<F: MatchFunc> Aligner<F> {
         assert!(self.graph.node_count() != 0);
         // dimensions of the traceback matrix
         let (m, n) = (self.graph.node_count(), query.len());
-        self.traceback = Traceback::with_capacity(m, n);
+        let mut traceback = Traceback::with_capacity(m, n);
 
         // optimal AlignmentOperation path
         let mut ops: Vec<AlignmentOperation> = vec![];
 
-        self.traceback.matrix[0][0] = TracebackCell {
+        traceback.matrix[0][0] = TracebackCell {
             score: 0,
             op: AlignmentOperation::Match(None),
         };
@@ -256,7 +271,7 @@ impl<F: MatchFunc> Aligner<F> {
                 // match and deletion scores for the first reference base
                 let max_cell = if prevs.len() == 0 {
                     TracebackCell {
-                        score: self.traceback.matrix[0][j - 1].score
+                        score: traceback.matrix[0][j - 1].score
                             + self.scoring.match_fn.score(r, *q),
                         op: AlignmentOperation::Match(None),
                     }
@@ -271,12 +286,12 @@ impl<F: MatchFunc> Aligner<F> {
                             max_cell,
                             max(
                                 TracebackCell {
-                                    score: self.traceback.matrix[i_p][j - 1].score
+                                    score: traceback.matrix[i_p][j - 1].score
                                         + self.scoring.match_fn.score(r, *q),
                                     op: AlignmentOperation::Match(Some((i_p - 1, i - 1))),
                                 },
                                 TracebackCell {
-                                    score: self.traceback.matrix[i_p][j].score
+                                    score: traceback.matrix[i_p][j].score
                                         + self.scoring.gap_open,
                                     op: AlignmentOperation::Del(Some((i_p - 1, i))),
                                 },
@@ -289,15 +304,15 @@ impl<F: MatchFunc> Aligner<F> {
                 let score = max(
                     max_cell,
                     TracebackCell {
-                        score: self.traceback.matrix[i][j - 1].score + self.scoring.gap_open,
+                        score: traceback.matrix[i][j - 1].score + self.scoring.gap_open,
                         op: AlignmentOperation::Ins(Some(i - 1)),
                     },
                 );
-                self.traceback.matrix[i][j] = score;
+                traceback.matrix[i][j] = score;
             }
         }
 
-        //dump_traceback(&self.traceback, g, query);
+        //dump_traceback(traceback, g, query);
 
         // Now backtrack through the matrix to construct an optimal path
         let mut i = last.index() + 1;
@@ -306,8 +321,8 @@ impl<F: MatchFunc> Aligner<F> {
         while i > 0 && j > 0 {
             // push operation and edge corresponding to (one of the) optimal
             // routes
-            ops.push(self.traceback.matrix[i][j].op.clone());
-            match self.traceback.matrix[i][j].op {
+            ops.push(traceback.matrix[i][j].op.clone());
+            match traceback.matrix[i][j].op {
                 AlignmentOperation::Match(Some((p, _))) => {
                     i = p + 1;
                     j = j - 1;
@@ -334,7 +349,7 @@ impl<F: MatchFunc> Aligner<F> {
         ops.reverse();
 
         Alignment {
-            score: self.traceback.matrix[last.index() + 1][n].score,
+            score: traceback.matrix[last.index() + 1][n].score,
             operations: ops,
             mode: AlignmentMode::Custom,
         }
@@ -357,7 +372,7 @@ impl<F: MatchFunc> Aligner<F> {
                 }
                 AlignmentOperation::Match(Some((_, p))) => {
                     let node = NodeIndex::new(p);
-                    if seq[i] != self.graph.raw_nodes()[p].weight {
+                    if (seq[i] != self.graph.raw_nodes()[p].weight) && (seq[i] != b'X') {
                         let node = self.graph.add_node(seq[i]);
                         self.graph.add_edge(prev, node, 1);
                         prev = node;
