@@ -358,7 +358,7 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     /// Only supported alignments for sequences that have already been added,
     /// so all operations must be Match.
-    pub fn edges(self, aln: Alignment) -> Vec<usize> {
+    pub fn edges(&self, aln: Alignment) -> Vec<usize> {
         let mut path: Vec<usize> = vec![];
         let mut prev: NodeIndex<usize> = NodeIndex::new(0);
         let mut i: usize = 0;
