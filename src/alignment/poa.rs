@@ -237,7 +237,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// # Arguments
     /// * `query` - the query TextSlice to align against the internal graph member
     ///
-    pub fn global(&mut self, query: TextSlice) -> Alignment {
+    pub fn global(&self, query: TextSlice) -> Alignment {
         assert!(self.graph.node_count() != 0);
         // dimensions of the traceback matrix
         let (m, n) = (self.graph.node_count(), query.len());
