@@ -354,6 +354,34 @@ impl<F: MatchFunc> Aligner<F> {
         }
     }
 
+    /// Experimental: return sequence of traversed edges
+    ///
+    /// Only supported alignments for sequences that have already been added,
+    /// so all operations must be Match.
+    pub fn edges(self, aln: Alignment) -> Vec<usize> {
+        let mut path: Vec<usize> = vec![];
+        let mut prev: NodeIndex<usize> = NodeIndex::new(0);
+        let mut i: usize = 0;
+        for op in aln.operations {
+            match op {
+                AlignmentOperation::Match(None) => {
+                    i = i + 1;
+                }
+                AlignmentOperation::Match(Some((_, p))) => {
+                    let node = NodeIndex::new(p);
+                    let edge = self.graph.find_edge(prev, node).unwrap();
+                    path.push(edge.index());
+                    prev = NodeIndex::new(p);
+                    i = i + 1;
+                }
+                AlignmentOperation::Ins(None) => {}
+                AlignmentOperation::Ins(Some(_)) => {}
+                AlignmentOperation::Del(_) => {}
+            }
+        }
+        path
+    }
+
     /// Incorporate a new sequence into a graph from an alignment
     ///
     /// # Arguments
