@@ -451,6 +451,7 @@ impl<F: MatchFunc> Aligner<F> {
                 if self.S[curr][i] + self.scoring.xclip_suffix > self.S[curr][m] {
                     self.S[curr][m] = self.S[curr][i] + self.scoring.xclip_suffix;
                     self.Lx[0] = m - i;
+                    self.traceback.get_mut(m, 0).set_s_bits(TB_XCLIP_SUFFIX);
                 }
 
                 self.traceback.set(i, 0, tb);
@@ -507,6 +508,7 @@ impl<F: MatchFunc> Aligner<F> {
                 if self.S[curr][0] + self.scoring.yclip_suffix > self.Sn[0] {
                     self.Sn[0] = self.S[curr][0] + self.scoring.yclip_suffix;
                     self.Ly[0] = n - j;
+                    self.traceback.get_mut(0, n).set_s_bits(TB_YCLIP_SUFFIX);
                 }
                 self.traceback.set(0, j, tb);
             }
@@ -595,21 +597,24 @@ impl<F: MatchFunc> Aligner<F> {
                 if self.S[curr][i] + self.scoring.xclip_suffix > self.S[curr][m] {
                     self.S[curr][m] = self.S[curr][i] + self.scoring.xclip_suffix;
                     self.Lx[j] = m - i;
+                    self.traceback.get_mut(m, j).set_s_bits(TB_XCLIP_SUFFIX);
                 }
 
                 // Track the score if we do suffix clip (y) from here
                 if self.S[curr][i] + self.scoring.yclip_suffix > self.Sn[i] {
                     self.Sn[i] = self.S[curr][i] + self.scoring.yclip_suffix;
                     self.Ly[i] = n - j;
+                    self.traceback.get_mut(i, n).set_s_bits(TB_YCLIP_SUFFIX);
                 }
 
                 self.traceback.set(i, j, tb);
             }
 
-            // Suffix clip (y) from i = m and reset S[curr][m] if required
+            // Suffix clip (y) from i = m and reset Sn[m] if required
             if self.S[curr][m] + self.scoring.yclip_suffix > self.Sn[m] {
                 self.Sn[m] = self.S[curr][m] + self.scoring.yclip_suffix;
                 self.Ly[m] = n - j;
+                self.traceback.get_mut(m, n).set_s_bits(TB_YCLIP_SUFFIX);
             }
             if i_end < (m + 1) {
                 self.traceback.get_mut(m, j).set_s_bits(TB_XCLIP_SUFFIX);
@@ -2089,5 +2094,21 @@ mod banded {
 
         println!("{}", alignment.pretty(x, y));
         assert_eq!(alignment.score, 7);
+    }
+
+    #[test]
+    fn test_one_sided_yclip() {
+        let x = b"GGACTTCGGAAGGCACTACTGAAACTCCGT";
+        let y = b"AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC";
+        let base_score = Scoring::from_scores(0, -1, 1, -1);
+        let scoring = Scoring {
+            xclip_prefix: 0,
+            xclip_suffix: 0,
+            yclip_suffix: 0,
+            ..base_score
+        };
+        let mut aligner = banded::Aligner::with_scoring(scoring.clone(), 6, 5);
+        let alignment = aligner.custom(x, y);
+        assert_eq!(alignment.ystart, 0);
     }
 }
