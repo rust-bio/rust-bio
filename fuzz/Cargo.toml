@@ -23,3 +23,7 @@ debug-assertions = true
 [[bin]]
 name = "myers_matching"
 path = "fuzz_targets/myers_matching.rs"
+
+[[bin]]
+name = "banded_aligner"
+path = "fuzz_targets/banded_aligner.rs"

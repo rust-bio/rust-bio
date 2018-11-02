@@ -632,6 +632,11 @@ impl<F: MatchFunc> Aligner<F> {
         for i in 0..m + 1 {
             let j = n;
             let curr = j % 2;
+            // These entries are not set in the loop above and could contain leftover
+            // values from previous columns. Reset them to MIN_SCORE
+            if i!=m && (i < self.band.ranges[j].start || i > self.band.ranges[j].end) {
+                self.S[curr][i] = MIN_SCORE;
+            }
             if self.Sn[i] > self.S[curr][i] {
                 self.S[curr][i] = self.Sn[i];
                 self.traceback.get_mut(i, j).set_s_bits(TB_YCLIP_SUFFIX);
@@ -2097,7 +2102,7 @@ mod banded {
     }
 
     #[test]
-    fn test_one_sided_yclip() {
+    fn test_yclip_suffix_only() {
         let x = b"GGACTTCGGAAGGCACTACTGAAACTCCGT";
         let y = b"AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC";
         let base_score = Scoring::from_scores(0, -1, 1, -1);
@@ -2110,5 +2115,21 @@ mod banded {
         let mut aligner = banded::Aligner::with_scoring(scoring.clone(), 6, 5);
         let alignment = aligner.custom(x, y);
         assert_eq!(alignment.ystart, 0);
+    }
+
+    #[test]
+    fn test_yclip_prefix_only() {
+        let x = b"AATAATAAAAAAA";
+        let y = b"AAAAAAGTTTCACCTTA";
+        let base_score = Scoring::from_scores(0, -1, 1, -1);
+        let scoring = Scoring {
+            xclip_prefix: 0,
+            xclip_suffix: 0,
+            yclip_prefix: 0,
+            ..base_score
+        };
+        let mut aligner = banded::Aligner::with_scoring(scoring.clone(), 6, 5);
+        let alignment = aligner.custom(x, y);
+        assert_eq!(alignment.yend, alignment.ylen);
     }
 }
