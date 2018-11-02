@@ -9,6 +9,7 @@ repository = "https://github.com/rust-bio/rust-bio"
 documentation = "https://docs.rs/bio"
 readme = "README.md"
 license = "MIT"
+build = "build.rs"
 
 
 [features]
@@ -37,7 +38,7 @@ regex = "1.0"
 multimap = "0.4"
 fxhash = "0.2"
 statrs = "0.9.0"
-bio-types = ">=0.3"
+bio-types = ">=0.4"
 
 [dependencies.vec_map]
 version = "0.8"
