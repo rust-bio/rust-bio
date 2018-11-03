@@ -753,7 +753,7 @@ impl<F: MatchFunc> Aligner<F> {
         if j != 0 {
             // Delete all j characters
             let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
-            if d_score > self.scoring.xclip_prefix {
+            if d_score > self.scoring.yclip_prefix {
                 for _ in 0..j {
                     operations.push(AlignmentOperation::Del);
                 }
@@ -2131,5 +2131,23 @@ mod banded {
         let mut aligner = banded::Aligner::with_scoring(scoring.clone(), 6, 5);
         let alignment = aligner.custom(x, y);
         assert_eq!(alignment.yend, alignment.ylen);
+    }
+
+    #[test]
+    fn test_traceback_outside_band() {
+        let x = b"TTGTGGGTGGGGGGAAAAAAAAA";
+        let y = b"GACAAGAGCCCAAGGAAAGAAAA";
+        let base_score = Scoring::from_scores(-5, 0, 1, -3);
+        let scoring = Scoring {
+            xclip_prefix: 0,
+            xclip_suffix: 0,
+            yclip_suffix: 0,
+            ..base_score
+        };
+        let kmer_len = 5;
+        let window_len = 5;
+        let mut al = pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+        let alignment = al.custom(x, y);
+        assert_eq!(alignment.ystart, 0);
     }
 }
