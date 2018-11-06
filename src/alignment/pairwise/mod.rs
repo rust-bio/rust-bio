@@ -460,6 +460,8 @@ impl<F: MatchFunc> Aligner<F> {
                 self.Ly.extend(repeat(0usize).take(m + 1));
                 self.Sn.clear();
                 self.Sn.extend(repeat(MIN_SCORE).take(m + 1));
+                self.Sn[0] = self.scoring.yclip_suffix;
+                self.Ly[0] = n;
             }
 
             for i in 1..m + 1 {
@@ -506,6 +508,11 @@ impl<F: MatchFunc> Aligner<F> {
 
                 if k == 0 {
                     self.traceback.set(i, 0, tb);
+                }
+                // Track the score if we do suffix clip (y) from here
+                if self.S[k][i] + self.scoring.yclip_suffix > self.Sn[i] {
+                    self.Sn[i] = self.S[k][i] + self.scoring.yclip_suffix;
+                    self.Ly[i] = n;
                 }
             }
         }
@@ -1458,4 +1465,69 @@ mod tests {
         assert_eq!(alignment.operations, [Yclip(6), Match, Match, Match]);
     }
 
+    #[test]
+    fn test_only_clips() {
+        let x = b"GGAAAAAAAAAAAAA";
+        let y = b"TTTTAATTTGTGTAAAAAATAATA";
+        let base_score = Scoring::from_scores(-4, -4, 4, -7);
+        let scoring = Scoring {
+            xclip_prefix: 0,
+            xclip_suffix: 0,
+            yclip_suffix: 0,
+            ..base_score
+        };
+        let mut al = Aligner::with_scoring(scoring);
+        let alignment = al.custom(x, y);
+        assert_eq!(alignment.score, 0);
+    }
+
+    #[test]
+    fn test_zero_score_clips() {
+        let x = b"AA";
+        let y = b"CC";
+        let base_score = Scoring::from_scores(-1, -1, 1, -1);
+        {
+            let scoring = Scoring {
+                xclip_prefix: 0,
+                yclip_prefix: 0,
+                ..base_score.clone()
+            };
+            let mut al = Aligner::with_scoring(scoring);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+
+        {
+            let scoring = Scoring {
+                xclip_prefix: 0,
+                yclip_suffix: 0,
+                ..base_score.clone()
+            };
+            let mut al = Aligner::with_scoring(scoring);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+
+        {
+            let scoring = Scoring {
+                xclip_suffix: 0,
+                yclip_prefix: 0,
+                ..base_score.clone()
+            };
+            let mut al = Aligner::with_scoring(scoring);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+
+        {
+            let scoring = Scoring {
+                xclip_suffix: 0,
+                yclip_suffix: 0,
+                ..base_score.clone()
+            };
+            let mut al = Aligner::with_scoring(scoring);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+    }
 }
