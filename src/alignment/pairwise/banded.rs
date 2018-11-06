@@ -367,6 +367,38 @@ impl<F: MatchFunc> Aligner<F> {
         self.compute_alignment(x, y)
     }
 
+    /// Compute the alignment with custom clip penalties by constructing
+    /// a band along the `matches` as defined by `path`. This is only
+    /// for advanced uses, where one would want to control the kmer
+    /// backbone that is used for creating the band.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - Textslice
+    /// * `y` - Textslice
+    /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
+    /// * `path` - Vector of indices pointing to `matches` vector
+    /// which defines a path. The validity of the path is not checked.
+    ///
+    pub fn custom_with_match_path(
+        &mut self,
+        x: TextSlice,
+        y: TextSlice,
+        matches: &[(u32, u32)],
+        path: &[usize],
+    ) -> Alignment {
+        self.band = Band::create_from_match_path(
+            x,
+            y,
+            self.k,
+            self.w,
+            &self.scoring,
+            path,
+            matches,
+        );
+        self.compute_alignment(x, y)
+    }
+
     // Computes the alignment. The band needs to be populated prior
     // to calling this function
     #[inline(never)]
