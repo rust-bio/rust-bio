@@ -2,9 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-# [dev]
+# [0.23.0] - 2018-11-06
 - Generalized Myers pattern matching algorithm to arbitrary unsigned integer types (u64, u128) (thanks to @markschl).
 - Implemented optional traceback and alignment output for Myers pattern matching algorithm (thanks to @markschl).
+- Use Strand type from bio-types crate in BED module (thanks to @ingolia).
+- Added an IntervalTree based data structure for looking up overlaps between annotation types (thanks to @ingolia).
+- Various bug fixes.
 
 # [0.22.0] - 2018-08-01
 - Added HMM implementation (thanks to @holtgrewe).
