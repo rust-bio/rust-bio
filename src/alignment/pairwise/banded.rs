@@ -465,6 +465,15 @@ impl<F: MatchFunc> Aligner<F> {
             if i_end < (m + 1) {
                 self.S[curr][m] = MIN_SCORE;
             }
+            // Track the score if we do clip (y) from origin
+            if  self.scoring.yclip_prefix > self.scoring.yclip_suffix {
+                self.Sn[0] = self.scoring.yclip_prefix;
+                self.traceback.get_mut(0, n).set_s_bits(TB_YCLIP_PREFIX);
+            } else {
+                self.Sn[0] = self.scoring.yclip_suffix;
+                self.Ly[0] = n;
+                self.traceback.get_mut(0, n).set_s_bits(TB_YCLIP_SUFFIX);
+            }
         }
 
         for j in 1..n + 1 {
@@ -522,7 +531,7 @@ impl<F: MatchFunc> Aligner<F> {
 
             let q = y[j - 1];
             let xclip_score = self.scoring.xclip_prefix + max(
-                self.scoring.yclip_prefix,
+                if j==n { max(self.scoring.yclip_prefix, self.Sn[0]) } else { self.scoring.yclip_prefix },
                 self.scoring.gap_open + self.scoring.gap_extend * (j as i32),
             );
 
@@ -534,13 +543,20 @@ impl<F: MatchFunc> Aligner<F> {
 
                 let i_score = self.I[curr][i - 1] + self.scoring.gap_extend;
                 let s_score = self.S[curr][i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
-                let best_i_score;
+                let mut best_i_score;
                 if i_score > s_score {
                     best_i_score = i_score;
                     tb.set_i_bits(TB_INS);
                 } else {
                     best_i_score = s_score;
                     tb.set_i_bits(self.traceback.get(i - 1, j).get_s_bits());
+                }
+                if j==n {
+                    let clip_score = self.Sn[i-1] + self.scoring.gap_open + self.scoring.gap_extend;
+                    if clip_score > best_i_score {
+                        best_i_score = clip_score;
+                        tb.set_i_bits(TB_YCLIP_SUFFIX);
+                    }
                 }
 
                 let d_score = self.D[prev][i] + self.scoring.gap_extend;
@@ -669,6 +685,45 @@ impl<F: MatchFunc> Aligner<F> {
                 }
             }
         }
+
+        for j in 1..n+1 {
+            let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
+            if d_score > self.scoring.yclip_prefix {
+                self.traceback.get_mut(0, j).set_s_bits(TB_DEL);
+            } else {
+                self.traceback.get_mut(0, j).set_s_bits(TB_YCLIP_PREFIX);
+            }
+            if j==n {
+                if self.scoring.yclip_suffix > max(d_score, self.scoring.yclip_prefix) {
+                    self.traceback.get_mut(0, j).set_s_bits(TB_YCLIP_SUFFIX);
+                }
+                if (self.scoring.xclip_suffix + d_score) > self.S[n%2][m] {
+                    self.S[n%2][m] = self.scoring.xclip_suffix + d_score;
+                    self.Lx[n] = m;
+                    self.traceback.get_mut(m, n).set_s_bits(TB_XCLIP_SUFFIX);
+                }
+            }
+        }
+
+        for i in 1..m+1 {
+            let c_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
+            if c_score > self.scoring.xclip_prefix {
+                self.traceback.get_mut(i, 0).set_s_bits(TB_INS);
+            } else {
+                self.traceback.get_mut(i, 0).set_s_bits(TB_XCLIP_PREFIX);
+            }
+            if i==m {
+                if self.scoring.xclip_suffix > max(c_score, self.scoring.xclip_prefix) {
+                    self.traceback.get_mut(i, 0).set_s_bits(TB_XCLIP_SUFFIX);
+                }
+                if (self.scoring.yclip_suffix + c_score) > self.S[n%2][m] {
+                    self.S[n%2][m] = self.scoring.yclip_suffix + c_score;
+                    self.Ly[m] = n;
+                    self.traceback.get_mut(m, n).set_s_bits(TB_YCLIP_SUFFIX);
+                }
+            }
+        }
+
 
         let mut i = m;
         let mut j = n;
@@ -2149,5 +2204,146 @@ mod banded {
         let mut al = pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
         let alignment = al.custom(x, y);
         assert_eq!(alignment.ystart, 0);
+    }
+
+    #[test]
+    fn test_deletions_ouside_band() {
+        let x = b"AAAAATTGAGGAGTAATAGTAAA";
+        let y = b"AAAAAAAAAAAAGGAAGG";
+        let base_score = Scoring::from_scores(-13, 0, 1, -5);
+        let scoring = Scoring {
+            xclip_prefix: 0,
+            xclip_suffix: -136,
+            yclip_prefix: -112,
+            yclip_suffix: -51,
+            ..base_score
+        };
+        let kmer_len = 5;
+        let window_len = 8;
+        let mut al = pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+        let alignment = al.custom(x, y);
+        assert_eq!(alignment.score, -13);
+        assert_eq!(
+            alignment.operations,
+            [Del, Del, Del, Del, Del, Del, Del, Del, Del, Del, Del, Del, Del, Del, Del, Del, Del, Del, Xclip(23)]
+        );
+    }
+
+    #[test]
+    fn test_insertion_ouside_band() {
+        let x = b"AATCTAAAAAAAAAAAAAAAAC";
+        let y = b"AATATAAAAAGAAAAAGAA";
+
+        let base_score = Scoring::from_scores(-15, 0, 1, -6);
+
+        let scoring = Scoring {
+            xclip_prefix: -255,
+            xclip_suffix: -255,
+            yclip_prefix: 0,
+            yclip_suffix: -54,
+            ..base_score
+        };
+        let kmer_len = 5;
+        let window_len = 7;
+        let mut al = pairwise::banded::Aligner::with_scoring(scoring, kmer_len, window_len);
+        let alignment = al.custom(x, y);
+        assert_eq!(alignment.score, -15);
+        assert_eq!(
+            alignment.operations,
+            [Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Ins, Yclip(19)]
+        );
+    }
+
+    #[test]
+    fn test_insertion_after_clip() {
+        let x = b"AAAAAAGTAAAATTT";
+        let y = b"AAAAAAAAAAACAAAAAAG";
+
+        let base_score = Scoring::from_scores(-3, 0, 3, -5);
+
+        let scoring = Scoring {
+            xclip_prefix: 0,
+            yclip_prefix: 0,
+            yclip_suffix: 0,
+            ..base_score
+        };
+        let kmer_len = 5;
+        let window_len = 7;
+        let mut al = pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+        let alignment = al.custom(x, y);
+        assert_eq!(alignment.score, 24);
+    }
+
+    #[test]
+    fn test_only_clips() {
+        let x = b"GTAAAAAAGCCCAGA";
+        let y = b"AAAGTAAAAACAATGACAAAAAAAA";
+        let base_score = Scoring::from_scores(-15, -5, 1, -5);
+        let scoring = Scoring {
+            xclip_prefix: -255,
+            xclip_suffix: -22,
+            yclip_prefix: -54,
+            yclip_suffix: -50,
+            ..base_score
+        };
+        let kmer_len = 10;
+        let window_len = 10;
+        let mut al = pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+        let alignment = al.custom(x, y);
+        assert_eq!(alignment.score, -72);
+
+    }
+
+    #[test]
+    fn test_zero_score_clips() {
+        let x = b"AA";
+        let y = b"CC";
+        let kmer_len = 5;
+        let window_len = 5;
+
+        let base_score = Scoring::from_scores(-1, -1, 1, -1);
+        {
+            let scoring = Scoring {
+                xclip_prefix: 0,
+                yclip_prefix: 0,
+                ..base_score.clone()
+            };
+            let mut al = pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+
+        {
+            let scoring = Scoring {
+                xclip_prefix: 0,
+                yclip_suffix: 0,
+                ..base_score.clone()
+            };
+            let mut al = pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+
+        {
+            let scoring = Scoring {
+                xclip_suffix: 0,
+                yclip_prefix: 0,
+                ..base_score.clone()
+            };
+            let mut al = pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+
+        {
+            let scoring = Scoring {
+                xclip_suffix: 0,
+                yclip_suffix: 0,
+                ..base_score.clone()
+            };
+            let mut al = pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
     }
 }
