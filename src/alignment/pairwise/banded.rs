@@ -724,11 +724,13 @@ impl<F: MatchFunc> Aligner<F> {
                 self.traceback.get_mut(0, j).set_s_bits(TB_YCLIP_PREFIX);
             }
             if j == n {
-                if self.scoring.yclip_suffix > max(d_score, self.scoring.yclip_prefix) {
+                let mut best_score = max(d_score, self.scoring.yclip_prefix);
+                if self.scoring.yclip_suffix > best_score {
+                    best_score = self.scoring.yclip_suffix;
                     self.traceback.get_mut(0, j).set_s_bits(TB_YCLIP_SUFFIX);
                 }
-                if (self.scoring.xclip_suffix + d_score) > self.S[n % 2][m] {
-                    self.S[n % 2][m] = self.scoring.xclip_suffix + d_score;
+                if (self.scoring.xclip_suffix + best_score) > self.S[n % 2][m] {
+                    self.S[n % 2][m] = self.scoring.xclip_suffix + best_score;
                     self.Lx[n] = m;
                     self.traceback.get_mut(m, n).set_s_bits(TB_XCLIP_SUFFIX);
                 }
@@ -743,11 +745,13 @@ impl<F: MatchFunc> Aligner<F> {
                 self.traceback.get_mut(i, 0).set_s_bits(TB_XCLIP_PREFIX);
             }
             if i == m {
-                if self.scoring.xclip_suffix > max(c_score, self.scoring.xclip_prefix) {
+                let mut best_score = max(c_score, self.scoring.xclip_prefix);
+                if self.scoring.xclip_suffix > best_score {
+                    best_score = self.scoring.xclip_suffix;
                     self.traceback.get_mut(i, 0).set_s_bits(TB_XCLIP_SUFFIX);
                 }
-                if (self.scoring.yclip_suffix + c_score) > self.S[n % 2][m] {
-                    self.S[n % 2][m] = self.scoring.yclip_suffix + c_score;
+                if (self.scoring.yclip_suffix + best_score) > self.S[n % 2][m] {
+                    self.S[n % 2][m] = self.scoring.yclip_suffix + best_score;
                     self.Ly[m] = n;
                     self.traceback.get_mut(m, n).set_s_bits(TB_YCLIP_SUFFIX);
                 }
