@@ -244,18 +244,60 @@ impl<F: MatchFunc> Scoring<F> {
     ///
     /// * `penalty` - Clipping penalty for x (both prefix and suffix, should not be positive)
     ///
-    pub fn xclip(self, penalty: i32) -> Self {
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).xclip(-5);
+    /// assert!(scoring.xclip_prefix==-5);
+    /// assert!(scoring.yclip_prefix==MIN_SCORE);
+    /// assert!(scoring.xclip_suffix==-5);
+    /// assert!(scoring.yclip_suffix==MIN_SCORE);
+    /// ```
+    pub fn xclip(mut self, penalty: i32) -> Self {
         assert!(penalty <= 0, "Clipping penalty can't be positive");
-        Scoring {
-            gap_open: self.gap_open,
-            gap_extend: self.gap_extend,
-            match_fn: self.match_fn,
-            match_scores: None,
-            xclip_prefix: penalty,
-            xclip_suffix: penalty,
-            yclip_prefix: self.yclip_prefix,
-            yclip_suffix: self.yclip_suffix,
-        }
+        self.xclip_prefix = penalty;
+        self.xclip_suffix = penalty;
+        self
+    }
+
+    /// Sets the prefix clipping penalty for x to the input value
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - Prefix clipping penalty for x (should not be positive)
+    ///
+    /// # Example
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).xclip_prefix(-5);
+    /// assert!(scoring.xclip_prefix==-5);
+    /// assert!(scoring.yclip_prefix==MIN_SCORE);
+    /// assert!(scoring.xclip_suffix==MIN_SCORE);
+    /// assert!(scoring.yclip_suffix==MIN_SCORE);
+    /// ```
+    pub fn xclip_prefix(mut self, penalty: i32) -> Self {
+        assert!(penalty <= 0, "Clipping penalty can't be positive");
+        self.xclip_prefix = penalty;
+        self
+    }
+
+    /// Sets the suffix clipping penalty for x to the input value
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - Suffix clipping penalty for x (should not be positive)
+    ///
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).xclip_suffix(-5);
+    /// assert!(scoring.xclip_prefix==MIN_SCORE);
+    /// assert!(scoring.yclip_prefix==MIN_SCORE);
+    /// assert!(scoring.xclip_suffix==-5);
+    /// assert!(scoring.yclip_suffix==MIN_SCORE);
+    /// ```
+    pub fn xclip_suffix(mut self, penalty: i32) -> Self {
+        assert!(penalty <= 0, "Clipping penalty can't be positive");
+        self.xclip_suffix = penalty;
+        self
     }
 
     /// Sets the prefix and suffix clipping penalties for y to the input value
@@ -264,18 +306,59 @@ impl<F: MatchFunc> Scoring<F> {
     ///
     /// * `penalty` - Clipping penalty for y (both prefix and suffix, should not be positive)
     ///
-    pub fn yclip(self, penalty: i32) -> Self {
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).yclip(-5);
+    /// assert!(scoring.xclip_prefix==MIN_SCORE);
+    /// assert!(scoring.yclip_prefix==-5);
+    /// assert!(scoring.xclip_suffix==MIN_SCORE);
+    /// assert!(scoring.yclip_suffix==-5);
+    /// ```
+    pub fn yclip(mut self, penalty: i32) -> Self {
         assert!(penalty <= 0, "Clipping penalty can't be positive");
-        Scoring {
-            gap_open: self.gap_open,
-            gap_extend: self.gap_extend,
-            match_fn: self.match_fn,
-            match_scores: None,
-            xclip_prefix: self.xclip_prefix,
-            xclip_suffix: self.xclip_suffix,
-            yclip_prefix: penalty,
-            yclip_suffix: penalty,
-        }
+        self.yclip_prefix = penalty;
+        self.yclip_suffix = penalty;
+        self
+    }
+
+    /// Sets the prefix clipping penalty for y to the input value
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - Prefix clipping penalty for y (should not be positive)
+    ///
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).yclip_prefix(-5);
+    /// assert!(scoring.xclip_prefix==MIN_SCORE);
+    /// assert!(scoring.yclip_prefix==-5);
+    /// assert!(scoring.xclip_suffix==MIN_SCORE);
+    /// assert!(scoring.yclip_suffix==MIN_SCORE);
+    /// ```
+    pub fn yclip_prefix(mut self, penalty: i32) -> Self {
+        assert!(penalty <= 0, "Clipping penalty can't be positive");
+        self.yclip_prefix = penalty;
+        self
+    }
+
+    /// Sets the suffix clipping penalty for y to the input value
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - Suffix clipping penalty for y (should not be positive)
+    ///
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).yclip_suffix(-5);
+    /// assert!(scoring.xclip_prefix==MIN_SCORE);
+    /// assert!(scoring.yclip_prefix==MIN_SCORE);
+    /// assert!(scoring.xclip_suffix==MIN_SCORE);
+    /// assert!(scoring.yclip_suffix==-5);
+    /// ```
+    pub fn yclip_suffix(mut self, penalty: i32) -> Self {
+        assert!(penalty <= 0, "Clipping penalty can't be positive");
+        self.yclip_suffix = penalty;
+        self
     }
 }
 

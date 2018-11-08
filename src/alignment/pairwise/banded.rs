@@ -260,6 +260,13 @@ impl<F: MatchFunc> Aligner<F> {
         )
     }
 
+    /// Return a mutable reference to scoring. Useful if you want to have a
+    /// single aligner object but want to modify the scores within it for
+    /// different cases
+    pub fn get_mut_scoring(&mut self) -> &mut Scoring<F> {
+        &mut self.scoring
+    }
+
     /// Compute the alignment with custom clip penalties
     ///
     /// # Arguments
