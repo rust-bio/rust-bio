@@ -3,3 +3,8 @@
 *~
 pybind/target
 .vscode/
+
+fuzz/artifacts
+fuzz/corpus
+fuzz/target
+fuzz/Cargo.lock

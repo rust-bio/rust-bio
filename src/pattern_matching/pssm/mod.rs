@@ -234,8 +234,7 @@ pub trait Motif {
                 .map(|i| match Self::lookup(seq[start + i]) {
                     Err(e) => Err(e),
                     Ok(pos) => Ok(scores[[i, pos]]),
-                })
-                .collect()
+                }).collect()
             {
                 Ok(m) => m,
                 Err(e) => return Err(e),
@@ -309,8 +308,7 @@ pub trait Motif {
                     } else {
                         -1.0 * *p * p.log(2.0)
                     }
-                })
-                .sum()
+                }).sum()
         }
         let bits = Self::get_bits();
         let scores = self.get_scores();

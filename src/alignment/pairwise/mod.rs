@@ -561,11 +561,10 @@ impl<F: MatchFunc> Aligner<F> {
             }
 
             let q = y[j - 1];
-            let xclip_score = self.scoring.xclip_prefix
-                + max(
-                    self.scoring.yclip_prefix,
-                    self.scoring.gap_open + self.scoring.gap_extend * (j as i32),
-                );
+            let xclip_score = self.scoring.xclip_prefix + max(
+                self.scoring.yclip_prefix,
+                self.scoring.gap_open + self.scoring.gap_extend * (j as i32),
+            );
             for i in 1..m + 1 {
                 let p = x[i - 1];
                 let mut tb = TracebackCell::new();
