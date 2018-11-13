@@ -38,6 +38,7 @@
 //! ```
 
 use std::cmp::{max, Ordering};
+use std::ops::Neg;
 
 use utils::TextSlice;
 
@@ -122,16 +123,16 @@ impl Traceback {
             ];
             m + 1
         ];
-        for i in 1..(m + 1) {
+        for (i, row) in matrix.iter_mut().enumerate().take(m + 1).skip(1) {
             // TODO: these should be -1 * distance from head node
-            matrix[i][0] = TracebackCell {
-                score: -1 * i as i32, // gap_open penalty
+            row[0] = TracebackCell {
+                score: -(i as i32), // gap_open penalty
                 op: AlignmentOperation::Del(None),
             };
         }
-        for j in 1..(n + 1) {
+        for j in 1..=n {
             matrix[0][j] = TracebackCell {
-                score: -1 * j as i32,
+                score: -(j as i32),
                 op: AlignmentOperation::Ins(None),
             };
         }
@@ -205,8 +206,8 @@ impl<F: MatchFunc> Aligner<F> {
             Graph::with_capacity(seq.len(), seq.len() - 1);
         let mut prev: NodeIndex<usize> = graph.add_node(seq[0]);
         let mut node: NodeIndex<usize>;
-        for i in 1..seq.len() {
-            node = graph.add_node(seq[i]);
+        for base in seq.iter().skip(1) {
+            node = graph.add_node(*base);
             graph.add_edge(prev, node, 1);
             prev = node;
         }
@@ -269,7 +270,7 @@ impl<F: MatchFunc> Aligner<F> {
             for (j_p, q) in query.iter().enumerate() {
                 let j = j_p + 1;
                 // match and deletion scores for the first reference base
-                let max_cell = if prevs.len() == 0 {
+                let max_cell = if prevs.is_empty() {
                     TracebackCell {
                         score: traceback.matrix[0][j - 1].score
                             + self.scoring.match_fn.score(r, *q),
@@ -324,7 +325,7 @@ impl<F: MatchFunc> Aligner<F> {
             match traceback.matrix[i][j].op {
                 AlignmentOperation::Match(Some((p, _))) => {
                     i = p + 1;
-                    j = j - 1;
+                    j -= 1;
                 }
                 AlignmentOperation::Del(Some((p, _))) => {
                     i = p + 1;
@@ -337,10 +338,10 @@ impl<F: MatchFunc> Aligner<F> {
                     break;
                 }
                 AlignmentOperation::Del(None) => {
-                    j = j - 1;
+                    j -= 1;
                 }
                 AlignmentOperation::Ins(None) => {
-                    i = i - 1;
+                    i -= 1;
                 }
             }
         }
@@ -365,14 +366,14 @@ impl<F: MatchFunc> Aligner<F> {
         for op in aln.operations {
             match op {
                 AlignmentOperation::Match(None) => {
-                    i = i + 1;
+                    i += 1;
                 }
                 AlignmentOperation::Match(Some((_, p))) => {
                     let node = NodeIndex::new(p);
                     let edge = self.graph.find_edge(prev, node).unwrap();
                     path.push(edge.index());
                     prev = NodeIndex::new(p);
-                    i = i + 1;
+                    i += 1;
                 }
                 AlignmentOperation::Ins(None) => {}
                 AlignmentOperation::Ins(Some(_)) => {}
@@ -395,7 +396,7 @@ impl<F: MatchFunc> Aligner<F> {
         for op in aln.operations {
             match op {
                 AlignmentOperation::Match(None) => {
-                    i = i + 1;
+                    i += 1;
                 }
                 AlignmentOperation::Match(Some((_, p))) => {
                     let node = NodeIndex::new(p);
@@ -416,16 +417,16 @@ impl<F: MatchFunc> Aligner<F> {
                         }
                         prev = NodeIndex::new(p);
                     }
-                    i = i + 1;
+                    i += 1;
                 }
                 AlignmentOperation::Ins(None) => {
-                    i = i + 1;
+                    i += 1;
                 }
                 AlignmentOperation::Ins(Some(_)) => {
                     let node = self.graph.add_node(seq[i]);
                     self.graph.add_edge(prev, node, 1);
                     prev = node;
-                    i = i + 1;
+                    i += 1;
                 }
                 AlignmentOperation::Del(_) => {} // we should only have to skip over deleted nodes
             }
@@ -443,8 +444,8 @@ impl<F: MatchFunc> Aligner<F> {
             self.graph = Graph::with_capacity(seq.len(), seq.len() - 1);
             let mut prev: NodeIndex<usize> = self.graph.add_node(seq[0]);
             let mut node: NodeIndex<usize>;
-            for i in 1..seq.len() {
-                node = self.graph.add_node(seq[i]);
+            for base in seq.iter().skip(1) {
+                node = self.graph.add_node(*base);
                 self.graph.add_edge(prev, node, 1);
                 prev = node;
             }
@@ -457,14 +458,14 @@ impl<F: MatchFunc> Aligner<F> {
 // print out a traceback matrix
 #[allow(dead_code)]
 fn dump_traceback(
-    traceback: &Vec<Vec<TracebackCell>>,
+    traceback: &[Vec<TracebackCell>],
     g: &Graph<u8, i32, Directed, usize>,
     query: TextSlice,
 ) {
     let (m, n) = (g.node_count(), query.len());
     print!(".\t");
-    for i in 0..n {
-        print!("{:?}\t", query[i]);
+    for base in query.iter().take(n) {
+        print!("{:?}\t", *base);
     }
     for i in 0..m {
         print!("\n{:?}\t", g.raw_nodes()[i].weight);
