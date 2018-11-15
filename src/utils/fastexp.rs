@@ -15,12 +15,12 @@ const MIN_VAL: f64 = -500.0;
 
 
 pub trait FastExp<V: Float + ops::MulAssign> {
+    /// Fast approximation of exp() as shown by Kopcynski 2017:
+    /// https://eldorado.tu-dortmund.de/bitstream/2003/36203/1/Dissertation_Kopczynski.pdf
     fn fastexp(&self) -> V;
 }
 
 impl FastExp<f64> for f64 {
-    /// Fast approximation of exp() as shown by Kopcynski 2017:
-    /// https://eldorado.tu-dortmund.de/bitstream/2003/36203/1/Dissertation_Kopczynski.pdf
     fn fastexp(&self) -> f64 {
         if *self > MIN_VAL {
             let mut x = ONEBYLOG2 * self;
