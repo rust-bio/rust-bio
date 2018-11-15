@@ -481,7 +481,7 @@ mod tests {
 
         assert_relative_eq!(*cumsum[0], *LogProb::ln_zero());
         assert_relative_eq!(*cumsum[1], 0.01f64.ln());
-        assert_relative_eq!(*cumsum[2], 0.011f64.ln(), epsilon=0.000001);
+        assert_relative_eq!(*cumsum[2], 0.011f64.ln(), epsilon = 0.000001);
     }
 
     #[test]
@@ -493,7 +493,7 @@ mod tests {
         assert_relative_eq!(
             *LogProb::ln_one().ln_sub_exp(LogProb(0.5f64.ln())),
             *LogProb(0.5f64.ln()),
-            epsilon=0.0000000001
+            epsilon = 0.0000000001
         );
         assert_relative_eq!(
             *LogProb(-1.6094379124341).ln_sub_exp(LogProb::ln_zero()),

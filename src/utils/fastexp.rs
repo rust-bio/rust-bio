@@ -14,12 +14,11 @@ const COEFF_0: f64 = 1.0;
 const COEFF_1: f64 = 4.831794110;
 const COEFF_2: f64 = 0.143440676;
 const COEFF_3: f64 = 0.019890581;
-const COEFF_4: f64 =  0.006935931;
-const ONEBYLOG2: f64 =  1.442695041;
+const COEFF_4: f64 = 0.006935931;
+const ONEBYLOG2: f64 = 1.442695041;
 const OFFSET_F64: i64 = 1023;
 const FRACTION_F64: u32 = 52;
 const MIN_VAL: f64 = -500.0;
-
 
 /// This trait adds a fast approximation of exp to float types.
 pub trait FastExp<V: Float + ops::MulAssign> {
@@ -74,9 +73,9 @@ mod tests {
         let x = 1e-15_f64.ln();
         assert_relative_eq!(x.fastexp(), 1e-15);
         let x = 1e-8_f64.ln();
-        assert_relative_eq!(x.fastexp(), 1e-8, epsilon=0.00000000000002);
+        assert_relative_eq!(x.fastexp(), 1e-8, epsilon = 0.00000000000002);
         let x = 0.5_f64.ln();
-        assert_relative_eq!(x.fastexp(), 0.5, epsilon=0.01);
+        assert_relative_eq!(x.fastexp(), 0.5, epsilon = 0.01);
         let x = -159.00000002327861_f64;
         assert_relative_eq!(x.fastexp(), (-159.00000002327861).exp());
     }
