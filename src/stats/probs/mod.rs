@@ -16,6 +16,7 @@ use itertools::Itertools;
 use itertools_num::linspace;
 use num_traits::{Float, Zero};
 use ordered_float::NotNaN;
+use utils::FastExp;
 
 /// A factor to convert log-probabilities to PHRED-scale (phred = p * `LOG_TO_PHRED_FACTOR`).
 const LOG_TO_PHRED_FACTOR: f64 = -4.342_944_819_032_517_5; // -10 * 1 / ln(10)
@@ -28,7 +29,7 @@ const PHRED_TO_LOG_FACTOR: f64 = -0.230_258_509_299_404_56; // 1 / (-10 * log10(
 fn ln_1m_exp(p: f64) -> f64 {
     assert!(p <= 0.0);
     if p < -0.693 {
-        (-p.exp()).ln_1p()
+        (-p.fastexp()).ln_1p()
     } else {
         (-p.exp_m1()).ln()
     }
@@ -227,7 +228,7 @@ impl LogProb {
                             if i == imax {
                                 None
                             } else {
-                                Some((p - pmax).exp())
+                                Some((p - pmax).fastexp())
                             }
                         }).fold(0.0, |s, e| s + e)).ln_1p(),
                 )
@@ -246,7 +247,7 @@ impl LogProb {
         } else if *p0 == f64::INFINITY {
             LogProb(f64::INFINITY)
         } else {
-            p0 + LogProb((p1 - p0).exp().ln_1p())
+            p0 + LogProb((p1 - p0).fastexp().ln_1p())
         }
     }
 
@@ -363,7 +364,7 @@ impl From<LogProb> for NotNaN<f64> {
 
 impl From<LogProb> for Prob {
     fn from(p: LogProb) -> Prob {
-        Prob(p.exp())
+        Prob(p.fastexp())
     }
 }
 
