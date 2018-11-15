@@ -1,3 +1,12 @@
+// Copyright 2014-2016 Johannes Köster.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! This module provides a trait adding a fast approximation of the exponential function to f64.
+//! This can be very useful if the exact value is not too important, for example when working with
+//! `bio::stats::LogProb`.
+
 use num_traits::Float;
 use std::ops;
 
@@ -7,20 +16,19 @@ const COEFF_2: f64 = 0.143440676;
 const COEFF_3: f64 = 0.019890581;
 const COEFF_4: f64 =  0.006935931;
 const ONEBYLOG2: f64 =  1.442695041;
-const OFFSET_F32: i64 = 127;
 const OFFSET_F64: i64 = 1023;
-const FRACTION_F32: u32 = 23;
 const FRACTION_F64: u32 = 52;
 const MIN_VAL: f64 = -500.0;
 
 
+/// This trait adds a fast approximation of exp to float types.
 pub trait FastExp<V: Float + ops::MulAssign> {
-    /// Fast approximation of exp() as shown by Kopcynski 2017:
-    /// https://eldorado.tu-dortmund.de/bitstream/2003/36203/1/Dissertation_Kopczynski.pdf
     fn fastexp(&self) -> V;
 }
 
 impl FastExp<f64> for f64 {
+    /// Fast approximation of exp() as shown by Kopcynski 2017:
+    /// https://eldorado.tu-dortmund.de/bitstream/2003/36203/1/Dissertation_Kopczynski.pdf
     fn fastexp(&self) -> f64 {
         if *self > MIN_VAL {
             let mut x = ONEBYLOG2 * self;

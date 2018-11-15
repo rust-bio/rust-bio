@@ -60,7 +60,7 @@ impl<T: Ord> CDF<T> {
 
         // cap at prob=1.0 if there are slightly exceeding values due to numerical issues.
         for e in &mut cdf.inner {
-            if relative_eq!(*e.prob, *LogProb::ln_one()) && *e.prob > *LogProb::ln_one() {
+            if relative_eq!(*e.prob, *LogProb::ln_one(), epsilon=0.00001) && *e.prob > *LogProb::ln_one() {
                 e.prob = LogProb::ln_one();
             }
         }
@@ -277,10 +277,10 @@ mod test {
         let cdf = CDF::from_pmf(pmf.clone());
         println!("{:?}", cdf);
         for e in pmf.iter().skip(2) {
-            assert_ulps_eq!(
+            assert_relative_eq!(
                 *e.prob,
                 *cdf.get_pmf(&e.value).unwrap(),
-                epsilon = 0.0000000000001
+                epsilon = 0.000003
             );
         }
         assert_relative_eq!(*cdf.total_prob(), 1.0f64.ln());
@@ -297,7 +297,7 @@ mod test {
 
         {
             for e in cdf.iter_pmf() {
-                assert_relative_eq!(e.prob.exp(), if **e.value == 0.0 { 0.2 } else { 0.1 });
+                assert_relative_eq!(e.prob.exp(), if **e.value == 0.0 { 0.2 } else { 0.1 }, epsilon=0.0001);
             }
         }
 

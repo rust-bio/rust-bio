@@ -83,6 +83,10 @@ impl Prob {
 
 custom_derive! {
     /// A newtype for log-scale probabilities.
+    /// For performance reasons, we use an approximation of the exp method
+    /// implemented in `bio::utils::FastExp`. This can lead to slight
+    /// errors, but should not matter given that most of the probability differences
+    /// are reflected within the integer part of the log probability.
     ///
     /// # Example
     ///
@@ -100,7 +104,7 @@ custom_derive! {
     /// // obtain zero probability in log-space
     /// let o = LogProb::ln_one();
     ///
-    /// assert_relative_eq!(*Prob::from(p.ln_add_exp(q) + o), *Prob(0.7));
+    /// assert_relative_eq!(*Prob::from(p.ln_add_exp(q) + o), *Prob(0.7), epsilon=0.000001);
     /// # }
     /// ```
     #[derive(
@@ -473,14 +477,11 @@ mod tests {
             LogProb(0.01f64.ln()),
             LogProb(0.001f64.ln()),
         ];
-        assert_eq!(
-            LogProb::ln_cumsum_exp(probs).collect_vec(),
-            [
-                LogProb::ln_zero(),
-                LogProb(0.01f64.ln()),
-                LogProb(0.011f64.ln()),
-            ]
-        );
+        let cumsum = LogProb::ln_cumsum_exp(probs).collect_vec();
+
+        assert_relative_eq!(*cumsum[0], *LogProb::ln_zero());
+        assert_relative_eq!(*cumsum[1], 0.01f64.ln());
+        assert_relative_eq!(*cumsum[2], 0.011f64.ln(), epsilon=0.000001);
     }
 
     #[test]
@@ -491,7 +492,8 @@ mod tests {
         );
         assert_relative_eq!(
             *LogProb::ln_one().ln_sub_exp(LogProb(0.5f64.ln())),
-            *LogProb(0.5f64.ln())
+            *LogProb(0.5f64.ln()),
+            epsilon=0.0000000001
         );
         assert_relative_eq!(
             *LogProb(-1.6094379124341).ln_sub_exp(LogProb::ln_zero()),
