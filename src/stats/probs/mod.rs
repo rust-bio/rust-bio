@@ -3,7 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Handling log-probabilities.
+//! Handling log-probabilities. Log probabilities are an important tool to deal with probabilities
+//! in a numerically stable way, in particular when having probabilities close to zero.
 
 pub mod cdf;
 
@@ -16,6 +17,7 @@ use itertools::Itertools;
 use itertools_num::linspace;
 use num_traits::{Float, Zero};
 use ordered_float::NotNaN;
+use utils::FastExp;
 
 /// A factor to convert log-probabilities to PHRED-scale (phred = p * `LOG_TO_PHRED_FACTOR`).
 const LOG_TO_PHRED_FACTOR: f64 = -4.342_944_819_032_517_5; // -10 * 1 / ln(10)
@@ -28,7 +30,7 @@ const PHRED_TO_LOG_FACTOR: f64 = -0.230_258_509_299_404_56; // 1 / (-10 * log10(
 fn ln_1m_exp(p: f64) -> f64 {
     assert!(p <= 0.0);
     if p < -0.693 {
-        (-p.exp()).ln_1p()
+        (-p.fastexp()).ln_1p()
     } else {
         (-p.exp_m1()).ln()
     }
@@ -82,6 +84,10 @@ impl Prob {
 
 custom_derive! {
     /// A newtype for log-scale probabilities.
+    /// For performance reasons, we use an approximation of the exp method
+    /// implemented in `bio::utils::FastExp`. This can lead to slight
+    /// errors, but should not matter given that most of the probability differences
+    /// are reflected within the integer part of the log probability.
     ///
     /// # Example
     ///
@@ -99,7 +105,7 @@ custom_derive! {
     /// // obtain zero probability in log-space
     /// let o = LogProb::ln_one();
     ///
-    /// assert_relative_eq!(*Prob::from(p.ln_add_exp(q) + o), *Prob(0.7));
+    /// assert_relative_eq!(*Prob::from(p.ln_add_exp(q) + o), *Prob(0.7), epsilon=0.000001);
     /// # }
     /// ```
     #[derive(
@@ -227,7 +233,7 @@ impl LogProb {
                             if i == imax {
                                 None
                             } else {
-                                Some((p - pmax).exp())
+                                Some((p - pmax).fastexp())
                             }
                         }).fold(0.0, |s, e| s + e)).ln_1p(),
                 )
@@ -246,7 +252,7 @@ impl LogProb {
         } else if *p0 == f64::INFINITY {
             LogProb(f64::INFINITY)
         } else {
-            p0 + LogProb((p1 - p0).exp().ln_1p())
+            p0 + LogProb((p1 - p0).fastexp().ln_1p())
         }
     }
 
@@ -363,7 +369,7 @@ impl From<LogProb> for NotNaN<f64> {
 
 impl From<LogProb> for Prob {
     fn from(p: LogProb) -> Prob {
-        Prob(p.exp())
+        Prob(p.fastexp())
     }
 }
 
@@ -472,14 +478,11 @@ mod tests {
             LogProb(0.01f64.ln()),
             LogProb(0.001f64.ln()),
         ];
-        assert_eq!(
-            LogProb::ln_cumsum_exp(probs).collect_vec(),
-            [
-                LogProb::ln_zero(),
-                LogProb(0.01f64.ln()),
-                LogProb(0.011f64.ln()),
-            ]
-        );
+        let cumsum = LogProb::ln_cumsum_exp(probs).collect_vec();
+
+        assert_relative_eq!(*cumsum[0], *LogProb::ln_zero());
+        assert_relative_eq!(*cumsum[1], 0.01f64.ln());
+        assert_relative_eq!(*cumsum[2], 0.011f64.ln(), epsilon = 0.000001);
     }
 
     #[test]
@@ -490,7 +493,8 @@ mod tests {
         );
         assert_relative_eq!(
             *LogProb::ln_one().ln_sub_exp(LogProb(0.5f64.ln())),
-            *LogProb(0.5f64.ln())
+            *LogProb(0.5f64.ln()),
+            epsilon = 0.0000000001
         );
         assert_relative_eq!(
             *LogProb(-1.6094379124341).ln_sub_exp(LogProb::ln_zero()),
