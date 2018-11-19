@@ -95,7 +95,7 @@ impl<R: io::Read> Reader<R> {
 }
 
 /// A FastQ record.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Record {
     id: String,
     desc: Option<String>,

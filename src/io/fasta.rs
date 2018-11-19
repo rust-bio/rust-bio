@@ -460,7 +460,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 }
 
 /// Record of a FASTA index.
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct IndexRecord {
     name: String,
     len: u64,
@@ -585,7 +585,7 @@ impl<W: io::Write> Writer<W> {
 }
 
 /// A FASTA record.
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct Record {
     id: String,
     desc: Option<String>,
