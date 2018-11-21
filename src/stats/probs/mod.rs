@@ -171,11 +171,13 @@ impl LogProb {
     }
 
     /// Log-space representation of Pr=0
+    #[inline]
     pub fn ln_zero() -> LogProb {
         LOGPROB_LN_ZERO
     }
 
     /// Log-space representation of Pr=1
+    #[inline]
     pub fn ln_one() -> LogProb {
         LOGPROB_LN_ONE
     }
@@ -226,53 +228,62 @@ impl LogProb {
             } else {
                 // TODO use sum() once it has been stabilized: .sum::<usize>()
                 pmax + LogProb(
-                    (probs
+                    probs
                         .iter()
                         .enumerate()
                         .filter_map(|(i, p)| {
-                            if i == imax {
+                            if i == imax || *p == Self::ln_zero() {
                                 None
                             } else {
                                 Some((p - pmax).fastexp())
                             }
-                        }).fold(0.0, |s, e| s + e)).ln_1p(),
+                        }).sum::<f64>().ln_1p(),
                 )
             }
         }
     }
 
-    /// Numerically stable addition probabilities in log-space.
+    /// Numerically stable addition of probabilities in log-space.
     pub fn ln_add_exp(self, other: LogProb) -> LogProb {
-        let (mut p0, mut p1) = (self, other);
-        if p1 > p0 {
-            mem::swap(&mut p0, &mut p1);
-        }
-        if p0 == Self::ln_zero() {
-            Self::ln_zero()
-        } else if *p0 == f64::INFINITY {
-            LogProb(f64::INFINITY)
+        if other == Self::ln_zero() {
+            // do nothing
+            self
         } else {
-            p0 + LogProb((p1 - p0).fastexp().ln_1p())
+            let (mut p0, mut p1) = (self, other);
+            if p1 > p0 {
+                mem::swap(&mut p0, &mut p1);
+            }
+            if p0 == Self::ln_zero() {
+                Self::ln_zero()
+            } else if *p0 == f64::INFINITY {
+                LogProb(f64::INFINITY)
+            } else {
+                p0 + LogProb((p1 - p0).fastexp().ln_1p())
+            }
         }
     }
 
     /// Numerically stable subtraction of probabilities in log-space.
     pub fn ln_sub_exp(self, other: LogProb) -> LogProb {
-        let (p0, p1) = (self, other);
-        assert!(
-            p0 >= p1,
-            "Subtraction would lead to negative probability, which is undefined in log space."
-        );
-        if *p1 == f64::NEG_INFINITY {
-            p0
-        } else if relative_eq!(*p0, *p1) || p0 == Self::ln_zero() {
-            // the first case leads to zero,
-            // in the second case p0 and p1 are -inf, which is fine
-            Self::ln_zero()
-        } else if *p0 == f64::INFINITY {
-            LogProb(f64::INFINITY)
+        if other == Self::ln_zero() {
+            self
         } else {
-            p0 + (p1 - p0).ln_one_minus_exp()
+            let (p0, p1) = (self, other);
+            assert!(
+                p0 >= p1,
+                "Subtraction would lead to negative probability, which is undefined in log space."
+            );
+            if *p1 == f64::NEG_INFINITY {
+                p0
+            } else if relative_eq!(*p0, *p1) || p0 == Self::ln_zero() {
+                // the first case leads to zero,
+                // in the second case p0 and p1 are -inf, which is fine
+                Self::ln_zero()
+            } else if *p0 == f64::INFINITY {
+                LogProb(f64::INFINITY)
+            } else {
+                p0 + (p1 - p0).ln_one_minus_exp()
+            }
         }
     }
 

@@ -224,6 +224,7 @@ mod tests {
     use super::*;
     use bv::BitVec;
     use bv::BitsMut;
+    use bv::bit_vec;
 
     #[test]
     fn test_rank_select() {
