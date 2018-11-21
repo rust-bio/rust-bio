@@ -237,7 +237,8 @@ impl LogProb {
                             } else {
                                 Some((p - pmax).fastexp())
                             }
-                        }).sum::<f64>().ln_1p(),
+                        }).sum::<f64>()
+                        .ln_1p(),
                 )
             }
         }

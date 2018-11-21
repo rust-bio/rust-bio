@@ -673,8 +673,8 @@ pub mod univariate_continuous_emission {
 #[cfg(test)]
 mod tests {
     use super::super::Prob;
-    use statrs::distribution::Normal;
     use ndarray::array;
+    use statrs::distribution::Normal;
 
     use super::discrete_emission::Model as DiscreteEmissionHMM;
     use super::univariate_continuous_emission::GaussianModel as GaussianHMM;

@@ -7,8 +7,8 @@
 //! each other. Depending on the used parameters, this can, e.g., be used to calculate the
 //! probability that a certain sequencing read comes from a given position in a reference genome.
 
-use std::mem;
 use std::cmp;
+use std::mem;
 
 use stats::LogProb;
 
@@ -148,7 +148,9 @@ impl PairHMM {
                 // The final upper triangle in the dynamic programming matrix
                 // will be only zeros if gap extension is not allowed on x.
                 // Hence we can omit it.
-                emission_params.len_y().saturating_sub(emission_params.len_x() - i + 1)
+                emission_params
+                    .len_y()
+                    .saturating_sub(emission_params.len_x() - i + 1)
             };
 
             let j_max = if do_gap_x_extend {
@@ -173,17 +175,19 @@ impl PairHMM {
                     let fy_prev = &self.fy[prev];
 
                     // match or mismatch
-                    let prob_match_mismatch = emission_params.prob_emit_xy(i, j) + LogProb::ln_sum_exp(&[
-                        // coming from state M
-                        prob_no_gap + fm_prev[j_minus_one],
-                        // coming from state X
-                        prob_no_gap_x_extend + fx_prev[j_minus_one],
-                        // coming from state Y
-                        prob_no_gap_y_extend + fy_prev[j_minus_one],
-                    ]);
+                    let prob_match_mismatch = emission_params.prob_emit_xy(i, j)
+                        + LogProb::ln_sum_exp(&[
+                            // coming from state M
+                            prob_no_gap + fm_prev[j_minus_one],
+                            // coming from state X
+                            prob_no_gap_x_extend + fx_prev[j_minus_one],
+                            // coming from state Y
+                            prob_no_gap_y_extend + fy_prev[j_minus_one],
+                        ]);
 
                     // gap in y
-                    let mut prob_gap_y = prob_emit_x + (
+                    let mut prob_gap_y = prob_emit_x
+                        + (
                         // open gap
                         prob_gap_y + fm_prev[j_]
                     );
@@ -194,9 +198,9 @@ impl PairHMM {
                         );
                     }
 
-
                     // gap in x
-                    let mut prob_gap_x = emission_params.prob_emit_y(j) + (
+                    let mut prob_gap_x = emission_params.prob_emit_y(j)
+                        + (
                         // open gap
                         prob_gap_x + fm_curr[j_minus_one]
                     );

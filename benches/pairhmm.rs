@@ -3,9 +3,9 @@
 extern crate bio;
 extern crate test;
 
-use test::Bencher;
 use bio::stats::pairhmm::*;
 use bio::stats::{LogProb, Prob};
+use test::Bencher;
 
 static TEXT: &'static [u8] = b"GATCACAGGTCTATCACCCTATTAACCACTCACGGGAGCTCTCCATGC\
 ATTTGGTATTTTCGTCTGGGGGGTATGCACGCGATAGCATTGCGAGACGCTGGAGCCGGAGCACCCTATGTCGCAGTAT\
@@ -22,7 +22,6 @@ static PROB_ILLUMINA_SUBST: Prob = Prob(0.0021);
 fn prob_emit_x_or_y() -> LogProb {
     LogProb::from(Prob(1.0) - PROB_ILLUMINA_SUBST)
 }
-
 
 pub struct TestEmissionParams {
     x: &'static [u8],
@@ -55,7 +54,6 @@ impl EmissionParameters for TestEmissionParams {
     }
 }
 
-
 pub struct SemiglobalGapParams;
 
 impl GapParameters for SemiglobalGapParams {
@@ -86,11 +84,12 @@ impl StartEndGapParameters for SemiglobalGapParams {
     }
 }
 
-
-
 #[bench]
 fn pairhmm_semiglobal(b: &mut Bencher) {
-    let emission_params = TestEmissionParams { x: TEXT, y: PATTERN };
+    let emission_params = TestEmissionParams {
+        x: TEXT,
+        y: PATTERN,
+    };
     let gap_params = SemiglobalGapParams;
 
     let mut pair_hmm = PairHMM::new();

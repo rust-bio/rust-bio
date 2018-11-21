@@ -222,9 +222,9 @@ fn superblocks(t: bool, n: usize, s: usize, bits: &BitVec<u8>) -> Vec<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bv::bit_vec;
     use bv::BitVec;
     use bv::BitsMut;
-    use bv::bit_vec;
 
     #[test]
     fn test_rank_select() {
