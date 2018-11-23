@@ -7,6 +7,7 @@
 //! each other. Depending on the used parameters, this can, e.g., be used to calculate the
 //! probability that a certain sequencing read comes from a given position in a reference genome.
 
+use std::cmp;
 use std::mem;
 
 use stats::LogProb;
@@ -127,8 +128,8 @@ impl PairHMM {
         let prob_gap_y = gap_params.prob_gap_y();
         let prob_gap_x_extend = gap_params.prob_gap_x_extend();
         let prob_gap_y_extend = gap_params.prob_gap_y_extend();
-        // let do_gap_extend = prob_gap_x_extend != LogProb::ln_zero() &&
-        //                     prob_gap_y_extend != LogProb::ln_zero();
+        let do_gap_y_extend = prob_gap_y_extend != LogProb::ln_zero();
+        let do_gap_x_extend = prob_gap_x_extend != LogProb::ln_zero();
 
         let mut prev = 0;
         let mut curr = 1;
@@ -141,40 +142,81 @@ impl PairHMM {
 
             let prob_emit_x = emission_params.prob_emit_x(i);
 
+            let j_min = if do_gap_x_extend {
+                0
+            } else {
+                // The final upper triangle in the dynamic programming matrix
+                // will be only zeros if gap extension is not allowed on x.
+                // Hence we can omit it.
+                emission_params
+                    .len_y()
+                    .saturating_sub(emission_params.len_x() - i + 1)
+            };
+
+            let j_max = if do_gap_x_extend {
+                emission_params.len_y()
+            } else {
+                // The initial lower triangle in the dynamic programming matrix
+                // will be only zeros if gap extension is not allowed on x.
+                // Hence we can omit it.
+                cmp::min(i + 1, emission_params.len_y())
+            };
+
             // iterate over y
-            for j in 0..emission_params.len_y() {
+            for j in j_min..j_max {
                 let j_ = j + 1;
+                let j_minus_one = j_ - 1;
 
-                // match or mismatch
-                self.fm[curr][j_] = emission_params.prob_emit_xy(i, j) + LogProb::ln_sum_exp(&[
-                    // coming from state M
-                    prob_no_gap + self.fm[prev][j_ - 1],
-                    // coming from state X
-                    prob_no_gap_x_extend + self.fx[prev][j_ - 1],
-                    // coming from state Y
-                    prob_no_gap_y_extend + self.fy[prev][j_ - 1],
-                ]);
+                let (prob_match_mismatch, prob_gap_x, prob_gap_y) = {
+                    let fm_curr = &self.fm[curr];
+                    let fm_prev = &self.fm[prev];
+                    let fx_prev = &self.fx[prev];
+                    let fy_curr = &self.fy[curr];
+                    let fy_prev = &self.fy[prev];
 
-                // gap in y
-                self.fx[curr][j_] = prob_emit_x
-                    + (
-                    // open gap
-                    prob_gap_y + self.fm[prev][j_]
-                )
-                        .ln_add_exp(
-                            // extend gap
-                            prob_gap_y_extend + self.fx[prev][j_],
-                        );
+                    // match or mismatch
+                    let prob_match_mismatch = emission_params.prob_emit_xy(i, j)
+                        + LogProb::ln_sum_exp(&[
+                            // coming from state M
+                            prob_no_gap + fm_prev[j_minus_one],
+                            // coming from state X
+                            prob_no_gap_x_extend + fx_prev[j_minus_one],
+                            // coming from state Y
+                            prob_no_gap_y_extend + fy_prev[j_minus_one],
+                        ]);
 
-                // gap in x
-                self.fy[curr][j_] = emission_params.prob_emit_y(j)
-                    + (
-                    // open gap
-                    prob_gap_x + self.fm[curr][j_ - 1]
-                ).ln_add_exp(
-                        // extend gap
-                        prob_gap_x_extend + self.fy[curr][j_ - 1],
+                    // gap in y
+                    let mut prob_gap_y = prob_emit_x
+                        + (
+                        // open gap
+                        prob_gap_y + fm_prev[j_]
                     );
+                    if do_gap_y_extend {
+                        prob_gap_y = prob_gap_y.ln_add_exp(
+                            // extend gap
+                            prob_gap_y_extend + fx_prev[j_],
+                        );
+                    }
+
+                    // gap in x
+                    let mut prob_gap_x = emission_params.prob_emit_y(j)
+                        + (
+                        // open gap
+                        prob_gap_x + fm_curr[j_minus_one]
+                    );
+                    if do_gap_x_extend {
+                        prob_gap_x = prob_gap_x.ln_add_exp(
+                            // extend gap
+                            prob_gap_x_extend + fy_curr[j_minus_one],
+                        );
+                    }
+
+                    (prob_match_mismatch, prob_gap_x, prob_gap_y)
+                };
+
+                self.fm[curr][j_] = prob_match_mismatch;
+                self.fx[curr][j_] = prob_gap_y;
+                self.fy[curr][j_] = prob_gap_x;
             }
 
             if gap_params.free_end_gap_x() {
