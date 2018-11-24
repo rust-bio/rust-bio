@@ -26,6 +26,7 @@ use utils::Interval;
 pub struct AnnotMap<R, T>
 where
     R: Hash + Eq,
+    T: Eq,
 {
     refid_itrees: HashMap<R, IntervalTree<isize, T>>,
 }
@@ -33,6 +34,7 @@ where
 impl<R, T> AnnotMap<R, T>
 where
     R: Eq + Hash,
+    T: Eq,
 {
     /// Creates a new, empty `AnnotMap`.
     ///
@@ -130,7 +132,7 @@ where
 impl<R, T> AnnotMap<R, T>
 where
     R: Eq + Hash + Clone,
-    T: Loc<RefID = R>,
+    T: Eq + Loc<RefID = R>,
 {
     /// Inserts an object with the `Loc` trait into the container at
     /// its location.
@@ -152,10 +154,10 @@ where
 
 /// A view of one annotation in a `AnnotMap` container.
 #[derive(Debug, Clone)]
-pub struct Entry<'a, R, T>
+pub struct Entry<'a, R, T: Eq>
 where
     R: 'a + Eq + Hash,
-    T: 'a,
+    T: 'a + Eq,
 {
     itree_entry: interval_tree::Entry<'a, isize, T>,
     refid: &'a R,
@@ -164,7 +166,7 @@ where
 impl<'a, R, T> Entry<'a, R, T>
 where
     R: 'a + Eq + Hash,
-    T: 'a,
+    T: 'a + Eq,
 {
     /// Returns a reference to the data value in the `AnnotMap`.
     pub fn data(&self) -> &'a T {
@@ -189,7 +191,7 @@ where
 pub struct AnnotMapIterator<'a, R, T>
 where
     R: 'a + Eq + Hash,
-    T: 'a,
+    T: 'a + Eq,
 {
     itree_iter: Option<IntervalTreeIterator<'a, isize, T>>,
     refid: &'a R,
@@ -198,7 +200,7 @@ where
 impl<'a, R, T> Iterator for AnnotMapIterator<'a, R, T>
 where
     R: 'a + Eq + Hash,
-    T: 'a,
+    T: 'a + Eq,
 {
     type Item = Entry<'a, R, T>;
 

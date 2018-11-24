@@ -34,11 +34,11 @@ use utils::Interval;
 
 /// An interval tree for storing intervals with data
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IntervalTree<N: Ord + Clone, D> {
+pub struct IntervalTree<N: Ord + Clone, D: Eq> {
     root: Option<Node<N, D>>,
 }
 
-impl<N: Ord + Clone, D> Default for IntervalTree<N, D> {
+impl<N: Ord + Clone, D: Eq> Default for IntervalTree<N, D> {
     fn default() -> Self {
         Self { root: None }
     }
@@ -47,12 +47,12 @@ impl<N: Ord + Clone, D> Default for IntervalTree<N, D> {
 /// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
 /// wraps the fields `interval` and `data` in an `Entry`.
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub struct Entry<'a, N: Ord + Clone + 'a, D: 'a> {
+pub struct Entry<'a, N: Ord + Clone + 'a, D: Eq + 'a> {
     data: &'a D,
     interval: &'a Interval<N>,
 }
 
-impl<'a, N: Ord + Clone + 'a, D: 'a> Entry<'a, N, D> {
+impl<'a, N: Ord + Clone + 'a, D: Eq + 'a> Entry<'a, N, D> {
     /// Get a reference to the data for this entry
     pub fn data(&self) -> &'a D {
         self.data
@@ -66,12 +66,12 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Entry<'a, N, D> {
 
 /// An `IntervalTreeIterator` is returned by `Intervaltree::find` and iterates over the entries
 /// overlapping the query
-pub struct IntervalTreeIterator<'a, N: Ord + Clone + 'a, D: 'a> {
+pub struct IntervalTreeIterator<'a, N: Ord + Clone + 'a, D: Eq + 'a> {
     nodes: Vec<&'a Node<N, D>>,
     interval: Interval<N>,
 }
 
-impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D> {
+impl<'a, N: Ord + Clone + 'a, D: Eq + 'a> Iterator for IntervalTreeIterator<'a, N, D> {
     type Item = Entry<'a, N, D>;
 
     fn next(&mut self) -> Option<Entry<'a, N, D>> {
@@ -111,12 +111,12 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D>
 /// wraps the fields `interval` and `data` in an `EntryMut`. Only the data part can be mutably accessed
 /// using the `data` method
 #[derive(PartialEq, Eq, Debug)]
-pub struct EntryMut<'a, N: Ord + Clone + 'a, D: 'a> {
+pub struct EntryMut<'a, N: Ord + Clone + 'a, D: Eq + 'a> {
     data: &'a mut D,
     interval: &'a Interval<N>,
 }
 
-impl<'a, N: Ord + Clone + 'a, D: 'a> EntryMut<'a, N, D> {
+impl<'a, N: Ord + Clone + 'a, D: Eq + 'a> EntryMut<'a, N, D> {
     /// Get a mutable reference to the data for this entry
     pub fn data(&'a mut self) -> &'a mut D {
         &mut self.data
@@ -130,12 +130,12 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> EntryMut<'a, N, D> {
 
 /// An `IntervalTreeIteratorMut` is returned by `Intervaltree::find_mut` and iterates over the entries
 /// overlapping the query allowing mutable access to the data `D`, not the `Interval`.
-pub struct IntervalTreeIteratorMut<'a, N: Ord + Clone + 'a, D: 'a> {
+pub struct IntervalTreeIteratorMut<'a, N: Ord + Clone + 'a, D: Eq + 'a> {
     nodes: Vec<&'a mut Node<N, D>>,
     interval: Interval<N>,
 }
 
-impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIteratorMut<'a, N, D> {
+impl<'a, N: Ord + Clone + 'a, D: Eq + 'a> Iterator for IntervalTreeIteratorMut<'a, N, D> {
     type Item = EntryMut<'a, N, D>;
 
     fn next(&mut self) -> Option<EntryMut<'a, N, D>> {
@@ -170,7 +170,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIteratorMut<'a, N,
     }
 }
 
-impl<N: Clone + Ord, D> IntervalTree<N, D> {
+impl<N: Clone + Ord, D: Eq> IntervalTree<N, D> {
     /// Creates a new empty `IntervalTree`
     pub fn new() -> Self {
         Default::default()
@@ -218,7 +218,7 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
     }
 }
 
-impl<N: Clone + Ord, D, R: Into<Interval<N>>> FromIterator<(R, D)> for IntervalTree<N, D> {
+impl<N: Clone + Ord, D: Eq, R: Into<Interval<N>>> FromIterator<(R, D)> for IntervalTree<N, D> {
     fn from_iter<I: IntoIterator<Item = (R, D)>>(iter: I) -> Self {
         let mut tree = IntervalTree::new();
         for r in iter {
@@ -229,7 +229,7 @@ impl<N: Clone + Ord, D, R: Into<Interval<N>>> FromIterator<(R, D)> for IntervalT
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Node<N: Ord + Clone, D> {
+struct Node<N: Ord + Clone, D: Eq> {
     // actual interval data
     interval: Interval<N>,
     value: D,
@@ -240,7 +240,7 @@ struct Node<N: Ord + Clone, D> {
     right: Option<Box<Node<N, D>>>,
 }
 
-impl<N: Ord + Clone, D> Node<N, D> {
+impl<N: Ord + Clone, D: Eq> Node<N, D> {
     fn new(interval: Interval<N>, data: D) -> Self {
         let max = interval.end.clone();
         Node {
@@ -361,7 +361,7 @@ impl<N: Ord + Clone, D> Node<N, D> {
     }
 }
 
-fn swap_interval_data<N: Ord + Clone, D>(node_1: &mut Node<N, D>, node_2: &mut Node<N, D>) {
+fn swap_interval_data<N: Ord + Clone, D: Eq>(node_1: &mut Node<N, D>, node_2: &mut Node<N, D>) {
     mem::swap(&mut node_1.value, &mut node_2.value);
     mem::swap(&mut node_1.interval, &mut node_2.interval);
 }
