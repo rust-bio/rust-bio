@@ -93,6 +93,7 @@ fn pairhmm_semiglobal(b: &mut Bencher) {
     let gap_params = SemiglobalGapParams;
 
     let mut pair_hmm = PairHMM::new();
+    pair_hmm.prob_related(&gap_params, &emission_params);
 
     b.iter(|| {
         let p = pair_hmm.prob_related(&gap_params, &emission_params);

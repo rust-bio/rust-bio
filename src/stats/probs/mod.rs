@@ -16,7 +16,7 @@ use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use itertools::Itertools;
 use itertools_num::linspace;
 use num_traits::{Float, Zero};
-use ordered_float::NotNaN;
+use ordered_float::NotNan;
 use utils::FastExp;
 
 /// A factor to convert log-probabilities to PHRED-scale (phred = p * `LOG_TO_PHRED_FACTOR`).
@@ -226,9 +226,8 @@ impl LogProb {
             } else if *pmax == f64::INFINITY {
                 LogProb(f64::INFINITY)
             } else {
-                // TODO use sum() once it has been stabilized: .sum::<usize>()
                 pmax + LogProb(
-                    probs
+                    (probs
                         .iter()
                         .enumerate()
                         .filter_map(|(i, p)| {
@@ -237,8 +236,7 @@ impl LogProb {
                             } else {
                                 Some((p - pmax).fastexp())
                             }
-                        }).sum::<f64>()
-                        .ln_1p(),
+                        }).sum::<f64>()).ln_1p(),
                 )
             }
         }
@@ -367,15 +365,15 @@ impl SubAssign for LogProb {
     }
 }
 
-impl From<NotNaN<f64>> for LogProb {
-    fn from(p: NotNaN<f64>) -> LogProb {
+impl From<NotNan<f64>> for LogProb {
+    fn from(p: NotNan<f64>) -> LogProb {
         LogProb(*p)
     }
 }
 
-impl From<LogProb> for NotNaN<f64> {
-    fn from(p: LogProb) -> NotNaN<f64> {
-        NotNaN::from(*p)
+impl From<LogProb> for NotNan<f64> {
+    fn from(p: LogProb) -> NotNan<f64> {
+        NotNan::from(*p)
     }
 }
 
