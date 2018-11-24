@@ -396,4 +396,20 @@ mod tests {
             epsilon = 1e-6
         );
     }
+
+    #[test]
+    fn test_large() {
+        let x = b"GATCACAGGTCTATCACCCTATTAACCACTCACGGGAGCTCTCCATGC\
+ATTTGGTATTTTCGTCTGGGGGGTATGCACGCGATAGCATTGCGAGACGCTGGAGCCGGAGCACCCTATGTCGCAGTAT\
+CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT";
+
+        let y = b"GGGTATGCACGCGATAGCATTGCGAGACGCTGGAGCCGGAGCACCCTATGTCGC";
+
+        let emission_params = TestEmissionParams { x: x, y: y };
+        let gap_params = TestGapParams;
+
+        let mut pair_hmm = PairHMM::new();
+        let p = pair_hmm.prob_related(&gap_params, &emission_params);
+        assert!(*p <= 0.0);
+    }
 }

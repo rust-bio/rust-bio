@@ -3,7 +3,6 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #[inline]
 pub fn interpolate(a: f64, b: f64, fraction: f64) -> f64 {
     a * (1.0 - fraction) + b * fraction
@@ -20,11 +19,10 @@ pub struct InterpolationTable<F: Fn(f64) -> f64> {
     offset: usize,
     min_x: f64,
     max_x: f64,
-    shift: f64
+    shift: f64,
 }
 
-impl<F: Fn(f64) -> f64> InterpolationTable<F>
-{
+impl<F: Fn(f64) -> f64> InterpolationTable<F> {
     /// Create a new `InterpolationTable`.
     ///
     /// # Arguments
@@ -37,12 +35,16 @@ impl<F: Fn(f64) -> f64> InterpolationTable<F>
     /// If given value is outside of min_x and max_x, the lookup falls back to applying the
     /// function itself.
     /// The table size grows with the number of fraction digits.
-    pub fn new(min_x: f64, max_x: f64, frac_digits: i32, func: F) -> Self
-    {
+    pub fn new(min_x: f64, max_x: f64, frac_digits: i32, func: F) -> Self {
         let shift = 10.0_f64.powi(frac_digits);
         let offset = (min_x * shift) as usize;
         let mut table = InterpolationTable {
-            inner: Vec::new(), func, min_x, max_x, shift, offset
+            inner: Vec::new(),
+            func,
+            min_x,
+            max_x,
+            shift,
+            offset,
         };
 
         let mut i = table.index(min_x);
@@ -65,7 +67,7 @@ impl<F: Fn(f64) -> f64> InterpolationTable<F>
     /// necessary. This provides an approximation that is better the more fraction digits are
     /// used to generate this table.
     pub fn get(&self, x: f64) -> f64 {
-        if x < self.min_x || x > self.max_x {
+        if x < self.min_x || x >= self.max_x {
             (self.func)(x)
         } else {
             let i = self.index(x);
@@ -76,7 +78,6 @@ impl<F: Fn(f64) -> f64> InterpolationTable<F>
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -86,7 +87,7 @@ mod tests {
         let table = InterpolationTable::new(0.0, 10.0, 5, |x| x.ln_1p());
 
         for &x in &[0.02, 0.04, 0.45678686, 0.23875, 1.45345e-6] {
-            assert_relative_eq!(table.get(x), x.ln_1p(), epsilon=0.00001);
+            assert_relative_eq!(table.get(x), x.ln_1p(), epsilon = 0.00001);
         }
     }
 }
