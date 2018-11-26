@@ -56,7 +56,7 @@ pub trait StartEndGapParameters {
 
 pub enum XYEmission {
     Match(LogProb),
-    Mismatch(LogProb)
+    Mismatch(LogProb),
 }
 
 impl XYEmission {
@@ -152,7 +152,8 @@ impl PairHMM {
         &mut self,
         gap_params: &G,
         emission_params: &E,
-        max_edit_dist: Option<usize>) -> LogProb
+        max_edit_dist: Option<usize>,
+    ) -> LogProb
     where
         G: GapParameters + StartEndGapParameters,
         E: EmissionParameters,
@@ -234,8 +235,10 @@ impl PairHMM {
 
                 if let Some(max_edit_dist) = max_edit_dist {
                     if cmp::min(
-                        min_edit_dist_topleft, cmp::min(min_edit_dist_top, min_edit_dist_left)
-                    ) >  max_edit_dist {
+                        min_edit_dist_topleft,
+                        cmp::min(min_edit_dist_top, min_edit_dist_left),
+                    ) > max_edit_dist
+                    {
                         // skip this cell if best edit dist is already larger than given maximum
                         continue;
                     }
@@ -250,15 +253,13 @@ impl PairHMM {
 
                     // match or mismatch
                     let emit_xy = emission_params.prob_emit_xy(i, j);
-                    let prob_match_mismatch = emit_xy.prob()
-                        + ln_sum3_exp_approx(
-                            prob_no_gap + fm_prev[j_minus_one],
-                            // coming from state X
-                            prob_no_gap_x_extend + fx_prev[j_minus_one],
-                            // coming from state Y
-                            prob_no_gap_y_extend + fy_prev[j_minus_one],
-                        );
-
+                    let prob_match_mismatch = emit_xy.prob() + ln_sum3_exp_approx(
+                        prob_no_gap + fm_prev[j_minus_one],
+                        // coming from state X
+                        prob_no_gap_x_extend + fx_prev[j_minus_one],
+                        // coming from state Y
+                        prob_no_gap_y_extend + fy_prev[j_minus_one],
+                    );
 
                     // gap in y
                     let mut prob_gap_y = prob_emit_x
@@ -300,8 +301,8 @@ impl PairHMM {
                                 // gap in y (no new mismatch)
                                 min_edit_dist_left.saturating_add(1),
                                 // gap in x (no new mismatch)
-                                min_edit_dist_top.saturating_add(1)
-                            )
+                                min_edit_dist_top.saturating_add(1),
+                            ),
                         )
                     } else {
                         0
@@ -461,7 +462,6 @@ mod tests {
             true
         }
     }
-
 
     #[test]
     fn test_same() {
