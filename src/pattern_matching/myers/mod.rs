@@ -194,7 +194,6 @@ use std::u64;
 use num_traits::{Bounded, FromPrimitive, One, PrimInt, ToPrimitive, WrappingAdd, Zero};
 
 use alignment::{Alignment, AlignmentMode, AlignmentOperation};
-use utils::{IntoTextIterator, TextIterator};
 
 mod builder;
 mod traceback;
@@ -265,9 +264,10 @@ where
 
 impl<T: BitVec> Myers<T> {
     /// Create a new instance of Myers algorithm for a given pattern.
-    pub fn new<'a, P>(pattern: P) -> Self
+    pub fn new<'a, C, P>(pattern: P) -> Self
     where
-        P: IntoTextIterator<'a>,
+        C: Deref<Target=u8>,
+        P: IntoIterator<Item=C>,
         P::IntoIter: ExactSizeIterator,
     {
         let maxsize = T::DistType::from_usize(size_of::<T>() * 8).unwrap();
@@ -278,8 +278,8 @@ impl<T: BitVec> Myers<T> {
 
         let mut peq = [T::zero(); 256];
 
-        for (i, &a) in pattern.enumerate() {
-            peq[a as usize] |= T::one() << i;
+        for (i, a) in pattern.enumerate() {
+            peq[*a as usize] |= T::one() << i;
         }
 
         Myers {
@@ -318,11 +318,15 @@ impl<T: BitVec> Myers<T> {
     }
 
     /// Calculate the global distance of the pattern to the given text.
-    pub fn distance<'a, I: IntoTextIterator<'a>>(&self, text: I) -> T::DistType {
+    pub fn distance<C, I>(&self, text: I) -> T::DistType
+    where
+        C: Deref<Target=u8>,
+        I: IntoIterator<Item=C>,
+    {
         let mut state = State::init(self.m);
         let mut dist = T::DistType::max_value();
-        for &a in text {
-            self.step(&mut state, a);
+        for a in text {
+            self.step(&mut state, *a);
             if state.dist < dist {
                 dist = state.dist;
             }
@@ -332,17 +336,25 @@ impl<T: BitVec> Myers<T> {
 
     /// Finds all matches of pattern in the given text up to a given maximum distance.
     /// Matches are returned as an iterator over pairs of end position and distance.
-    pub fn find_all_end<'a, I: IntoTextIterator<'a>>(
-        &'a self,
+    pub fn find_all_end<C, I>(
+        &self,
         text: I,
         max_dist: T::DistType,
-    ) -> Matches<T, I::IntoIter> {
+    ) -> Matches<T, C, I::IntoIter>
+    where
+        C: Deref<Target=u8>,
+        I: IntoIterator<Item=C>,
+    {
         Matches::new(self, text.into_iter(), max_dist)
     }
 
     /// Find the best match of the pattern in the given text.
     /// if multiple end positions have the same distance, the first is returned.
-    pub fn find_best_end<'a, I: IntoTextIterator<'a>>(&'a self, text: I) -> (usize, T::DistType) {
+    pub fn find_best_end<C, I>(&self, text: I) -> (usize, T::DistType)
+    where
+        C: Deref<Target=u8>,
+        I: IntoIterator<Item=C>,
+    {
         self.find_all_end(text, T::DistType::max_value())
             .min_by_key(|&(_, dist)| dist)
             .unwrap()
@@ -353,13 +365,14 @@ impl<T: BitVec> Myers<T> {
     /// of `(start, end, distance)`. Note that the end coordinate is not included in the
     /// range and thus and thus greater by one compared to the end index returned by
     /// `find_all_end()`.
-    pub fn find_all<'a, I>(
+    pub fn find_all<'a, C, I>(
         &'a mut self,
         text: I,
         max_dist: T::DistType,
-    ) -> FullMatches<'a, T, I::IntoIter>
+    ) -> FullMatches<'a, T, C, I::IntoIter>
     where
-        I: IntoTextIterator<'a>,
+        C: Deref<Target=u8>,
+        I: IntoIterator<Item=C>,
         I::IntoIter: ExactSizeIterator,
     {
         FullMatches::new(self, text.into_iter(), max_dist)
@@ -368,13 +381,14 @@ impl<T: BitVec> Myers<T> {
     /// As `find_all_end`, this function returns an iterator over tuples of `(end, distance)`.
     /// Additionally, it keeps the data necessary for later obtaining the starting positions and/or
     /// the alignment path at *any* position that was already searched.
-    pub fn find_all_lazy<'a, I>(
+    pub fn find_all_lazy<'a, C, I>(
         &'a mut self,
         text: I,
         max_dist: T::DistType,
-    ) -> LazyMatches<'a, T, I::IntoIter>
+    ) -> LazyMatches<'a, T, C, I::IntoIter>
     where
-        I: IntoTextIterator<'a>,
+        C: Deref<Target=u8>,
+        I: IntoIterator<Item=C>,
         I::IntoIter: ExactSizeIterator,
     {
         LazyMatches::new(self, text.into_iter(), max_dist)
@@ -407,10 +421,11 @@ where
 }
 
 /// Iterator over pairs of end positions and distance of matches.
-pub struct Matches<'a, T, I>
+pub struct Matches<'a, T, C, I>
 where
     T: 'a + BitVec,
-    I: TextIterator<'a>,
+    C: Deref<Target=u8>,
+    I: Iterator<Item=C>,
 {
     myers: &'a Myers<T>,
     state: State<T>,
@@ -418,10 +433,11 @@ where
     max_dist: T::DistType,
 }
 
-impl<'a, T, I> Matches<'a, T, I>
+impl<'a, T, C, I> Matches<'a, T, C, I>
 where
     T: BitVec,
-    I: TextIterator<'a>,
+    C: Deref<Target=u8>,
+    I: Iterator<Item=C>,
 {
     fn new(myers: &'a Myers<T>, text: I, max_dist: T::DistType) -> Self {
         let state = State::init(myers.m);
@@ -434,16 +450,17 @@ where
     }
 }
 
-impl<'a, T, I> Iterator for Matches<'a, T, I>
+impl<'a, T, C, I> Iterator for Matches<'a, T, C, I>
 where
     T: BitVec,
-    I: TextIterator<'a>,
+    C: Deref<Target=u8>,
+    I: Iterator<Item=C>,
 {
     type Item = (usize, T::DistType);
 
     fn next(&mut self) -> Option<(usize, T::DistType)> {
-        for (i, &a) in self.text.by_ref() {
-            self.myers.step(&mut self.state, a);
+        for (i, a) in self.text.by_ref() {
+            self.myers.step(&mut self.state, *a);
             if self.state.dist <= self.max_dist {
                 return Some((i, self.state.dist));
             }
@@ -454,10 +471,11 @@ where
 
 /// Iterator over tuples of starting position, end position and distance of matches. In addition,
 /// methods for obtaining the hit alignment path are provided.
-pub struct FullMatches<'a, T, I>
+pub struct FullMatches<'a, T, C, I>
 where
     T: 'a + BitVec,
-    I: TextIterator<'a>,
+    C: Deref<Target=u8>,
+    I: Iterator<Item=C>,
 {
     myers: &'a mut Myers<T>,
     state: State<T>,
@@ -469,10 +487,11 @@ where
     finished: bool,
 }
 
-impl<'a, T, I> FullMatches<'a, T, I>
+impl<'a, T, C, I> FullMatches<'a, T, C, I>
 where
     T: 'a + BitVec,
-    I: TextIterator<'a> + ExactSizeIterator,
+    C: Deref<Target=u8>,
+    I: Iterator<Item=C> + ExactSizeIterator,
 {
     fn new(myers: &'a mut Myers<T>, text_iter: I, max_dist: T::DistType) -> Self {
         let state = State::init(myers.m);
@@ -496,9 +515,9 @@ where
     /// faster than just iterating over `FullMatches`
     #[inline]
     pub fn next_end(&mut self) -> Option<(usize, T::DistType)> {
-        for (i, &a) in self.text.by_ref() {
+        for (i, a) in self.text.by_ref() {
             self.pos = i; // used in alignment()
-            self.myers.step_trace(&mut self.state, a);
+            self.myers.step_trace(&mut self.state, *a);
             if self.state.dist <= self.max_dist {
                 return Some((i, self.state.dist));
             }
@@ -574,10 +593,11 @@ where
     }
 }
 
-impl<'a, T, I> Iterator for FullMatches<'a, T, I>
+impl<'a, T, C, I> Iterator for FullMatches<'a, T, C, I>
 where
     T: 'a + BitVec,
-    I: TextIterator<'a> + ExactSizeIterator,
+    C: Deref<Target=u8>,
+    I: Iterator<Item=C> + ExactSizeIterator,
 {
     type Item = (usize, usize, T::DistType);
 
@@ -590,10 +610,11 @@ where
 
 /// Iterator over tuples of end position and distance of matches. In addition,
 /// methods for obtaining the hit alignment path are provided.
-pub struct LazyMatches<'a, T, I>
+pub struct LazyMatches<'a, T, C, I>
 where
     T: 'a + BitVec,
-    I: TextIterator<'a>,
+    C: Deref<Target=u8>,
+    I: Iterator<Item=C>,
 {
     myers: &'a mut Myers<T>,
     state: State<T>,
@@ -603,16 +624,17 @@ where
     max_dist: T::DistType,
 }
 
-impl<'a, T, I> Iterator for LazyMatches<'a, T, I>
+impl<'a, T, C, I> Iterator for LazyMatches<'a, T, C, I>
 where
     T: BitVec,
-    I: TextIterator<'a> + ExactSizeIterator,
+    C: Deref<Target=u8>,
+    I: Iterator<Item=C> + ExactSizeIterator,
 {
     type Item = (usize, T::DistType);
 
     fn next(&mut self) -> Option<(usize, T::DistType)> {
-        for (i, &a) in self.text.by_ref() {
-            self.myers.step_trace(&mut self.state, a);
+        for (i, a) in self.text.by_ref() {
+            self.myers.step_trace(&mut self.state, *a);
             if self.state.dist <= self.max_dist {
                 return Some((i, self.state.dist));
             }
@@ -621,10 +643,11 @@ where
     }
 }
 
-impl<'a, T, I> LazyMatches<'a, T, I>
+impl<'a, T, C, I> LazyMatches<'a, T, C, I>
 where
     T: 'a + BitVec,
-    I: TextIterator<'a> + ExactSizeIterator,
+    C: Deref<Target=u8>,
+    I: Iterator<Item=C> + ExactSizeIterator,
 {
     fn new(myers: &'a mut Myers<T>, text_iter: I, max_dist: T::DistType) -> Self {
         let state = State::init(myers.m);

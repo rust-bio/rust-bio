@@ -24,11 +24,12 @@
 //! assert_eq!(occ, [(13, 1), (14, 1)]);
 //! ```
 
+use std::ops::Deref;
 use std::cmp::min;
 use std::iter;
 use std::iter::repeat;
 
-use utils::{IntoTextIterator, TextIterator, TextSlice};
+use utils::TextSlice;
 
 /// Default cost function (unit costs).
 pub fn unit_cost(a: u8, b: u8) -> u32 {
@@ -60,12 +61,15 @@ where
 
     /// Find all matches between pattern and text with up to k errors.
     /// Matches are returned as an iterator over pairs of end position and distance.
-    pub fn find_all_end<'a, T: IntoTextIterator<'a>>(
+    pub fn find_all_end<'a, C, T>(
         &'a mut self,
         pattern: TextSlice<'a>,
         text: T,
         k: usize,
-    ) -> Matches<F, T::IntoIter> {
+    ) -> Matches<F, C, T::IntoIter> where
+        C: Deref<Target=u8>,
+        T: IntoIterator<Item=C>
+    {
         let m = pattern.len();
         self.D[0].clear();
         self.D[0].extend(repeat(k + 1).take(m + 1));
@@ -83,9 +87,11 @@ where
 }
 
 /// Iterator over pairs of end positions and distance of matches.
-pub struct Matches<'a, F, T: TextIterator<'a>>
+pub struct Matches<'a, F, C, T>
 where
     F: 'a + Fn(u8, u8) -> u32,
+    C: Deref<Target=u8>,
+    T: Iterator<Item=C>,
 {
     ukkonen: &'a mut Ukkonen<F>,
     pattern: TextSlice<'a>,
@@ -95,9 +101,11 @@ where
     k: usize,
 }
 
-impl<'a, F, T: TextIterator<'a>> Iterator for Matches<'a, F, T>
+impl<'a, F, C, T> Iterator for Matches<'a, F, C, T>
 where
     F: 'a + Fn(u8, u8) -> u32,
+    C: Deref<Target=u8>,
+    T: Iterator<Item=C>,
 {
     type Item = (usize, usize);
 

@@ -32,10 +32,12 @@
 //!            b"ARNNYM".to_vec(),
 //!        ].as_ref(), None).unwrap();
 
-use ndarray::prelude::Array2;
 use std::char;
+use std::ops::Deref;
 use std::f32::NEG_INFINITY;
-use utils::IntoTextIterator;
+
+use ndarray::prelude::Array2;
+use itertools::Itertools;
 
 mod dnamotif;
 mod protmotif;
@@ -217,17 +219,21 @@ pub trait Motif {
     ///
     /// # Errors
     /// * `PSSMError::InvalidMonomer(mono)` - sequence `seq_it` contained invalid monomer `mono`
-    fn raw_score<'a, T: IntoTextIterator<'a>>(
+    fn raw_score<C, T>(
         &self,
         seq_it: T,
-    ) -> Result<(usize, f32, Vec<f32>), PSSMError> {
+    ) -> Result<(usize, f32, Vec<f32>), PSSMError>
+    where
+        C: Deref<Target=u8>,
+        T: IntoIterator<Item=C>,
+    {
         let pssm_len = self.len();
 
         let mut best_start = 0;
         let mut best_score = -1.0;
         let mut best_m = Vec::new();
         // we have to look at slices, so a simple iterator won't do
-        let seq = seq_it.into_iter().cloned().collect::<Vec<u8>>();
+        let seq = seq_it.into_iter().map(|c| *c).collect_vec();
         let scores = self.get_scores();
         for start in 0..seq.len() - pssm_len + 1 {
             let m: Vec<f32> = match (0..pssm_len)
@@ -270,9 +276,13 @@ pub trait Motif {
     ///            b"AAAA".to_vec(),
     ///        ].as_ref(), None).unwrap();
     /// let start_pos = pssm.score(b"CCCCCAATA").unwrap().loc;
-    fn score<'a, T: IntoTextIterator<'a>>(&self, seq_it: T) -> Result<ScoredPos, PSSMError> {
+    fn score<C, T>(&self, seq_it: T) -> Result<ScoredPos, PSSMError>
+    where
+        C: Deref<Target=u8>,
+        T: IntoIterator<Item=C>,
+    {
         let pssm_len = self.len();
-        let seq = seq_it.into_iter().cloned().collect::<Vec<u8>>();
+        let seq = seq_it.into_iter().map(|c| *c).collect_vec();
         if seq.len() < pssm_len {
             return Err(PSSMError::QueryTooShort(pssm_len, seq.len()));
         }

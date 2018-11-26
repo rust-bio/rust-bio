@@ -15,8 +15,9 @@
 //! assert!(!alphabet.is_word(b"ACGU"));
 //! ```
 
+use std::ops::Deref;
+
 use alphabets::Alphabet;
-use utils::IntoTextIterator;
 
 /// The DNA alphabet (uppercase and lowercase).
 pub fn alphabet() -> Alphabet {
@@ -54,9 +55,11 @@ pub fn complement(a: u8) -> u8 {
 }
 
 /// Calculate reverse complement of given text (IUPAC alphabet supported).
-pub fn revcomp<'a, T: IntoTextIterator<'a>>(text: T) -> Vec<u8>
+pub fn revcomp<C, T>(text: T) -> Vec<u8>
 where
+    C: Deref<Target=u8>,
+    T: IntoIterator<Item=C>,
     T::IntoIter: DoubleEndedIterator,
 {
-    text.into_iter().rev().map(|&a| complement(a)).collect()
+    text.into_iter().rev().map(|a| complement(*a)).collect()
 }

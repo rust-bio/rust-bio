@@ -18,9 +18,8 @@
 //! assert_eq!(occ, 8);
 //! ```
 
+use std::ops::Deref;
 use std::iter::Enumerate;
-
-use utils::{IntoTextIterator, TextIterator};
 
 /// `ShiftAnd` algorithm.
 pub struct ShiftAnd {
@@ -31,9 +30,11 @@ pub struct ShiftAnd {
 
 impl ShiftAnd {
     /// Create new ShiftAnd instance from a given pattern.
-    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self
+    pub fn new<'a, C, P>(pattern: P) -> Self
     where
         P::IntoIter: ExactSizeIterator,
+        C: Deref<Target=u8>,
+        P: IntoIterator<Item=C>
     {
         let pattern = pattern.into_iter();
         let m = pattern.len();
@@ -45,7 +46,11 @@ impl ShiftAnd {
 
     /// Find all matches of pattern in the given text. Matches are returned as an iterator
     /// over start positions.
-    pub fn find_all<'a, I: IntoTextIterator<'a>>(&'a self, text: I) -> Matches<I::IntoIter> {
+    pub fn find_all<C, T>(&self, text: T) -> Matches<C, T::IntoIter>
+    where
+        C: Deref<Target=u8>,
+        T: IntoIterator<Item=C>
+    {
         Matches {
             shiftand: self,
             active: 0,
@@ -56,12 +61,16 @@ impl ShiftAnd {
 
 /// Calculate ShiftAnd masks. This function is called automatically when instantiating
 /// a new ShiftAnd for a given pattern.
-pub fn masks<'a, I: IntoTextIterator<'a>>(pattern: I) -> ([u64; 256], u64) {
+pub fn masks<C, P>(pattern: P) -> ([u64; 256], u64)
+where
+    C: Deref<Target=u8>,
+    P: IntoIterator<Item=C>,
+{
     let mut masks = [0; 256];
 
     let mut bit = 1;
-    for &c in pattern {
-        masks[c as usize] |= bit;
+    for c in pattern {
+        masks[*c as usize] |= bit;
         bit *= 2;
     }
 
@@ -69,18 +78,26 @@ pub fn masks<'a, I: IntoTextIterator<'a>>(pattern: I) -> ([u64; 256], u64) {
 }
 
 /// Iterator over start positions of matches.
-pub struct Matches<'a, I: TextIterator<'a>> {
+pub struct Matches<'a, C, T>
+where
+    C: Deref<Target=u8>,
+    T: Iterator<Item=C>,
+{
     shiftand: &'a ShiftAnd,
     active: u64,
-    text: Enumerate<I>,
+    text: Enumerate<T>,
 }
 
-impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
+impl<'a, C, T> Iterator for Matches<'a, C, T>
+where
+    C: Deref<Target=u8>,
+    T: Iterator<Item=C>,
+{
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {
-        for (i, &c) in self.text.by_ref() {
-            self.active = ((self.active << 1) | 1) & self.shiftand.masks[c as usize];
+        for (i, c) in self.text.by_ref() {
+            self.active = ((self.active << 1) | 1) & self.shiftand.masks[*c as usize];
             if self.active & self.shiftand.accept > 0 {
                 return Some(i - self.shiftand.m + 1);
             }
