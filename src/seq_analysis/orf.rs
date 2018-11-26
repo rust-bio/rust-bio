@@ -31,7 +31,7 @@
 
 use std::collections::VecDeque;
 use std::iter;
-use std::ops::Deref;
+use std::borrow::Borrow;
 
 /// An implementation of a naive algorithm finder
 pub struct Finder {
@@ -70,7 +70,7 @@ impl Finder {
     /// Find all orfs in the given sequence
     pub fn find_all<C, T>(&self, seq: T) -> Matches<C, T::IntoIter>
     where
-        C: Deref<Target = u8>,
+        C: Borrow<u8>,
         T: IntoIterator<Item = C>,
     {
         Matches {
@@ -109,7 +109,7 @@ impl State {
 /// Iterator over offset, start position, end position and sequence of matched orfs.
 pub struct Matches<'a, C, T>
 where
-    C: Deref<Target = u8>,
+    C: Borrow<u8>,
     T: Iterator<Item = C>,
 {
     finder: &'a Finder,
@@ -119,7 +119,7 @@ where
 
 impl<'a, C, T> Iterator for Matches<'a, C, T>
 where
-    C: Deref<Target = u8>,
+    C: Borrow<u8>,
     T: Iterator<Item = C>,
 {
     type Item = Orf;
@@ -133,7 +133,7 @@ where
             if self.state.codon.len() >= 3 {
                 self.state.codon.pop_front();
             }
-            self.state.codon.push_back(*nuc);
+            self.state.codon.push_back(*nuc.borrow());
             offset = (index + 1) % 3;
 
             // inside orf

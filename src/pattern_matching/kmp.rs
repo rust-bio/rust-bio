@@ -23,7 +23,7 @@
 //! ```
 
 use std::iter::{repeat, Enumerate};
-use std::ops::Deref;
+use std::borrow::Borrow;
 
 use utils::TextSlice;
 
@@ -60,7 +60,7 @@ impl<'a> KMP<'a> {
     /// positions.
     pub fn find_all<'b, C, T>(&'b self, text: T) -> Matches<'b, C, T::IntoIter>
     where
-        C: Deref<Target = u8>,
+        C: Borrow<u8>,
         T: IntoIterator<Item = C>,
     {
         Matches {
@@ -90,7 +90,7 @@ fn lps(pattern: &[u8]) -> LPS {
 /// Iterator over start positions of matches.
 pub struct Matches<'a, C, T>
 where
-    C: Deref<Target = u8>,
+    C: Borrow<u8>,
     T: Iterator<Item = C>,
 {
     kmp: &'a KMP<'a>,
@@ -100,14 +100,14 @@ where
 
 impl<'a, C, T> Iterator for Matches<'a, C, T>
 where
-    C: Deref<Target = u8>,
+    C: Borrow<u8>,
     T: Iterator<Item = C>,
 {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {
         for (i, c) in self.text.by_ref() {
-            self.q = self.kmp.delta(self.q, *c);
+            self.q = self.kmp.delta(self.q, *c.borrow());
             if self.q == self.kmp.m {
                 return Some(1 + i - self.kmp.m);
             }

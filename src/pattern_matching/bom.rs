@@ -20,7 +20,7 @@
 
 use std::cmp::Ord;
 use std::iter::repeat;
-use std::ops::Deref;
+use std::borrow::Borrow;
 use utils::TextSlice;
 
 use vec_map::VecMap;
@@ -35,13 +35,13 @@ impl BOM {
     /// Create a new instance for a given pattern.
     pub fn new<C, P>(pattern: P) -> Self
     where
-        C: Deref<Target = u8> + Ord,
+        C: Borrow<u8> + Ord,
         P: IntoIterator<Item = C>,
         P::IntoIter: DoubleEndedIterator + ExactSizeIterator + Clone,
     {
         let pattern = pattern.into_iter();
         let m = pattern.len();
-        let maxsym = *pattern.clone().max().expect("Expecting non-empty pattern.") as usize;
+        let maxsym = *pattern.clone().max().expect("Expecting non-empty pattern.").borrow() as usize;
         let mut table: Vec<VecMap<usize>> = Vec::with_capacity(m);
         // init suffix table, initially all values unknown
         // suff[i] is the state in which the longest suffix of
@@ -50,7 +50,7 @@ impl BOM {
 
         for (j, b) in pattern.rev().enumerate() {
             let i = j + 1;
-            let a = *b as usize;
+            let a = *b.borrow() as usize;
             let mut delta = VecMap::with_capacity(maxsym);
             // reading symbol a leads into state i (this is an inner edge)
             delta.insert(a, i);

@@ -18,8 +18,7 @@
 //! assert_eq!(occ, [7, 17]);
 //! ```
 
-use std::ops::Deref;
-
+use std::borrow::Borrow;
 use pattern_matching::shift_and::masks;
 use utils::TextSlice;
 
@@ -34,7 +33,7 @@ impl BNDM {
     /// Create a new instance for a given pattern.
     pub fn new<C, P>(pattern: P) -> Self
     where
-        C: Deref<Target = u8>,
+        C: Borrow<u8>,
         P: IntoIterator<Item = C>,
         P::IntoIter: DoubleEndedIterator + ExactSizeIterator,
     {

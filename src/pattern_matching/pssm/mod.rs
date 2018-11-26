@@ -34,7 +34,7 @@
 
 use std::char;
 use std::f32::NEG_INFINITY;
-use std::ops::Deref;
+use std::borrow::Borrow;
 
 use itertools::Itertools;
 use ndarray::prelude::Array2;
@@ -221,7 +221,7 @@ pub trait Motif {
     /// * `PSSMError::InvalidMonomer(mono)` - sequence `seq_it` contained invalid monomer `mono`
     fn raw_score<C, T>(&self, seq_it: T) -> Result<(usize, f32, Vec<f32>), PSSMError>
     where
-        C: Deref<Target = u8>,
+        C: Borrow<u8>,
         T: IntoIterator<Item = C>,
     {
         let pssm_len = self.len();
@@ -230,7 +230,7 @@ pub trait Motif {
         let mut best_score = -1.0;
         let mut best_m = Vec::new();
         // we have to look at slices, so a simple iterator won't do
-        let seq = seq_it.into_iter().map(|c| *c).collect_vec();
+        let seq = seq_it.into_iter().map(|c| *c.borrow()).collect_vec();
         let scores = self.get_scores();
         for start in 0..seq.len() - pssm_len + 1 {
             let m: Vec<f32> = match (0..pssm_len)
@@ -275,11 +275,11 @@ pub trait Motif {
     /// let start_pos = pssm.score(b"CCCCCAATA").unwrap().loc;
     fn score<C, T>(&self, seq_it: T) -> Result<ScoredPos, PSSMError>
     where
-        C: Deref<Target = u8>,
+        C: Borrow<u8>,
         T: IntoIterator<Item = C>,
     {
         let pssm_len = self.len();
-        let seq = seq_it.into_iter().map(|c| *c).collect_vec();
+        let seq = seq_it.into_iter().map(|c| *c.borrow()).collect_vec();
         if seq.len() < pssm_len {
             return Err(PSSMError::QueryTooShort(pssm_len, seq.len()));
         }

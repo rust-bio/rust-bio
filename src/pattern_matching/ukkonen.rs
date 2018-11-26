@@ -27,7 +27,7 @@
 use std::cmp::min;
 use std::iter;
 use std::iter::repeat;
-use std::ops::Deref;
+use std::borrow::Borrow;
 
 use utils::TextSlice;
 
@@ -68,7 +68,7 @@ where
         k: usize,
     ) -> Matches<F, C, T::IntoIter>
     where
-        C: Deref<Target = u8>,
+        C: Borrow<u8>,
         T: IntoIterator<Item = C>,
     {
         let m = pattern.len();
@@ -91,7 +91,7 @@ where
 pub struct Matches<'a, F, C, T>
 where
     F: 'a + Fn(u8, u8) -> u32,
-    C: Deref<Target = u8>,
+    C: Borrow<u8>,
     T: Iterator<Item = C>,
 {
     ukkonen: &'a mut Ukkonen<F>,
@@ -105,7 +105,7 @@ where
 impl<'a, F, C, T> Iterator for Matches<'a, F, C, T>
 where
     F: 'a + Fn(u8, u8) -> u32,
-    C: Deref<Target = u8>,
+    C: Borrow<u8>,
     T: Iterator<Item = C>,
 {
     type Item = (usize, usize);
@@ -124,7 +124,7 @@ where
             for j in 1..self.lastk + 1 {
                 self.ukkonen.D[col][j] = min(
                     min(self.ukkonen.D[prev][j] + 1, self.ukkonen.D[col][j - 1] + 1),
-                    self.ukkonen.D[prev][j - 1] + (cost)(self.pattern[j - 1], *c) as usize,
+                    self.ukkonen.D[prev][j - 1] + (cost)(self.pattern[j - 1], *c.borrow()) as usize,
                 );
             }
 

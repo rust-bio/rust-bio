@@ -117,7 +117,7 @@ impl MyersBuilder {
     /// Creates a Myers instance given a pattern, using `u64` as bit vector type
     pub fn build_64<C, P>(&self, pattern: P) -> Myers<u64>
     where
-        C: Deref<Target = u8>,
+        C: Borrow<u8>,
         P: IntoIterator<Item = C>,
         P::IntoIter: ExactSizeIterator,
     {
@@ -128,7 +128,7 @@ impl MyersBuilder {
     #[cfg(has_u128)]
     pub fn build_128<C, P>(&self, pattern: P) -> Myers<u128>
     where
-        C: Deref<Target = u8>,
+        C: Borrow<u8>,
         P: IntoIterator<Item = C>,
         P::IntoIter: ExactSizeIterator,
     {
@@ -152,7 +152,7 @@ impl MyersBuilder {
     pub fn build<'a, T, C, P>(&self, pattern: P) -> Myers<T>
     where
         T: BitVec,
-        C: Deref<Target = u8>,
+        C: Borrow<u8>,
         P: IntoIterator<Item = C>,
         P::IntoIter: ExactSizeIterator,
     {
@@ -167,9 +167,9 @@ impl MyersBuilder {
         for (i, a) in pattern.enumerate() {
             let mask = T::one() << i;
             // equivalent
-            peq[*a as usize] |= mask;
+            peq[*a.borrow() as usize] |= mask;
             // ambiguities
-            if let Some(equivalents) = self.ambigs.get(&*a) {
+            if let Some(equivalents) = self.ambigs.get(a.borrow()) {
                 for &eq in equivalents {
                     peq[eq as usize] |= mask;
                 }
