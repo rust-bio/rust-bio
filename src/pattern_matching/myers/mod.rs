@@ -233,7 +233,8 @@ pub trait BitVec: Copy
             + AddAssign
             + SubAssign
             + PrimInt // includes Bounded, Num, Zero, One
-            + FromPrimitive;
+            + FromPrimitive
+            + Bounded;
 }
 
 macro_rules! impl_bitvec {
@@ -337,6 +338,14 @@ impl<T: BitVec> Myers<T> {
         max_dist: T::DistType,
     ) -> Matches<T, I::IntoIter> {
         Matches::new(self, text.into_iter(), max_dist)
+    }
+
+    /// Find the best match of the pattern in the given text.
+    /// if multiple end positions have the same distance, the first is returned.
+    pub fn find_best_end<'a, I: IntoTextIterator<'a>>(&'a self, text: I) -> (usize, T::DistType) {
+        self.find_all_end(text, T::DistType::max_value())
+            .min_by_key(|&(_, dist)| dist)
+            .unwrap()
     }
 
     /// Finds all matches of pattern in the given text up to a given maximum distance.
@@ -714,6 +723,15 @@ mod tests {
         let myers = Myers::<u64>::new(pattern);
         let occ = myers.find_all_end(text, 1).collect_vec();
         assert_eq!(occ, [(13, 1), (14, 1)]);
+    }
+
+    #[test]
+    fn test_find_best_end() {
+        let text = b"ACCGTGGATGAGCGCCATAG";
+        let pattern = b"TGAGCGT";
+        let myers = Myers::<u64>::new(pattern);
+        let hit = myers.find_best_end(text);
+        assert_eq!(hit, (13, 1));
     }
 
     #[test]
