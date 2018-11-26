@@ -117,8 +117,8 @@ impl MyersBuilder {
     /// Creates a Myers instance given a pattern, using `u64` as bit vector type
     pub fn build_64<C, P>(&self, pattern: P) -> Myers<u64>
     where
-        C: Deref<Target=u8>,
-        P: IntoIterator<Item=C>,
+        C: Deref<Target = u8>,
+        P: IntoIterator<Item = C>,
         P::IntoIter: ExactSizeIterator,
     {
         self.build(pattern)
@@ -128,8 +128,8 @@ impl MyersBuilder {
     #[cfg(has_u128)]
     pub fn build_128<C, P>(&self, pattern: P) -> Myers<u128>
     where
-        C: Deref<Target=u8>,
-        P: IntoIterator<Item=C>,
+        C: Deref<Target = u8>,
+        P: IntoIterator<Item = C>,
         P::IntoIter: ExactSizeIterator,
     {
         self.build(pattern)
@@ -152,8 +152,8 @@ impl MyersBuilder {
     pub fn build<'a, T, C, P>(&self, pattern: P) -> Myers<T>
     where
         T: BitVec,
-        C: Deref<Target=u8>,
-        P: IntoIterator<Item=C>,
+        C: Deref<Target = u8>,
+        P: IntoIterator<Item = C>,
         P::IntoIter: ExactSizeIterator,
     {
         let maxsize = T::DistType::from_usize(size_of::<T>() * 8).unwrap();

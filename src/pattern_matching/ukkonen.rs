@@ -24,10 +24,10 @@
 //! assert_eq!(occ, [(13, 1), (14, 1)]);
 //! ```
 
-use std::ops::Deref;
 use std::cmp::min;
 use std::iter;
 use std::iter::repeat;
+use std::ops::Deref;
 
 use utils::TextSlice;
 
@@ -66,9 +66,10 @@ where
         pattern: TextSlice<'a>,
         text: T,
         k: usize,
-    ) -> Matches<F, C, T::IntoIter> where
-        C: Deref<Target=u8>,
-        T: IntoIterator<Item=C>
+    ) -> Matches<F, C, T::IntoIter>
+    where
+        C: Deref<Target = u8>,
+        T: IntoIterator<Item = C>,
     {
         let m = pattern.len();
         self.D[0].clear();
@@ -90,8 +91,8 @@ where
 pub struct Matches<'a, F, C, T>
 where
     F: 'a + Fn(u8, u8) -> u32,
-    C: Deref<Target=u8>,
-    T: Iterator<Item=C>,
+    C: Deref<Target = u8>,
+    T: Iterator<Item = C>,
 {
     ukkonen: &'a mut Ukkonen<F>,
     pattern: TextSlice<'a>,
@@ -104,8 +105,8 @@ where
 impl<'a, F, C, T> Iterator for Matches<'a, F, C, T>
 where
     F: 'a + Fn(u8, u8) -> u32,
-    C: Deref<Target=u8>,
-    T: Iterator<Item=C>,
+    C: Deref<Target = u8>,
+    T: Iterator<Item = C>,
 {
     type Item = (usize, usize);
 

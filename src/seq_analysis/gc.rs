@@ -10,7 +10,7 @@
 use std::ops::Deref;
 
 /// Base gc content counter
-fn gcn_content<C: Deref<Target=u8>, T: IntoIterator<Item=C>>(sequence: T, step: usize) -> f32 {
+fn gcn_content<C: Deref<Target = u8>, T: IntoIterator<Item = C>>(sequence: T, step: usize) -> f32 {
     let mut l = 0f32;
     let mut count = 0.0;
     for (i, n) in sequence.into_iter().enumerate() {
@@ -26,11 +26,11 @@ fn gcn_content<C: Deref<Target=u8>, T: IntoIterator<Item=C>>(sequence: T, step: 
 }
 
 /// gc content counter for every nucleotide
-pub fn gc_content<C: Deref<Target=u8>, T: IntoIterator<Item=C>>(sequence: T) -> f32 {
+pub fn gc_content<C: Deref<Target = u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 {
     gcn_content(sequence, 1usize)
 }
 
 /// gc content counter for the nucleotide in 3rd position
-pub fn gc3_content<C: Deref<Target=u8>, T: IntoIterator<Item=C>>(sequence: T) -> f32 {
+pub fn gc3_content<C: Deref<Target = u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 {
     gcn_content(sequence, 3usize)
 }

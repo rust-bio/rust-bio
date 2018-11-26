@@ -17,7 +17,7 @@ mod tests {
 
     /// This function demonstrates the use of the IntoSequenceIterator alias, which takes both
     /// slices and iterators.
-    fn print_sequence<'a, Item: Deref<Target=u8>, T: IntoIterator<Item=Item>>(sequence: T) {
+    fn print_sequence<'a, Item: Deref<Target = u8>, T: IntoIterator<Item = Item>>(sequence: T) {
         for c in sequence {
             println!("{}", *c);
         }

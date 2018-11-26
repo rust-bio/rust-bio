@@ -34,8 +34,8 @@ impl BNDM {
     /// Create a new instance for a given pattern.
     pub fn new<C, P>(pattern: P) -> Self
     where
-        C: Deref<Target=u8>,
-        P: IntoIterator<Item=C>,
+        C: Deref<Target = u8>,
+        P: IntoIterator<Item = C>,
         P::IntoIter: DoubleEndedIterator + ExactSizeIterator,
     {
         let pattern = pattern.into_iter();

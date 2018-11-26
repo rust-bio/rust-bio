@@ -29,9 +29,9 @@
 //! But that's not so performance friendly, as the reverse complementation and the orf research
 //! could go on at the same time.
 
-use std::ops::Deref;
 use std::collections::VecDeque;
 use std::iter;
+use std::ops::Deref;
 
 /// An implementation of a naive algorithm finder
 pub struct Finder {
@@ -68,11 +68,10 @@ impl Finder {
     }
 
     /// Find all orfs in the given sequence
-    pub fn find_all<C, T>(
-        &self, seq: T
-    ) -> Matches<C, T::IntoIter> where
-        C: Deref<Target=u8>,
-        T: IntoIterator<Item=C>
+    pub fn find_all<C, T>(&self, seq: T) -> Matches<C, T::IntoIter>
+    where
+        C: Deref<Target = u8>,
+        T: IntoIterator<Item = C>,
     {
         Matches {
             finder: self,
@@ -108,9 +107,10 @@ impl State {
 }
 
 /// Iterator over offset, start position, end position and sequence of matched orfs.
-pub struct Matches<'a, C, T> where
-    C: Deref<Target=u8>,
-    T: Iterator<Item=C>,
+pub struct Matches<'a, C, T>
+where
+    C: Deref<Target = u8>,
+    T: Iterator<Item = C>,
 {
     finder: &'a Finder,
     state: State,
@@ -119,8 +119,8 @@ pub struct Matches<'a, C, T> where
 
 impl<'a, C, T> Iterator for Matches<'a, C, T>
 where
-    C: Deref<Target=u8>,
-    T: Iterator<Item=C>,
+    C: Deref<Target = u8>,
+    T: Iterator<Item = C>,
 {
     type Item = Orf;
 

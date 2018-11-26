@@ -19,8 +19,8 @@
 //! ```
 
 use std::cmp::Ord;
-use std::ops::Deref;
 use std::iter::repeat;
+use std::ops::Deref;
 use utils::TextSlice;
 
 use vec_map::VecMap;
@@ -35,8 +35,8 @@ impl BOM {
     /// Create a new instance for a given pattern.
     pub fn new<C, P>(pattern: P) -> Self
     where
-        C: Deref<Target=u8> + Ord,
-        P: IntoIterator<Item=C>,
+        C: Deref<Target = u8> + Ord,
+        P: IntoIterator<Item = C>,
         P::IntoIter: DoubleEndedIterator + ExactSizeIterator + Clone,
     {
         let pattern = pattern.into_iter();

@@ -18,8 +18,8 @@
 //! assert_eq!(occ, 8);
 //! ```
 
-use std::ops::Deref;
 use std::iter::Enumerate;
+use std::ops::Deref;
 
 /// `ShiftAnd` algorithm.
 pub struct ShiftAnd {
@@ -33,8 +33,8 @@ impl ShiftAnd {
     pub fn new<'a, C, P>(pattern: P) -> Self
     where
         P::IntoIter: ExactSizeIterator,
-        C: Deref<Target=u8>,
-        P: IntoIterator<Item=C>
+        C: Deref<Target = u8>,
+        P: IntoIterator<Item = C>,
     {
         let pattern = pattern.into_iter();
         let m = pattern.len();
@@ -48,8 +48,8 @@ impl ShiftAnd {
     /// over start positions.
     pub fn find_all<C, T>(&self, text: T) -> Matches<C, T::IntoIter>
     where
-        C: Deref<Target=u8>,
-        T: IntoIterator<Item=C>
+        C: Deref<Target = u8>,
+        T: IntoIterator<Item = C>,
     {
         Matches {
             shiftand: self,
@@ -63,8 +63,8 @@ impl ShiftAnd {
 /// a new ShiftAnd for a given pattern.
 pub fn masks<C, P>(pattern: P) -> ([u64; 256], u64)
 where
-    C: Deref<Target=u8>,
-    P: IntoIterator<Item=C>,
+    C: Deref<Target = u8>,
+    P: IntoIterator<Item = C>,
 {
     let mut masks = [0; 256];
 
@@ -80,8 +80,8 @@ where
 /// Iterator over start positions of matches.
 pub struct Matches<'a, C, T>
 where
-    C: Deref<Target=u8>,
-    T: Iterator<Item=C>,
+    C: Deref<Target = u8>,
+    T: Iterator<Item = C>,
 {
     shiftand: &'a ShiftAnd,
     active: u64,
@@ -90,8 +90,8 @@ where
 
 impl<'a, C, T> Iterator for Matches<'a, C, T>
 where
-    C: Deref<Target=u8>,
-    T: Iterator<Item=C>,
+    C: Deref<Target = u8>,
+    T: Iterator<Item = C>,
 {
     type Item = usize;
 

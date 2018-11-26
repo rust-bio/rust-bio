@@ -57,8 +57,8 @@ pub fn complement(a: u8) -> u8 {
 /// Calculate reverse complement of given text (IUPAC alphabet supported).
 pub fn revcomp<C, T>(text: T) -> Vec<u8>
 where
-    C: Deref<Target=u8>,
-    T: IntoIterator<Item=C>,
+    C: Deref<Target = u8>,
+    T: IntoIterator<Item = C>,
     T::IntoIter: DoubleEndedIterator,
 {
     text.into_iter().rev().map(|a| complement(*a)).collect()

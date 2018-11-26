@@ -266,8 +266,8 @@ impl<T: BitVec> Myers<T> {
     /// Create a new instance of Myers algorithm for a given pattern.
     pub fn new<'a, C, P>(pattern: P) -> Self
     where
-        C: Deref<Target=u8>,
-        P: IntoIterator<Item=C>,
+        C: Borrow<u8>,
+        P: IntoIterator<Item = C>,
         P::IntoIter: ExactSizeIterator,
     {
         let maxsize = T::DistType::from_usize(size_of::<T>() * 8).unwrap();
@@ -279,7 +279,7 @@ impl<T: BitVec> Myers<T> {
         let mut peq = [T::zero(); 256];
 
         for (i, a) in pattern.enumerate() {
-            peq[*a as usize] |= T::one() << i;
+            peq[*a.borrow() as usize] |= T::one() << i;
         }
 
         Myers {
@@ -320,13 +320,13 @@ impl<T: BitVec> Myers<T> {
     /// Calculate the global distance of the pattern to the given text.
     pub fn distance<C, I>(&self, text: I) -> T::DistType
     where
-        C: Deref<Target=u8>,
-        I: IntoIterator<Item=C>,
+        C: Borrow<u8>,
+        I: IntoIterator<Item = C>,
     {
         let mut state = State::init(self.m);
         let mut dist = T::DistType::max_value();
         for a in text {
-            self.step(&mut state, *a);
+            self.step(&mut state, *a.borrow());
             if state.dist < dist {
                 dist = state.dist;
             }
@@ -336,14 +336,10 @@ impl<T: BitVec> Myers<T> {
 
     /// Finds all matches of pattern in the given text up to a given maximum distance.
     /// Matches are returned as an iterator over pairs of end position and distance.
-    pub fn find_all_end<C, I>(
-        &self,
-        text: I,
-        max_dist: T::DistType,
-    ) -> Matches<T, C, I::IntoIter>
+    pub fn find_all_end<C, I>(&self, text: I, max_dist: T::DistType) -> Matches<T, C, I::IntoIter>
     where
-        C: Deref<Target=u8>,
-        I: IntoIterator<Item=C>,
+        C: Borrow<u8>,
+        I: IntoIterator<Item = C>,
     {
         Matches::new(self, text.into_iter(), max_dist)
     }
@@ -352,8 +348,8 @@ impl<T: BitVec> Myers<T> {
     /// if multiple end positions have the same distance, the first is returned.
     pub fn find_best_end<C, I>(&self, text: I) -> (usize, T::DistType)
     where
-        C: Deref<Target=u8>,
-        I: IntoIterator<Item=C>,
+        C: Borrow<u8>,
+        I: IntoIterator<Item = C>,
     {
         self.find_all_end(text, T::DistType::max_value())
             .min_by_key(|&(_, dist)| dist)
@@ -371,8 +367,8 @@ impl<T: BitVec> Myers<T> {
         max_dist: T::DistType,
     ) -> FullMatches<'a, T, C, I::IntoIter>
     where
-        C: Deref<Target=u8>,
-        I: IntoIterator<Item=C>,
+        C: Borrow<u8>,
+        I: IntoIterator<Item = C>,
         I::IntoIter: ExactSizeIterator,
     {
         FullMatches::new(self, text.into_iter(), max_dist)
@@ -387,8 +383,8 @@ impl<T: BitVec> Myers<T> {
         max_dist: T::DistType,
     ) -> LazyMatches<'a, T, C, I::IntoIter>
     where
-        C: Deref<Target=u8>,
-        I: IntoIterator<Item=C>,
+        C: Borrow<u8>,
+        I: IntoIterator<Item = C>,
         I::IntoIter: ExactSizeIterator,
     {
         LazyMatches::new(self, text.into_iter(), max_dist)
@@ -424,8 +420,8 @@ where
 pub struct Matches<'a, T, C, I>
 where
     T: 'a + BitVec,
-    C: Deref<Target=u8>,
-    I: Iterator<Item=C>,
+    C: Borrow<u8>,
+    I: Iterator<Item = C>,
 {
     myers: &'a Myers<T>,
     state: State<T>,
@@ -436,8 +432,8 @@ where
 impl<'a, T, C, I> Matches<'a, T, C, I>
 where
     T: BitVec,
-    C: Deref<Target=u8>,
-    I: Iterator<Item=C>,
+    C: Borrow<u8>,
+    I: Iterator<Item = C>,
 {
     fn new(myers: &'a Myers<T>, text: I, max_dist: T::DistType) -> Self {
         let state = State::init(myers.m);
@@ -453,14 +449,14 @@ where
 impl<'a, T, C, I> Iterator for Matches<'a, T, C, I>
 where
     T: BitVec,
-    C: Deref<Target=u8>,
-    I: Iterator<Item=C>,
+    C: Borrow<u8>,
+    I: Iterator<Item = C>,
 {
     type Item = (usize, T::DistType);
 
     fn next(&mut self) -> Option<(usize, T::DistType)> {
         for (i, a) in self.text.by_ref() {
-            self.myers.step(&mut self.state, *a);
+            self.myers.step(&mut self.state, *a.borrow());
             if self.state.dist <= self.max_dist {
                 return Some((i, self.state.dist));
             }
@@ -474,8 +470,8 @@ where
 pub struct FullMatches<'a, T, C, I>
 where
     T: 'a + BitVec,
-    C: Deref<Target=u8>,
-    I: Iterator<Item=C>,
+    C: Borrow<u8>,
+    I: Iterator<Item = C>,
 {
     myers: &'a mut Myers<T>,
     state: State<T>,
@@ -490,8 +486,8 @@ where
 impl<'a, T, C, I> FullMatches<'a, T, C, I>
 where
     T: 'a + BitVec,
-    C: Deref<Target=u8>,
-    I: Iterator<Item=C> + ExactSizeIterator,
+    C: Borrow<u8>,
+    I: Iterator<Item = C> + ExactSizeIterator,
 {
     fn new(myers: &'a mut Myers<T>, text_iter: I, max_dist: T::DistType) -> Self {
         let state = State::init(myers.m);
@@ -517,7 +513,7 @@ where
     pub fn next_end(&mut self) -> Option<(usize, T::DistType)> {
         for (i, a) in self.text.by_ref() {
             self.pos = i; // used in alignment()
-            self.myers.step_trace(&mut self.state, *a);
+            self.myers.step_trace(&mut self.state, *a.borrow());
             if self.state.dist <= self.max_dist {
                 return Some((i, self.state.dist));
             }
@@ -596,8 +592,8 @@ where
 impl<'a, T, C, I> Iterator for FullMatches<'a, T, C, I>
 where
     T: 'a + BitVec,
-    C: Deref<Target=u8>,
-    I: Iterator<Item=C> + ExactSizeIterator,
+    C: Borrow<u8>,
+    I: Iterator<Item = C> + ExactSizeIterator,
 {
     type Item = (usize, usize, T::DistType);
 
@@ -613,8 +609,8 @@ where
 pub struct LazyMatches<'a, T, C, I>
 where
     T: 'a + BitVec,
-    C: Deref<Target=u8>,
-    I: Iterator<Item=C>,
+    C: Borrow<u8>,
+    I: Iterator<Item = C>,
 {
     myers: &'a mut Myers<T>,
     state: State<T>,
@@ -627,14 +623,14 @@ where
 impl<'a, T, C, I> Iterator for LazyMatches<'a, T, C, I>
 where
     T: BitVec,
-    C: Deref<Target=u8>,
-    I: Iterator<Item=C> + ExactSizeIterator,
+    C: Borrow<u8>,
+    I: Iterator<Item = C> + ExactSizeIterator,
 {
     type Item = (usize, T::DistType);
 
     fn next(&mut self) -> Option<(usize, T::DistType)> {
         for (i, a) in self.text.by_ref() {
-            self.myers.step_trace(&mut self.state, *a);
+            self.myers.step_trace(&mut self.state, *a.borrow());
             if self.state.dist <= self.max_dist {
                 return Some((i, self.state.dist));
             }
@@ -646,8 +642,8 @@ where
 impl<'a, T, C, I> LazyMatches<'a, T, C, I>
 where
     T: 'a + BitVec,
-    C: Deref<Target=u8>,
-    I: Iterator<Item=C> + ExactSizeIterator,
+    C: Borrow<u8>,
+    I: Iterator<Item = C> + ExactSizeIterator,
 {
     fn new(myers: &'a mut Myers<T>, text_iter: I, max_dist: T::DistType) -> Self {
         let state = State::init(myers.m);

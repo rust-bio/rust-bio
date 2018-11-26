@@ -33,11 +33,11 @@
 //!        ].as_ref(), None).unwrap();
 
 use std::char;
-use std::ops::Deref;
 use std::f32::NEG_INFINITY;
+use std::ops::Deref;
 
-use ndarray::prelude::Array2;
 use itertools::Itertools;
+use ndarray::prelude::Array2;
 
 mod dnamotif;
 mod protmotif;
@@ -219,13 +219,10 @@ pub trait Motif {
     ///
     /// # Errors
     /// * `PSSMError::InvalidMonomer(mono)` - sequence `seq_it` contained invalid monomer `mono`
-    fn raw_score<C, T>(
-        &self,
-        seq_it: T,
-    ) -> Result<(usize, f32, Vec<f32>), PSSMError>
+    fn raw_score<C, T>(&self, seq_it: T) -> Result<(usize, f32, Vec<f32>), PSSMError>
     where
-        C: Deref<Target=u8>,
-        T: IntoIterator<Item=C>,
+        C: Deref<Target = u8>,
+        T: IntoIterator<Item = C>,
     {
         let pssm_len = self.len();
 
@@ -278,8 +275,8 @@ pub trait Motif {
     /// let start_pos = pssm.score(b"CCCCCAATA").unwrap().loc;
     fn score<C, T>(&self, seq_it: T) -> Result<ScoredPos, PSSMError>
     where
-        C: Deref<Target=u8>,
-        T: IntoIterator<Item=C>,
+        C: Deref<Target = u8>,
+        T: IntoIterator<Item = C>,
     {
         let pssm_len = self.len();
         let seq = seq_it.into_iter().map(|c| *c).collect_vec();

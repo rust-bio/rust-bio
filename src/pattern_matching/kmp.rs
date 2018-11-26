@@ -22,8 +22,8 @@
 //! assert_eq!(occ, [4, 15]);
 //! ```
 
-use std::ops::Deref;
 use std::iter::{repeat, Enumerate};
+use std::ops::Deref;
 
 use utils::TextSlice;
 
@@ -60,8 +60,8 @@ impl<'a> KMP<'a> {
     /// positions.
     pub fn find_all<'b, C, T>(&'b self, text: T) -> Matches<'b, C, T::IntoIter>
     where
-        C: Deref<Target=u8>,
-        T: IntoIterator<Item=C>,
+        C: Deref<Target = u8>,
+        T: IntoIterator<Item = C>,
     {
         Matches {
             kmp: self,
@@ -90,8 +90,8 @@ fn lps(pattern: &[u8]) -> LPS {
 /// Iterator over start positions of matches.
 pub struct Matches<'a, C, T>
 where
-    C: Deref<Target=u8>,
-    T: Iterator<Item=C>,
+    C: Deref<Target = u8>,
+    T: Iterator<Item = C>,
 {
     kmp: &'a KMP<'a>,
     q: usize,
@@ -100,8 +100,8 @@ where
 
 impl<'a, C, T> Iterator for Matches<'a, C, T>
 where
-    C: Deref<Target=u8>,
-    T: Iterator<Item=C>,
+    C: Deref<Target = u8>,
+    T: Iterator<Item = C>,
 {
     type Item = usize;
 

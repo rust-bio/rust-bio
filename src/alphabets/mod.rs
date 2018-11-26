@@ -35,8 +35,8 @@ impl Alphabet {
     /// Create new alphabet from given symbols.
     pub fn new<C, T>(symbols: T) -> Self
     where
-        C: Deref<Target=u8>,
-        T: IntoIterator<Item=C>,
+        C: Deref<Target = u8>,
+        T: IntoIterator<Item = C>,
     {
         let mut s = BitSet::new();
         s.extend(symbols.into_iter().map(|c| *c as usize));
@@ -52,8 +52,8 @@ impl Alphabet {
     /// Check if given text is a word over the alphabet.
     pub fn is_word<C, T>(&self, text: T) -> bool
     where
-        C: Deref<Target=u8>,
-        T: IntoIterator<Item=C>,
+        C: Deref<Target = u8>,
+        T: IntoIterator<Item = C>,
     {
         text.into_iter().all(|c| self.symbols.contains(*c as usize))
     }
@@ -99,8 +99,8 @@ impl RankTransform {
     /// Transform a given `text`.
     pub fn transform<C, T>(&self, text: T) -> Vec<u8>
     where
-        C: Deref<Target=u8>,
-        T: IntoIterator<Item=C>,
+        C: Deref<Target = u8>,
+        T: IntoIterator<Item = C>,
     {
         text.into_iter()
             .map(|c| {
@@ -117,8 +117,8 @@ impl RankTransform {
     /// If q is larger than usize::BITS / log2(|A|), this method fails with an assertion.
     pub fn qgrams<C, T>(&self, q: u32, text: T) -> QGrams<C, T::IntoIter>
     where
-        C: Deref<Target=u8>,
-        T: IntoIterator<Item=C>,
+        C: Deref<Target = u8>,
+        T: IntoIterator<Item = C>,
     {
         let bits = (self.ranks.len() as f32).log2().ceil() as u32;
         assert!(
@@ -152,8 +152,8 @@ impl RankTransform {
 /// Iterator over q-grams.
 pub struct QGrams<'a, C, T>
 where
-    C: Deref<Target=u8>,
-    T: Iterator<Item=C>,
+    C: Deref<Target = u8>,
+    T: Iterator<Item = C>,
 {
     text: T,
     ranks: &'a RankTransform,
@@ -164,8 +164,8 @@ where
 
 impl<'a, C, T> QGrams<'a, C, T>
 where
-    C: Deref<Target=u8>,
-    T: Iterator<Item=C>,
+    C: Deref<Target = u8>,
+    T: Iterator<Item = C>,
 {
     fn qgram_push(&mut self, a: u8) {
         self.qgram <<= self.bits;
@@ -176,8 +176,8 @@ where
 
 impl<'a, C, T> Iterator for QGrams<'a, C, T>
 where
-    C: Deref<Target=u8>,
-    T: Iterator<Item=C>,
+    C: Deref<Target = u8>,
+    T: Iterator<Item = C>,
 {
     type Item = usize;
 
