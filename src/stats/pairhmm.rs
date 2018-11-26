@@ -104,7 +104,7 @@ fn ln_sum3_exp_approx(mut p0: LogProb, mut p1: LogProb, mut p2: LogProb) -> LogP
     if p1 > p0 {
         mem::swap(&mut p1, &mut p0);
     }
-    if *(p0 - p1) > 1.0 {
+    if *(p0 - p1) > 10.0 {
         // if p0 is strong enough compared to second, just return the maximum
         p0
     } else {
