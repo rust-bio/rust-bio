@@ -19,7 +19,8 @@
 //! ```
 
 use pattern_matching::shift_and::masks;
-use utils::{IntoTextIterator, TextSlice};
+use std::borrow::Borrow;
+use utils::TextSlice;
 
 /// BNDM algorithm.
 pub struct BNDM {
@@ -30,8 +31,10 @@ pub struct BNDM {
 
 impl BNDM {
     /// Create a new instance for a given pattern.
-    pub fn new<'a, P: IntoTextIterator<'a>>(pattern: P) -> Self
+    pub fn new<C, P>(pattern: P) -> Self
     where
+        C: Borrow<u8>,
+        P: IntoIterator<Item = C>,
         P::IntoIter: DoubleEndedIterator + ExactSizeIterator,
     {
         let pattern = pattern.into_iter();

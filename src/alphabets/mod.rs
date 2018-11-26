@@ -14,12 +14,11 @@
 //! assert!(!alphabet.is_word(b"AXYZ"));
 //! ```
 
+use std::borrow::Borrow;
 use std::mem;
 
 use bit_set::BitSet;
 use vec_map::VecMap;
-
-use utils::{IntoTextIterator, TextIterator};
 
 pub mod dna;
 pub mod protein;
@@ -34,9 +33,13 @@ pub struct Alphabet {
 
 impl Alphabet {
     /// Create new alphabet from given symbols.
-    pub fn new<'a, T: IntoTextIterator<'a>>(symbols: T) -> Self {
+    pub fn new<C, T>(symbols: T) -> Self
+    where
+        C: Borrow<u8>,
+        T: IntoIterator<Item = C>,
+    {
         let mut s = BitSet::new();
-        s.extend(symbols.into_iter().map(|&c| c as usize));
+        s.extend(symbols.into_iter().map(|c| *c.borrow() as usize));
 
         Alphabet { symbols: s }
     }
@@ -47,8 +50,13 @@ impl Alphabet {
     }
 
     /// Check if given text is a word over the alphabet.
-    pub fn is_word<'a, T: IntoTextIterator<'a>>(&self, text: T) -> bool {
-        text.into_iter().all(|&c| self.symbols.contains(c as usize))
+    pub fn is_word<C, T>(&self, text: T) -> bool
+    where
+        C: Borrow<u8>,
+        T: IntoIterator<Item = C>,
+    {
+        text.into_iter()
+            .all(|c| self.symbols.contains(*c.borrow() as usize))
     }
 
     /// Return lexicographically maximal symbol.
@@ -90,12 +98,16 @@ impl RankTransform {
     }
 
     /// Transform a given `text`.
-    pub fn transform<'a, T: IntoTextIterator<'a>>(&self, text: T) -> Vec<u8> {
+    pub fn transform<C, T>(&self, text: T) -> Vec<u8>
+    where
+        C: Borrow<u8>,
+        T: IntoIterator<Item = C>,
+    {
         text.into_iter()
-            .map(|&c| {
+            .map(|c| {
                 *self
                     .ranks
-                    .get(c as usize)
+                    .get(*c.borrow() as usize)
                     .expect("Unexpected character in text.")
             }).collect()
     }
@@ -104,7 +116,11 @@ impl RankTransform {
     /// as `usize` by storing the symbol ranks in log2(|A|) bits (with |A| being the alphabet size).
     ///
     /// If q is larger than usize::BITS / log2(|A|), this method fails with an assertion.
-    pub fn qgrams<'a, T: IntoTextIterator<'a>>(&'a self, q: u32, text: T) -> QGrams<T::IntoIter> {
+    pub fn qgrams<C, T>(&self, q: u32, text: T) -> QGrams<C, T::IntoIter>
+    where
+        C: Borrow<u8>,
+        T: IntoIterator<Item = C>,
+    {
         let bits = (self.ranks.len() as f32).log2().ceil() as u32;
         assert!(
             (bits * q) as usize <= mem::size_of::<usize>() * 8,
@@ -135,7 +151,11 @@ impl RankTransform {
 }
 
 /// Iterator over q-grams.
-pub struct QGrams<'a, T: TextIterator<'a>> {
+pub struct QGrams<'a, C, T>
+where
+    C: Borrow<u8>,
+    T: Iterator<Item = C>,
+{
     text: T,
     ranks: &'a RankTransform,
     bits: u32,
@@ -143,7 +163,11 @@ pub struct QGrams<'a, T: TextIterator<'a>> {
     qgram: usize,
 }
 
-impl<'a, T: TextIterator<'a>> QGrams<'a, T> {
+impl<'a, C, T> QGrams<'a, C, T>
+where
+    C: Borrow<u8>,
+    T: Iterator<Item = C>,
+{
     fn qgram_push(&mut self, a: u8) {
         self.qgram <<= self.bits;
         self.qgram |= a as usize;
@@ -151,13 +175,17 @@ impl<'a, T: TextIterator<'a>> QGrams<'a, T> {
     }
 }
 
-impl<'a, T: TextIterator<'a>> Iterator for QGrams<'a, T> {
+impl<'a, C, T> Iterator for QGrams<'a, C, T>
+where
+    C: Borrow<u8>,
+    T: Iterator<Item = C>,
+{
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {
         match self.text.next() {
             Some(a) => {
-                let b = self.ranks.get(*a);
+                let b = self.ranks.get(*a.borrow());
                 self.qgram_push(b);
                 Some(self.qgram)
             }

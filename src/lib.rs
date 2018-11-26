@@ -113,6 +113,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate bv;
+extern crate fnv;
 extern crate statrs;
 extern crate vec_map;
 

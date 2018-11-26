@@ -262,15 +262,15 @@ pub type CDFPMFIter<'a, T> = iter::Scan<
 #[cfg(test)]
 mod test {
     use super::*;
-    use ordered_float::NotNaN;
+    use ordered_float::NotNan;
     use stats::LogProb;
 
     #[test]
     fn test_cdf() {
-        let mut pmf = vec![Entry::new(NotNaN::new(0.0).unwrap(), LogProb(0.1f64.ln()))];
+        let mut pmf = vec![Entry::new(NotNan::new(0.0).unwrap(), LogProb(0.1f64.ln()))];
         for i in 0..9 {
             pmf.push(Entry::new(
-                NotNaN::new(i as f64).unwrap(),
+                NotNan::new(i as f64).unwrap(),
                 LogProb(0.1f64.ln()),
             ));
         }
@@ -283,7 +283,7 @@ mod test {
         }
         assert_relative_eq!(*cdf.total_prob(), 1.0f64.ln());
         assert_relative_eq!(
-            *cdf.get(&NotNaN::new(1.0).unwrap()).unwrap(),
+            *cdf.get(&NotNan::new(1.0).unwrap()).unwrap(),
             0.3f64.ln(),
             epsilon = 0.00000001
         );
