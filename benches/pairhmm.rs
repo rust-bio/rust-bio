@@ -29,11 +29,11 @@ pub struct TestEmissionParams {
 }
 
 impl EmissionParameters for TestEmissionParams {
-    fn prob_emit_xy(&self, i: usize, j: usize) -> LogProb {
+    fn prob_emit_xy(&self, i: usize, j: usize) -> XYEmission {
         if self.x[i] == self.y[j] {
-            LogProb::from(Prob(1.0) - PROB_ILLUMINA_SUBST)
+            XYEmission::Match(LogProb::from(Prob(1.0) - PROB_ILLUMINA_SUBST))
         } else {
-            LogProb::from(PROB_ILLUMINA_SUBST / Prob(3.0))
+            XYEmission::Mismatch(LogProb::from(PROB_ILLUMINA_SUBST / Prob(3.0)))
         }
     }
 
@@ -93,10 +93,10 @@ fn pairhmm_semiglobal(b: &mut Bencher) {
     let gap_params = SemiglobalGapParams;
 
     let mut pair_hmm = PairHMM::new();
-    pair_hmm.prob_related(&gap_params, &emission_params);
+    pair_hmm.prob_related(&gap_params, &emission_params, Some(4));
 
     b.iter(|| {
-        let p = pair_hmm.prob_related(&gap_params, &emission_params);
+        let p = pair_hmm.prob_related(&gap_params, &emission_params, Some(4));
         assert!(*p <= 0.0);
     });
 }
