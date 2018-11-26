@@ -5,66 +5,14 @@
 
 //! Common utilities.
 
+mod fastexp;
+pub use self::fastexp::FastExp;
+
 mod text;
 pub use self::text::{trim_newline, IntoTextIterator, Text, TextIterator, TextSlice};
 
 mod interval;
 pub use self::interval::{Interval, IntervalError};
-
-/// Strand information.
-#[derive(Debug, Clone, Copy)]
-pub enum Strand {
-    Forward,
-    Reverse,
-    Unknown,
-}
-
-impl PartialEq for Strand {
-    /// Returns true if both are `Forward` or both are `Reverse`, otherwise returns false.
-    fn eq(&self, other: &Strand) -> bool {
-        match (self, other) {
-            (&Strand::Forward, &Strand::Forward) => true,
-            (&Strand::Reverse, &Strand::Reverse) => true,
-            _ => false,
-        }
-    }
-}
-
-impl Strand {
-    /// Returns a `Strand` enum representing the given char.
-    ///
-    /// The mapping is as follows:
-    ///     * '+', 'f', or 'F' becomes `Strand::Forward`
-    ///     * '-', 'r', or 'R' becomes `Strand::Reverse`
-    ///     * '.', '?' becomes `Strand::Unknown`
-    ///     * Any other inputs will return an `Err(StrandError::InvalidChar)`
-    pub fn from_char(strand_char: &char) -> Result<Strand, StrandError> {
-        match *strand_char {
-            '+' | 'f' | 'F' => Ok(Strand::Forward),
-            '-' | 'r' | 'R' => Ok(Strand::Reverse),
-            '.' | '?' => Ok(Strand::Unknown),
-            invalid => Err(StrandError::InvalidChar(invalid)),
-        }
-    }
-
-    pub fn is_unknown(&self) -> bool {
-        if let Strand::Unknown = *self {
-            true
-        } else {
-            false
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug)]
-    pub enum StrandError {
-        InvalidChar(invalid_char: char) {
-            description("invalid character for strand conversion")
-            display("character {:?} can not be converted to a Strand", invalid_char)
-        }
-    }
-}
 
 /// In place implementation of scan over a slice.
 pub fn scan<T: Copy, F: Fn(T, T) -> T>(a: &mut [T], op: F) {
@@ -101,13 +49,5 @@ mod tests {
         let mut a = vec![1, 0, 0, 1];
         prescan(&mut a[..], 0, |a, b| a + b);
         assert_eq!(a, vec![0, 1, 1, 1]);
-    }
-
-    #[test]
-    fn test_strand() {
-        assert_eq!(Strand::from_char(&'+').unwrap(), Strand::Forward);
-        assert_eq!(Strand::from_char(&'-').unwrap(), Strand::Reverse);
-        assert!(Strand::from_char(&'.').unwrap().is_unknown());
-        assert!(Strand::from_char(&'o').is_err());
     }
 }
