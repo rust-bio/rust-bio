@@ -18,9 +18,9 @@
 //! assert_eq!(occ, [8, 25]);
 //! ```
 
+use std::borrow::Borrow;
 use std::cmp::Ord;
 use std::iter::repeat;
-use std::borrow::Borrow;
 use utils::TextSlice;
 
 use vec_map::VecMap;
@@ -41,7 +41,11 @@ impl BOM {
     {
         let pattern = pattern.into_iter();
         let m = pattern.len();
-        let maxsym = *pattern.clone().max().expect("Expecting non-empty pattern.").borrow() as usize;
+        let maxsym = *pattern
+            .clone()
+            .max()
+            .expect("Expecting non-empty pattern.")
+            .borrow() as usize;
         let mut table: Vec<VecMap<usize>> = Vec::with_capacity(m);
         // init suffix table, initially all values unknown
         // suff[i] is the state in which the longest suffix of

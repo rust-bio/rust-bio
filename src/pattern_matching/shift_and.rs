@@ -18,8 +18,8 @@
 //! assert_eq!(occ, 8);
 //! ```
 
-use std::iter::Enumerate;
 use std::borrow::Borrow;
+use std::iter::Enumerate;
 
 /// `ShiftAnd` algorithm.
 pub struct ShiftAnd {

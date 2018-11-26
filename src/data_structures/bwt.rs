@@ -20,15 +20,6 @@ pub type BWTSlice = [u8];
 pub type Less = Vec<usize>;
 pub type BWTFind = Vec<usize>;
 
-pub trait DerefBWT: Deref<Target = BWT> {}
-impl<T: Deref<Target = BWT>> DerefBWT for T {}
-
-pub trait DerefOcc: Deref<Target = Occ> {}
-impl<T: Deref<Target = Occ>> DerefOcc for T {}
-
-pub trait DerefLess: Deref<Target = Less> {}
-impl<T: Deref<Target = Less>> DerefLess for T {}
-
 /// Calculate Burrows-Wheeler-Transform of the given text of length n.
 /// Complexity: O(n).
 ///

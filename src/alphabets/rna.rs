@@ -61,7 +61,10 @@ where
     T: IntoIterator<Item = C>,
     T::IntoIter: DoubleEndedIterator,
 {
-    text.into_iter().rev().map(|a| complement(*a.borrow())).collect()
+    text.into_iter()
+        .rev()
+        .map(|a| complement(*a.borrow()))
+        .collect()
 }
 
 #[cfg(test)]

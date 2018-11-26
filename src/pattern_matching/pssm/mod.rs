@@ -32,9 +32,9 @@
 //!            b"ARNNYM".to_vec(),
 //!        ].as_ref(), None).unwrap();
 
+use std::borrow::Borrow;
 use std::char;
 use std::f32::NEG_INFINITY;
-use std::borrow::Borrow;
 
 use itertools::Itertools;
 use ndarray::prelude::Array2;

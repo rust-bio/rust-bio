@@ -18,8 +18,8 @@
 //! assert_eq!(occ, [7, 17]);
 //! ```
 
-use std::borrow::Borrow;
 use pattern_matching::shift_and::masks;
+use std::borrow::Borrow;
 use utils::TextSlice;
 
 /// BNDM algorithm.

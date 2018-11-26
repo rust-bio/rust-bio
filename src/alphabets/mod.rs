@@ -14,8 +14,8 @@
 //! assert!(!alphabet.is_word(b"AXYZ"));
 //! ```
 
-use std::mem;
 use std::borrow::Borrow;
+use std::mem;
 
 use bit_set::BitSet;
 use vec_map::VecMap;
@@ -55,7 +55,8 @@ impl Alphabet {
         C: Borrow<u8>,
         T: IntoIterator<Item = C>,
     {
-        text.into_iter().all(|c| self.symbols.contains(*c.borrow() as usize))
+        text.into_iter()
+            .all(|c| self.symbols.contains(*c.borrow() as usize))
     }
 
     /// Return lexicographically maximal symbol.

@@ -29,9 +29,9 @@
 //! But that's not so performance friendly, as the reverse complementation and the orf research
 //! could go on at the same time.
 
+use std::borrow::Borrow;
 use std::collections::VecDeque;
 use std::iter;
-use std::borrow::Borrow;
 
 /// An implementation of a naive algorithm finder
 pub struct Finder {
