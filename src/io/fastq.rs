@@ -1,4 +1,4 @@
-// Copyright 2014-2016 Johannes Köster, Henning Timm.
+// Copyright 2014-2018 Johannes Köster, Henning Timm.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -23,7 +23,7 @@ use std::path::Path;
 use utils::TextSlice;
 
 /// Trait for FASTQ readers.
-pub trait FQRead {
+pub trait Read {
     fn read(&mut self, record: &mut Record) -> io::Result<()>;
 }
 
@@ -56,7 +56,7 @@ impl<R: io::Read> Reader<R> {
     }
 }
 
-impl<R> FQRead for Reader<R>
+impl<R> Read for Reader<R>
 where
     R: io::Read,
 {
@@ -309,12 +309,12 @@ IIIIIIJJJJJJ
     #[test]
     fn test_fqread_trait() {
         let path = "reads.fq.gz";
-        let mut fq_reader: Box<FQRead> = match path.ends_with(".gz") {
+        let mut fq_reader: Box<Read> = match path.ends_with(".gz") {
             true => Box::new(Reader::new(io::BufReader::new(FASTQ_FILE))),
             false => Box::new(Reader::new(FASTQ_FILE)),
         };
         // The read method can be called, since it is implemented by
-        // FQRead. Right now, the records method would not work.
+        // `Read`. Right now, the records method would not work.
         let mut record = Record::new();
         fq_reader.read(&mut record).unwrap();
         // Check if the returned result is correct.
