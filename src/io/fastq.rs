@@ -22,6 +22,12 @@ use std::path::Path;
 
 use utils::TextSlice;
 
+/// Trait for FASTQ readers.
+pub trait FQRead {
+    fn read(&mut self, record: &mut Record) -> io::Result<()>;
+}
+
+
 /// A FastQ reader.
 #[derive(Debug)]
 pub struct Reader<R: io::Read> {
@@ -45,10 +51,18 @@ impl<R: io::Read> Reader<R> {
         }
     }
 
+    /// Return an iterator over the records of this FastQ file.
+    pub fn records(self) -> Records<R> {
+        Records { reader: self }
+    }
+}
+
+
+impl<R> FQRead for Reader<R> where R: io::Read {
     /// Read into a given record.
     /// Returns an error if the record in incomplete or syntax is violated.
     /// The content of the record can be checked via the record object.
-    pub fn read(&mut self, record: &mut Record) -> io::Result<()> {
+    fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
 
         let mut header = String::new();
@@ -86,11 +100,6 @@ impl<R: io::Read> Reader<R> {
         }
 
         Ok(())
-    }
-
-    /// Return an iterator over the records of this FastQ file.
-    pub fn records(self) -> Records<R> {
-        Records { reader: self }
     }
 }
 
@@ -294,6 +303,33 @@ IIIIIIJJJJJJ
             assert_eq!(record.seq(), b"ACCGTAGGCTGA");
             assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
         }
+    }
+
+    #[test]
+    fn test_fqread_trait() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let mut fq_reader: Box<FQRead>;
+        // Generate some randomness/ uncertainty for the compiler
+        // without using the rand crate.
+        // The exact flavour of the generic inside reader is unknown
+        match SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .subsec_nanos() % 2
+        {
+            0 => fq_reader = Box::new(Reader::new(FASTQ_FILE)),
+            _ => fq_reader = Box::new(Reader::new(io::BufReader::new(FASTQ_FILE))),
+        }
+        // The read method can be called, since it is implemented by
+        // FQRead. Right now, the records method would not work.
+        let mut record = Record::new();
+        fq_reader.read(&mut record).unwrap();
+        // Check if the returned result is correct.
+        assert_eq!(record.check(), Ok(()));
+        assert_eq!(record.id(), "id");
+        assert_eq!(record.desc(), Some("desc"));
+        assert_eq!(record.seq(), b"ACCGTAGGCTGA");
+        assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
     }
 
     #[test]
