@@ -96,7 +96,10 @@ impl<R: io::Read> Reader<R> {
     }
 }
 
-impl<R> FARead for Reader<R> where R: io::Read {
+impl<R> FARead for Reader<R>
+where
+    R: io::Read,
+{
     /// Read next FASTA record into the given `Record`.
     ///
     /// # Example
@@ -155,7 +158,6 @@ impl<R> FARead for Reader<R> where R: io::Read {
         Ok(())
     }
 }
-
 
 /// A FASTA index as created by SAMtools (.fai).
 #[derive(Debug, Clone)]
@@ -805,9 +807,12 @@ ATTGTTGTTTTA
         assert_eq!(record.check(), Ok(()));
         assert_eq!(record.id(), "id");
         assert_eq!(record.desc(), Some("desc"));
-        assert_eq!(record.seq().to_vec(), b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC".to_vec());
+        assert_eq!(
+            record.seq().to_vec(),
+            b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC".to_vec()
+        );
     }
-    
+
     #[test]
     fn test_reader_wrong_header() {
         let mut reader = Reader::new(&b"!test\nACGTA\n"[..]);

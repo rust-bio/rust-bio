@@ -27,7 +27,6 @@ pub trait FQRead {
     fn read(&mut self, record: &mut Record) -> io::Result<()>;
 }
 
-
 /// A FastQ reader.
 #[derive(Debug)]
 pub struct Reader<R: io::Read> {
@@ -57,8 +56,10 @@ impl<R: io::Read> Reader<R> {
     }
 }
 
-
-impl<R> FQRead for Reader<R> where R: io::Read {
+impl<R> FQRead for Reader<R>
+where
+    R: io::Read,
+{
     /// Read into a given record.
     /// Returns an error if the record in incomplete or syntax is violated.
     /// The content of the record can be checked via the record object.
