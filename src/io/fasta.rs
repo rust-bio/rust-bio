@@ -1,4 +1,4 @@
-// Copyright 2014-2016 Johannes Köster, Christopher Schröder, Henning Timm.
+// Copyright 2014-2018 Johannes Köster, Christopher Schröder, Henning Timm.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
