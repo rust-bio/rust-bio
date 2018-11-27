@@ -792,19 +792,11 @@ ATTGTTGTTTTA
 
     #[test]
     fn test_faread_trait() {
-        use std::time::{SystemTime, UNIX_EPOCH};
-        let mut fa_reader: Box<FARead>;
-        // Generate some randomness/ uncertainty for the compiler
-        // without using the rand crate.
-        // The exact flavour of the generic inside reader is unknown
-        match SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .subsec_nanos() % 2
-        {
-            0 => fa_reader = Box::new(Reader::new(FASTA_FILE)),
-            _ => fa_reader = Box::new(Reader::new(io::BufReader::new(FASTA_FILE))),
-        }
+        let path = "genome.fa.gz";
+        let mut fa_reader: Box<FARead> = match path.ends_with(".gz") {
+            true => Box::new(Reader::new(io::BufReader::new(FASTA_FILE))),
+            false => Box::new(Reader::new(FASTA_FILE)),
+        };
         // The read method can be called, since it is implemented by
         // FQRead. Right now, the records method would not work.
         let mut record = Record::new();
