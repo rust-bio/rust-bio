@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.25.0] - Unreleased
+- Added `FQRead` and `FARead` traits to `FastaReader` and `FastqReader` to be more flexible with input types. This allows to use readers on gzipped and on plain text input interchangeably.
+
 # [0.24.0] - 2018-11-26
 - API overhaul to become more flexible when accepting text iterators. Now, anything that iterates over something can be borrowed as u8 is allowed.
 - FMIndex and FMDIndex now also allow plain owned versions of BWT, Less and Occ. This should greatly simplify their usage.
