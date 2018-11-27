@@ -28,6 +28,11 @@ use utils::{Text, TextSlice};
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
 
+/// Trait for FASTA readers.
+pub trait FARead {
+    fn read(&mut self, record: &mut Record) -> io::Result<()>;
+}
+
 /// A FASTA reader.
 #[derive(Debug)]
 pub struct Reader<R: io::Read> {
@@ -63,12 +68,41 @@ impl<R: io::Read> Reader<R> {
         }
     }
 
-    /// Read next FASTA record into the given `Record`.
+    /// Return an iterator over the records of this Fasta file.
     ///
     /// # Example
     /// ```rust
     /// # use std::io;
     /// # use bio::io::fasta::Reader;
+    /// # use bio::io::fasta::Record;
+    /// # fn main() {
+    /// # const fasta_file: &'static [u8] = b">id desc
+    /// # AAAA
+    /// # ";
+    /// # let reader = Reader::new(fasta_file);
+    /// for record in reader.records() {
+    ///     let record = record.unwrap();
+    ///     assert_eq!(record.id(), "id");
+    ///     assert_eq!(record.desc().unwrap(), "desc");
+    ///     assert_eq!(record.seq().to_vec(), b"AAAA");
+    /// }
+    /// # }
+    /// ```
+    pub fn records(self) -> Records<R> {
+        Records {
+            reader: self,
+            error_has_occured: false,
+        }
+    }
+}
+
+impl<R> FARead for Reader<R> where R: io::Read {
+    /// Read next FASTA record into the given `Record`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use std::io;
+    /// # use bio::io::fasta::{Reader, FARead};
     /// # use bio::io::fasta::Record;
     /// # fn main() {
     /// # const fasta_file: &'static [u8] = b">id desc
@@ -83,7 +117,7 @@ impl<R: io::Read> Reader<R> {
     /// assert_eq!(record.seq().to_vec(), b"AAAA");
     /// # }
     /// ```
-    pub fn read(&mut self, record: &mut Record) -> io::Result<()> {
+    fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
         if self.line.is_empty() {
             try!(self.reader.read_line(&mut self.line));
@@ -120,34 +154,8 @@ impl<R: io::Read> Reader<R> {
 
         Ok(())
     }
-
-    /// Return an iterator over the records of this Fasta file.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use std::io;
-    /// # use bio::io::fasta::Reader;
-    /// # use bio::io::fasta::Record;
-    /// # fn main() {
-    /// # const fasta_file: &'static [u8] = b">id desc
-    /// # AAAA
-    /// # ";
-    /// # let reader = Reader::new(fasta_file);
-    /// for record in reader.records() {
-    ///     let record = record.unwrap();
-    ///     assert_eq!(record.id(), "id");
-    ///     assert_eq!(record.desc().unwrap(), "desc");
-    ///     assert_eq!(record.seq().to_vec(), b"AAAA");
-    /// }
-    /// # }
-    /// ```
-    pub fn records(self) -> Records<R> {
-        Records {
-            reader: self,
-            error_has_occured: false,
-        }
-    }
 }
+
 
 /// A FASTA index as created by SAMtools (.fai).
 #[derive(Debug, Clone)]
@@ -782,6 +790,32 @@ ATTGTTGTTTTA
         }
     }
 
+    #[test]
+    fn test_faread_trait() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let mut fa_reader: Box<FARead>;
+        // Generate some randomness/ uncertainty for the compiler
+        // without using the rand crate.
+        // The exact flavour of the generic inside reader is unknown
+        match SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .subsec_nanos() % 2
+        {
+            0 => fa_reader = Box::new(Reader::new(FASTA_FILE)),
+            _ => fa_reader = Box::new(Reader::new(io::BufReader::new(FASTA_FILE))),
+        }
+        // The read method can be called, since it is implemented by
+        // FQRead. Right now, the records method would not work.
+        let mut record = Record::new();
+        fa_reader.read(&mut record).unwrap();
+        // Check if the returned result is correct.
+        assert_eq!(record.check(), Ok(()));
+        assert_eq!(record.id(), "id");
+        assert_eq!(record.desc(), Some("desc"));
+        assert_eq!(record.seq().to_vec(), b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC".to_vec());
+    }
+    
     #[test]
     fn test_reader_wrong_header() {
         let mut reader = Reader::new(&b"!test\nACGTA\n"[..]);
