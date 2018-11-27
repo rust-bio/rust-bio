@@ -307,19 +307,11 @@ IIIIIIJJJJJJ
 
     #[test]
     fn test_fqread_trait() {
-        use std::time::{SystemTime, UNIX_EPOCH};
-        let mut fq_reader: Box<FQRead>;
-        // Generate some randomness/ uncertainty for the compiler
-        // without using the rand crate.
-        // The exact flavour of the generic inside reader is unknown
-        match SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .subsec_nanos() % 2
-        {
-            0 => fq_reader = Box::new(Reader::new(FASTQ_FILE)),
-            _ => fq_reader = Box::new(Reader::new(io::BufReader::new(FASTQ_FILE))),
-        }
+        let path = "reads.fq.gz";
+        let mut fq_reader: Box<FQRead> = match path.ends_with(".gz") {
+            true => Box::new(Reader::new(io::BufReader::new(FASTQ_FILE))),
+            false => Box::new(Reader::new(FASTQ_FILE)),
+        };
         // The read method can be called, since it is implemented by
         // FQRead. Right now, the records method would not work.
         let mut record = Record::new();
