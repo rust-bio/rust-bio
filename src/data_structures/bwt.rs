@@ -12,7 +12,6 @@ use std::iter::repeat;
 use alphabets::Alphabet;
 use bytecount;
 use data_structures::suffix_array::RawSuffixArray;
-use std::ops::Deref;
 use utils::prescan;
 
 pub type BWT = Vec<u8>;

@@ -1,4 +1,4 @@
-// Copyright 2014-2016 Johannes Köster, Christopher Schröder, Henning Timm.
+// Copyright 2014-2018 Johannes Köster, Christopher Schröder, Henning Timm.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -27,6 +27,11 @@ use utils::{Text, TextSlice};
 
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
+
+/// Trait for FASTA readers.
+pub trait FastaRead {
+    fn read(&mut self, record: &mut Record) -> io::Result<()>;
+}
 
 /// A FASTA reader.
 #[derive(Debug)]
@@ -63,12 +68,44 @@ impl<R: io::Read> Reader<R> {
         }
     }
 
-    /// Read next FASTA record into the given `Record`.
+    /// Return an iterator over the records of this Fasta file.
     ///
     /// # Example
     /// ```rust
     /// # use std::io;
     /// # use bio::io::fasta::Reader;
+    /// # use bio::io::fasta::Record;
+    /// # fn main() {
+    /// # const fasta_file: &'static [u8] = b">id desc
+    /// # AAAA
+    /// # ";
+    /// # let reader = Reader::new(fasta_file);
+    /// for record in reader.records() {
+    ///     let record = record.unwrap();
+    ///     assert_eq!(record.id(), "id");
+    ///     assert_eq!(record.desc().unwrap(), "desc");
+    ///     assert_eq!(record.seq().to_vec(), b"AAAA");
+    /// }
+    /// # }
+    /// ```
+    pub fn records(self) -> Records<R> {
+        Records {
+            reader: self,
+            error_has_occured: false,
+        }
+    }
+}
+
+impl<R> FastaRead for Reader<R>
+where
+    R: io::Read,
+{
+    /// Read next FASTA record into the given `Record`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use std::io;
+    /// # use bio::io::fasta::{Reader, FastaRead};
     /// # use bio::io::fasta::Record;
     /// # fn main() {
     /// # const fasta_file: &'static [u8] = b">id desc
@@ -83,7 +120,7 @@ impl<R: io::Read> Reader<R> {
     /// assert_eq!(record.seq().to_vec(), b"AAAA");
     /// # }
     /// ```
-    pub fn read(&mut self, record: &mut Record) -> io::Result<()> {
+    fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
         if self.line.is_empty() {
             try!(self.reader.read_line(&mut self.line));
@@ -119,33 +156,6 @@ impl<R: io::Read> Reader<R> {
         }
 
         Ok(())
-    }
-
-    /// Return an iterator over the records of this Fasta file.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use std::io;
-    /// # use bio::io::fasta::Reader;
-    /// # use bio::io::fasta::Record;
-    /// # fn main() {
-    /// # const fasta_file: &'static [u8] = b">id desc
-    /// # AAAA
-    /// # ";
-    /// # let reader = Reader::new(fasta_file);
-    /// for record in reader.records() {
-    ///     let record = record.unwrap();
-    ///     assert_eq!(record.id(), "id");
-    ///     assert_eq!(record.desc().unwrap(), "desc");
-    ///     assert_eq!(record.seq().to_vec(), b"AAAA");
-    /// }
-    /// # }
-    /// ```
-    pub fn records(self) -> Records<R> {
-        Records {
-            reader: self,
-            error_has_occured: false,
-        }
     }
 }
 
@@ -780,6 +790,27 @@ ATTGTTGTTTTA
             assert_eq!(record.desc(), descs[i]);
             assert_eq!(record.seq(), seqs[i]);
         }
+    }
+
+    #[test]
+    fn test_faread_trait() {
+        let path = "genome.fa.gz";
+        let mut fa_reader: Box<FastaRead> = match path.ends_with(".gz") {
+            true => Box::new(Reader::new(io::BufReader::new(FASTA_FILE))),
+            false => Box::new(Reader::new(FASTA_FILE)),
+        };
+        // The read method can be called, since it is implemented by
+        // FQRead. Right now, the records method would not work.
+        let mut record = Record::new();
+        fa_reader.read(&mut record).unwrap();
+        // Check if the returned result is correct.
+        assert_eq!(record.check(), Ok(()));
+        assert_eq!(record.id(), "id");
+        assert_eq!(record.desc(), Some("desc"));
+        assert_eq!(
+            record.seq().to_vec(),
+            b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC".to_vec()
+        );
     }
 
     #[test]
