@@ -29,7 +29,7 @@ use utils::{Text, TextSlice};
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
 
 /// Trait for FASTA readers.
-pub trait Read {
+pub trait FastaRead {
     fn read(&mut self, record: &mut Record) -> io::Result<()>;
 }
 
@@ -96,7 +96,7 @@ impl<R: io::Read> Reader<R> {
     }
 }
 
-impl<R> Read for Reader<R>
+impl<R> FastaRead for Reader<R>
 where
     R: io::Read,
 {
@@ -105,7 +105,7 @@ where
     /// # Example
     /// ```rust
     /// # use std::io;
-    /// # use bio::io::fasta::{Reader, Read};
+    /// # use bio::io::fasta::{Reader, FastaRead};
     /// # use bio::io::fasta::Record;
     /// # fn main() {
     /// # const fasta_file: &'static [u8] = b">id desc
@@ -795,7 +795,7 @@ ATTGTTGTTTTA
     #[test]
     fn test_faread_trait() {
         let path = "genome.fa.gz";
-        let mut fa_reader: Box<Read> = match path.ends_with(".gz") {
+        let mut fa_reader: Box<FastaRead> = match path.ends_with(".gz") {
             true => Box::new(Reader::new(io::BufReader::new(FASTA_FILE))),
             false => Box::new(Reader::new(FASTA_FILE)),
         };

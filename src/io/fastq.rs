@@ -23,7 +23,7 @@ use std::path::Path;
 use utils::TextSlice;
 
 /// Trait for FASTQ readers.
-pub trait Read {
+pub trait FastqRead {
     fn read(&mut self, record: &mut Record) -> io::Result<()>;
 }
 
@@ -56,7 +56,7 @@ impl<R: io::Read> Reader<R> {
     }
 }
 
-impl<R> Read for Reader<R>
+impl<R> FastqRead for Reader<R>
 where
     R: io::Read,
 {
@@ -309,7 +309,7 @@ IIIIIIJJJJJJ
     #[test]
     fn test_fqread_trait() {
         let path = "reads.fq.gz";
-        let mut fq_reader: Box<Read> = match path.ends_with(".gz") {
+        let mut fq_reader: Box<FastqRead> = match path.ends_with(".gz") {
             true => Box::new(Reader::new(io::BufReader::new(FASTQ_FILE))),
             false => Box::new(Reader::new(FASTQ_FILE)),
         };
