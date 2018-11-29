@@ -5,6 +5,9 @@
 
 //! Utilities for Bayesian statistics.
 
+pub mod bayes_factors;
+pub use self::bayes_factors::BayesFactor;
+
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
