@@ -5,7 +5,6 @@
 
 //! Utilities for Bayesian statistics.
 
-
 pub mod bayes_factors;
 pub use self::bayes_factors::BayesFactor;
 
@@ -44,7 +43,6 @@ pub fn expected_fdr(peps: &[LogProb]) -> Vec<LogProb> {
 
     expected_fdr
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -13,7 +13,6 @@ pub mod evidence {
     }
 }
 
-
 custom_derive! {
     /// A newtype for Bayes factors.
     #[derive(
@@ -27,7 +26,6 @@ custom_derive! {
     )]
     pub struct BayesFactor(pub f64);
 }
-
 
 impl BayesFactor {
     /// Calculate Bayes factor from given probabilities.
@@ -51,7 +49,6 @@ impl BayesFactor {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -59,7 +56,7 @@ mod tests {
     #[test]
     fn test_bayes_factor() {
         let bf = BayesFactor::new(LogProb(0.5_f64.ln()), LogProb(0.1_f64.ln()));
-        assert_relative_eq!(*bf, 5.0, epsilon=1e-9);
+        assert_relative_eq!(*bf, 5.0, epsilon = 1e-9);
         assert_eq!(bf.evidence_kass_raftery(), evidence::KassRaftery::Positive);
     }
 }
