@@ -5,8 +5,11 @@
 
 //! Common utilities.
 
+mod fastexp;
+pub use self::fastexp::FastExp;
+
 mod text;
-pub use self::text::{trim_newline, IntoTextIterator, Text, TextIterator, TextSlice};
+pub use self::text::{trim_newline, Text, TextSlice};
 
 mod interval;
 pub use self::interval::{Interval, IntervalError};

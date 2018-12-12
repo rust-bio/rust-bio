@@ -193,9 +193,11 @@ mod tests {
                 b"TTTT".to_vec(),
                 b"GGGG".to_vec(),
                 b"CCCC".to_vec(),
-            ].as_ref(),
+            ]
+            .as_ref(),
             None,
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(pssm.scores, Array2::from_elem((4, 4), 0.25));
     }
     #[test]
