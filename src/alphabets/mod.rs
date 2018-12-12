@@ -109,7 +109,8 @@ impl RankTransform {
                     .ranks
                     .get(*c.borrow() as usize)
                     .expect("Unexpected character in text.")
-            }).collect()
+            })
+            .collect()
     }
 
     /// Iterate over q-grams (substrings of length q) of given `text`. The q-grams are encoded

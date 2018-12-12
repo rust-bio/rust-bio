@@ -253,20 +253,21 @@ impl PairHMM {
 
                     // match or mismatch
                     let emit_xy = emission_params.prob_emit_xy(i, j);
-                    let prob_match_mismatch = emit_xy.prob() + ln_sum3_exp_approx(
-                        prob_no_gap + fm_prev[j_minus_one],
-                        // coming from state X
-                        prob_no_gap_x_extend + fx_prev[j_minus_one],
-                        // coming from state Y
-                        prob_no_gap_y_extend + fy_prev[j_minus_one],
-                    );
+                    let prob_match_mismatch = emit_xy.prob()
+                        + ln_sum3_exp_approx(
+                            prob_no_gap + fm_prev[j_minus_one],
+                            // coming from state X
+                            prob_no_gap_x_extend + fx_prev[j_minus_one],
+                            // coming from state Y
+                            prob_no_gap_y_extend + fy_prev[j_minus_one],
+                        );
 
                     // gap in y
                     let mut prob_gap_y = prob_emit_x
                         + (
-                        // open gap
-                        prob_gap_y + fm_prev[j_]
-                    );
+                            // open gap
+                            prob_gap_y + fm_prev[j_]
+                        );
                     if do_gap_y_extend {
                         prob_gap_y = prob_gap_y.ln_add_exp(
                             // extend gap
@@ -277,9 +278,9 @@ impl PairHMM {
                     // gap in x
                     let mut prob_gap_x = emission_params.prob_emit_y(j)
                         + (
-                        // open gap
-                        prob_gap_x + fm_curr[j_minus_one]
-                    );
+                            // open gap
+                            prob_gap_x + fm_curr[j_minus_one]
+                        );
                     if do_gap_x_extend {
                         prob_gap_x = prob_gap_x.ln_add_exp(
                             // extend gap

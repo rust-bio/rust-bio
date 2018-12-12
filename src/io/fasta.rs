@@ -208,7 +208,8 @@ impl Index {
             .map(|record| Sequence {
                 name: record.name.clone(),
                 len: record.len,
-            }).collect()
+            })
+            .collect()
     }
 }
 
@@ -1186,7 +1187,8 @@ ATTGTTGTTTTA
         let mut reader = IndexedReader::new(
             io::Cursor::new(FASTA_FILE_NO_TRAILING_LF),
             FAI_FILE_NO_TRAILING_LF,
-        ).unwrap();
+        )
+        .unwrap();
         let mut seq = Vec::new();
 
         reader.fetch("id", 0, 16).unwrap();

@@ -62,7 +62,8 @@ impl Finder {
                 .map(|x| {
                     // object.
                     x.into_iter().map(|&x| x as u8).collect::<VecDeque<u8>>()
-                }).collect(),
+                })
+                .collect(),
             min_len,
         }
     }

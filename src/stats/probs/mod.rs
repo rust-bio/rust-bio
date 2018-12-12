@@ -236,7 +236,9 @@ impl LogProb {
                             } else {
                                 Some((p - pmax).fastexp())
                             }
-                        }).sum::<f64>()).ln_1p(),
+                        })
+                        .sum::<f64>())
+                    .ln_1p(),
                 )
             }
         }
@@ -327,7 +329,8 @@ impl LogProb {
             .map(|(i, v)| {
                 let weight = (2 + (i % 2) * 2) as f64;
                 LogProb(*density(v) + weight.ln()) // factors alter between 2 and 4
-            }).collect_vec();
+            })
+            .collect_vec();
         probs.push(density(a));
         probs.push(density(b));
         let width = f64::from(b - a);
