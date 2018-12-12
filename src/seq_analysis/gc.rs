@@ -7,15 +7,15 @@
 
 //! Complexity: o(n)
 
-use utils::IntoTextIterator;
+use std::borrow::Borrow;
 
 /// Base gc content counter
-fn gcn_content<'a, I: IntoTextIterator<'a>>(sequence: I, step: usize) -> f32 {
+fn gcn_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T, step: usize) -> f32 {
     let mut l = 0f32;
     let mut count = 0.0;
-    for (i, &n) in sequence.into_iter().enumerate() {
+    for (i, n) in sequence.into_iter().enumerate() {
         if i % step == 0 {
-            count += match n {
+            count += match *n.borrow() {
                 b'c' | b'g' | b'G' | b'C' => 1f32, // G or C
                 _ => 0f32,
             };
@@ -26,11 +26,11 @@ fn gcn_content<'a, I: IntoTextIterator<'a>>(sequence: I, step: usize) -> f32 {
 }
 
 /// gc content counter for every nucleotide
-pub fn gc_content<'a, I: IntoTextIterator<'a>>(sequence: I) -> f32 {
+pub fn gc_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 {
     gcn_content(sequence, 1usize)
 }
 
 /// gc content counter for the nucleotide in 3rd position
-pub fn gc3_content<'a, I: IntoTextIterator<'a>>(sequence: I) -> f32 {
+pub fn gc3_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 {
     gcn_content(sequence, 3usize)
 }

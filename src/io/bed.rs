@@ -125,7 +125,7 @@ impl<W: io::Write> Writer<W> {
 
 /// A BED record as defined by BEDtools
 /// (http://bedtools.readthedocs.org/en/latest/content/general-usage.html)
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize, Default, Deserialize, Clone)]
 pub struct Record {
     chrom: String,
     start: u64,
@@ -449,7 +449,8 @@ mod tests {
             &vec![535, 11],
             &vec![0, 638],
             ReqStrand::Reverse,
-        ).unwrap();
+        )
+        .unwrap();
         let mut buf = Vec::new();
         {
             let mut writer = Writer::new(&mut buf);
@@ -469,7 +470,8 @@ mod tests {
             &vec![11, 94, 630],
             &vec![0, 420, 921],
             ReqStrand::Forward,
-        ).unwrap();
+        )
+        .unwrap();
         let mut buf = Vec::new();
         {
             let mut writer = Writer::new(&mut buf);
@@ -489,7 +491,8 @@ mod tests {
             &vec![808, 52, 109],
             &vec![0, 864, 984],
             ReqStrand::Reverse,
-        ).unwrap();
+        )
+        .unwrap();
         let mut buf = Vec::new();
         {
             let mut writer = Writer::new(&mut buf);

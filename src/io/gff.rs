@@ -224,7 +224,7 @@ impl<W: io::Write> Writer<W> {
 }
 
 /// A GFF record
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Record {
     seqname: String,
     source: String,

@@ -642,7 +642,8 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
         for i in 0..res.path.len() {
             assert_eq!(matches[res.path[i] as usize], (i as u32, i as u32));
         }
-        */    }
+        */
+    }
 
     #[test]
     fn test_sdpkpp_tandem_repeat() {

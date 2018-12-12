@@ -617,13 +617,12 @@ mod tests {
         for mut e in tree.find_mut(q.clone()) {
             *e.data() += 1;
         }
-        assert!(
-            tree.find(0..100)
-                .all(|e| if super::intersect(e.interval(), &q) {
-                    *e.data() == 1
-                } else {
-                    *e.data() == 0
-                })
-        );
+        assert!(tree
+            .find(0..100)
+            .all(|e| if super::intersect(e.interval(), &q) {
+                *e.data() == 1
+            } else {
+                *e.data() == 0
+            }));
     }
 }

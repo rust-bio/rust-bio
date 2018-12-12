@@ -1,4 +1,4 @@
-// Copyright 2014-2016 Johannes Köster.
+// Copyright 2014-2018 Johannes Köster, Henning Timm.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -21,6 +21,11 @@ use std::io::prelude::*;
 use std::path::Path;
 
 use utils::TextSlice;
+
+/// Trait for FASTQ readers.
+pub trait FastqRead {
+    fn read(&mut self, record: &mut Record) -> io::Result<()>;
+}
 
 /// A FastQ reader.
 #[derive(Debug)]
@@ -45,10 +50,20 @@ impl<R: io::Read> Reader<R> {
         }
     }
 
+    /// Return an iterator over the records of this FastQ file.
+    pub fn records(self) -> Records<R> {
+        Records { reader: self }
+    }
+}
+
+impl<R> FastqRead for Reader<R>
+where
+    R: io::Read,
+{
     /// Read into a given record.
     /// Returns an error if the record in incomplete or syntax is violated.
     /// The content of the record can be checked via the record object.
-    pub fn read(&mut self, record: &mut Record) -> io::Result<()> {
+    fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
 
         let mut header = String::new();
@@ -87,15 +102,10 @@ impl<R: io::Read> Reader<R> {
 
         Ok(())
     }
-
-    /// Return an iterator over the records of this FastQ file.
-    pub fn records(self) -> Records<R> {
-        Records { reader: self }
-    }
 }
 
 /// A FastQ record.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Record {
     id: String,
     desc: Option<String>,
@@ -294,6 +304,25 @@ IIIIIIJJJJJJ
             assert_eq!(record.seq(), b"ACCGTAGGCTGA");
             assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
         }
+    }
+
+    #[test]
+    fn test_fqread_trait() {
+        let path = "reads.fq.gz";
+        let mut fq_reader: Box<FastqRead> = match path.ends_with(".gz") {
+            true => Box::new(Reader::new(io::BufReader::new(FASTQ_FILE))),
+            false => Box::new(Reader::new(FASTQ_FILE)),
+        };
+        // The read method can be called, since it is implemented by
+        // `Read`. Right now, the records method would not work.
+        let mut record = Record::new();
+        fq_reader.read(&mut record).unwrap();
+        // Check if the returned result is correct.
+        assert_eq!(record.check(), Ok(()));
+        assert_eq!(record.id(), "id");
+        assert_eq!(record.desc(), Some("desc"));
+        assert_eq!(record.seq(), b"ACCGTAGGCTGA");
+        assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
     }
 
     #[test]
