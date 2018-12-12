@@ -114,6 +114,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate bv;
 extern crate fnv;
+extern crate petgraph;
 extern crate statrs;
 extern crate vec_map;
 

@@ -569,14 +569,12 @@ mod tests {
         let alignment = poa.global(seq2);
         poa.add_alignment(alignment, seq2);
         assert_eq!(poa.graph.edge_count(), 14);
-        assert!(
-            poa.graph
-                .contains_edge(NodeIndex::new(5), NodeIndex::new(10))
-        );
-        assert!(
-            poa.graph
-                .contains_edge(NodeIndex::new(11), NodeIndex::new(6))
-        );
+        assert!(poa
+            .graph
+            .contains_edge(NodeIndex::new(5), NodeIndex::new(10)));
+        assert!(poa
+            .graph
+            .contains_edge(NodeIndex::new(11), NodeIndex::new(6)));
     }
 
     #[test]

@@ -46,7 +46,7 @@ version = "0.8"
 features = ["eders"]
 
 [dependencies.petgraph]
-version = "0.4.10"
+version = "0.4"
 features = ["stable_graph"]
 
 [package.metadata.release]
