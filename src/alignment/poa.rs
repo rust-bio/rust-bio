@@ -18,19 +18,24 @@
 //!
 //! ```
 //! use bio::alignment::poa::*;
+//! use bio::alignment::pairwise::Scoring;
+//!
 //! let x = b"AAAAAAA";
 //! let y = b"AABBBAA";
 //! let z = b"AABCBAA";
 //!
-//! let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-//! let mut aligner = Aligner::new(-1, &score);
-//! aligner.add_sequence(x);
+//! let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
+//! let mut poa = AlignerBuilder::new(scoring);
+//! poa.global(x).add_to_graph();
 //! // z differs from x in 3 locations
-//! assert_eq!(aligner.global(z).score, 1);
-//! aligner.add_sequence(y);
+//! assert_eq!(poa.global(z).alignment.score, 1);
+//! aligner.global(y).add_to_graph();
 //! // z differs from x and y's partial order alignment by 1 base
-//! assert_eq!(aligner.global(z).score, 5);
-//!
+//! assert_eq!(poa.global(z).alignment.score, 5);
+//! ```
+//! Immutable semantics are available:
+//! ```
+//! let aligner = Aligner::new(scoring);
 //! // an alignment can be recycled to add a sequence to the graph
 //! let alignment = aligner.global(z);
 //! aligner.add_alignment(alignment, z);
@@ -38,7 +43,6 @@
 //! ```
 
 use std::cmp::{max, Ordering};
-use std::ops::Neg;
 
 use utils::TextSlice;
 
@@ -155,22 +159,66 @@ impl Traceback {
 
 /// A multiple sequence aligner builder
 ///
-/// Uses builder pattern for constructing partial order alignments with method chainging
-pub struct POA<F: MatchFunc> {
-    aligner: Aligner<F>,
-    refs: Vec<String>,
+/// Uses consuming builder pattern for constructing partial order alignments with method chaining
+pub struct AlignerBuilder<'a, F: MatchFunc> {
+    aligner: Option<Aligner<F>>,
+    alignment: Option<Alignment>,
+    query: Option<&'a [u8]>,
+    scoring: Scoring<F>,
+    sequence_names: Vec<String>,
 }
 
-impl<F: MatchFunc> POA<F> {
-    //    pub fn new() -> POA {
-    //        POA { aligner: Aligner }
-    //
+impl<F: MatchFunc> AlignerBuilder<'static, F> {
+    pub fn new(penalty: i32, scoring: Scoring<F>) -> Self {
+        AlignerBuilder {
+            aligner: None,
+            alignment: None,
+            query: None,
+            sequence_names: vec![],
+            scoring: scoring,
+        }
+    }
 
-    //    pub fn add_sequence() -> {
-    //        POA { aligner: Aligner::new(self.scoring). }
-    //    }
+    pub fn add_to_graph(self) -> AlignerBuilder<'static, F> {
+        self.aligner
+            .unwrap()
+            .add_alignment(self.alignment.unwrap(), self.query.unwrap());
+        self
+
+        //        match self.aligner {
+        //            Some(aligner) => {
+        //                match self.alignment {
+        //                    Some(alignment) => {
+        //                        aligner.add_alignment(alignment, self.query.unwrap());
+        //                    }
+        //                    None => {}
+        //                }
+        //            }
+        //            None => {} // raise error
+    }
+
+    pub fn global(mut self, query: &'static [u8]) -> AlignerBuilder<F> {
+        //let aligner = self.aligner.add_sequence(alignment, query);
+
+        self.query = Some(query.clone());
+        match self.aligner {
+            Some(aligner) => {
+                self.alignment = Some(aligner.global(query));
+                self
+            }
+            None => {
+                self.aligner = Some(Aligner::from_string(self.scoring, query));
+                self.alignment = None;
+                self
+            }
+        }
+    }
+
+    /// finalize Aligner
+    fn finish(self) -> Aligner<F> {
+        Aligner::new(self.scoring)
+    }
 }
-
 /// A global aligner on partially ordered graphs
 ///
 /// Internally stores a directed acyclic graph datastructure that informs the topology of the
@@ -186,10 +234,9 @@ pub struct Aligner<F: MatchFunc> {
 }
 
 impl<F: MatchFunc> Aligner<F> {
-    pub fn new(gap_open: i32, match_fn: F) -> Self {
+    pub fn new(scoring: Scoring<F>) -> Self {
         Aligner {
-            scoring: Scoring::new(gap_open, 0, match_fn),
-            //            traceback: Traceback::new(),
+            scoring: scoring,
             graph: Graph::with_capacity(0, 0),
         }
     }
@@ -197,11 +244,10 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     /// # Arguments
     ///
+    /// * `scoring` - the score struct
     /// * `reference` - a reference TextSlice to populate the initial reference graph
-    /// * `gap_open` - the negative score assigned when branching from the reference graph
-    /// * `match_fn` - the pairwise score for substitutions (see bio::scores)
     ///
-    pub fn from_string(seq: TextSlice, gap_open: i32, match_fn: F) -> Self {
+    pub fn from_string(scoring: Scoring<F>, seq: TextSlice) -> Self {
         let mut graph: Graph<u8, i32, Directed, usize> =
             Graph::with_capacity(seq.len(), seq.len() - 1);
         let mut prev: NodeIndex<usize> = graph.add_node(seq[0]);
@@ -213,7 +259,7 @@ impl<F: MatchFunc> Aligner<F> {
         }
 
         Aligner {
-            scoring: Scoring::new(gap_open, 0, match_fn),
+            scoring: scoring,
             graph: graph,
         }
     }
@@ -222,13 +268,12 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     /// # Arguments
     ///
+    /// * `scoring` - the score struct
     /// * `poa` - the partially ordered reference alignment
-    /// * `gap_open` - the negative score assigned when branch from the reference graph
-    /// * `match_fn` - the pairwise score for substitutions (see bio::scores)
     ///
-    pub fn from_graph(poa: Graph<u8, i32, Directed, usize>, gap_open: i32, match_fn: F) -> Self {
+    pub fn from_graph(scoring: Scoring<F>, poa: Graph<u8, i32, Directed, usize>) -> Self {
         Aligner {
-            scoring: Scoring::new(gap_open, 0, match_fn),
+            scoring: scoring,
             graph: poa,
         }
     }
@@ -357,7 +402,7 @@ impl<F: MatchFunc> Aligner<F> {
 
     /// Experimental: return sequence of traversed edges
     ///
-    /// Only supported alignments for sequences that have already been added,
+    /// Only supports alignments for sequences that have already been added,
     /// so all operations must be Match.
     pub fn edges(&self, aln: Alignment) -> Vec<usize> {
         let mut path: Vec<usize> = vec![];
@@ -478,6 +523,7 @@ fn dump_traceback(
 
 #[cfg(test)]
 mod tests {
+    use alignment::pairwise::Scoring;
     use alignment::poa::Aligner;
     use petgraph::dot::Dot;
     use petgraph::graph::NodeIndex;
@@ -510,8 +556,8 @@ mod tests {
     fn test_init_graph() {
         // sanity check for String -> Graph
 
-        let match_fn = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let poa = Aligner::from_string(b"123456789", -1, match_fn);
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
+        let poa = Aligner::from_string(scoring, b"123456789");
         assert!(poa.graph.is_directed());
         assert_eq!(poa.graph.node_count(), 9);
         assert_eq!(poa.graph.edge_count(), 8);
@@ -519,11 +565,11 @@ mod tests {
 
     #[test]
     fn test_alignment() {
-        let match_fn = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
         // examples from the POA paper
         //let _seq1 = b"PKMIVRPQKNETV";
         //let _seq2 = b"THKMLVRNETIM";
-        let mut poa = Aligner::from_string(b"GATTACA", -1, match_fn);
+        let mut poa = Aligner::from_string(scoring, b"GATTACA");
         let alignment = poa.global(b"GCATGCU");
         assert_eq!(alignment.score, 0);
 
@@ -536,11 +582,10 @@ mod tests {
 
     #[test]
     fn test_branched_alignment() {
-        let match_fn = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
         let seq1 = b"TTTTT";
         let seq2 = b"TTATT";
-        let mut poa = Aligner::from_string(seq1, -1, match_fn);
+        let mut poa = Aligner::from_string(scoring, seq1);
         let head: NodeIndex<usize> = NodeIndex::new(1);
         let tail: NodeIndex<usize> = NodeIndex::new(2);
         let node1 = poa.graph.add_node(b'A');
@@ -554,11 +599,11 @@ mod tests {
 
     #[test]
     fn test_alt_branched_alignment() {
-        let match_fn = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
 
         let seq1 = b"TTCCTTAA";
         let seq2 = b"TTTTGGAA";
-        let mut poa = Aligner::from_string(seq1, -1, match_fn);
+        let mut poa = Aligner::from_string(scoring, seq1);
         let head: NodeIndex<usize> = NodeIndex::new(1);
         let tail: NodeIndex<usize> = NodeIndex::new(2);
         let node1 = poa.graph.add_node(b'A');
@@ -579,12 +624,12 @@ mod tests {
 
     #[test]
     fn test_insertion_on_branch() {
-        let match_fn = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
 
         let seq1 = b"TTCCGGTTTAA";
         let seq2 = b"TTGGTATGGGAA";
         let seq3 = b"TTGGTTTGCGAA";
-        let mut poa = Aligner::from_string(seq1, -1, match_fn);
+        let mut poa = Aligner::from_string(scoring, seq1);
         let head: NodeIndex<usize> = NodeIndex::new(1);
         let tail: NodeIndex<usize> = NodeIndex::new(2);
         let node1 = poa.graph.add_node(b'C');
