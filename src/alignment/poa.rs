@@ -189,8 +189,8 @@ impl Traceback {
         self.matrix[i][j] = cell;
     }
 
-    fn get(&self, i: usize, j: usize) -> TracebackCell {
-        self.matrix[i][j]
+    fn get(&self, i: usize, j: usize) -> &TracebackCell {
+        &self.matrix[i][j]
     }
 
     fn print(&self, g: &Graph<u8, i32, Directed, usize>, query: TextSlice) {
@@ -278,7 +278,7 @@ impl<F: MatchFunc> Aligner<F> {
         //        self.poa = Some(Poa::from_alignment(self.traceback.get_alignment()));
     }
 
-    pub fn global(&mut self, query: TextSlice) {
+    pub fn global(mut self, query: TextSlice) {
         self.traceback = self.poa.unwrap().global(query);
     }
 }
