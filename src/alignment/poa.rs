@@ -131,7 +131,7 @@ impl Traceback {
             rows: m,
             cols: n,
             last: NodeIndex::new(0),
-            matrix: matrix,
+            matrix,
         }
     }
 
@@ -313,10 +313,7 @@ impl<F: MatchFunc> Poa<F> {
             prev = node;
         }
 
-        Poa {
-            scoring: scoring,
-            graph: graph,
-        }
+        Poa { scoring, graph }
     }
 
     /// A global Needleman-Wunsch aligner on partially ordered graphs.
@@ -595,5 +592,17 @@ mod tests {
         let alignment2 = poa.global(seq3).get_alignment();
 
         assert_eq!(alignment2.score, 10);
+    }
+
+    #[test]
+    fn test_poa_method_chaining() {
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
+        let mut aligner = Aligner::new(scoring, b"TTCCGGTTTAA");
+        aligner
+            .global(b"TTGGTATGGGAA")
+            .add_to_graph()
+            .global(b"TTGGTTTGCGAA")
+            .add_to_graph();
+        assert_eq!(aligner.get_alignment().score, 10);
     }
 }
