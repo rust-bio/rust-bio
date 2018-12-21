@@ -190,7 +190,7 @@ impl Traceback {
         println!();
     }
 
-    fn get_alignment(self) -> Alignment {
+    fn get_alignment(&self) -> Alignment {
         // optimal AlignmentOperation path
         let mut ops: Vec<AlignmentOperation> = vec![];
 
@@ -236,34 +236,38 @@ impl Traceback {
     }
 }
 
-/// A multiple sequence aligner builder
+/// A partially ordered aligner builder
 ///
 /// Uses consuming builder pattern for constructing partial order alignments with method chaining
 pub struct Aligner<F: MatchFunc> {
     sequence_names: Vec<String>,
-    query: TextSlice<'static>,
     traceback: Traceback,
+    query: Vec<u8>,
     poa: Poa<F>,
 }
 
 impl<F: MatchFunc> Aligner<F> {
-    pub fn new(scoring: Scoring<F>, reference: TextSlice<'static>) -> Self {
+    pub fn new(scoring: Scoring<F>, reference: TextSlice) -> Self {
         Aligner {
             sequence_names: vec![],
             traceback: Traceback::new(),
-            query: reference.clone(),
+            query: reference.to_vec(),
             poa: Poa::from_string(scoring, reference),
         }
     }
 
-    pub fn add_to_graph<'a>(mut self) -> &'a mut Aligner<F> {
+    pub fn add_to_graph(&mut self) -> &mut Self {
         let alignment = self.traceback.get_alignment();
-        self.poa.add_alignment(alignment, self.query);
-        &mut self
+        self.poa.add_alignment(alignment, &self.query);
+        self
     }
 
-    pub fn global(&mut self, query: TextSlice<'static>) -> &mut Aligner<F> {
-        self.query = query.clone();
+    pub fn get_alignment(&self) -> Alignment {
+        self.traceback.get_alignment()
+    }
+
+    pub fn global(&mut self, query: TextSlice) -> &mut Self {
+        self.query = query.to_vec();
         self.traceback = self.poa.global(query);
         self
     }
