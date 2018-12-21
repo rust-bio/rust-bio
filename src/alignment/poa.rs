@@ -71,7 +71,7 @@ pub struct Alignment {
 }
 
 #[derive(Debug, Clone)]
-struct TracebackCell {
+pub struct TracebackCell {
     score: i32,
     op: AlignmentOperation,
 }
@@ -175,7 +175,7 @@ impl Traceback {
         &self.matrix[i][j]
     }
 
-    fn print(&self, g: &Graph<u8, i32, Directed, usize>, query: TextSlice) {
+    pub fn print(&self, g: &Graph<u8, i32, Directed, usize>, query: TextSlice) {
         let (m, n) = (g.node_count(), query.len());
         print!(".\t");
         for base in query.iter().take(n) {
@@ -190,7 +190,7 @@ impl Traceback {
         println!();
     }
 
-    fn get_alignment(&self) -> Alignment {
+    pub fn get_alignment(&self) -> Alignment {
         // optimal AlignmentOperation path
         let mut ops: Vec<AlignmentOperation> = vec![];
 
