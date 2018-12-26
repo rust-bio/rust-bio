@@ -1,6 +1,7 @@
 //! Efficient container for locations annotated across a set of named
 //! reference sequences.
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::hash::Hash;
 
 use bio_types::annot::loc::Loc;
@@ -26,7 +27,7 @@ use utils::Interval;
 pub struct AnnotMap<R, T>
 where
     R: Hash + Eq,
-    T: Eq,
+    T: Debug + Eq,
 {
     refid_itrees: HashMap<R, IntervalTree<isize, T>>,
 }
@@ -34,7 +35,7 @@ where
 impl<R, T> AnnotMap<R, T>
 where
     R: Eq + Hash,
-    T: Eq,
+    T: Debug + Eq,
 {
     /// Creates a new, empty `AnnotMap`.
     ///
@@ -132,7 +133,7 @@ where
 impl<R, T> AnnotMap<R, T>
 where
     R: Eq + Hash + Clone,
-    T: Eq + Loc<RefID = R>,
+    T: Debug + Eq + Loc<RefID = R>,
 {
     /// Inserts an object with the `Loc` trait into the container at
     /// its location.
@@ -157,7 +158,7 @@ where
 pub struct Entry<'a, R, T: Eq>
 where
     R: 'a + Eq + Hash,
-    T: 'a + Eq,
+    T: 'a + Debug + Eq,
 {
     itree_entry: interval_tree::Entry<'a, isize, T>,
     refid: &'a R,
@@ -166,7 +167,7 @@ where
 impl<'a, R, T> Entry<'a, R, T>
 where
     R: 'a + Eq + Hash,
-    T: 'a + Eq,
+    T: 'a + Debug + Eq,
 {
     /// Returns a reference to the data value in the `AnnotMap`.
     pub fn data(&self) -> &'a T {
@@ -191,7 +192,7 @@ where
 pub struct AnnotMapIterator<'a, R, T>
 where
     R: 'a + Eq + Hash,
-    T: 'a + Eq,
+    T: 'a + Debug + Eq,
 {
     itree_iter: Option<IntervalTreeIterator<'a, isize, T>>,
     refid: &'a R,
@@ -200,7 +201,7 @@ where
 impl<'a, R, T> Iterator for AnnotMapIterator<'a, R, T>
 where
     R: 'a + Eq + Hash,
-    T: 'a + Eq,
+    T: 'a + Debug + Eq,
 {
     type Item = Entry<'a, R, T>;
 

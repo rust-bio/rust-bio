@@ -28,17 +28,18 @@
 //!
 
 use std::cmp;
+use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::mem;
 use utils::Interval;
 
 /// An interval tree for storing intervals with data
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IntervalTree<N: Ord + Clone, D: Eq> {
+pub struct IntervalTree<N: Ord + Clone + Debug, D: Eq + Debug> {
     root: Option<Node<N, D>>,
 }
 
-impl<N: Ord + Clone, D: Eq> Default for IntervalTree<N, D> {
+impl<N: Ord + Clone + Debug, D: Eq + Debug> Default for IntervalTree<N, D> {
     fn default() -> Self {
         Self { root: None }
     }
@@ -47,12 +48,12 @@ impl<N: Ord + Clone, D: Eq> Default for IntervalTree<N, D> {
 /// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
 /// wraps the fields `interval` and `data` in an `Entry`.
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub struct Entry<'a, N: Ord + Clone + 'a, D: Eq + 'a> {
+pub struct Entry<'a, N: Ord + Clone + Debug + 'a, D: Eq + Debug + 'a> {
     data: &'a D,
     interval: &'a Interval<N>,
 }
 
-impl<'a, N: Ord + Clone + 'a, D: Eq + 'a> Entry<'a, N, D> {
+impl<'a, N: Ord + Clone + Debug + 'a, D: Eq + Debug + 'a> Entry<'a, N, D> {
     /// Get a reference to the data for this entry
     pub fn data(&self) -> &'a D {
         self.data
@@ -66,12 +67,12 @@ impl<'a, N: Ord + Clone + 'a, D: Eq + 'a> Entry<'a, N, D> {
 
 /// An `IntervalTreeIterator` is returned by `Intervaltree::find` and iterates over the entries
 /// overlapping the query
-pub struct IntervalTreeIterator<'a, N: Ord + Clone + 'a, D: Eq + 'a> {
+pub struct IntervalTreeIterator<'a, N: Ord + Clone + Debug + 'a, D: Eq + Debug + 'a> {
     nodes: Vec<&'a Node<N, D>>,
     interval: Interval<N>,
 }
 
-impl<'a, N: Ord + Clone + 'a, D: Eq + 'a> Iterator for IntervalTreeIterator<'a, N, D> {
+impl<'a, N: Clone + Ord + Debug + 'a, D: Eq + Debug + 'a> Iterator for IntervalTreeIterator<'a, N, D> {
     type Item = Entry<'a, N, D>;
 
     fn next(&mut self) -> Option<Entry<'a, N, D>> {
@@ -111,12 +112,12 @@ impl<'a, N: Ord + Clone + 'a, D: Eq + 'a> Iterator for IntervalTreeIterator<'a, 
 /// wraps the fields `interval` and `data` in an `EntryMut`. Only the data part can be mutably accessed
 /// using the `data` method
 #[derive(PartialEq, Eq, Debug)]
-pub struct EntryMut<'a, N: Ord + Clone + 'a, D: Eq + 'a> {
+pub struct EntryMut<'a, N: Clone + Ord + Debug + 'a, D: Eq + Debug + 'a> {
     data: &'a mut D,
     interval: &'a Interval<N>,
 }
 
-impl<'a, N: Ord + Clone + 'a, D: Eq + 'a> EntryMut<'a, N, D> {
+impl<'a, N: Ord + Clone + Debug + 'a, D: Eq + Debug + 'a> EntryMut<'a, N, D> {
     /// Get a mutable reference to the data for this entry
     pub fn data(&'a mut self) -> &'a mut D {
         &mut self.data
@@ -130,12 +131,12 @@ impl<'a, N: Ord + Clone + 'a, D: Eq + 'a> EntryMut<'a, N, D> {
 
 /// An `IntervalTreeIteratorMut` is returned by `Intervaltree::find_mut` and iterates over the entries
 /// overlapping the query allowing mutable access to the data `D`, not the `Interval`.
-pub struct IntervalTreeIteratorMut<'a, N: Ord + Clone + 'a, D: Eq + 'a> {
+pub struct IntervalTreeIteratorMut<'a, N: Ord + Clone + Debug + 'a, D: Eq + Debug + 'a> {
     nodes: Vec<&'a mut Node<N, D>>,
     interval: Interval<N>,
 }
 
-impl<'a, N: Ord + Clone + 'a, D: Eq + 'a> Iterator for IntervalTreeIteratorMut<'a, N, D> {
+impl<'a, N: Ord + Clone + Debug + 'a, D: Eq + Debug + 'a> Iterator for IntervalTreeIteratorMut<'a, N, D> {
     type Item = EntryMut<'a, N, D>;
 
     fn next(&mut self) -> Option<EntryMut<'a, N, D>> {
@@ -218,7 +219,7 @@ impl<N: Clone + Ord, D: Eq> IntervalTree<N, D> {
     }
 }
 
-impl<N: Clone + Ord, D: Eq, R: Into<Interval<N>>> FromIterator<(R, D)> for IntervalTree<N, D> {
+impl<N: Clone + Ord + Debug, D: Eq + Debug, R: Into<Interval<N>>> FromIterator<(R, D)> for IntervalTree<N, D> {
     fn from_iter<I: IntoIterator<Item = (R, D)>>(iter: I) -> Self {
         let mut tree = IntervalTree::new();
         for r in iter {
@@ -229,7 +230,7 @@ impl<N: Clone + Ord, D: Eq, R: Into<Interval<N>>> FromIterator<(R, D)> for Inter
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Node<N: Ord + Clone, D: Eq> {
+struct Node<N: Ord + Clone + Debug, D: Eq + Debug> {
     // actual interval data
     interval: Interval<N>,
     value: D,
@@ -240,7 +241,7 @@ struct Node<N: Ord + Clone, D: Eq> {
     right: Option<Box<Node<N, D>>>,
 }
 
-impl<N: Ord + Clone, D: Eq> Node<N, D> {
+impl<N: Ord + Clone + Debug, D: Eq + Debug> Node<N, D> {
     fn new(interval: Interval<N>, data: D) -> Self {
         let max = interval.end.clone();
         Node {
@@ -359,14 +360,18 @@ impl<N: Ord + Clone, D: Eq> Node<N, D> {
         self.update_height();
         self.update_max();
     }
+
+    fn show(&self) -> String {
+        format!("Node {{ interval: {:?}, value: {:?}, max: {:?}, height:{:?} }}", self.interval, self.value, self.max, self.height)
+    }
 }
 
-fn swap_interval_data<N: Ord + Clone, D: Eq>(node_1: &mut Node<N, D>, node_2: &mut Node<N, D>) {
+fn swap_interval_data<N: Ord + Clone + Debug, D: Eq + Debug>(node_1: &mut Node<N, D>, node_2: &mut Node<N, D>) {
     mem::swap(&mut node_1.value, &mut node_2.value);
     mem::swap(&mut node_1.interval, &mut node_2.interval);
 }
 
-fn intersect<N: Ord + Clone>(range_1: &Interval<N>, range_2: &Interval<N>) -> bool {
+fn intersect<N: Ord + Clone + Debug>(range_1: &Interval<N>, range_2: &Interval<N>) -> bool {
     range_1.start < range_1.end
         && range_2.start < range_2.end
         && range_1.end > range_2.start
@@ -392,7 +397,7 @@ mod tests {
     fn validate_height(node: &Node<i64, String>) {
         let left_height = node.left.as_ref().map_or(0, |n| n.height);
         let right_height = node.right.as_ref().map_or(0, |n| n.height);
-        assert!((left_height - right_height).abs() <= 1);
+        assert!((left_height - right_height).abs() <= 1, "children heights differ by more than one (parent is {:?}, children are {:?} and {:?})", node.show(), node.left.as_ref().map(|x| x.show()), node.right.as_ref().map(|x| x.show()));
         assert_eq!(node.height, cmp::max(left_height, right_height) + 1)
     }
 
@@ -476,9 +481,10 @@ mod tests {
         expected_results: Vec<Range<i64>>,
     ) {
         let mut actual_entries: Vec<Entry<i64, String>> = tree.find(&target).collect();
-        println!("{:?}", actual_entries);
         actual_entries.sort_by(|x1, x2| x1.data.cmp(&x2.data));
         let expected_entries = make_entry_tuples(expected_results);
+        println!("Entries in tree: {:?}", actual_entries);
+        println!("Test expected: {:?}", expected_entries);
         assert_eq!(actual_entries.len(), expected_entries.len());
         for (actual, expected) in actual_entries.iter().zip(expected_entries.iter()) {
             assert_eq!(*actual.interval, expected.0);
