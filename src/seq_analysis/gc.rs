@@ -34,3 +34,18 @@ pub fn gc_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 
 pub fn gc3_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 {
     gcn_content(sequence, 3usize)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gc_content() {
+        let gc0 = b"ATAT";
+        assert_eq!(gc_content(gc0), 0.0);
+        let gc50 = b"ATGC";
+        assert_eq!(gc_content(gc50), 0.5);
+        let gc100 = b"GCGC";
+        assert_eq!(gc_content(gc100), 1.0);
+    }
+}
