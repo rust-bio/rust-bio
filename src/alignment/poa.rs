@@ -258,7 +258,7 @@ impl<F: MatchFunc> Aligner<F> {
 
     pub fn add_to_graph(&mut self) -> &mut Self {
         let alignment = self.traceback.get_alignment();
-        self.poa.add_alignment(alignment, &self.query);
+        self.poa.add_alignment(&alignment, &self.query);
         self
     }
 
@@ -403,7 +403,7 @@ impl<F: MatchFunc> Poa<F> {
     ///
     /// * `filename` - The filepath to write the dot file to, as a String
     ///
-    fn write_dot(self, filename: &str) {
+    pub fn write_dot(self, filename: &str) {
         let mut file = match File::create(&filename) {
             Err(why) => panic!("couldn't open file {}: {}", filename, why.description()),
             Ok(file) => file,
@@ -449,17 +449,17 @@ impl<F: MatchFunc> Poa<F> {
     /// * `aln` - The alignment of the new sequence to the graph
     /// * `seq` - The sequence being incorporated
     ///
-    pub fn add_alignment(&mut self, aln: Alignment, seq: TextSlice) {
+    pub fn add_alignment(&mut self, aln: &Alignment, seq: TextSlice) {
         let mut prev: NodeIndex<usize> = NodeIndex::new(0);
         let mut i: usize = 0;
-        for op in aln.operations {
+        for op in aln.operations.iter() {
             match op {
                 AlignmentOperation::Match(None) => {
                     i += 1;
                 }
                 AlignmentOperation::Match(Some((_, p))) => {
-                    let node = NodeIndex::new(p);
-                    if (seq[i] != self.graph.raw_nodes()[p].weight) && (seq[i] != b'X') {
+                    let node = NodeIndex::new(*p);
+                    if (seq[i] != self.graph.raw_nodes()[*p].weight) && (seq[i] != b'X') {
                         let node = self.graph.add_node(seq[i]);
                         self.graph.add_edge(prev, node, 1);
                         prev = node;
@@ -474,7 +474,7 @@ impl<F: MatchFunc> Poa<F> {
                                 self.graph.add_edge(prev, node, 1);
                             }
                         }
-                        prev = NodeIndex::new(p);
+                        prev = NodeIndex::new(*p);
                     }
                     i += 1;
                 }
@@ -559,7 +559,7 @@ mod tests {
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
         let alignment = poa.global(seq2).get_alignment();
-        poa.add_alignment(alignment, seq2);
+        poa.add_alignment(&alignment, seq2);
         assert_eq!(poa.graph.edge_count(), 14);
         assert!(poa
             .graph
@@ -588,7 +588,7 @@ mod tests {
         poa.graph.add_edge(node3, tail, 1);
         let alignment = poa.global(seq2).get_alignment();
         assert_eq!(alignment.score, 2);
-        poa.add_alignment(alignment, seq2);
+        poa.add_alignment(&alignment, seq2);
         let alignment2 = poa.global(seq3).get_alignment();
 
         assert_eq!(alignment2.score, 10);
