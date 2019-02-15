@@ -22,7 +22,7 @@ pub trait Prior {
 }
 
 /// A bayesian model.
-pub trait Model<Event, Data, P: Prior, L: Likelihood>
+pub trait Model<Event, Data>
 where
     Event: Ord + Clone,
 {
