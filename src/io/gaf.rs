@@ -611,7 +611,6 @@ mod tests {
         let s1 = String::from("!gaf-version: 1.0\n").to_owned()
             + String::from_utf8(out).unwrap().as_str();
         let s2 = String::from_utf8(GAF_FILE1.to_owned()).unwrap();
-        //println!("{:?}", s);
         assert_eq!(s1, s2)
     }
 
