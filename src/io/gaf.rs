@@ -41,8 +41,8 @@ impl GafType {
     #[inline]
     fn separator(&self) -> (u8, u8, u8) {
         match *self {
-            GafType::GAF1 => (b' ', b'|', b':'),
-            GafType::GAF2 => (b' ', b'|', b':'),
+            GafType::GAF1 => (b':', b'|', 0u8),
+            GafType::GAF2 => (b':', b'|', 0u8),
             GafType::Any(x, y, z) => (x, y, z),
         }
     }
@@ -79,17 +79,14 @@ impl<R: io::Read> Reader<R> {
     pub fn records(&mut self) -> Records<R> {
         let (delim, term, vdelim) = self.gaf_type.separator();
         let r1 = format!(
-            r" *(?P<key>[^{delim}{term}\t]+){delim}(?P<value>[^{delim}{term}\t]+)\{term}?",
+            r" *(?P<key>[^{delim}\{term}\t]+){delim}(?P<value>[^{delim}\{term}\t]+)\{term}?",
+            //r" *(?P<key>[^:\|\t]+):(?P<value>[^:\|\t]+)\|?",
             delim = delim as char,
             term = term as char
         );
         let db_ref_re = Regex::new(&r1).unwrap();
 
-        let r2 = format!(
-            r" *(?P<value>[^{delim}{term}\t]+)\{term}?",
-            delim = delim as char,
-            term = term as char
-        );
+        let r2 = format!(r" *(?P<value>[^{term}\t]+)\{term}?", term = term as char);
         let default_re = Regex::new(&r2).unwrap();
 
         Records {
@@ -248,31 +245,33 @@ impl<W: io::Write> Writer<W> {
         };
 
         let qualifier = if !record.qualifier.is_empty() {
-            record.qualifier.join(&self.terminator)
+            record.qualifier.join(&self.delimiter.to_string())
         } else {
             "".to_owned()
         };
 
         let with_from = if !record.with_from.is_empty() {
-            record.with_from.join(&self.terminator)
+            record.with_from.join(&self.delimiter.to_string())
         } else {
             "".to_owned()
         };
 
         let db_object_synonym = if !record.db_object_synonym.is_empty() {
-            record.db_object_synonym.join(&self.terminator)
+            record.db_object_synonym.join(&self.delimiter.to_string())
         } else {
             "".to_owned()
         };
 
         let taxon = if !record.taxon.is_empty() {
-            record.taxon.join(&self.terminator)
+            record.taxon.join(&self.delimiter.to_string())
         } else {
             "".to_owned()
         };
 
         let annotation_extension = if !record.annotation_extension.is_empty() {
-            record.annotation_extension.join(&self.terminator)
+            record
+                .annotation_extension
+                .join(&self.delimiter.to_string())
         } else {
             "".to_owned()
         };
