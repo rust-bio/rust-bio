@@ -523,9 +523,7 @@ mod tests {
     //    use multimap::MultiMap;
 
     const GAF_FILE1: &'static [u8] = b"!gaf-version: 1.0\n\
-    GeneDB\tPF3D7_0100100.1\tVAR\t\tGO:0020002\tPMID:11420100\tTAS\t\tC\terythrocyte membrane protein 1, PfEMP1\tPFA0005w|VAR-UPSB1|MAL1P4.01\tmRNA\ttaxon:36329\t20190204\tGeneDB";
-
-    const GAF_FILE2: &'static [u8] = b"!gaf-version: 1.0\n\
+    GeneDB\tPF3D7_0100100.1\tVAR\t\tGO:0020002\tPMID:11420100\tTAS\t\tC\terythrocyte membrane protein 1, PfEMP1\tPFA0005w|VAR-UPSB1|MAL1P4.01\tmRNA\ttaxon:36329\t20190204\tGeneDB\n\
     GeneDB\tPF3D7_0100300.1\tVAR\t\tGO:0046789\tGO_REF:0000002\tIEA\tInterPro:IPR008602\tF\terythrocyte membrane protein 1, PfEMP1\tPFA0015c|VAR-UPSA3|MAL1P4.03|VAR3\tmRNA\ttaxon:36329\t20181008\tGeneDB";
 
     /*
@@ -573,42 +571,32 @@ mod tests {
 
     #[test]
     fn test_reader_gaf() {
-        let d1 = vec![
-            "GeneDB",
-            "PF3D7_0100100.1",
-            "VAR",
-            "",
-            "GO:0020002",
-            "PMID:11420100",
-            "TAS",
-            "",
-            "C",
-            "erythrocyte membrane protein 1, PfEMP1",
-            "PFA0005w|VAR-UPSB1|MAL1P4.01",
-            "mRNA",
-            "taxon:36329",
-            "20190204",
-            "GeneDB",
+        let data = vec![
+            vec!["GeneDB", "GeneDB"],
+            vec!["PF3D7_0100100.1", "PF3D7_0100300.1"],
+            vec!["VAR", "VAR"],
+            vec!["", ""],
+            vec!["GO:0020002", "GO:0046789"],
+            vec!["PMID:11420100", "GO_REF:0000002"],
+            vec!["TAS", "IEA"],
+            vec!["", "InterPro:IPR008602"],
+            vec!["C", "F"],
+            vec![
+                "erythrocyte membrane protein 1, PfEMP1",
+                "erythrocyte membrane protein 1, PfEMP1",
+            ],
+            vec![
+                "PFA0005w|VAR-UPSB1|MAL1P4.01",
+                "PFA0015c|VAR-UPSA3|MAL1P4.03|VAR3",
+            ],
+            vec!["mRNA", "mRNA"],
+            vec!["taxon:36329", "taxon:36329"],
+            vec!["20190204", "20181008"],
+            vec!["GeneDB", "GeneDB"],
         ];
-        let d2 = vec![
-            "GeneDB",
-            "PF3D7_0100300.1",
-            "VAR",
-            "",
-            "GO:0046789",
-            "GO_REF:0000002",
-            "IEA",
-            "InterPro:IPR008602",
-            "F",
-            "erythrocyte membrane protein 1, PfEMP1",
-            "PFA0015c|VAR-UPSA3|MAL1P4.03|VAR3",
-            "mRNA",
-            "taxon:36329",
-            "20181008",
-            "GeneDB",
-        ];
+
         let mut reader = Reader::new(GAF_FILE1, GafType::GAF1);
-        for (_i, r) in reader.records().enumerate() {
+        for (i, r) in reader.records().enumerate() {
             let record = r.unwrap();
 
             let db_ref = record.db_ref();
@@ -620,213 +608,36 @@ mod tests {
                 }
             }
 
-            assert_eq!(record.db(), d1[0]);
-            assert_eq!(record.db_object_id(), d1[1]);
-            assert_eq!(record.db_object_symbol(), d1[2]);
-            assert_eq!(record.qualifier().join("|"), d1[3]);
-            assert_eq!(record.go_id(), d1[4]);
-            assert_eq!(db_ref_v.join("|"), d1[5]);
-            assert_eq!(record.evidence_code(), d1[6]);
-            assert_eq!(record.with_from().join("|"), d1[7]);
-            assert_eq!(record.aspect(), d1[8]);
-            assert_eq!(record.db_object_name(), d1[9]);
-            assert_eq!(record.db_object_synonym().join("|"), d1[10]);
-            assert_eq!(record.db_object_type(), d1[11]);
-            assert_eq!(record.taxon().join("|"), d1[12]);
-            assert_eq!(record.date(), d1[13]);
-            assert_eq!(record.assigned_by(), d1[14]);
-            // No annotation_extension or gene_product_form_id, GFF1 doesn't have that!
-        }
-
-        let mut reader = Reader::new(GAF_FILE2, GafType::GAF1);
-        for (_i, r) in reader.records().enumerate() {
-            let record = r.unwrap();
-            assert_eq!(record.db(), d2[0]);
-            assert_eq!(record.db_object_id(), d2[1]);
-            assert_eq!(record.db_object_symbol(), d2[2]);
-            assert_eq!(record.qualifier().join("|"), d2[3]);
-            assert_eq!(record.go_id(), d2[4]);
-            //    db_ref: MultiMap<String, String>, // 5
-            assert_eq!(record.evidence_code(), d2[6]);
-            assert_eq!(record.with_from().join("|"), d2[7]);
-            assert_eq!(record.aspect(), d2[8]);
-            assert_eq!(record.db_object_name(), d2[9]);
-            assert_eq!(record.db_object_synonym().join("|"), d2[10]);
-            assert_eq!(record.db_object_type(), d2[11]);
-            assert_eq!(record.taxon().join("|"), d2[12]);
-            assert_eq!(record.date(), d2[13]);
-            assert_eq!(record.assigned_by(), d2[14]);
+            assert_eq!(record.db(), data[0][i]);
+            assert_eq!(record.db_object_id(), data[1][i]);
+            assert_eq!(record.db_object_symbol(), data[2][i]);
+            assert_eq!(record.qualifier().join("|"), data[3][i]);
+            assert_eq!(record.go_id(), data[4][i]);
+            assert_eq!(db_ref_v.join("|"), data[5][i]);
+            assert_eq!(record.evidence_code(), data[6][i]);
+            assert_eq!(record.with_from().join("|"), data[7][i]);
+            assert_eq!(record.aspect(), data[8][i]);
+            assert_eq!(record.db_object_name(), data[9][i]);
+            assert_eq!(record.db_object_synonym().join("|"), data[10][i]);
+            assert_eq!(record.db_object_type(), data[11][i]);
+            assert_eq!(record.taxon().join("|"), data[12][i]);
+            assert_eq!(record.date(), data[13][i]);
+            assert_eq!(record.assigned_by(), data[14][i]);
             // No annotation_extension or gene_product_form_id, GFF1 doesn't have that!
         }
     }
-
     /*
-            let seqname = ["P0A7B8", "P0A7B8"];
-            let source = ["UniProtKB", "UniProtKB"];
-            let feature_type = ["Initiator methionine", "Chain"];
-            let starts = [1, 2];
-            let ends = [1, 176];
-            let scores = [None, Some(50)];
-            let strand = [None, Some(Strand::Forward)];
-            let frame = [".", "."];
-            let mut attributes = [MultiMap::new(), MultiMap::new()];
-            attributes[0].insert("ID".to_owned(), "test".to_owned());
-            attributes[0].insert("Note".to_owned(), "Removed".to_owned());
-            attributes[0].insert("Note".to_owned(), "Obsolete".to_owned());
-            attributes[1].insert("ID".to_owned(), "PRO_0000148105".to_owned());
-            attributes[1].insert(
-                "Note".to_owned(),
-                "ATP-dependent protease subunit HslV".to_owned(),
-            );
-
-            let mut reader = Reader::new(GAF_FILE, GafType::GAF3);
-            for (i, r) in reader.records().enumerate() {
-                let record = r.unwrap();
-                assert_eq!(record.seqname(), seqname[i]);
-                assert_eq!(record.source(), source[i]);
-                assert_eq!(record.feature_type(), feature_type[i]);
-                assert_eq!(*record.start(), starts[i]);
-                assert_eq!(*record.end(), ends[i]);
-                assert_eq!(record.score(), scores[i]);
-                assert_eq!(record.strand(), strand[i]);
-                assert_eq!(record.frame(), frame[i]);
-                assert_eq!(record.attributes(), &attributes[i]);
+            #[test]
+            fn test_writer_gaf3() {
+                let mut reader = Reader::new(GAF_FILE_ONE_ATTRIB, GafType::GAF3);
+                let mut writer = Writer::new(vec![], GafType::GAF3);
+                for r in reader.records() {
+                    writer
+                        .write(&r.ok().expect("Error reading record"))
+                        .ok()
+                        .expect("Error writing record");
+                }
+                assert_eq!(writer.inner.into_inner().unwrap(), GAF_FILE_ONE_ATTRIB)
             }
-
-            let mut reader = Reader::new(GAF_FILE_WITH_COMMENT, GafType::GAF3);
-            for (i, r) in reader.records().enumerate() {
-                let record = r.unwrap();
-                assert_eq!(record.seqname(), seqname[i]);
-                assert_eq!(record.source(), source[i]);
-                assert_eq!(record.feature_type(), feature_type[i]);
-                assert_eq!(*record.start(), starts[i]);
-                assert_eq!(*record.end(), ends[i]);
-                assert_eq!(record.score(), scores[i]);
-                assert_eq!(record.strand(), strand[i]);
-                assert_eq!(record.frame(), frame[i]);
-                assert_eq!(record.attributes(), &attributes[i]);
-            }
-        }
-
-        #[test]
-        fn test_reader_gtf2() {
-            let seqname = ["P0A7B8", "P0A7B8"];
-            let source = ["UniProtKB", "UniProtKB"];
-            let feature_type = ["Initiator methionine", "Chain"];
-            let starts = [1, 2];
-            let ends = [1, 176];
-            let scores = [None, Some(50)];
-            let strand = [None, Some(Strand::Forward)];
-            let frame = [".", "."];
-            let mut attributes = [MultiMap::new(), MultiMap::new()];
-            attributes[0].insert("ID".to_owned(), "test".to_owned());
-            attributes[0].insert("Note".to_owned(), "Removed".to_owned());
-            attributes[1].insert("ID".to_owned(), "PRO_0000148105".to_owned());
-            attributes[1].insert("Note".to_owned(), "ATP-dependent".to_owned());
-
-            let mut reader = Reader::new(GTF_FILE, GafType::GTF2);
-            for (i, r) in reader.records().enumerate() {
-                let record = r.unwrap();
-                assert_eq!(record.seqname(), seqname[i]);
-                assert_eq!(record.source(), source[i]);
-                assert_eq!(record.feature_type(), feature_type[i]);
-                assert_eq!(*record.start(), starts[i]);
-                assert_eq!(*record.end(), ends[i]);
-                assert_eq!(record.score(), scores[i]);
-                assert_eq!(record.strand(), strand[i]);
-                assert_eq!(record.frame(), frame[i]);
-                assert_eq!(record.attributes(), &attributes[i]);
-            }
-        }
-
-        #[test]
-        fn test_reader_gtf2_2() {
-            let seqname = ["chr1", "chr1"];
-            let source = ["HAVANA", "HAVANA"];
-            let feature_type = ["gene", "transcript"];
-            let starts = [11869, 11869];
-            let ends = [14409, 14409];
-            let scores = [None, None];
-            let strand = [Some(Strand::Forward), Some(Strand::Forward)];
-            let frame = [".", "."];
-            let mut attributes = [MultiMap::new(), MultiMap::new()];
-            attributes[0].insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
-            attributes[0].insert(
-                "gene_type".to_owned(),
-                "transcribed_unprocessed_pseudogene".to_owned(),
-            );
-            attributes[1].insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
-            attributes[1].insert("transcript_id".to_owned(), "ENST00000456328.2".to_owned());
-            attributes[1].insert(
-                "gene_type".to_owned(),
-                "transcribed_unprocessed_pseudogene".to_owned(),
-            );
-
-            let mut reader = Reader::new(GTF_FILE_2, GafType::GTF2);
-            for (i, r) in reader.records().enumerate() {
-                let record = r.unwrap();
-                assert_eq!(record.seqname(), seqname[i]);
-                assert_eq!(record.source(), source[i]);
-                assert_eq!(record.feature_type(), feature_type[i]);
-                assert_eq!(*record.start(), starts[i]);
-                assert_eq!(*record.end(), ends[i]);
-                assert_eq!(record.score(), scores[i]);
-                assert_eq!(record.strand(), strand[i]);
-                assert_eq!(record.frame(), frame[i]);
-                assert_eq!(record.attributes(), &attributes[i]);
-            }
-        }
-
-        #[test]
-        fn test_reader_gtf2_dup_attr_keys() {
-            let mut reader = Reader::new(GTF_FILE_DUP_ATTR_KEYS, GafType::GTF2);
-            let mut records = reader.records().collect::<Vec<_>>();
-            assert_eq!(records.len(), 1);
-            let record = records.pop().unwrap().expect("expected one record");
-            assert_eq!(record.attributes.get("tag"), Some(&"basic".to_owned()));
-            assert_eq!(
-                record.attributes.get_vec("tag"),
-                Some(&vec!["basic".to_owned(), "appris_principal_1".to_owned()])
-            );
-        }
-
-        #[test]
-        fn test_writer_gaf3() {
-            let mut reader = Reader::new(GAF_FILE_ONE_ATTRIB, GafType::GAF3);
-            let mut writer = Writer::new(vec![], GafType::GAF3);
-            for r in reader.records() {
-                writer
-                    .write(&r.ok().expect("Error reading record"))
-                    .ok()
-                    .expect("Error writing record");
-            }
-            assert_eq!(writer.inner.into_inner().unwrap(), GAF_FILE_ONE_ATTRIB)
-        }
-
-        #[test]
-        fn test_writer_gtf2() {
-            let mut reader = Reader::new(GTF_FILE_ONE_ATTRIB, GafType::GTF2);
-            let mut writer = Writer::new(vec![], GafType::GTF2);
-            for r in reader.records() {
-                writer
-                    .write(&r.ok().expect("Error reading record"))
-                    .ok()
-                    .expect("Error writing record");
-            }
-            assert_eq!(writer.inner.into_inner().unwrap(), GTF_FILE_ONE_ATTRIB)
-        }
-
-        #[test]
-        fn test_convert_gtf2_to_gaf3() {
-            let mut reader = Reader::new(GTF_FILE_ONE_ATTRIB, GafType::GTF2);
-            let mut writer = Writer::new(vec![], GafType::GAF3);
-            for r in reader.records() {
-                writer
-                    .write(&r.ok().expect("Error reading record"))
-                    .ok()
-                    .expect("Error writing record");
-            }
-            assert_eq!(writer.inner.into_inner().unwrap(), GAF_FILE_ONE_ATTRIB)
-        }
     */
 }
