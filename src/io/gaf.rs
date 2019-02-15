@@ -46,6 +46,16 @@ impl GafType {
             GafType::Any(x, y, z) => (x, y, z),
         }
     }
+
+    // Used in writer. Should be GafType::GAF1 instead of string in comparison there, but can't quite make it work
+    #[inline]
+    fn name(&self) -> (String) {
+        match *self {
+            GafType::GAF1 => "GAF1".to_string(),
+            GafType::GAF2 => "GAF2".to_string(),
+            GafType::Any(_x, _y, _z) => "".to_string(),
+        }
+    }
 }
 
 /// A GAF reader.
@@ -208,6 +218,7 @@ pub struct Writer<W: io::Write> {
     inner: csv::Writer<W>,
     delimiter: char,
     terminator: String,
+    fileformat: GafType,
 }
 
 impl Writer<fs::File> {
@@ -229,6 +240,7 @@ impl<W: io::Write> Writer<W> {
                 .from_writer(writer),
             delimiter: delim as char,
             terminator: String::from_utf8(vec![termi]).unwrap(),
+            fileformat: fileformat,
         }
     }
 
@@ -245,25 +257,25 @@ impl<W: io::Write> Writer<W> {
         };
 
         let qualifier = if !record.qualifier.is_empty() {
-            record.qualifier.join(&self.delimiter.to_string())
+            record.qualifier.join(&self.terminator.to_string())
         } else {
             "".to_owned()
         };
 
         let with_from = if !record.with_from.is_empty() {
-            record.with_from.join(&self.delimiter.to_string())
+            record.with_from.join(&self.terminator.to_string())
         } else {
             "".to_owned()
         };
 
         let db_object_synonym = if !record.db_object_synonym.is_empty() {
-            record.db_object_synonym.join(&self.delimiter.to_string())
+            record.db_object_synonym.join(&self.terminator.to_string())
         } else {
             "".to_owned()
         };
 
         let taxon = if !record.taxon.is_empty() {
-            record.taxon.join(&self.delimiter.to_string())
+            record.taxon.join(&self.terminator.to_string())
         } else {
             "".to_owned()
         };
@@ -271,13 +283,12 @@ impl<W: io::Write> Writer<W> {
         let annotation_extension = if !record.annotation_extension.is_empty() {
             record
                 .annotation_extension
-                .join(&self.delimiter.to_string())
+                .join(&self.terminator.to_string())
         } else {
             "".to_owned()
         };
 
-        let v = //Vec::<String>::new();
-        vec![
+        let mut v = vec![
             record.db.clone(),
             record.db_object_id.clone(),
             record.db_object_symbol.clone(),
@@ -293,9 +304,11 @@ impl<W: io::Write> Writer<W> {
             taxon,
             record.date.clone(),
             record.assigned_by.clone(),
-            annotation_extension,
-            record.gene_product_form_id.clone(),
-        ] ;
+        ];
+        if self.fileformat.name() == "GAF2" {
+            v.push(annotation_extension);
+            v.push(record.gene_product_form_id.clone());
+        }
         self.inner.serialize(v)
     }
 }
@@ -520,54 +533,10 @@ impl Record {
 #[cfg(test)]
 mod tests {
     use super::*;
-    //    use multimap::MultiMap;
 
     const GAF_FILE1: &'static [u8] = b"!gaf-version: 1.0\n\
     GeneDB\tPF3D7_0100100.1\tVAR\t\tGO:0020002\tPMID:11420100\tTAS\t\tC\terythrocyte membrane protein 1, PfEMP1\tPFA0005w|VAR-UPSB1|MAL1P4.01\tmRNA\ttaxon:36329\t20190204\tGeneDB\n\
-    GeneDB\tPF3D7_0100300.1\tVAR\t\tGO:0046789\tGO_REF:0000002\tIEA\tInterPro:IPR008602\tF\terythrocyte membrane protein 1, PfEMP1\tPFA0015c|VAR-UPSA3|MAL1P4.03|VAR3\tmRNA\ttaxon:36329\t20181008\tGeneDB";
-
-    /*
-            const GAF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t\
-        Note=Removed,Obsolete;ID=test
-        P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV;\
-        ID=PRO_0000148105";
-            const GAF_FILE_WITH_COMMENT: &'static [u8] = b"#comment
-        P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t\
-        Note=Removed,Obsolete;ID=test
-        #comment
-        P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV;\
-        ID=PRO_0000148105";
-            //required because MultiMap iter on element randomly
-            const GAF_FILE_ONE_ATTRIB: &'static [u8] =
-                b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed
-        P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105
-        ";
-
-            const GTF_FILE: &'static [u8] =
-                b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed;ID test
-        P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote ATP-dependent;ID PRO_0000148105
-        ";
-
-            // Another variant of GTF file, modified from a published GENCODE GTF file.
-            const GTF_FILE_2: &'static [u8] = b"chr1\tHAVANA\tgene\t11869\t14409\t.\t+\t.\t\
-        gene_id \"ENSG00000223972.5\"; gene_type \"transcribed_unprocessed_pseudogene\";
-        chr1\tHAVANA\ttranscript\t11869\t14409\t.\t+\t.\tgene_id \"ENSG00000223972.5\";\
-        transcript_id \"ENST00000456328.2\"; gene_type \"transcribed_unprocessed_pseudogene\"";
-
-            // GTF file with duplicate attribute keys, taken from a published GENCODE GTF file.
-            const GTF_FILE_DUP_ATTR_KEYS: &'static [u8] = b"chr1\tENSEMBL\ttranscript\t182393\t\
-        184158\t.\t+\t.\tgene_id \"ENSG00000279928.1\"; transcript_id \"ENST00000624431.1\";\
-        gene_type \"protein_coding\"; gene_status \"KNOWN\"; gene_name \"FO538757.2\";\
-        transcript_type \"protein_coding\"; transcript_status \"KNOWN\";\
-        transcript_name \"FO538757.2-201\"; level 3; protein_id \"ENSP00000485457.1\";\
-        transcript_support_level \"1\"; tag \"basic\"; tag \"appris_principal_1\";";
-
-            //required because MultiMap iter on element randomly
-            const GTF_FILE_ONE_ATTRIB: &'static [u8] =
-                b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed
-        P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
-        ";
-    */
+    GeneDB\tPF3D7_0100300.1\tVAR\t\tGO:0046789\tGO_REF:0000002\tIEA\tInterPro:IPR008602\tF\terythrocyte membrane protein 1, PfEMP1\tPFA0015c|VAR-UPSA3|MAL1P4.03|VAR3\tmRNA\ttaxon:36329\t20181008\tGeneDB\n";
 
     #[test]
     fn test_reader_gaf() {
@@ -637,7 +606,13 @@ mod tests {
                 .ok()
                 .expect("Error writing record");
         }
-        assert_eq!(writer.inner.into_inner().unwrap(), GAF_FILE1)
+
+        let out = writer.inner.into_inner().unwrap();
+        let s1 = String::from("!gaf-version: 1.0\n").to_owned()
+            + String::from_utf8(out).unwrap().as_str();
+        let s2 = String::from_utf8(GAF_FILE1.to_owned()).unwrap();
+        //println!("{:?}", s);
+        assert_eq!(s1, s2)
     }
 
 }
