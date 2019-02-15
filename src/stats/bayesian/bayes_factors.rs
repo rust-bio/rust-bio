@@ -4,11 +4,14 @@ pub mod evidence {
     /// Scale of evidence as defined by
     /// [Kass and Raftery 1995](http://www.andrew.cmu.edu/user/kk3n/simplicity/KassRaftery1995.pdf).
     #[derive(Display, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, EnumString, EnumIter, IntoStaticStr)]
-    #[strum(serialize_all = "snake_case")]
     pub enum KassRaftery {
+        #[strum(serialize = "none")]
         None,
+        #[strum(serialize = "barely")]
         Barely,
+        #[strum(serialize = "positive")]
         Positive,
+        #[strum(serialize = "strong")]
         Strong,
         #[strum(serialize = "very-strong")]
         VeryStrong,
