@@ -99,29 +99,9 @@ impl<R: io::Read> Reader<R> {
     }
 }
 
-type GafRecordInner = (
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-);
-
 /// A GAF record.
 pub struct Records<'a, R: 'a + io::Read> {
-    inner: csv::DeserializeRecordsIter<'a, R, GafRecordInner>,
+    inner: csv::DeserializeRecordsIter<'a, R, Vec<String>>,
     db_ref_re: Regex,
     default_re: Regex,
     value_delim: char,
@@ -132,87 +112,85 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
 
     fn next(&mut self) -> Option<csv::Result<Record>> {
         self.inner.next().map(|res| {
-            res.map(
-                |(
+            res.map(|v| {
+                let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
+
+                let db = v[0].clone();
+                let db_object_id = v[1].clone();
+                let db_object_symbol = v[2].clone();
+                let raw_qualifier = v[3].clone();
+                let go_id = v[4].clone();
+                let raw_db_ref = v[5].clone();
+                let evidence_code = v[6].clone();
+                let raw_with_from = v[7].clone();
+                let aspect = v[8].clone();
+                let db_object_name = v[9].clone();
+                let raw_db_object_synonym = v[10].clone();
+                let db_object_type = v[11].clone();
+                let raw_taxon = v[12].clone();
+                let date = v[13].clone();
+                let assigned_by = v[14].clone();
+                let raw_annotation_extension = v[15].clone();
+                let gene_product_form_id = v[16].clone();
+
+                let mut db_ref = MultiMap::new();
+                for caps in self.db_ref_re.captures_iter(&raw_db_ref.to_string()) {
+                    for value in caps["value"].split(self.value_delim) {
+                        db_ref.insert(trim_quotes(&caps["key"]), trim_quotes(value));
+                    }
+                }
+
+                let mut qualifier = Vec::<String>::new();
+                for caps in self.default_re.captures_iter(&raw_qualifier.to_string()) {
+                    qualifier.push(trim_quotes(&caps["value"]));
+                }
+
+                let mut with_from = Vec::<String>::new();
+                for caps in self.default_re.captures_iter(&raw_with_from.to_string()) {
+                    with_from.push(trim_quotes(&caps["value"]));
+                }
+
+                let mut db_object_synonym = Vec::<String>::new();
+                for caps in self
+                    .default_re
+                    .captures_iter(&raw_db_object_synonym.to_string())
+                {
+                    db_object_synonym.push(trim_quotes(&caps["value"]));
+                }
+
+                let mut taxon = Vec::<String>::new();
+                for caps in self.default_re.captures_iter(&raw_taxon.to_string()) {
+                    taxon.push(trim_quotes(&caps["value"]));
+                }
+
+                let mut annotation_extension = Vec::<String>::new();
+                for caps in self
+                    .default_re
+                    .captures_iter(&raw_annotation_extension.to_string())
+                {
+                    annotation_extension.push(trim_quotes(&caps["value"]));
+                }
+
+                Record {
                     db,
                     db_object_id,
                     db_object_symbol,
-                    raw_qualifier,
+                    qualifier,
                     go_id,
-                    raw_db_ref,
+                    db_ref,
                     evidence_code,
-                    raw_with_from,
+                    with_from,
                     aspect,
                     db_object_name,
-                    raw_db_object_synonym,
+                    db_object_synonym,
                     db_object_type,
-                    raw_taxon,
+                    taxon,
                     date,
                     assigned_by,
-                    raw_annotation_extension,
+                    annotation_extension,
                     gene_product_form_id,
-                )| {
-                    let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
-
-                    let mut db_ref = MultiMap::new();
-                    for caps in self.db_ref_re.captures_iter(&raw_db_ref.to_string()) {
-                        for value in caps["value"].split(self.value_delim) {
-                            db_ref.insert(trim_quotes(&caps["key"]), trim_quotes(value));
-                        }
-                    }
-
-                    let mut qualifier = Vec::<String>::new();
-                    for caps in self.default_re.captures_iter(&raw_qualifier.to_string()) {
-                        qualifier.push(trim_quotes(&caps["value"]));
-                    }
-
-                    let mut with_from = Vec::<String>::new();
-                    for caps in self.default_re.captures_iter(&raw_with_from.to_string()) {
-                        with_from.push(trim_quotes(&caps["value"]));
-                    }
-
-                    let mut db_object_synonym = Vec::<String>::new();
-                    for caps in self
-                        .default_re
-                        .captures_iter(&raw_db_object_synonym.to_string())
-                    {
-                        db_object_synonym.push(trim_quotes(&caps["value"]));
-                    }
-
-                    let mut taxon = Vec::<String>::new();
-                    for caps in self.default_re.captures_iter(&raw_taxon.to_string()) {
-                        taxon.push(trim_quotes(&caps["value"]));
-                    }
-
-                    let mut annotation_extension = Vec::<String>::new();
-                    for caps in self
-                        .default_re
-                        .captures_iter(&raw_annotation_extension.to_string())
-                    {
-                        annotation_extension.push(trim_quotes(&caps["value"]));
-                    }
-
-                    Record {
-                        db,
-                        db_object_id,
-                        db_object_symbol,
-                        qualifier,
-                        go_id,
-                        db_ref,
-                        evidence_code,
-                        with_from,
-                        aspect,
-                        db_object_name,
-                        db_object_synonym,
-                        db_object_type,
-                        taxon,
-                        date,
-                        assigned_by,
-                        annotation_extension,
-                        gene_product_form_id,
-                    }
-                },
-            )
+                }
+            })
         })
     }
 }
@@ -289,25 +267,27 @@ impl<W: io::Write> Writer<W> {
             "".to_owned()
         };
 
-        self.inner.serialize((
-            &record.db,
-            &record.db_object_id,
-            &record.db_object_symbol,
-            record.qualifier,
-            &record.go_id,
-            record.db_ref,
-            &record.evidence_code,
-            record.with_from,
-            &record.aspect,
-            &record.db_object_name,
-            record.db_object_synonym,
-            &record.db_object_type,
-            record.taxon,
-            &record.date,
-            &record.assigned_by,
-            record.annotation_extension,
-            record.gene_product_form_id,
-        ))
+        let v = //Vec::<String>::new();
+        vec![
+            record.db.clone(),
+            record.db_object_id.clone(),
+            record.db_object_symbol.clone(),
+            qualifier,
+            record.go_id.clone(),
+            db_ref,
+            record.evidence_code.clone(),
+            with_from,
+            record.aspect.clone(),
+            record.db_object_name.clone(),
+            db_object_synonym,
+            record.db_object_type.clone(),
+            taxon,
+            record.date.clone(),
+            record.assigned_by.clone(),
+            annotation_extension,
+            record.gene_product_form_id.clone(),
+        ] ;
+        self.inner.serialize(v)
     }
 }
 
@@ -330,7 +310,7 @@ pub struct Record {
     date: String,
     assigned_by: String,
     annotation_extension: Vec<String>,
-    gene_product_form_id: Vec<String>,
+    gene_product_form_id: String,
 }
 
 impl Record {
@@ -353,177 +333,177 @@ impl Record {
             date: "".to_owned(),
             assigned_by: "".to_owned(),
             annotation_extension: Vec::<String>::new(),
-            gene_product_form_id: Vec::<String>::new(),
+            gene_product_form_id: "".to_owned(),
         }
     }
 
-    /// db
+    /// Get reference on db
     pub fn db(&self) -> &str {
         &self.db
     }
 
-    /// db_object_id
+    /// Get reference on db_object_id
     pub fn db_object_id(&self) -> &str {
         &self.db_object_id
     }
 
-    /// db_object_symbol
+    /// Get reference on db_object_symbol
     pub fn db_object_symbol(&self) -> &str {
         &self.db_object_symbol
     }
 
-    /// qualifier
+    /// Get reference on qualifier
     pub fn qualifier(&self) -> &Vec<String> {
         &self.qualifier
     }
 
-    /// go_id
+    /// Get reference on go_id
     pub fn go_id(&self) -> &str {
         &self.go_id
     }
 
-    /// db_ref
+    /// Get reference on db_ref
     pub fn db_ref(&self) -> &MultiMap<String, String> {
         &self.db_ref
     }
 
-    /// evidence_code
+    /// Get reference on evidence_code
     pub fn evidence_code(&self) -> &str {
         &self.evidence_code
     }
 
-    /// with_from
+    /// Get reference on with_from
     pub fn with_from(&self) -> &Vec<String> {
         &self.with_from
     }
 
-    /// aspect
+    /// Get reference on aspect
     pub fn aspect(&self) -> &str {
         &self.aspect
     }
 
-    /// db_object_name
+    /// Get reference on db_object_name
     pub fn db_object_name(&self) -> &str {
         &self.db_object_name
     }
 
-    /// db_object_synonym
+    /// Get reference on db_object_synonym
     pub fn db_object_synonym(&self) -> &Vec<String> {
         &self.db_object_synonym
     }
 
-    /// db_object_type
+    /// Get reference on db_object_type
     pub fn db_object_type(&self) -> &str {
         &self.db_object_type
     }
 
-    /// taxon
+    /// Get reference on taxon
     pub fn taxon(&self) -> &Vec<String> {
         &self.taxon
     }
 
-    /// date
+    /// Get reference on date
     pub fn date(&self) -> &str {
         &self.date
     }
 
-    /// assigned_by
+    /// Get reference on assigned_by
     pub fn assigned_by(&self) -> &str {
         &self.assigned_by
     }
 
-    /// annotation_extension
+    /// Get reference on annotation_extension
     pub fn annotation_extension(&self) -> &Vec<String> {
         &self.annotation_extension
     }
 
-    /// gene_product_form_id
-    pub fn gene_product_form_id(&self) -> &Vec<String> {
+    /// Get reference on gene_product_form_id
+    pub fn gene_product_form_id(&self) -> &str {
         &self.gene_product_form_id
     }
 
     /// Get mutable reference on db
-    pub fn db_mut(&self) -> &mut str {
+    pub fn db_mut(&mut self) -> &mut str {
         &mut self.db
     }
 
     /// Get mutable reference on db_object_id
-    pub fn db_object_id_mut(&self) -> &mut str {
+    pub fn db_object_id_mut(&mut self) -> &mut str {
         &mut self.db_object_id
     }
 
     /// Get mutable reference on db_object_symbol
-    pub fn db_object_symbol_mut(&self) -> &mut str {
+    pub fn db_object_symbol_mut(&mut self) -> &mut str {
         &mut self.db_object_symbol
     }
 
     /// Get mutable reference on qualifier
-    pub fn qualifier_mut(&self) -> &mut Vec<String> {
+    pub fn qualifier_mut(&mut self) -> &mut Vec<String> {
         &mut self.qualifier
     }
 
     /// Get mutable reference on go_id
-    pub fn go_id_mut(&self) -> &mut str {
+    pub fn go_id_mut(&mut self) -> &mut str {
         &mut self.go_id
     }
 
     /// Get mutable reference on db_ref
-    pub fn db_ref_mut(&self) -> &mut MultiMap<String, String> {
+    pub fn db_ref_mut(&mut self) -> &mut MultiMap<String, String> {
         &mut self.db_ref
     }
 
     /// Get mutable reference on evidence_code
-    pub fn evidence_code_mut(&self) -> &mut str {
+    pub fn evidence_code_mut(&mut self) -> &mut str {
         &mut self.evidence_code
     }
 
     /// Get mutable reference on with_from
-    pub fn with_from_mut(&self) -> &mut Vec<String> {
+    pub fn with_from_mut(&mut self) -> &mut Vec<String> {
         &mut self.with_from
     }
 
     /// Get mutable reference on aspect
-    pub fn aspect_mut(&self) -> &mut str {
+    pub fn aspect_mut(&mut self) -> &mut str {
         &mut self.aspect
     }
 
     /// Get mutable reference on db_object_name
-    pub fn db_object_name_mut(&self) -> &mut str {
+    pub fn db_object_name_mut(&mut self) -> &mut str {
         &mut self.db_object_name
     }
 
     /// Get mutable reference on db_object_synonym
-    pub fn db_object_synonym_mut(&self) -> &mut Vec<String> {
+    pub fn db_object_synonym_mut(&mut self) -> &mut Vec<String> {
         &mut self.db_object_synonym
     }
 
     /// Get mutable reference on db_object_type
-    pub fn db_object_type_mut(&self) -> &mut str {
+    pub fn db_object_type_mut(&mut self) -> &mut str {
         &mut self.db_object_type
     }
 
     /// Get mutable reference on taxon
-    pub fn taxon_mut(&self) -> &mut Vec<String> {
+    pub fn taxon_mut(&mut self) -> &mut Vec<String> {
         &mut self.taxon
     }
 
     /// Get mutable reference on date
-    pub fn date_mut(&self) -> &mut str {
+    pub fn date_mut(&mut self) -> &mut str {
         &mut self.date
     }
 
     /// Get mutable reference on assigned_by
-    pub fn assigned_by_mut(&self) -> &mut str {
+    pub fn assigned_by_mut(&mut self) -> &mut str {
         &mut self.assigned_by
     }
 
     /// Get mutable reference on annotation_extension
-    pub fn annotation_extension_mut(&self) -> &mut Vec<String> {
+    pub fn annotation_extension_mut(&mut self) -> &mut Vec<String> {
         &mut self.annotation_extension
     }
 
     /// Get mutable reference on gene_product_form_id
-    pub fn gene_product_form_id_mut(&self) -> &mut Vec<String> {
+    pub fn gene_product_form_id_mut(&mut self) -> &mut str {
         &mut self.gene_product_form_id
     }
 }
