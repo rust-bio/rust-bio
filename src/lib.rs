@@ -115,8 +115,8 @@ extern crate serde_derive;
 extern crate bv;
 extern crate fnv;
 extern crate statrs;
-extern crate vec_map;
 extern crate strum;
+extern crate vec_map;
 #[macro_use]
 extern crate strum_macros;
 

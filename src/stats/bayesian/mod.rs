@@ -6,6 +6,7 @@
 //! Utilities for Bayesian statistics.
 
 pub mod bayes_factors;
+pub mod model;
 pub use self::bayes_factors::BayesFactor;
 
 use itertools::Itertools;
