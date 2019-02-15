@@ -116,6 +116,9 @@ extern crate bv;
 extern crate fnv;
 extern crate statrs;
 extern crate vec_map;
+extern crate strum;
+#[macro_use]
+extern crate strum_macros;
 
 pub mod alignment;
 pub mod alphabets;

@@ -40,6 +40,8 @@ fxhash = "0.2"
 statrs = "0.9.0"
 bio-types = ">=0.4"
 fnv = "1.0"
+strum = "0.13"
+strum_macros = "0.13"
 
 [dependencies.vec_map]
 version = "0.8"
