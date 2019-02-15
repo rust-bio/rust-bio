@@ -161,11 +161,9 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMIndex<DBWT, DL
     ///
     /// # Arguments
     ///
-    /// * `sa` - the suffix array (or sample)
     /// * `bwt` - the BWT
-    /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
-    ///   less memory usage, but worse performance)
-    /// * `alphabet` - the alphabet of the underlying text, omitting the sentinel
+    /// * `less` - the less array of the BWT
+    /// * `occ` - the occurence array of the BWT
     pub fn new(bwt: DBWT, less: DLess, occ: DOcc) -> Self {
         FMIndex { bwt, less, occ }
     }
