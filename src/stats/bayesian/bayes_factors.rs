@@ -3,7 +3,7 @@ use stats::LogProb;
 pub mod evidence {
     /// Scale of evidence as defined by
     /// [Kass and Raftery 1995](http://www.andrew.cmu.edu/user/kk3n/simplicity/KassRaftery1995.pdf).
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, EnumString, EnumIter)]
+    #[derive(Display, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, EnumString, EnumIter)]
     #[strum(serialize_all = "snake_case")]
     pub enum KassRaftery {
         None,
