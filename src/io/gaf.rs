@@ -626,18 +626,18 @@ mod tests {
             // No annotation_extension or gene_product_form_id, GFF1 doesn't have that!
         }
     }
-    /*
-            #[test]
-            fn test_writer_gaf3() {
-                let mut reader = Reader::new(GAF_FILE_ONE_ATTRIB, GafType::GAF3);
-                let mut writer = Writer::new(vec![], GafType::GAF3);
-                for r in reader.records() {
-                    writer
-                        .write(&r.ok().expect("Error reading record"))
-                        .ok()
-                        .expect("Error writing record");
-                }
-                assert_eq!(writer.inner.into_inner().unwrap(), GAF_FILE_ONE_ATTRIB)
-            }
-    */
+
+    #[test]
+    fn test_writer_gaf3() {
+        let mut reader = Reader::new(GAF_FILE1, GafType::GAF1);
+        let mut writer = Writer::new(vec![], GafType::GAF1);
+        for r in reader.records() {
+            writer
+                .write(&r.ok().expect("Error reading record"))
+                .ok()
+                .expect("Error writing record");
+        }
+        assert_eq!(writer.inner.into_inner().unwrap(), GAF_FILE1)
+    }
+
 }
