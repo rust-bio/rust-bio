@@ -155,34 +155,40 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                     let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
 
                     let mut db_ref = MultiMap::new();
-                    for caps in self.db_ref_re.captures_iter(&raw_db_ref) {
+                    for caps in self.db_ref_re.captures_iter(&raw_db_ref.to_string()) {
                         for value in caps["value"].split(self.value_delim) {
                             db_ref.insert(trim_quotes(&caps["key"]), trim_quotes(value));
                         }
                     }
 
-                    let mut qualifier = Vec::new();
-                    for caps in self.default_re.captures_iter(&raw_qualifier) {
+                    let mut qualifier = Vec::<String>::new();
+                    for caps in self.default_re.captures_iter(&raw_qualifier.to_string()) {
                         qualifier.push(trim_quotes(&caps["value"]));
                     }
 
-                    let mut with_from = Vec::new();
-                    for caps in self.default_re.captures_iter(&raw_with_from) {
+                    let mut with_from = Vec::<String>::new();
+                    for caps in self.default_re.captures_iter(&raw_with_from.to_string()) {
                         with_from.push(trim_quotes(&caps["value"]));
                     }
 
-                    let mut db_object_synonym = Vec::new();
-                    for caps in self.default_re.captures_iter(&raw_db_object_synonym) {
+                    let mut db_object_synonym = Vec::<String>::new();
+                    for caps in self
+                        .default_re
+                        .captures_iter(&raw_db_object_synonym.to_string())
+                    {
                         db_object_synonym.push(trim_quotes(&caps["value"]));
                     }
 
-                    let mut taxon = Vec::new();
-                    for caps in self.default_re.captures_iter(&raw_taxon) {
+                    let mut taxon = Vec::<String>::new();
+                    for caps in self.default_re.captures_iter(&raw_taxon.to_string()) {
                         taxon.push(trim_quotes(&caps["value"]));
                     }
 
-                    let mut annotation_extension = Vec::new();
-                    for caps in self.default_re.captures_iter(&raw_annotation_extension) {
+                    let mut annotation_extension = Vec::<String>::new();
+                    for caps in self
+                        .default_re
+                        .captures_iter(&raw_annotation_extension.to_string())
+                    {
                         annotation_extension.push(trim_quotes(&caps["value"]));
                     }
 
@@ -334,20 +340,20 @@ impl Record {
             db: "".to_owned(),
             db_object_id: "".to_owned(),
             db_object_symbol: "".to_owned(),
-            qualifier: vec!["".to_string()], // Testing
+            qualifier: Vec::<String>::new(),
             go_id: "".to_owned(),
             db_ref: MultiMap::<String, String>::new(),
             evidence_code: "".to_owned(),
-            with_from: Vec::new(),
+            with_from: Vec::<String>::new(),
             aspect: "".to_owned(),
             db_object_name: "".to_owned(),
-            db_object_synonym: Vec::new(),
+            db_object_synonym: Vec::<String>::new(),
             db_object_type: "".to_owned(),
-            taxon: Vec::new(),
+            taxon: Vec::<String>::new(),
             date: "".to_owned(),
             assigned_by: "".to_owned(),
-            annotation_extension: Vec::new(),
-            gene_product_form_id: Vec::new(),
+            annotation_extension: Vec::<String>::new(),
+            gene_product_form_id: Vec::<String>::new(),
         }
     }
 
