@@ -6,42 +6,92 @@ use ordered_float::NotNan;
 
 use stats::LogProb;
 
+pub type JointProbUniverse<Event> = BTreeMap<Event, LogProb>;
+
 /// Likelihood model.
 pub trait Likelihood {
     type Event;
     type Data;
 
-    fn get(&self, event: &Self::Event, data: &Self::Data) -> LogProb;
+    fn compute(&self, event: &Self::Event, data: &Self::Data) -> LogProb;
 }
 
 /// Prior model.
 pub trait Prior {
     type Event;
 
-    fn get(&self, event: &Self::Event) -> LogProb;
+    fn compute(&self, event: &Self::Event) -> LogProb;
 }
 
-/// A bayesian model.
-pub trait Model<Event, Data>
+/// Posterior model.
+pub trait Posterior {
+    type Event;
+    type BaseEvent;
+
+    fn compute<F: FnMut(&Self::BaseEvent) -> LogProb>(
+        &self, event: &Self::Event, joint_prob: &F
+    ) -> LogProb;
+}
+
+
+pub struct Model<Event, PosteriorEvent, L, Pr, Po>
+where
+    Event: Ord,
+    PosteriorEvent: Ord,
+    L: Likelihood<Event=Event>,
+    Pr: Prior<Event=Event>,
+    Po: Posterior<BaseEvent=Event, Event=PosteriorEvent>,
+{
+    likelihood: L,
+    prior: Pr,
+    posterior: Po
+}
+
+
+impl<Event, PosteriorEvent, L, Pr, Po> Model<Event, PosteriorEvent, L, Pr, Po>
 where
     Event: Ord + Clone,
+    PosteriorEvent: Ord,
+    L: Likelihood<Event=Event>,
+    Pr: Prior<Event=Event>,
+    Po: Posterior<BaseEvent=Event, Event=PosteriorEvent>,
 {
-    /// Joint probability (prior * likelihood).
-    fn joint_prob(&self, event: &Event, data: &Data) -> LogProb;
+    pub fn new(likelihood: L, prior: Pr, posterior: Po) -> Self {
+        Model {
+            likelihood,
+            prior,
+            posterior,
+        }
+    }
 
-    /// Compute an instance of the model for the given event universe and data.
-    fn compute(&self, universe: &[Event], data: &Data) -> ModelInstance<Event> {
-        let joint_probs: BTreeMap<Event, LogProb> = universe
-            .into_iter()
-            .cloned()
-            .map(|event| {
-                let p = self.joint_prob(&event, data);
-                (event, p)
-            })
-            .collect();
-        let marginal = LogProb::ln_sum_exp(&joint_probs.values().cloned().collect_vec());
+    pub fn compute<U>(&self, universe: U, data: &L::Data) -> ModelInstance<Event, PosteriorEvent>
+    where
+        U: IntoIterator<Item=PosteriorEvent>
+    {
+        let mut joint_probs = BTreeMap::new();
+        let (posterior_probs, marginal) = {
+
+            let joint_prob = |event: &Event| {
+                let p = self.prior.compute(event) + self.likelihood.compute(event, data);
+                joint_probs.insert(event.clone(), p);
+                p
+            };
+
+            let posterior_probs: BTreeMap<PosteriorEvent, LogProb> = universe
+                .into_iter()
+                .map(|event| {
+                    let p = self.posterior.compute(&event, &joint_prob);
+                    (event, p)
+                })
+                .collect();
+            let marginal = LogProb::ln_sum_exp(&posterior_probs.values().cloned().collect_vec());
+
+            (posterior_probs, marginal)
+        };
+
         ModelInstance {
             joint_probs,
+            posterior_probs,
             marginal,
         }
     }
@@ -49,21 +99,24 @@ where
 
 /// Instance of a model for given data and event universe.
 /// From the instance, posterior, marginal and MAP can be computed.
-pub struct ModelInstance<Event>
+pub struct ModelInstance<Event, PosteriorEvent>
 where
     Event: Ord,
+    PosteriorEvent: Ord,
 {
     joint_probs: BTreeMap<Event, LogProb>,
+    posterior_probs: BTreeMap<PosteriorEvent, LogProb>,
     marginal: LogProb,
 }
 
-impl<Event> ModelInstance<Event>
+impl<Event, PosteriorEvent> ModelInstance<Event, PosteriorEvent>
 where
     Event: Ord,
+    PosteriorEvent: Ord,
 {
     /// Posterior probability of given event.
-    pub fn posterior(&self, event: &Event) -> Option<LogProb> {
-        self.joint_probs.get(event).map(|p| p - self.marginal)
+    pub fn posterior(&self, event: &PosteriorEvent) -> Option<LogProb> {
+        self.posterior_probs.get(event).map(|p| p - self.marginal)
     }
 
     /// Marginal probability.
