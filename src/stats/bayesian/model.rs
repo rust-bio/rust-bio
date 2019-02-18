@@ -29,32 +29,32 @@ pub trait Posterior {
     type BaseEvent;
 
     fn compute<F: FnMut(&Self::BaseEvent) -> LogProb>(
-        &self, event: &Self::Event, joint_prob: &F
+        &self,
+        event: &Self::Event,
+        joint_prob: &F,
     ) -> LogProb;
 }
-
 
 pub struct Model<Event, PosteriorEvent, L, Pr, Po>
 where
     Event: Ord,
     PosteriorEvent: Ord,
-    L: Likelihood<Event=Event>,
-    Pr: Prior<Event=Event>,
-    Po: Posterior<BaseEvent=Event, Event=PosteriorEvent>,
+    L: Likelihood<Event = Event>,
+    Pr: Prior<Event = Event>,
+    Po: Posterior<BaseEvent = Event, Event = PosteriorEvent>,
 {
     likelihood: L,
     prior: Pr,
-    posterior: Po
+    posterior: Po,
 }
-
 
 impl<Event, PosteriorEvent, L, Pr, Po> Model<Event, PosteriorEvent, L, Pr, Po>
 where
     Event: Ord + Clone,
     PosteriorEvent: Ord,
-    L: Likelihood<Event=Event>,
-    Pr: Prior<Event=Event>,
-    Po: Posterior<BaseEvent=Event, Event=PosteriorEvent>,
+    L: Likelihood<Event = Event>,
+    Pr: Prior<Event = Event>,
+    Po: Posterior<BaseEvent = Event, Event = PosteriorEvent>,
 {
     pub fn new(likelihood: L, prior: Pr, posterior: Po) -> Self {
         Model {
@@ -66,11 +66,10 @@ where
 
     pub fn compute<U>(&self, universe: U, data: &L::Data) -> ModelInstance<Event, PosteriorEvent>
     where
-        U: IntoIterator<Item=PosteriorEvent>
+        U: IntoIterator<Item = PosteriorEvent>,
     {
         let mut joint_probs = BTreeMap::new();
         let (posterior_probs, marginal) = {
-
             let joint_prob = |event: &Event| {
                 let p = self.prior.compute(event) + self.likelihood.compute(event, data);
                 joint_probs.insert(event.clone(), p);
@@ -130,6 +129,18 @@ where
             .iter()
             .max_by_key(|(_, prob)| NotNan::new(***prob).unwrap())
             .map(|(event, _)| event)
+    }
+}
+
+impl<PosteriorEvent> ModelInstance<NotNan<f64>, PosteriorEvent>
+where
+    PosteriorEvent: Ord,
+{
+    pub fn expected_value(&self) -> NotNan<f64> {
+        self.joint_probs
+            .iter()
+            .map(|(event, prob)| *event * NotNan::new(**prob).unwrap())
+            .fold(NotNan::default(), |s, e| s + e)
     }
 }
 
