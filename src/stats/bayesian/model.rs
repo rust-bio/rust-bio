@@ -64,7 +64,7 @@ where
         }
     }
 
-    pub fn compute<U>(
+    pub fn compute(
         &self,
         universe: &[PosteriorEvent],
         data: &Data,
