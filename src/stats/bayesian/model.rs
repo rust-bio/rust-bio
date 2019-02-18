@@ -27,10 +27,12 @@ pub trait Prior {
 pub trait Posterior {
     type Event;
     type BaseEvent;
+    type Data;
 
-    fn compute<F: FnMut(&Self::BaseEvent) -> LogProb>(
+    fn compute<F: FnMut(&Self::BaseEvent, &Self::Data) -> LogProb>(
         &self,
         event: &Self::Event,
+        data: &Self::Data,
         joint_prob: &F,
     ) -> LogProb;
 }
@@ -48,13 +50,13 @@ where
     posterior: Po,
 }
 
-impl<Event, PosteriorEvent, L, Pr, Po> Model<Event, PosteriorEvent, L, Pr, Po>
+impl<Event, PosteriorEvent, Data, L, Pr, Po> Model<Event, PosteriorEvent, L, Pr, Po>
 where
     Event: Ord + Clone,
     PosteriorEvent: Ord,
-    L: Likelihood<Event = Event>,
+    L: Likelihood<Event = Event, Data = Data>,
     Pr: Prior<Event = Event>,
-    Po: Posterior<BaseEvent = Event, Event = PosteriorEvent>,
+    Po: Posterior<BaseEvent = Event, Event = PosteriorEvent, Data = Data>,
 {
     pub fn new(likelihood: L, prior: Pr, posterior: Po) -> Self {
         Model {
@@ -64,13 +66,13 @@ where
         }
     }
 
-    pub fn compute<U>(&self, universe: U, data: &L::Data) -> ModelInstance<Event, PosteriorEvent>
+    pub fn compute<U>(&self, universe: U, data: &Data) -> ModelInstance<Event, PosteriorEvent>
     where
         U: IntoIterator<Item = PosteriorEvent>,
     {
         let mut joint_probs = BTreeMap::new();
         let (posterior_probs, marginal) = {
-            let joint_prob = |event: &Event| {
+            let joint_prob = |event: &Event, data: &Data| {
                 let p = self.prior.compute(event) + self.likelihood.compute(event, data);
                 joint_probs.insert(event.clone(), p);
                 p
@@ -79,7 +81,7 @@ where
             let posterior_probs: BTreeMap<PosteriorEvent, LogProb> = universe
                 .into_iter()
                 .map(|event| {
-                    let p = self.posterior.compute(&event, &joint_prob);
+                    let p = self.posterior.compute(&event, data, &joint_prob);
                     (event, p)
                 })
                 .collect();
