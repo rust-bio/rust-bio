@@ -51,7 +51,7 @@ where
 impl<Event, PosteriorEvent, Data, L, Pr, Po> Model<L, Pr, Po>
 where
     Event: Ord + Clone,
-    PosteriorEvent: Ord,
+    PosteriorEvent: Ord + Clone,
     L: Likelihood<Event = Event, Data = Data>,
     Pr: Prior<Event = Event>,
     Po: Posterior<BaseEvent = Event, Event = PosteriorEvent, Data = Data>,
@@ -64,10 +64,11 @@ where
         }
     }
 
-    pub fn compute<U>(&self, universe: U, data: &Data) -> ModelInstance<Event, PosteriorEvent>
-    where
-        U: IntoIterator<Item = PosteriorEvent>,
-    {
+    pub fn compute<U>(
+        &self,
+        universe: &[PosteriorEvent],
+        data: &Data,
+    ) -> ModelInstance<Event, PosteriorEvent> {
         let mut joint_probs = BTreeMap::new();
         let (posterior_probs, marginal) = {
             let joint_prob = |event: &Event, data: &Data| {
@@ -78,6 +79,7 @@ where
 
             let posterior_probs: BTreeMap<PosteriorEvent, LogProb> = universe
                 .into_iter()
+                .cloned()
                 .map(|event| {
                     let p = self.posterior.compute(&event, data, &joint_prob);
                     (event, p)
