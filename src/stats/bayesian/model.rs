@@ -33,7 +33,7 @@ pub trait Posterior {
         &self,
         event: &Self::Event,
         data: &Self::Data,
-        joint_prob: &F,
+        joint_prob: &mut F,
     ) -> LogProb;
 }
 
@@ -71,7 +71,7 @@ where
     ) -> ModelInstance<Event, PosteriorEvent> {
         let mut joint_probs = BTreeMap::new();
         let (posterior_probs, marginal) = {
-            let joint_prob = |event: &Event, data: &Data| {
+            let mut joint_prob = |event: &Event, data: &Data| {
                 let p = self.prior.compute(event) + self.likelihood.compute(event, data);
                 joint_probs.insert(event.clone(), p);
                 p
@@ -81,7 +81,7 @@ where
                 .into_iter()
                 .cloned()
                 .map(|event| {
-                    let p = self.posterior.compute(&event, data, &joint_prob);
+                    let p = self.posterior.compute(&event, data, &mut joint_prob);
                     (event, p)
                 })
                 .collect();
