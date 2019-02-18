@@ -37,20 +37,18 @@ pub trait Posterior {
     ) -> LogProb;
 }
 
-pub struct Model<Event, PosteriorEvent, L, Pr, Po>
+pub struct Model<L, Pr, Po>
 where
-    Event: Ord,
-    PosteriorEvent: Ord,
-    L: Likelihood<Event = Event>,
-    Pr: Prior<Event = Event>,
-    Po: Posterior<BaseEvent = Event, Event = PosteriorEvent>,
+    L: Likelihood,
+    Pr: Prior,
+    Po: Posterior,
 {
     likelihood: L,
     prior: Pr,
     posterior: Po,
 }
 
-impl<Event, PosteriorEvent, Data, L, Pr, Po> Model<Event, PosteriorEvent, L, Pr, Po>
+impl<Event, PosteriorEvent, Data, L, Pr, Po> Model<L, Pr, Po>
 where
     Event: Ord + Clone,
     PosteriorEvent: Ord,
