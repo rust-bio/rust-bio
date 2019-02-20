@@ -101,8 +101,8 @@ use std::cmp::max;
 use std::i32;
 use std::iter::repeat;
 
-use alignment::{Alignment, AlignmentMode, AlignmentOperation};
-use utils::TextSlice;
+use crate::alignment::{Alignment, AlignmentMode, AlignmentOperation};
+use crate::utils::TextSlice;
 
 pub mod banded;
 
@@ -433,7 +433,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `x` - Textslice
     /// * `y` - Textslice
     ///
-    pub fn custom(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn custom(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         let (m, n) = (x.len(), y.len());
         self.traceback.init(m, n);
 
@@ -762,7 +762,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Calculate global alignment of x against y.
-    pub fn global(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn global(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         // Store the current clip penalties
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -791,7 +791,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Calculate semiglobal alignment of x against y (x is global, y is local).
-    pub fn semiglobal(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn semiglobal(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         // Store the current clip penalties
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -823,7 +823,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Calculate local alignment of x against y.
-    pub fn local(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn local(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         // Store the current clip penalties
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -1013,8 +1013,8 @@ impl Traceback {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alignment::AlignmentOperation::*;
-    use scores::blosum62;
+    use crate::alignment::AlignmentOperation::*;
+    use crate::scores::blosum62;
 
     #[test]
     fn traceback_cell() {

@@ -23,7 +23,7 @@ use std::path::Path;
 
 use csv;
 
-use utils::{Text, TextSlice};
+use crate::utils::{Text, TextSlice};
 
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
@@ -123,7 +123,7 @@ where
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
         if self.line.is_empty() {
-            try!(self.reader.read_line(&mut self.line));
+            r#try!(self.reader.read_line(&mut self.line));
             if self.line.is_empty() {
                 return Ok(());
             }
@@ -148,7 +148,7 @@ where
             .map(|s| s.to_owned());
         loop {
             self.line.clear();
-            try!(self.reader.read_line(&mut self.line));
+            r#try!(self.reader.read_line(&mut self.line));
             if self.line.is_empty() || self.line.starts_with('>') {
                 break;
             }
@@ -238,7 +238,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     /// Read from a FASTA and its index, both given as `io::Read`. FASTA has to
     /// be `io::Seek` in addition.
     pub fn new<I: io::Read>(fasta: R, fai: I) -> csv::Result<Self> {
-        let index = try!(Index::new(fai));
+        let index = r#try!(Index::new(fai));
         Ok(IndexedReader {
             reader: io::BufReader::new(fasta),
             index,
@@ -311,7 +311,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 
     /// Return an iterator yielding the fetched sequence.
-    pub fn read_iter(&mut self) -> io::Result<IndexedReaderIterator<R>> {
+    pub fn read_iter(&mut self) -> io::Result<IndexedReaderIterator<'_, R>> {
         let idx = self.fetched_idx.clone();
         match (idx, self.start, self.stop) {
             (Some(idx), Some(start), Some(stop)) => self.read_into_iter(idx, start, stop),
@@ -357,7 +357,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         idx: IndexRecord,
         start: u64,
         stop: u64,
-    ) -> io::Result<IndexedReaderIterator<R>> {
+    ) -> io::Result<IndexedReaderIterator<'_, R>> {
         if stop > idx.len {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
@@ -417,7 +417,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         let line_offset = start % idx.line_bases;
         let line_start = start / idx.line_bases * idx.line_bytes;
         let offset = idx.offset + line_start + line_offset;
-        try!(self.reader.seek(io::SeekFrom::Start(offset)));
+        r#try!(self.reader.seek(io::SeekFrom::Start(offset)));
 
         Ok(line_offset)
     }
@@ -487,7 +487,7 @@ pub struct Sequence {
     pub len: u64,
 }
 
-pub struct IndexedReaderIterator<'a, R: io::Read + io::Seek + 'a> {
+pub struct IndexedReaderIterator<'a, R: io::Read + io::Seek> {
     reader: &'a mut IndexedReader<R>,
     record: IndexRecord,
     bases_left: u64,
@@ -575,16 +575,16 @@ impl<W: io::Write> Writer<W> {
     }
 
     /// Write a Fasta record with given id, optional description and sequence.
-    pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice) -> io::Result<()> {
-        try!(self.writer.write_all(b">"));
-        try!(self.writer.write_all(id.as_bytes()));
+    pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> io::Result<()> {
+        r#try!(self.writer.write_all(b">"));
+        r#try!(self.writer.write_all(id.as_bytes()));
         if desc.is_some() {
-            try!(self.writer.write_all(b" "));
-            try!(self.writer.write_all(desc.unwrap().as_bytes()));
+            r#try!(self.writer.write_all(b" "));
+            r#try!(self.writer.write_all(desc.unwrap().as_bytes()));
         }
-        try!(self.writer.write_all(b"\n"));
-        try!(self.writer.write_all(seq));
-        try!(self.writer.write_all(b"\n"));
+        r#try!(self.writer.write_all(b"\n"));
+        r#try!(self.writer.write_all(seq));
+        r#try!(self.writer.write_all(b"\n"));
 
         Ok(())
     }
@@ -614,7 +614,7 @@ impl Record {
     }
 
     /// Create a new Fasta record from given attributes.
-    pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice) -> Self {
+    pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> Self {
         let desc = match desc {
             Some(desc) => Some(desc.to_owned()),
             _ => None,
@@ -657,7 +657,7 @@ impl Record {
     }
 
     /// Return the sequence of the record.
-    pub fn seq(&self) -> TextSlice {
+    pub fn seq(&self) -> TextSlice<'_> {
         self.seq.as_bytes()
     }
 
@@ -796,7 +796,7 @@ ATTGTTGTTTTA
     #[test]
     fn test_faread_trait() {
         let path = "genome.fa.gz";
-        let mut fa_reader: Box<FastaRead> = match path.ends_with(".gz") {
+        let mut fa_reader: Box<dyn FastaRead> = match path.ends_with(".gz") {
             true => Box::new(Reader::new(io::BufReader::new(FASTA_FILE))),
             false => Box::new(Reader::new(FASTA_FILE)),
         };

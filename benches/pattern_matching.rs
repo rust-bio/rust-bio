@@ -1,6 +1,6 @@
 #![feature(test)]
 
-extern crate bio;
+
 extern crate test;
 
 use bio::pattern_matching::bndm::BNDM;

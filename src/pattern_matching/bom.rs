@@ -21,7 +21,7 @@
 use std::borrow::Borrow;
 use std::cmp::Ord;
 use std::iter::repeat;
-use utils::TextSlice;
+use crate::utils::TextSlice;
 
 use vec_map::VecMap;
 
@@ -96,7 +96,7 @@ impl BOM {
     }
 
     /// Find all matches of the pattern in the given text. Matches are returned as an iterator over start positions.
-    pub fn find_all<'a>(&'a self, text: TextSlice<'a>) -> Matches {
+    pub fn find_all<'a>(&'a self, text: TextSlice<'a>) -> Matches<'_> {
         Matches {
             bom: self,
             text,

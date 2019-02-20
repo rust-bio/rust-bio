@@ -30,7 +30,7 @@
 use std::cmp;
 use std::iter::FromIterator;
 use std::mem;
-use utils::Interval;
+use crate::utils::Interval;
 
 /// An interval tree for storing intervals with data
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -187,7 +187,7 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
 
     /// Uses the provided `Interval` to find overlapping intervals in the tree and returns an
     /// `IntervalTreeIterator`
-    pub fn find<I: Into<Interval<N>>>(&self, interval: I) -> IntervalTreeIterator<N, D> {
+    pub fn find<I: Into<Interval<N>>>(&self, interval: I) -> IntervalTreeIterator<'_, N, D> {
         let interval = interval.into();
         match self.root {
             Some(ref n) => IntervalTreeIterator {
@@ -203,7 +203,7 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
 
     /// Uses the provided `Interval` to find overlapping intervals in the tree and returns an
     /// `IntervalTreeIteratorMut` that allows mutable access to the `data`
-    pub fn find_mut<I: Into<Interval<N>>>(&mut self, interval: I) -> IntervalTreeIteratorMut<N, D> {
+    pub fn find_mut<I: Into<Interval<N>>>(&mut self, interval: I) -> IntervalTreeIteratorMut<'_, N, D> {
         let interval = interval.into();
         match self.root {
             Some(ref mut n) => IntervalTreeIteratorMut {
@@ -379,7 +379,7 @@ mod tests {
     use std::cmp;
     use std::cmp::{max, min};
     use std::ops::Range;
-    use utils::Interval;
+    use crate::utils::Interval;
 
     fn validate(node: &Node<i64, String>) {
         validate_height(node);
@@ -475,7 +475,7 @@ mod tests {
         target: Range<i64>,
         expected_results: Vec<Range<i64>>,
     ) {
-        let mut actual_entries: Vec<Entry<i64, String>> = tree.find(&target).collect();
+        let mut actual_entries: Vec<Entry<'_, i64, String>> = tree.find(&target).collect();
         println!("{:?}", actual_entries);
         actual_entries.sort_by(|x1, x2| x1.data.cmp(&x2.data));
         let expected_entries = make_entry_tuples(expected_results);

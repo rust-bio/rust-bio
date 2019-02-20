@@ -193,7 +193,7 @@ use std::u64;
 
 use num_traits::{Bounded, FromPrimitive, One, PrimInt, ToPrimitive, WrappingAdd, Zero};
 
-use alignment::{Alignment, AlignmentMode, AlignmentOperation};
+use crate::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 
 mod builder;
 mod traceback;
@@ -336,7 +336,7 @@ impl<T: BitVec> Myers<T> {
 
     /// Finds all matches of pattern in the given text up to a given maximum distance.
     /// Matches are returned as an iterator over pairs of end position and distance.
-    pub fn find_all_end<C, I>(&self, text: I, max_dist: T::DistType) -> Matches<T, C, I::IntoIter>
+    pub fn find_all_end<C, I>(&self, text: I, max_dist: T::DistType) -> Matches<'_, T, C, I::IntoIter>
     where
         C: Borrow<u8>,
         I: IntoIterator<Item = C>,
@@ -419,7 +419,7 @@ where
 /// Iterator over pairs of end positions and distance of matches.
 pub struct Matches<'a, T, C, I>
 where
-    T: 'a + BitVec,
+    T: BitVec,
     C: Borrow<u8>,
     I: Iterator<Item = C>,
 {
@@ -469,7 +469,7 @@ where
 /// methods for obtaining the hit alignment path are provided.
 pub struct FullMatches<'a, T, C, I>
 where
-    T: 'a + BitVec,
+    T: BitVec,
     C: Borrow<u8>,
     I: Iterator<Item = C>,
 {
@@ -608,7 +608,7 @@ where
 /// methods for obtaining the hit alignment path are provided.
 pub struct LazyMatches<'a, T, C, I>
 where
-    T: 'a + BitVec,
+    T: BitVec,
     C: Borrow<u8>,
     I: Iterator<Item = C>,
 {
@@ -730,8 +730,8 @@ fn update_aln(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alignment::AlignmentOperation::*;
-    use alignment::{Alignment, AlignmentMode};
+    use crate::alignment::AlignmentOperation::*;
+    use crate::alignment::{Alignment, AlignmentMode};
     use itertools::Itertools;
     use std::iter::repeat;
 

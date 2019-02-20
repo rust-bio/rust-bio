@@ -86,37 +86,37 @@
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.
 
-extern crate bio_types;
+
 
 #[macro_use]
 extern crate approx;
-extern crate bit_set;
-extern crate bytecount;
-extern crate csv;
+
+
+
 #[macro_use]
 extern crate custom_derive;
-extern crate itertools;
-extern crate itertools_num;
+
+
 #[macro_use]
 extern crate lazy_static;
-extern crate multimap;
-extern crate ndarray;
+
+
 #[macro_use]
 extern crate newtype_derive;
-extern crate num_integer;
-extern crate num_traits;
-extern crate ordered_float;
+
+
+
 #[macro_use]
 extern crate quick_error;
-extern crate regex;
-extern crate serde;
+
+
 #[macro_use]
 extern crate serde_derive;
-extern crate bv;
-extern crate fnv;
-extern crate statrs;
-extern crate strum;
-extern crate vec_map;
+
+
+
+use strum;
+
 #[macro_use]
 extern crate strum_macros;
 

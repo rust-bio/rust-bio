@@ -91,7 +91,7 @@ impl<R: io::Read> Reader<R> {
     }
 
     /// Iterate over all records.
-    pub fn records(&mut self) -> Records<R> {
+    pub fn records(&mut self) -> Records<'_, R> {
         let (delim, term, vdelim) = self.gff_type.separator();
         let r = format!(
             r" *(?P<key>[^{delim}{term}\t]+){delim}(?P<value>[^{delim}{term}\t]+){term}?",
@@ -120,7 +120,7 @@ type GffRecordInner = (
 );
 
 /// A GFF record.
-pub struct Records<'a, R: 'a + io::Read> {
+pub struct Records<'a, R: io::Read> {
     inner: csv::DeserializeRecordsIter<'a, R, GffRecordInner>,
     attribute_re: Regex,
     value_delim: char,
