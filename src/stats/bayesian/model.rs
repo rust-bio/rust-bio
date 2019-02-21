@@ -64,7 +64,7 @@ where
         }
     }
 
-    pub fn compute<U: IntoIterator<Item=PosteriorEvent>>(
+    pub fn compute<U: IntoIterator<Item = PosteriorEvent>>(
         &self,
         universe: U,
         data: &Data,
