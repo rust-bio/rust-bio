@@ -64,9 +64,9 @@ where
         }
     }
 
-    pub fn compute(
+    pub fn compute<U: IntoIterator<Item=PosteriorEvent>>(
         &self,
-        universe: &[PosteriorEvent],
+        universe: U,
         data: &Data,
     ) -> ModelInstance<Event, PosteriorEvent> {
         let mut joint_probs = BTreeMap::new();
@@ -79,7 +79,6 @@ where
 
             let posterior_probs: BTreeMap<PosteriorEvent, LogProb> = universe
                 .into_iter()
-                .cloned()
                 .map(|event| {
                     let p = self.posterior.compute(&event, data, &mut joint_prob);
                     (event, p)
