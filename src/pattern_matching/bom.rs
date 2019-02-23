@@ -18,10 +18,10 @@
 //! assert_eq!(occ, [8, 25]);
 //! ```
 
+use crate::utils::TextSlice;
 use std::borrow::Borrow;
 use std::cmp::Ord;
 use std::iter::repeat;
-use crate::utils::TextSlice;
 
 use vec_map::VecMap;
 

@@ -27,10 +27,10 @@
 //! ```
 //!
 
+use crate::utils::Interval;
 use std::cmp;
 use std::iter::FromIterator;
 use std::mem;
-use crate::utils::Interval;
 
 /// An interval tree for storing intervals with data
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -203,7 +203,10 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
 
     /// Uses the provided `Interval` to find overlapping intervals in the tree and returns an
     /// `IntervalTreeIteratorMut` that allows mutable access to the `data`
-    pub fn find_mut<I: Into<Interval<N>>>(&mut self, interval: I) -> IntervalTreeIteratorMut<'_, N, D> {
+    pub fn find_mut<I: Into<Interval<N>>>(
+        &mut self,
+        interval: I,
+    ) -> IntervalTreeIteratorMut<'_, N, D> {
         let interval = interval.into();
         match self.root {
             Some(ref mut n) => IntervalTreeIteratorMut {
@@ -376,10 +379,10 @@ fn intersect<N: Ord + Clone>(range_1: &Interval<N>, range_2: &Interval<N>) -> bo
 #[cfg(test)]
 mod tests {
     use super::{Entry, IntervalTree, Node};
+    use crate::utils::Interval;
     use std::cmp;
     use std::cmp::{max, min};
     use std::ops::Range;
-    use crate::utils::Interval;
 
     fn validate(node: &Node<i64, String>) {
         validate_height(node);

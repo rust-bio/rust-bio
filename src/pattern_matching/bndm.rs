@@ -19,8 +19,8 @@
 //! ```
 
 use crate::pattern_matching::shift_and::masks;
-use std::borrow::Borrow;
 use crate::utils::TextSlice;
+use std::borrow::Borrow;
 
 /// BNDM algorithm.
 pub struct BNDM {

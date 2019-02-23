@@ -262,8 +262,8 @@ pub type CDFPMFIter<'a, T> = iter::Scan<
 #[cfg(test)]
 mod test {
     use super::*;
-    use ordered_float::NotNan;
     use crate::stats::LogProb;
+    use ordered_float::NotNan;
 
     #[test]
     fn test_cdf() {

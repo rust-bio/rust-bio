@@ -81,11 +81,11 @@
 //! ```
 
 use crate::alignment::{Alignment, AlignmentOperation};
+use crate::utils::TextSlice;
 use std::cmp::max;
 use std::cmp::min;
 use std::i32;
 use std::ops::Range;
-use crate::utils::TextSlice;
 
 use super::*;
 use crate::alignment::pairwise::Scoring;

@@ -86,34 +86,23 @@
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.
 
-
-
 #[macro_use]
 extern crate approx;
-
-
 
 #[macro_use]
 extern crate custom_derive;
 
-
 #[macro_use]
 extern crate lazy_static;
-
 
 #[macro_use]
 extern crate newtype_derive;
 
-
-
 #[macro_use]
 extern crate quick_error;
 
-
 #[macro_use]
 extern crate serde_derive;
-
-
 
 use strum;
 

@@ -10,9 +10,9 @@
 use std::iter::repeat;
 
 use crate::alphabets::Alphabet;
-use bytecount;
 use crate::data_structures::suffix_array::RawSuffixArray;
 use crate::utils::prescan;
+use bytecount;
 
 pub type BWT = Vec<u8>;
 pub type BWTSlice = [u8];

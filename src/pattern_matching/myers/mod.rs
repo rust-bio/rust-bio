@@ -336,7 +336,11 @@ impl<T: BitVec> Myers<T> {
 
     /// Finds all matches of pattern in the given text up to a given maximum distance.
     /// Matches are returned as an iterator over pairs of end position and distance.
-    pub fn find_all_end<C, I>(&self, text: I, max_dist: T::DistType) -> Matches<'_, T, C, I::IntoIter>
+    pub fn find_all_end<C, I>(
+        &self,
+        text: I,
+        max_dist: T::DistType,
+    ) -> Matches<'_, T, C, I::IntoIter>
     where
         C: Borrow<u8>,
         I: IntoIterator<Item = C>,
