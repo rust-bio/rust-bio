@@ -32,8 +32,8 @@ use std::cmp;
 use std::collections;
 use std::collections::hash_map::Entry;
 
-use alphabets::{Alphabet, RankTransform};
-use utils;
+use crate::alphabets::{Alphabet, RankTransform};
+use crate::utils;
 
 /// A classical, flexible, q-gram index implementation.
 #[derive(Serialize, Deserialize)]
@@ -235,7 +235,7 @@ pub struct ExactMatch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alphabets;
+    use crate::alphabets;
 
     fn setup() -> (&'static [u8], alphabets::Alphabet) {
         let text = b"ACGGCTGAGATGAT";

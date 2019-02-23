@@ -236,7 +236,7 @@ where
         let m = self.m.to_usize().unwrap();
 
         let mut out: Vec<_> = (0..m + 1).map(|_| vec![]).collect();
-        for mut s in states.into_iter().cloned() {
+        for s in states.into_iter().cloned() {
             let mut current_pos = T::one() << (m - 1);
             let mut dist = s.dist;
             for i in 0..m + 1 {

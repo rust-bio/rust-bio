@@ -123,7 +123,7 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
     }
 
     /// Iterate over sequence. Values will be returned in the big integer type (`B`).
-    pub fn iter(&self) -> Iter<S, B> {
+    pub fn iter(&self) -> Iter<'_, S, B> {
         Iter {
             smallints: self,
             items: self.smallints.iter().enumerate(),

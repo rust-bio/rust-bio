@@ -1,6 +1,5 @@
 #![feature(test)]
 
-extern crate bio;
 extern crate test;
 
 use bio::stats::pairhmm::*;

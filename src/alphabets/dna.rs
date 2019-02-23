@@ -17,7 +17,7 @@
 
 use std::borrow::Borrow;
 
-use alphabets::Alphabet;
+use crate::alphabets::Alphabet;
 
 /// The DNA alphabet (uppercase and lowercase).
 pub fn alphabet() -> Alphabet {

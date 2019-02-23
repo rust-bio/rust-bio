@@ -1,4 +1,4 @@
-use stats::LogProb;
+use crate::stats::LogProb;
 
 pub mod evidence {
     /// Scale of evidence as defined by
