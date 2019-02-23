@@ -56,7 +56,9 @@ impl BayesFactor {
     /// [Kass and Raftery 1995](http://www.andrew.cmu.edu/user/kk3n/simplicity/KassRaftery1995.pdf).
     pub fn evidence_kass_raftery(&self) -> evidence::KassRaftery {
         let k = **self;
-        if k >= 1.0 && k <= 3.0 {
+        if k <= 1.0 {
+            evidence::KassRaftery::None
+        } else if k <= 3.0 {
             evidence::KassRaftery::Barely
         } else if k <= 20.0 {
             evidence::KassRaftery::Positive
