@@ -135,17 +135,9 @@ where
                 "Expected > at record start.",
             ));
         }
-        record.id = self.line[1..]
-            .trim_right()
-            .splitn(2, ' ')
-            .nth(0)
-            .map(|s| s.to_owned())
-            .unwrap();
-        record.desc = self.line[1..]
-            .trim_right()
-            .splitn(2, ' ')
-            .nth(1)
-            .map(|s| s.to_owned());
+        let mut header_fields = self.line[1..].trim_right().splitn(2, ' ');
+        record.id = header_fields.next().map(|s| s.to_owned()).unwrap();
+        record.desc = header_fields.next().map(|s| s.to_owned());
         loop {
             self.line.clear();
             r#try!(self.reader.read_line(&mut self.line));

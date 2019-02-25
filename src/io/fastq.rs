@@ -31,7 +31,7 @@ pub trait FastqRead {
 #[derive(Debug)]
 pub struct Reader<R: io::Read> {
     reader: io::BufReader<R>,
-    sep_line: String,
+    line_buf: String,
 }
 
 impl Reader<fs::File> {
@@ -46,7 +46,7 @@ impl<R: io::Read> Reader<R> {
     pub fn new(reader: R) -> Self {
         Reader {
             reader: io::BufReader::new(reader),
-            sep_line: String::new(),
+            line_buf: String::new(),
         }
     }
 
@@ -65,30 +65,22 @@ where
     /// The content of the record can be checked via the record object.
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
+        self.line_buf.clear();
 
-        let mut header = String::new();
-        r#try!(self.reader.read_line(&mut header));
+        r#try!(self.reader.read_line(&mut self.line_buf));
 
-        if !header.is_empty() {
-            if !header.starts_with('@') {
+        if !self.line_buf.is_empty() {
+            if !self.line_buf.starts_with('@') {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
                     "Expected @ at record start.",
                 ));
             }
-            record.id = header[1..]
-                .trim_right()
-                .splitn(2, ' ')
-                .nth(0)
-                .unwrap_or_default()
-                .to_owned();
-            record.desc = header[1..]
-                .trim_right()
-                .splitn(2, ' ')
-                .nth(1)
-                .map(|s| s.to_owned());
+            let mut header_fields = self.line_buf[1..].trim_right().splitn(2, ' ');
+            record.id = header_fields.next().unwrap_or_default().to_owned();
+            record.desc = header_fields.next().map(|s| s.to_owned());
             r#try!(self.reader.read_line(&mut record.seq));
-            r#try!(self.reader.read_line(&mut self.sep_line));
+            r#try!(self.reader.read_line(&mut self.line_buf));
             r#try!(self.reader.read_line(&mut record.qual));
             if record.qual.is_empty() {
                 return Err(io::Error::new(
