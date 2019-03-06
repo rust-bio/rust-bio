@@ -25,7 +25,7 @@
 use std::borrow::Borrow;
 use std::iter::{repeat, Enumerate};
 
-use utils::TextSlice;
+use crate::utils::TextSlice;
 
 type LPS = Vec<usize>;
 

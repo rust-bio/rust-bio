@@ -13,11 +13,11 @@ use std::iter;
 use std::mem;
 use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
+use crate::utils::FastExp;
 use itertools::Itertools;
 use itertools_num::linspace;
 use num_traits::{Float, Zero};
 use ordered_float::NotNan;
-use utils::FastExp;
 
 /// A factor to convert log-probabilities to PHRED-scale (phred = p * `LOG_TO_PHRED_FACTOR`).
 const LOG_TO_PHRED_FACTOR: f64 = -4.342_944_819_032_517_5; // -10 * 1 / ln(10)

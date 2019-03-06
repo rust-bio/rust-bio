@@ -20,7 +20,7 @@ use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 
-use utils::TextSlice;
+use crate::utils::TextSlice;
 
 /// Trait for FASTQ readers.
 pub trait FastqRead {
@@ -31,7 +31,7 @@ pub trait FastqRead {
 #[derive(Debug)]
 pub struct Reader<R: io::Read> {
     reader: io::BufReader<R>,
-    sep_line: String,
+    line_buf: String,
 }
 
 impl Reader<fs::File> {
@@ -46,7 +46,7 @@ impl<R: io::Read> Reader<R> {
     pub fn new(reader: R) -> Self {
         Reader {
             reader: io::BufReader::new(reader),
-            sep_line: String::new(),
+            line_buf: String::new(),
         }
     }
 
@@ -65,31 +65,23 @@ where
     /// The content of the record can be checked via the record object.
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
+        self.line_buf.clear();
 
-        let mut header = String::new();
-        try!(self.reader.read_line(&mut header));
+        r#try!(self.reader.read_line(&mut self.line_buf));
 
-        if !header.is_empty() {
-            if !header.starts_with('@') {
+        if !self.line_buf.is_empty() {
+            if !self.line_buf.starts_with('@') {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
                     "Expected @ at record start.",
                 ));
             }
-            record.id = header[1..]
-                .trim_right()
-                .splitn(2, ' ')
-                .nth(0)
-                .unwrap_or_default()
-                .to_owned();
-            record.desc = header[1..]
-                .trim_right()
-                .splitn(2, ' ')
-                .nth(1)
-                .map(|s| s.to_owned());
-            try!(self.reader.read_line(&mut record.seq));
-            try!(self.reader.read_line(&mut self.sep_line));
-            try!(self.reader.read_line(&mut record.qual));
+            let mut header_fields = self.line_buf[1..].trim_right().splitn(2, ' ');
+            record.id = header_fields.next().unwrap_or_default().to_owned();
+            record.desc = header_fields.next().map(|s| s.to_owned());
+            r#try!(self.reader.read_line(&mut record.seq));
+            r#try!(self.reader.read_line(&mut self.line_buf));
+            r#try!(self.reader.read_line(&mut record.qual));
             if record.qual.is_empty() {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
@@ -125,7 +117,7 @@ impl Record {
     }
 
     /// Create a new FastQ record from given attributes.
-    pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice, qual: &[u8]) -> Self {
+    pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice<'_>, qual: &[u8]) -> Self {
         let desc = match desc {
             Some(desc) => Some(desc.to_owned()),
             _ => None,
@@ -175,7 +167,7 @@ impl Record {
     }
 
     /// Return the sequence of the record.
-    pub fn seq(&self) -> TextSlice {
+    pub fn seq(&self) -> TextSlice<'_> {
         self.seq.trim_right().as_bytes()
     }
 
@@ -194,7 +186,7 @@ impl Record {
 }
 
 impl fmt::Display for Record {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(
             f,
             "@{} {}\n{}\n+\n{}",
@@ -256,20 +248,20 @@ impl<W: io::Write> Writer<W> {
         &mut self,
         id: &str,
         desc: Option<&str>,
-        seq: TextSlice,
+        seq: TextSlice<'_>,
         qual: &[u8],
     ) -> io::Result<()> {
-        try!(self.writer.write_all(b"@"));
-        try!(self.writer.write_all(id.as_bytes()));
+        r#try!(self.writer.write_all(b"@"));
+        r#try!(self.writer.write_all(id.as_bytes()));
         if desc.is_some() {
-            try!(self.writer.write_all(b" "));
-            try!(self.writer.write_all(desc.unwrap().as_bytes()));
+            r#try!(self.writer.write_all(b" "));
+            r#try!(self.writer.write_all(desc.unwrap().as_bytes()));
         }
-        try!(self.writer.write_all(b"\n"));
-        try!(self.writer.write_all(seq));
-        try!(self.writer.write_all(b"\n+\n"));
-        try!(self.writer.write_all(qual));
-        try!(self.writer.write_all(b"\n"));
+        r#try!(self.writer.write_all(b"\n"));
+        r#try!(self.writer.write_all(seq));
+        r#try!(self.writer.write_all(b"\n+\n"));
+        r#try!(self.writer.write_all(qual));
+        r#try!(self.writer.write_all(b"\n"));
 
         Ok(())
     }
@@ -309,7 +301,7 @@ IIIIIIJJJJJJ
     #[test]
     fn test_fqread_trait() {
         let path = "reads.fq.gz";
-        let mut fq_reader: Box<FastqRead> = match path.ends_with(".gz") {
+        let mut fq_reader: Box<dyn FastqRead> = match path.ends_with(".gz") {
             true => Box::new(Reader::new(io::BufReader::new(FASTQ_FILE))),
             false => Box::new(Reader::new(FASTQ_FILE)),
         };

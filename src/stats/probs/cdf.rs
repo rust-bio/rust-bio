@@ -14,7 +14,7 @@ use std::slice;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
-use stats::LogProb;
+use crate::stats::LogProb;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entry<T: Ord> {
@@ -106,18 +106,18 @@ impl<T: Ord> CDF<T> {
     }
 
     /// Provide iterator.
-    pub fn iter(&self) -> slice::Iter<Entry<T>> {
+    pub fn iter(&self) -> slice::Iter<'_, Entry<T>> {
         self.inner.iter()
     }
 
     /// Mutable iterator over entries. This does not check for consistency. In other words, you
     /// should not change the order of the entries, nor the probabilities!
-    pub fn iter_mut(&mut self) -> slice::IterMut<Entry<T>> {
+    pub fn iter_mut(&mut self) -> slice::IterMut<'_, Entry<T>> {
         self.inner.iter_mut()
     }
 
     /// Iterator over corresponding PMF.
-    pub fn iter_pmf(&self) -> CDFPMFIter<T> {
+    pub fn iter_pmf(&self) -> CDFPMFIter<'_, T> {
         fn cdf_to_pmf<'a, G: Ord>(
             last_prob: &mut LogProb,
             e: &'a Entry<G>,
@@ -262,8 +262,8 @@ pub type CDFPMFIter<'a, T> = iter::Scan<
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::stats::LogProb;
     use ordered_float::NotNan;
-    use stats::LogProb;
 
     #[test]
     fn test_cdf() {
