@@ -117,7 +117,7 @@ impl RankTransform {
     /// as `usize` by storing the symbol ranks in log2(|A|) bits (with |A| being the alphabet size).
     ///
     /// If q is larger than usize::BITS / log2(|A|), this method fails with an assertion.
-    pub fn qgrams<C, T>(&self, q: u32, text: T) -> QGrams<C, T::IntoIter>
+    pub fn qgrams<C, T>(&self, q: u32, text: T) -> QGrams<'_, C, T::IntoIter>
     where
         C: Borrow<u8>,
         T: IntoIterator<Item = C>,

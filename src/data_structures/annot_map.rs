@@ -3,10 +3,10 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
+use crate::data_structures::interval_tree;
+use crate::data_structures::interval_tree::{IntervalTree, IntervalTreeIterator};
+use crate::utils::Interval;
 use bio_types::annot::loc::Loc;
-use data_structures::interval_tree;
-use data_structures::interval_tree::{IntervalTree, IntervalTreeIterator};
-use utils::Interval;
 
 /// Efficient container for querying annotations, using `HashMap` and
 /// `IntervalTree`.

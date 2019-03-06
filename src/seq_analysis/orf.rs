@@ -69,7 +69,7 @@ impl Finder {
     }
 
     /// Find all orfs in the given sequence
-    pub fn find_all<C, T>(&self, seq: T) -> Matches<C, T::IntoIter>
+    pub fn find_all<C, T>(&self, seq: T) -> Matches<'_, C, T::IntoIter>
     where
         C: Borrow<u8>,
         T: IntoIterator<Item = C>,

@@ -46,7 +46,7 @@ impl ShiftAnd {
 
     /// Find all matches of pattern in the given text. Matches are returned as an iterator
     /// over start positions.
-    pub fn find_all<C, T>(&self, text: T) -> Matches<C, T::IntoIter>
+    pub fn find_all<C, T>(&self, text: T) -> Matches<'_, C, T::IntoIter>
     where
         C: Borrow<u8>,
         T: IntoIterator<Item = C>,

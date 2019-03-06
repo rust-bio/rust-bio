@@ -39,10 +39,10 @@ use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 
-use utils::TextSlice;
+use crate::utils::TextSlice;
 
-use alignment::pairwise::{MatchFunc, Scoring};
-use alignment::AlignmentMode;
+use crate::alignment::pairwise::{MatchFunc, Scoring};
+use crate::alignment::AlignmentMode;
 
 use petgraph::graph::NodeIndex;
 use petgraph::visit::Topo;
@@ -496,7 +496,7 @@ impl<F: MatchFunc> Poa<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alignment::pairwise::Scoring;
+    use crate::alignment::pairwise::Scoring;
     use petgraph::graph::NodeIndex;
 
     #[test]

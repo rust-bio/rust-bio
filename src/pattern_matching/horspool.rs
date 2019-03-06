@@ -38,7 +38,7 @@
 //! assert_eq!(occ, [8, 25]);
 //! ```
 
-use utils::TextSlice;
+use crate::utils::TextSlice;
 
 /// Algorithm of Horspool.
 pub struct Horspool<'a> {
@@ -63,7 +63,7 @@ impl<'a> Horspool<'a> {
 
     /// Find all matches with a given text. Matches are returned as an iterator over start
     /// positions.
-    pub fn find_all<'b>(&'b self, text: TextSlice<'b>) -> Matches {
+    pub fn find_all<'b>(&'b self, text: TextSlice<'b>) -> Matches<'_> {
         Matches {
             horspool: self,
             text,

@@ -58,7 +58,7 @@ impl<R: io::Read> Reader<R> {
     }
 
     /// Iterate over all records.
-    pub fn records(&mut self) -> Records<R> {
+    pub fn records(&mut self) -> Records<'_, R> {
         Records {
             inner: self.inner.deserialize(),
         }
@@ -68,7 +68,7 @@ impl<R: io::Read> Reader<R> {
 type BedRecordCsv = (String, u64, u64, Option<Vec<String>>);
 
 /// A BED record.
-pub struct Records<'a, R: 'a + io::Read> {
+pub struct Records<'a, R: io::Read> {
     inner: csv::DeserializeRecordsIter<'a, R, BedRecordCsv>,
 }
 
