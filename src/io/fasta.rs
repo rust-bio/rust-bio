@@ -100,24 +100,40 @@ impl<R> FastaRead for Reader<R>
 where
     R: io::Read,
 {
-    /// Read next FASTA record into the given `Record`.
+    /// Read the next FASTA record into the given `Record`.
+    /// An empty record indicates that no more records can be read.
+    ///
+    /// Use this method when you want to read records as fast as
+    /// possible because it allows the reuse of a `Record` allocation.
+    ///
+    /// The [records](Reader::records) iterator provides a more ergonomic
+    /// approach to accessing FASTA records.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the record is incomplete,
+    /// syntax is violated or any form of I/O error is encountered.
     ///
     /// # Example
+    ///
     /// ```rust
-    /// # use std::io;
+    /// # use std::error::Error;
     /// # use bio::io::fasta::{Reader, FastaRead};
     /// # use bio::io::fasta::Record;
-    /// # fn main() {
-    /// # const fasta_file: &'static [u8] = b">id desc
-    /// # AAAA
-    /// # ";
-    /// # let mut reader = Reader::new(fasta_file);
+    /// # fn main() -> Result<(), Box<Error>> {
+    /// const fasta_file: &'static [u8] = b">id desc
+    /// AAAA
+    /// ";
+    /// let mut reader = Reader::new(fasta_file);
     /// let mut record = Record::new();
-    /// reader.read(&mut record);
+    ///
+    /// // Check for errors parsing the record
+    /// reader.read(&mut record)?;
     ///
     /// assert_eq!(record.id(), "id");
     /// assert_eq!(record.desc().unwrap(), "desc");
     /// assert_eq!(record.seq().to_vec(), b"AAAA");
+    /// # Ok(())
     /// # }
     /// ```
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
