@@ -80,17 +80,17 @@
 //! // aligner.custom_with_prehash(x, y, &y_kmers_hash) is also supported
 //! ```
 
-use alignment::{Alignment, AlignmentOperation};
+use crate::alignment::{Alignment, AlignmentOperation};
+use crate::utils::TextSlice;
 use std::cmp::max;
 use std::cmp::min;
 use std::i32;
 use std::ops::Range;
-use utils::TextSlice;
 
 use super::*;
-use alignment::pairwise::Scoring;
-use alignment::sparse;
-use alignment::sparse::HashMapFx;
+use crate::alignment::pairwise::Scoring;
+use crate::alignment::sparse;
+use crate::alignment::sparse::HashMapFx;
 
 const MAX_CELLS: usize = 5_000_000;
 const DEFAULT_MATCH_SCORE: i32 = 2;
@@ -267,7 +267,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `x` - Textslice
     /// * `y` - Textslice
     ///
-    pub fn custom(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn custom(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         self.band = Band::create(x, y, self.k, self.w, &self.scoring);
         self.compute_alignment(x, y)
     }
@@ -282,8 +282,8 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     pub fn custom_with_prehash(
         &mut self,
-        x: TextSlice,
-        y: TextSlice,
+        x: TextSlice<'_>,
+        y: TextSlice<'_>,
         y_kmer_hash: &HashMapFx<&[u8], Vec<u32>>,
     ) -> Alignment {
         self.band = Band::create_with_prehash(x, y, self.k, self.w, &self.scoring, y_kmer_hash);
@@ -302,8 +302,8 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     pub fn custom_with_matches(
         &mut self,
-        x: TextSlice,
-        y: TextSlice,
+        x: TextSlice<'_>,
+        y: TextSlice<'_>,
         matches: &[(u32, u32)],
     ) -> Alignment {
         self.band = Band::create_with_matches(x, y, self.k, self.w, &self.scoring, &matches);
@@ -328,8 +328,8 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     pub fn custom_with_expanded_matches(
         &mut self,
-        x: TextSlice,
-        y: TextSlice,
+        x: TextSlice<'_>,
+        y: TextSlice<'_>,
         matches: Vec<(u32, u32)>,
         allowed_mismatches: Option<usize>,
         use_lcskpp_union: bool,
@@ -370,7 +370,7 @@ impl<F: MatchFunc> Aligner<F> {
     // Computes the alignment. The band needs to be populated prior
     // to calling this function
     #[inline(never)]
-    fn compute_alignment(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    fn compute_alignment(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         if self.band.num_cells() > MAX_CELLS {
             // Too many cells in the band. Return an empty alignment
             return Alignment {
@@ -770,7 +770,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Calculate global alignment of x against y.
-    pub fn global(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn global(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         // Store the current clip penalties
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -799,7 +799,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Calculate semiglobal alignment of x against y (x is global, y is local).
-    pub fn semiglobal(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn semiglobal(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         // Store the current clip penalties
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -838,8 +838,8 @@ impl<F: MatchFunc> Aligner<F> {
     /// alignment computation.
     pub fn semiglobal_with_prehash(
         &mut self,
-        x: TextSlice,
-        y: TextSlice,
+        x: TextSlice<'_>,
+        y: TextSlice<'_>,
         y_kmer_hash: &HashMapFx<&[u8], Vec<u32>>,
     ) -> Alignment {
         // Store the current clip penalties
@@ -873,7 +873,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Calculate local alignment of x against y.
-    pub fn local(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn local(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         // Store the current clip penalties
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -1188,8 +1188,8 @@ impl Band {
     }
 
     fn create<F: MatchFunc>(
-        x: TextSlice,
-        y: TextSlice,
+        x: TextSlice<'_>,
+        y: TextSlice<'_>,
         k: usize,
         w: usize,
         scoring: &Scoring<F>,
@@ -1199,8 +1199,8 @@ impl Band {
     }
 
     fn create_with_prehash<F: MatchFunc>(
-        x: TextSlice,
-        y: TextSlice,
+        x: TextSlice<'_>,
+        y: TextSlice<'_>,
         k: usize,
         w: usize,
         scoring: &Scoring<F>,
@@ -1211,8 +1211,8 @@ impl Band {
     }
 
     fn create_with_matches<F: MatchFunc>(
-        x: TextSlice,
-        y: TextSlice,
+        x: TextSlice<'_>,
+        y: TextSlice<'_>,
         k: usize,
         w: usize,
         scoring: &Scoring<F>,
@@ -1240,8 +1240,8 @@ impl Band {
     }
 
     fn create_from_match_path<F: MatchFunc>(
-        x: TextSlice,
-        y: TextSlice,
+        x: TextSlice<'_>,
+        y: TextSlice<'_>,
         k: usize,
         w: usize,
         scoring: &Scoring<F>,
@@ -1326,12 +1326,12 @@ impl Band {
 
 #[cfg(test)]
 mod banded {
-    use alignment::pairwise::{self, banded, Scoring};
-    use alignment::sparse::hash_kmers;
-    use utils::TextSlice;
+    use crate::alignment::pairwise::{self, banded, Scoring};
+    use crate::alignment::sparse::hash_kmers;
+    use crate::utils::TextSlice;
 
     // Check that the banded alignment is equivalent to the exhaustive SW alignment
-    fn compare_to_full_alignment_local(x: TextSlice, y: TextSlice) {
+    fn compare_to_full_alignment_local(x: TextSlice<'_>, y: TextSlice<'_>) {
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
 
         let mut banded_aligner =
@@ -1345,7 +1345,7 @@ mod banded {
         assert_eq!(banded_alignment, full_alignment);
     }
 
-    fn compare_to_full_alignment_global(x: TextSlice, y: TextSlice) {
+    fn compare_to_full_alignment_global(x: TextSlice<'_>, y: TextSlice<'_>) {
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
 
         let mut banded_aligner =
@@ -1359,7 +1359,7 @@ mod banded {
         assert_eq!(banded_alignment, full_alignment);
     }
 
-    fn compare_to_full_alignment_semiglobal(x: TextSlice, y: TextSlice) {
+    fn compare_to_full_alignment_semiglobal(x: TextSlice<'_>, y: TextSlice<'_>) {
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
 
         let mut banded_aligner =
@@ -1671,8 +1671,8 @@ mod banded {
     //     compare_to_full_alignment_semiglobal(x, y);
     // }
 
-    use alignment::AlignmentOperation::*;
-    use scores::blosum62;
+    use crate::alignment::AlignmentOperation::*;
+    use crate::scores::blosum62;
     use std::iter::repeat;
 
     #[test]

@@ -263,7 +263,7 @@ fn viterbi_matrices<O, M: Model<O>>(
             // Subsequent columns.
             for j in hmm.states() {
                 let x = vals
-                    .subview(Axis(0), i - 1)
+                    .index_axis(Axis(0), i - 1)
                     .iter()
                     .enumerate()
                     .map(|(a, p)| (State(a), p))

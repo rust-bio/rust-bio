@@ -11,7 +11,7 @@ use std::cmp;
 use std::mem;
 use std::usize;
 
-use stats::LogProb;
+use crate::stats::LogProb;
 
 /// Trait for parametrization of `PairHMM` gap behavior.
 pub trait GapParameters {
@@ -361,7 +361,7 @@ impl PairHMM {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stats::{LogProb, Prob};
+    use crate::stats::{LogProb, Prob};
 
     // Single base insertion and deletion rates for R1 according to Schirmer et al.
     // BMC Bioinformatics 2016, 10.1186/s12859-016-0976-y
