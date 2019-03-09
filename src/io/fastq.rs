@@ -112,7 +112,7 @@ where
                     "Expected @ at record start.",
                 ));
             }
-            let mut header_fields = self.line_buf[1..].trim_right().splitn(2, ' ');
+            let mut header_fields = self.line_buf[1..].trim_end().splitn(2, ' ');
             record.id = header_fields.next().unwrap_or_default().to_owned();
             record.desc = header_fields.next().map(|s| s.to_owned());
             r#try!(self.reader.read_line(&mut record.seq));
@@ -204,12 +204,12 @@ impl Record {
 
     /// Return the sequence of the record.
     pub fn seq(&self) -> TextSlice<'_> {
-        self.seq.trim_right().as_bytes()
+        self.seq.trim_end().as_bytes()
     }
 
     /// Return the base qualities of the record.
     pub fn qual(&self) -> &[u8] {
-        self.qual.trim_right().as_bytes()
+        self.qual.trim_end().as_bytes()
     }
 
     /// Clear the record.

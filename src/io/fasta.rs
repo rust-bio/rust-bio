@@ -151,7 +151,7 @@ where
                 "Expected > at record start.",
             ));
         }
-        let mut header_fields = self.line[1..].trim_right().splitn(2, ' ');
+        let mut header_fields = self.line[1..].trim_end().splitn(2, ' ');
         record.id = header_fields.next().map(|s| s.to_owned()).unwrap();
         record.desc = header_fields.next().map(|s| s.to_owned());
         loop {
@@ -160,7 +160,7 @@ where
             if self.line.is_empty() || self.line.starts_with('>') {
                 break;
             }
-            record.seq.push_str(self.line.trim_right());
+            record.seq.push_str(self.line.trim_end());
         }
 
         Ok(())
