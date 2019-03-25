@@ -272,7 +272,7 @@ impl<F: MatchFunc> Aligner<F> {
         self.traceback = self.poa.global(query);
         self
     }
-    
+
     /// Return alignment graph.
     pub fn graph(&self) -> &POAGraph {
         &self.poa.graph
