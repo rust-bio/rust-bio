@@ -27,10 +27,10 @@
 //! let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
 //! let mut aligner = Aligner::new(scoring, x);
 //! // z differs from x in 3 locations
-//! assert_eq!(aligner.global(z).get_alignment().score, 1);
+//! assert_eq!(aligner.global(z).alignment().score, 1);
 //! aligner.global(y).add_to_graph();
 //! // z differs from x and y's partial order alignment by 1 base
-//! assert_eq!(aligner.global(z).get_alignment().score, 5);
+//! assert_eq!(aligner.global(z).alignment().score, 5);
 //! ```
 //!
 
@@ -47,6 +47,7 @@ use petgraph::visit::Topo;
 use petgraph::{Directed, Graph, Incoming};
 
 pub const MIN_SCORE: i32 = -858_993_459; // negative infinity; see alignment/pairwise/mod.rs
+pub type POAGraph = Graph<u8, i32, Directed, usize>;
 
 // Unlike with a total order we may have arbitrary successors in the
 // traceback matrix. I have not yet figured out what the best level of
@@ -186,7 +187,7 @@ impl Traceback {
         println!();
     }
 
-    pub fn get_alignment(&self) -> Alignment {
+    pub fn alignment(&self) -> Alignment {
         // optimal AlignmentOperation path
         let mut ops: Vec<AlignmentOperation> = vec![];
 
@@ -243,6 +244,7 @@ pub struct Aligner<F: MatchFunc> {
 }
 
 impl<F: MatchFunc> Aligner<F> {
+    /// Create new instance.
     pub fn new(scoring: Scoring<F>, reference: TextSlice) -> Self {
         Aligner {
             sequence_names: vec![],
@@ -252,20 +254,28 @@ impl<F: MatchFunc> Aligner<F> {
         }
     }
 
+    /// Add the alignment of the last query to the graph.
     pub fn add_to_graph(&mut self) -> &mut Self {
-        let alignment = self.traceback.get_alignment();
+        let alignment = self.traceback.alignment();
         self.poa.add_alignment(&alignment, &self.query);
         self
     }
 
-    pub fn get_alignment(&self) -> Alignment {
-        self.traceback.get_alignment()
+    /// Return alignment of last added query against the graph.
+    pub fn alignment(&self) -> Alignment {
+        self.traceback.alignment()
     }
 
+    /// Globally align a given query against the graph.
     pub fn global(&mut self, query: TextSlice) -> &mut Self {
         self.query = query.to_vec();
         self.traceback = self.poa.global(query);
         self
+    }
+    
+    /// Return alignment graph.
+    pub fn graph(&self) -> &POAGraph {
+        &self.poa.graph
     }
 }
 
@@ -276,7 +286,7 @@ impl<F: MatchFunc> Aligner<F> {
 ///
 pub struct Poa<F: MatchFunc> {
     scoring: Scoring<F>,
-    pub graph: Graph<u8, i32, Directed, usize>,
+    pub graph: POAGraph,
 }
 
 impl<F: MatchFunc> Poa<F> {
@@ -287,7 +297,7 @@ impl<F: MatchFunc> Poa<F> {
     /// * `scoring` - the score struct
     /// * `poa` - the partially ordered reference alignment
     ///
-    pub fn new(scoring: Scoring<F>, graph: Graph<u8, i32, Directed, usize>) -> Self {
+    pub fn new(scoring: Scoring<F>, graph: POAGraph) -> Self {
         Poa { scoring, graph }
     }
 
@@ -495,13 +505,13 @@ mod tests {
         //let _seq1 = b"PKMIVRPQKNETV";
         //let _seq2 = b"THKMLVRNETIM";
         let poa = Poa::from_string(scoring, b"GATTACA");
-        let alignment = poa.global(b"GCATGCU").get_alignment();
+        let alignment = poa.global(b"GCATGCU").alignment();
         assert_eq!(alignment.score, 0);
 
-        let alignment = poa.global(b"GCATGCUx").get_alignment();
+        let alignment = poa.global(b"GCATGCUx").alignment();
         assert_eq!(alignment.score, -1);
 
-        let alignment = poa.global(b"xCATGCU").get_alignment();
+        let alignment = poa.global(b"xCATGCU").alignment();
         assert_eq!(alignment.score, -2);
     }
 
@@ -518,7 +528,7 @@ mod tests {
         poa.graph.add_edge(head, node1, 1);
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
-        let alignment = poa.global(seq2).get_alignment();
+        let alignment = poa.global(seq2).alignment();
         assert_eq!(alignment.score, 3);
     }
 
@@ -536,7 +546,7 @@ mod tests {
         poa.graph.add_edge(head, node1, 1);
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
-        let alignment = poa.global(seq2).get_alignment();
+        let alignment = poa.global(seq2).alignment();
         poa.add_alignment(&alignment, seq2);
         assert_eq!(poa.graph.edge_count(), 14);
         assert!(poa
@@ -564,10 +574,10 @@ mod tests {
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, node3, 1);
         poa.graph.add_edge(node3, tail, 1);
-        let alignment = poa.global(seq2).get_alignment();
+        let alignment = poa.global(seq2).alignment();
         assert_eq!(alignment.score, 2);
         poa.add_alignment(&alignment, seq2);
-        let alignment2 = poa.global(seq3).get_alignment();
+        let alignment2 = poa.global(seq3).alignment();
 
         assert_eq!(alignment2.score, 10);
     }
@@ -581,6 +591,6 @@ mod tests {
             .add_to_graph()
             .global(b"TTGGTTTGCGAA")
             .add_to_graph();
-        assert_eq!(aligner.get_alignment().score, 10);
+        assert_eq!(aligner.alignment().score, 10);
     }
 }
