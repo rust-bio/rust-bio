@@ -35,9 +35,6 @@
 //!
 
 use std::cmp::{max, Ordering};
-use std::error::Error;
-use std::fs::File;
-use std::io::Write;
 
 use crate::utils::TextSlice;
 
@@ -47,7 +44,6 @@ use crate::alignment::AlignmentMode;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::Topo;
 
-use petgraph::dot::Dot;
 use petgraph::{Directed, Graph, Incoming};
 
 pub const MIN_SCORE: i32 = -858_993_459; // negative infinity; see alignment/pairwise/mod.rs
@@ -394,24 +390,6 @@ impl<F: MatchFunc> Poa<F> {
         }
 
         traceback
-    }
-
-    /// Write the current graph to a specified filepath in dot format for
-    /// visualization, primarily for debugging / diagnostics
-    ///
-    /// # Arguments
-    ///
-    /// * `filename` - The filepath to write the dot file to, as a String
-    ///
-    pub fn write_dot(self, filename: &str) {
-        let mut file = match File::create(&filename) {
-            Err(why) => panic!("couldn't open file {}: {}", filename, why.description()),
-            Ok(file) => file,
-        };
-        let g = self.graph.map(|_, nw| *nw as char, |_, ew| ew);
-        if let Err(why) = file.write_all(Dot::new(&g).to_string().as_bytes()) {
-            panic!("couldn't write to file {}: {}", filename, why.description())
-        }
     }
 
     /// Experimental: return sequence of traversed edges
