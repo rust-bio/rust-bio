@@ -11,11 +11,11 @@ use num_traits::Float;
 use std::ops;
 
 const COEFF_0: f64 = 1.0;
-const COEFF_1: f64 = 4.831794110;
-const COEFF_2: f64 = 0.143440676;
-const COEFF_3: f64 = 0.019890581;
-const COEFF_4: f64 = 0.006935931;
-const ONEBYLOG2: f64 = 1.442695041;
+const COEFF_1: f64 = 4.831_794_110;
+const COEFF_2: f64 = 0.143_440_676;
+const COEFF_3: f64 = 0.019_890_581;
+const COEFF_4: f64 = 0.006_935_931;
+const ONEBYLOG2: f64 = 1.442_695_041;
 const OFFSET_F64: i64 = 1023;
 const FRACTION_F64: u32 = 52;
 const MIN_VAL: f64 = -500.0;

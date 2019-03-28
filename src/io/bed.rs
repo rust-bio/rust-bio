@@ -206,7 +206,7 @@ impl Record {
 
     /// Set name.
     pub fn set_name(&mut self, name: &str) {
-        if self.aux.len() < 1 {
+        if self.aux.is_empty() {
             self.aux.push(name.to_owned());
         } else {
             self.aux[0] = name.to_owned();
@@ -215,7 +215,7 @@ impl Record {
 
     /// Set score.
     pub fn set_score(&mut self, score: &str) {
-        if self.aux.len() < 1 {
+        if self.aux.is_empty() {
             self.aux.push("".to_owned());
         }
         if self.aux.len() < 2 {

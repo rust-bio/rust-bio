@@ -149,7 +149,7 @@ impl MyersBuilder {
     ///     .build(b"TGAGCG*");
     /// // ...
     /// # }
-    pub fn build<'a, T, C, P>(&self, pattern: P) -> Myers<T>
+    pub fn build<T, C, P>(&self, pattern: P) -> Myers<T>
     where
         T: BitVec,
         C: Borrow<u8>,
@@ -181,9 +181,9 @@ impl MyersBuilder {
         }
 
         Myers {
-            peq: peq,
+            peq,
             bound: T::one() << (m.to_usize().unwrap() - 1),
-            m: m,
+            m,
             tb: Traceback::new(),
         }
     }

@@ -49,19 +49,19 @@ impl Finder {
     ) -> Self {
         Finder {
             start_codons: start_codons
-                .into_iter() // Convert start_ and
+                .iter() // Convert start_ and
                 .map(|x| {
                     // stop_codons from
-                    x.into_iter() // Vec<&[u8;3]> to
+                    x.iter() // Vec<&[u8;3]> to
                         .map(|&x| x as u8) // Vec<VecDeque<u8>>
                         .collect::<VecDeque<u8>>() // so they can be
                 }) // easily compared
                 .collect(), // with codon built
             stop_codons: stop_codons
-                .into_iter() // from IntoTextIterator
+                .iter() // from IntoTextIterator
                 .map(|x| {
                     // object.
-                    x.into_iter().map(|&x| x as u8).collect::<VecDeque<u8>>()
+                    x.iter().map(|&x| x as u8).collect::<VecDeque<u8>>()
                 })
                 .collect(),
             min_len,

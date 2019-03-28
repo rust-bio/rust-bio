@@ -75,7 +75,7 @@ where
         self.D[0].clear();
         self.D[0].extend(repeat(k + 1).take(m + 1));
         self.D[1].clear();
-        self.D[1].extend(0..m + 1);
+        self.D[1].extend(0..=m);
         Matches {
             ukkonen: self,
             pattern,
@@ -121,7 +121,7 @@ where
             self.lastk = min(self.lastk + 1, self.m);
             // in each column, go at most one cell further than before
             // do not look at cells with too big k
-            for j in 1..self.lastk + 1 {
+            for j in 1..=self.lastk {
                 self.ukkonen.D[col][j] = min(
                     min(self.ukkonen.D[prev][j] + 1, self.ukkonen.D[col][j - 1] + 1),
                     self.ukkonen.D[prev][j - 1] + (cost)(self.pattern[j - 1], *c.borrow()) as usize,

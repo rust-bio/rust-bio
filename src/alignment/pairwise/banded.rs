@@ -466,7 +466,7 @@ impl<F: MatchFunc> Aligner<F> {
             }
         }
 
-        for j in 1..n + 1 {
+        for j in 1..=n {
             let curr = j % 2;
             let prev = 1 - curr;
 
@@ -625,7 +625,7 @@ impl<F: MatchFunc> Aligner<F> {
         }
 
         // Handle suffix clipping in the j=n case
-        for i in 0..m + 1 {
+        for i in 0..=m {
             let j = n;
             let curr = j % 2;
             if self.Sn[i] > self.S[curr][i] {
@@ -961,7 +961,7 @@ impl Band {
     //
     fn new(m: usize, n: usize) -> Self {
         let mut ranges: Vec<Range<usize>> = Vec::with_capacity(n + 1);
-        for _ in 0..n + 1 {
+        for _ in 0..=n {
             ranges.push(m + 1..0);
         }
 

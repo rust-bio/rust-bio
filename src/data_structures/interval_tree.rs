@@ -47,7 +47,7 @@ impl<N: Ord + Clone, D> Default for IntervalTree<N, D> {
 /// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
 /// wraps the fields `interval` and `data` in an `Entry`.
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub struct Entry<'a, N: Ord + Clone + 'a, D: 'a> {
+pub struct Entry<'a, N: Ord + Clone, D> {
     data: &'a D,
     interval: &'a Interval<N>,
 }
@@ -66,7 +66,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Entry<'a, N, D> {
 
 /// An `IntervalTreeIterator` is returned by `Intervaltree::find` and iterates over the entries
 /// overlapping the query
-pub struct IntervalTreeIterator<'a, N: Ord + Clone + 'a, D: 'a> {
+pub struct IntervalTreeIterator<'a, N: Ord + Clone, D> {
     nodes: Vec<&'a Node<N, D>>,
     interval: Interval<N>,
 }
@@ -111,7 +111,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D>
 /// wraps the fields `interval` and `data` in an `EntryMut`. Only the data part can be mutably accessed
 /// using the `data` method
 #[derive(PartialEq, Eq, Debug)]
-pub struct EntryMut<'a, N: Ord + Clone + 'a, D: 'a> {
+pub struct EntryMut<'a, N: Ord + Clone, D> {
     data: &'a mut D,
     interval: &'a Interval<N>,
 }
@@ -130,7 +130,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> EntryMut<'a, N, D> {
 
 /// An `IntervalTreeIteratorMut` is returned by `Intervaltree::find_mut` and iterates over the entries
 /// overlapping the query allowing mutable access to the data `D`, not the `Interval`.
-pub struct IntervalTreeIteratorMut<'a, N: Ord + Clone + 'a, D: 'a> {
+pub struct IntervalTreeIteratorMut<'a, N: Ord + Clone, D> {
     nodes: Vec<&'a mut Node<N, D>>,
     interval: Interval<N>,
 }

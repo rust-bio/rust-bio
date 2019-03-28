@@ -30,7 +30,7 @@ pub struct ShiftAnd {
 
 impl ShiftAnd {
     /// Create new ShiftAnd instance from a given pattern.
-    pub fn new<'a, C, P>(pattern: P) -> Self
+    pub fn new<C, P>(pattern: P) -> Self
     where
         P::IntoIter: ExactSizeIterator,
         C: Borrow<u8>,

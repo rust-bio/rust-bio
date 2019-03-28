@@ -484,7 +484,7 @@ mod tests {
         let x = b"AGCTCGATCGATCGATC";
         let y = b"AGCTCGATCTGATCGATCT";
 
-        let emission_params = TestEmissionParams { x: x, y: y };
+        let emission_params = TestEmissionParams { x, y };
         let gap_params = TestGapParams;
 
         let mut pair_hmm = PairHMM::new();
@@ -499,7 +499,7 @@ mod tests {
         let x = b"AGCTCGATCTGATCGATCT";
         let y = b"AGCTCGATCGATCGATC";
 
-        let emission_params = TestEmissionParams { x: x, y: y };
+        let emission_params = TestEmissionParams { x, y };
         let gap_params = TestGapParams;
 
         let mut pair_hmm = PairHMM::new();
@@ -514,7 +514,7 @@ mod tests {
         let x = b"AGCTCGAGCGATCGATC";
         let y = b"TGCTCGATCGATCGATC";
 
-        let emission_params = TestEmissionParams { x: x, y: y };
+        let emission_params = TestEmissionParams { x, y };
         let gap_params = TestGapParams;
 
         let mut pair_hmm = PairHMM::new();
@@ -536,7 +536,7 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
 
         let y = b"GGGTATGCACGCGATAGCATTGCGAGATGCTGGAGCTGGAGCACCCTATGTCGC";
 
-        let emission_params = TestEmissionParams { x: x, y: y };
+        let emission_params = TestEmissionParams { x, y };
         let gap_params = SemiglobalGapParams;
 
         let mut pair_hmm = PairHMM::new();
