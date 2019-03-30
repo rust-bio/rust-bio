@@ -261,6 +261,10 @@ mod tests {
         let query = Contig::new("chrXI".to_owned(), 462400, 100, ReqStrand::Forward);
         let hits: Vec<&String> = genes.find(&query).map(|e| e.data()).collect();
         assert!(hits.is_empty());
+
+        let query = Contig::new("NotFound".to_owned(), 0, 0, ReqStrand::Forward);
+        let hits: Vec<&String> = genes.find(&query).map(|e| e.data()).collect();
+        assert!(hits.is_empty());
     }
 
     #[test]
