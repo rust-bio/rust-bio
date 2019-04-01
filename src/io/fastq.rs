@@ -60,9 +60,45 @@ impl<R> FastqRead for Reader<R>
 where
     R: io::Read,
 {
-    /// Read into a given record.
-    /// Returns an error if the record in incomplete or syntax is violated.
-    /// The content of the record can be checked via the record object.
+    /// Read the next FASTQ entry into the given `Record`.
+    /// An empty record indicates that no more records can be read.
+    ///
+    /// This method is useful when you want to read records as fast as
+    /// possible because it allows the reuse of a `Record` allocation.
+    ///
+    /// A more ergonomic approach to reading FASTQ records, is the
+    /// [records](Reader::records) iterator.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the record is incomplete,
+    /// syntax is violated or any form of I/O error is encountered.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::error::Error;
+    /// # use bio::io::fastq::{Reader, FastqRead};
+    /// # use bio::io::fastq::Record;
+    /// # fn main() -> Result<(), Box<Error>> {
+    /// const fastq_file: &'static [u8] = b"@id desc
+    /// AAAA
+    /// +
+    /// IIII
+    /// ";
+    /// let mut reader = Reader::new(fastq_file);
+    /// let mut record = Record::new();
+    ///
+    /// // Check for errors parsing the record
+    /// reader.read(&mut record)?;
+    ///
+    /// assert_eq!(record.id(), "id");
+    /// assert_eq!(record.desc().unwrap(), "desc");
+    /// assert_eq!(record.seq().to_vec(), b"AAAA");
+    /// assert_eq!(record.qual().to_vec(), b"IIII");
+    /// # Ok(())
+    /// # }
+    /// ```
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
         self.line_buf.clear();
@@ -76,7 +112,7 @@ where
                     "Expected @ at record start.",
                 ));
             }
-            let mut header_fields = self.line_buf[1..].trim_right().splitn(2, ' ');
+            let mut header_fields = self.line_buf[1..].trim_end().splitn(2, ' ');
             record.id = header_fields.next().unwrap_or_default().to_owned();
             record.desc = header_fields.next().map(|s| s.to_owned());
             r#try!(self.reader.read_line(&mut record.seq));
@@ -168,12 +204,12 @@ impl Record {
 
     /// Return the sequence of the record.
     pub fn seq(&self) -> TextSlice<'_> {
-        self.seq.trim_right().as_bytes()
+        self.seq.trim_end().as_bytes()
     }
 
     /// Return the base qualities of the record.
     pub fn qual(&self) -> &[u8] {
-        self.qual.trim_right().as_bytes()
+        self.qual.trim_end().as_bytes()
     }
 
     /// Clear the record.
