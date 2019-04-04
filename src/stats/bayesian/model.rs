@@ -64,6 +64,10 @@ where
         }
     }
 
+    pub fn joint_prob(&self, event: &Event, data: &Data) -> LogProb {
+        self.prior.compute(event) + self.likelihood.compute(event, data)
+    }
+
     pub fn compute<U: IntoIterator<Item = PosteriorEvent>>(
         &self,
         universe: U,
@@ -72,7 +76,7 @@ where
         let mut joint_probs = BTreeMap::new();
         let (posterior_probs, marginal) = {
             let mut joint_prob = |event: &Event, data: &Data| {
-                let p = self.prior.compute(event) + self.likelihood.compute(event, data);
+                let p = self.joint_prob(event, data);
                 joint_probs.insert(event.clone(), p);
                 p
             };
