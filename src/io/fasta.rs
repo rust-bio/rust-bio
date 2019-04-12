@@ -93,6 +93,10 @@ impl<R: io::Read> Reader<R> {
             error_has_occured: false,
         }
     }
+
+    pub(crate) fn new_with_line(reader: io::BufReader<R>, line: String) -> Self {
+        Reader { reader, line }
+    }
 }
 
 impl<R> FastaRead for Reader<R>
@@ -786,7 +790,7 @@ impl<R: io::Read> Iterator for Records<R> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use std::fmt::Write as FmtWrite;
     use std::io;
@@ -836,9 +840,9 @@ ACCGTAGGCTGA
 ATTGTTGTTTTA
 ";
 
-    struct ReaderMock {
-        seek_fails: bool,
-        read_fails: bool,
+    pub(crate) struct ReaderMock {
+        pub(crate) seek_fails: bool,
+        pub(crate) read_fails: bool,
     }
 
     impl Read for ReaderMock {

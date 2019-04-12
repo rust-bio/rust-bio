@@ -83,6 +83,13 @@ impl<R: io::Read> Reader<R> {
     pub fn records(self) -> Records<R> {
         Records { reader: self }
     }
+
+    pub(crate) fn new_with_line(reader: io::BufReader<R>, line: String) -> Self {
+        Reader {
+            reader,
+            line_buffer: line,
+        }
+    }
 }
 
 impl<R> FastqRead for Reader<R>
@@ -129,48 +136,50 @@ where
     /// ```
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
+        if self.line_buffer.is_empty() {
+            self.reader.read_line(&mut self.line_buffer)?;
+            if self.line_buffer.is_empty() {
+                return Ok(());
+            }
+        }
+
+        if !self.line_buffer.starts_with('@') {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Expected @ at record start.",
+            ));
+        }
+        let mut header_fields = self.line_buffer[1..].trim_end().splitn(2, ' ');
+        record.id = header_fields.next().unwrap_or_default().to_owned();
+        record.desc = header_fields.next().map(|s| s.to_owned());
         self.line_buffer.clear();
 
         self.reader.read_line(&mut self.line_buffer)?;
 
-        if !self.line_buffer.is_empty() {
-            if !self.line_buffer.starts_with('@') {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Expected @ at record start.",
-                ));
-            }
-            let mut header_fields = self.line_buffer[1..].trim_end().splitn(2, ' ');
-            record.id = header_fields.next().unwrap_or_default().to_owned();
-            record.desc = header_fields.next().map(|s| s.to_owned());
+        let mut lines_read = 0;
+        while !self.line_buffer.starts_with('+') {
+            record.seq.push_str(&self.line_buffer.trim_end());
             self.line_buffer.clear();
-
             self.reader.read_line(&mut self.line_buffer)?;
-
-            let mut lines_read = 0;
-            while !self.line_buffer.starts_with('+') {
-                record.seq.push_str(&self.line_buffer.trim_end());
-                self.line_buffer.clear();
-                self.reader.read_line(&mut self.line_buffer)?;
-                lines_read += 1;
-            }
-
-            for _ in 0..lines_read {
-                self.line_buffer.clear();
-                self.reader.read_line(&mut self.line_buffer)?;
-                record.qual.push_str(self.line_buffer.trim_end());
-            }
-
-            if record.qual.is_empty() {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Incomplete record. Each FastQ record has to consist \
-                     of 4 lines: header, sequence, separator and \
-                     qualities.",
-                ));
-            }
+            lines_read += 1;
         }
 
+        for _ in 0..lines_read {
+            self.line_buffer.clear();
+            self.reader.read_line(&mut self.line_buffer)?;
+            record.qual.push_str(self.line_buffer.trim_end());
+        }
+
+        if record.qual.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Incomplete record. Each FastQ record has to consist \
+                     of 4 lines: header, sequence, separator and \
+                     qualities.",
+            ));
+        }
+
+        self.line_buffer.clear();
         Ok(())
     }
 }
