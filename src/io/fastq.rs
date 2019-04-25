@@ -20,6 +20,8 @@ use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 
+use bio_types::sequence::SequenceRead;
+
 use crate::utils::TextSlice;
 
 /// Trait for FASTQ readers.
@@ -231,6 +233,24 @@ impl fmt::Display for Record {
             self.seq,
             self.qual
         )
+    }
+}
+
+impl SequenceRead for Record {
+    fn name(&self) -> &[u8] {
+        self.id.as_bytes()
+    }
+
+    fn base(&self, i: usize) -> u8 {
+        self.seq.as_bytes()[i]
+    }
+
+    fn base_qual(&self, i: usize) -> u8 {
+        self.qual.as_bytes()[i]
+    }
+
+    fn len(&self) -> usize {
+        self.seq().len()
     }
 }
 
