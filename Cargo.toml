@@ -42,6 +42,7 @@ bio-types = ">=0.4"
 fnv = "1.0"
 strum = "0.13"
 strum_macros = "0.13"
+derive-new = "0.5"
 
 [dependencies.vec_map]
 version = "0.8"

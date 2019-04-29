@@ -1,5 +1,6 @@
 use std::cmp::Ord;
 use std::collections::BTreeMap;
+use std::marker::PhantomData;
 
 use itertools::Itertools;
 use ordered_float::NotNan;
@@ -9,11 +10,16 @@ use stats::LogProb;
 pub type JointProbUniverse<Event> = BTreeMap<Event, LogProb>;
 
 /// Likelihood model.
-pub trait Likelihood {
+pub trait Likelihood<Payload=()>
+where
+    Payload: Default,
+{
     type Event;
     type Data;
 
-    fn compute(&self, event: &Self::Event, data: &Self::Data) -> LogProb;
+    /// Compute likelihood of event given the data. Optionally, the passed payload can be used
+    /// to e.g., cache intermediate results. One payload corresponds to one model instance.
+    fn compute(&self, event: &Self::Event, data: &Self::Data, payload: &mut Payload) -> LogProb;
 }
 
 /// Prior model.
@@ -37,22 +43,25 @@ pub trait Posterior {
     ) -> LogProb;
 }
 
-pub struct Model<L, Pr, Po>
+pub struct Model<L, Pr, Po, Payload=()>
 where
-    L: Likelihood,
+    L: Likelihood<Payload>,
     Pr: Prior,
     Po: Posterior,
+    Payload: Default,
 {
     likelihood: L,
     prior: Pr,
     posterior: Po,
+    payload: PhantomData<Payload>,
 }
 
-impl<Event, PosteriorEvent, Data, L, Pr, Po> Model<L, Pr, Po>
+impl<Event, PosteriorEvent, Data, L, Pr, Po, Payload> Model<L, Pr, Po, Payload>
 where
+    Payload: Default,
     Event: Ord + Clone,
     PosteriorEvent: Ord + Clone,
-    L: Likelihood<Event = Event, Data = Data>,
+    L: Likelihood<Payload, Event = Event, Data = Data>,
     Pr: Prior<Event = Event>,
     Po: Posterior<BaseEvent = Event, Event = PosteriorEvent, Data = Data>,
 {
@@ -61,11 +70,12 @@ where
             likelihood,
             prior,
             posterior,
+            payload: PhantomData
         }
     }
 
-    pub fn joint_prob(&self, event: &Event, data: &Data) -> LogProb {
-        self.prior.compute(event) + self.likelihood.compute(event, data)
+    pub fn joint_prob(&self, event: &Event, data: &Data, payload: &mut Payload) -> LogProb {
+        self.prior.compute(event) + self.likelihood.compute(event, data, payload)
     }
 
     pub fn compute<U: IntoIterator<Item = PosteriorEvent>>(
@@ -74,9 +84,10 @@ where
         data: &Data,
     ) -> ModelInstance<Event, PosteriorEvent> {
         let mut joint_probs = BTreeMap::new();
+        let mut payload = Payload::default();
         let (posterior_probs, marginal) = {
             let mut joint_prob = |event: &Event, data: &Data| {
-                let p = self.joint_prob(event, data);
+                let p = self.joint_prob(event, data, &mut payload);
                 joint_probs.insert(event.clone(), p);
                 p
             };

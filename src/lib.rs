@@ -119,6 +119,8 @@ extern crate strum;
 extern crate vec_map;
 #[macro_use]
 extern crate strum_macros;
+#[macro_use]
+extern crate derive_new;
 
 pub mod alignment;
 pub mod alphabets;
