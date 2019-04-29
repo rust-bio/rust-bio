@@ -10,10 +10,7 @@ use stats::LogProb;
 pub type JointProbUniverse<Event> = BTreeMap<Event, LogProb>;
 
 /// Likelihood model.
-pub trait Likelihood<Payload = ()>
-where
-    Payload: Default,
-{
+pub trait Likelihood<Payload = ()> {
     type Event;
     type Data;
 
