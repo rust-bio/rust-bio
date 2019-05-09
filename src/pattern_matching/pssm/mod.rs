@@ -137,7 +137,7 @@ pub trait Motif {
             ));
         }
 
-        if seqs.len() == 0 {
+        if seqs.is_empty() {
             return Err(PSSMError::EmptyMotif);
         }
 
@@ -232,7 +232,7 @@ pub trait Motif {
         // we have to look at slices, so a simple iterator won't do
         let seq = seq_it.into_iter().map(|c| *c.borrow()).collect_vec();
         let scores = self.get_scores();
-        for start in 0..seq.len() - pssm_len + 1 {
+        for start in 0..=seq.len() - pssm_len {
             let m: Vec<f32> = match (0..pssm_len)
                 .map(|i| match Self::lookup(seq[start + i]) {
                     Err(e) => Err(e),

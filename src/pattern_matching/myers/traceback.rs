@@ -97,7 +97,7 @@ where
         // Reverse iterator over states. If remembering all positions,
         // the chain() and cycle() are not actually needed, but there seems
         // to be almost no performance loss.
-        let mut states = self.states[..pos + 1]
+        let mut states = self.states[..=pos]
             .iter()
             .rev()
             .chain(self.states.iter().rev().cycle());
@@ -228,18 +228,18 @@ where
     // Useful for debugging
     #[allow(dead_code)]
     fn print_tb_matrix(&self, pos: usize) {
-        let states = self.states[..pos + 1]
+        let states = self.states[..=pos]
             .iter()
             .rev()
             .chain(self.states.iter().rev().cycle());
 
         let m = self.m.to_usize().unwrap();
 
-        let mut out: Vec<_> = (0..m + 1).map(|_| vec![]).collect();
-        for s in states.into_iter().cloned() {
+        let mut out: Vec<_> = (0..=m).map(|_| vec![]).collect();
+        for s in states {
             let mut current_pos = T::one() << (m - 1);
             let mut dist = s.dist;
-            for i in 0..m + 1 {
+            for i in 0..=m {
                 out[i].push(dist.to_usize().unwrap());
                 if s.pv & current_pos != T::zero() {
                     dist -= T::DistType::one();
