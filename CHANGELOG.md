@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Added `FQRead` and `FARead` traits to `FastaReader` and `FastqReader` to be more flexible with input types. This allows to use readers on gzipped and on plain text input interchangeably.
 - Added an implementation of Bayes Factors and evidence scoring using the method of Kass and Raftery.
 - Added a trait system for computing Bayesian statistical models.
+- Added an implementation of MSA via partial order alignment.
+- Performance improvements to FASTQ reader.
 
 # [0.24.0] - 2018-11-26
 - API overhaul to become more flexible when accepting text iterators. Now, anything that iterates over something can be borrowed as u8 is allowed.
