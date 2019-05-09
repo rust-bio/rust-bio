@@ -104,8 +104,6 @@ extern crate quick_error;
 #[macro_use]
 extern crate serde_derive;
 
-use strum;
-
 #[macro_use]
 extern crate strum_macros;
 
