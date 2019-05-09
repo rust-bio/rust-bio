@@ -29,7 +29,7 @@ use std::cmp::min;
 use std::iter;
 use std::iter::repeat;
 
-use utils::TextSlice;
+use crate::utils::TextSlice;
 
 /// Default cost function (unit costs).
 pub fn unit_cost(a: u8, b: u8) -> u32 {
@@ -66,7 +66,7 @@ where
         pattern: TextSlice<'a>,
         text: T,
         k: usize,
-    ) -> Matches<F, C, T::IntoIter>
+    ) -> Matches<'_, F, C, T::IntoIter>
     where
         C: Borrow<u8>,
         T: IntoIterator<Item = C>,
@@ -90,7 +90,7 @@ where
 /// Iterator over pairs of end positions and distance of matches.
 pub struct Matches<'a, F, C, T>
 where
-    F: 'a + Fn(u8, u8) -> u32,
+    F: Fn(u8, u8) -> u32,
     C: Borrow<u8>,
     T: Iterator<Item = C>,
 {

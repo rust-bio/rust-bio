@@ -7,7 +7,7 @@
 
 use std::cmp::min;
 
-use utils::TextSlice;
+use crate::utils::TextSlice;
 
 /// Compute the Hamming distance between two strings. Complexity: O(n).
 ///
@@ -23,7 +23,7 @@ use utils::TextSlice;
 /// // TTTAGCTAGCG
 /// assert_eq!(hamming(x, y), 5);
 /// ```
-pub fn hamming(alpha: TextSlice, beta: TextSlice) -> u64 {
+pub fn hamming(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u64 {
     assert_eq!(
         alpha.len(),
         beta.len(),
@@ -57,7 +57,7 @@ pub fn hamming(alpha: TextSlice, beta: TextSlice) -> u64 {
 /// assert_eq!(ldist, 5);
 /// ```
 #[allow(unused_assignments)]
-pub fn levenshtein(alpha: TextSlice, beta: TextSlice) -> u32 {
+pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
     let mut columns = [vec![0u32; alpha.len() + 1], vec![0u32; alpha.len() + 1]];
     let mut i_prev = 0;
     let mut i_cur = 1;

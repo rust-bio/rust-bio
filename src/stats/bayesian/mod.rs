@@ -13,7 +13,7 @@ pub use self::model::Model;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
-use stats::LogProb;
+use crate::stats::LogProb;
 
 /// For each of the hypothesis tests given as posterior error probabilities
 /// (PEPs, i.e. the posterior probability of the null hypothesis), estimate the FDR
@@ -49,7 +49,7 @@ pub fn expected_fdr(peps: &[LogProb]) -> Vec<LogProb> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stats::LogProb;
+    use crate::stats::LogProb;
 
     #[test]
     fn test_expected_fdr() {

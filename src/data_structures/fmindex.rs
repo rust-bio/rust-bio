@@ -56,9 +56,9 @@
 use std::borrow::Borrow;
 use std::iter::DoubleEndedIterator;
 
-use alphabets::dna;
-use data_structures::bwt::{Less, Occ, BWT};
-use data_structures::suffix_array::SuffixArray;
+use crate::alphabets::dna;
+use crate::data_structures::bwt::{Less, Occ, BWT};
+use crate::data_structures::suffix_array::SuffixArray;
 use std::mem::swap;
 
 /// A suffix array interval.
@@ -410,9 +410,9 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alphabets::dna;
-    use data_structures::bwt::{bwt, less, Occ};
-    use data_structures::suffix_array::suffix_array;
+    use crate::alphabets::dna;
+    use crate::data_structures::bwt::{bwt, less, Occ};
+    use crate::data_structures::suffix_array::suffix_array;
 
     #[test]
     fn test_fmindex() {
