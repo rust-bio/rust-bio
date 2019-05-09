@@ -1,3 +1,10 @@
+// Copyright 2019 Johannes Köster.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! A trait system for Bayesian statistical modelling.
+
 use std::cmp::Ord;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
@@ -40,6 +47,11 @@ pub trait Posterior {
     ) -> LogProb;
 }
 
+/// Bayesian model, consisting of a prior, a posterior and a likelihood model.
+/// Thereby, `Payload` is a custom payload of the model instance.
+/// This can be used to define custom caching mechanisms. See
+/// [here](https://github.com/varlociraptor/varlociraptor/blob/694e994547e8f523e5b0013fdf951b694f3870fa/src/model/modes/generic.rs#L200)
+/// for an example.
 pub struct Model<L, Pr, Po, Payload = ()>
 where
     L: Likelihood<Payload>,
@@ -62,6 +74,7 @@ where
     Pr: Prior<Event = Event>,
     Po: Posterior<BaseEvent = Event, Event = PosteriorEvent, Data = Data>,
 {
+    /// Create new instance.
     pub fn new(likelihood: L, prior: Pr, posterior: Po) -> Self {
         Model {
             likelihood,
@@ -71,10 +84,12 @@ where
         }
     }
 
-    pub fn joint_prob(&self, event: &Event, data: &Data, payload: &mut Payload) -> LogProb {
+    /// Calculate joint probability, i.e. `Pr(event) * Pr(data | event)`.
+    fn joint_prob(&self, event: &Event, data: &Data, payload: &mut Payload) -> LogProb {
         self.prior.compute(event) + self.likelihood.compute(event, data, payload)
     }
 
+    /// Compute model for a given universe of events.
     pub fn compute<U: IntoIterator<Item = PosteriorEvent>>(
         &self,
         universe: U,
