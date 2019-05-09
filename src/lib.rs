@@ -107,9 +107,6 @@ extern crate serde_derive;
 #[macro_use]
 extern crate strum_macros;
 
-#[macro_use]
-extern crate derive_new;
-
 pub mod alignment;
 pub mod alphabets;
 pub mod data_structures;

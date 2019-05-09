@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use itertools::Itertools;
 use ordered_float::NotNan;
 
-use stats::LogProb;
+use crate::stats::LogProb;
 
 pub type JointProbUniverse<Event> = BTreeMap<Event, LogProb>;
 
