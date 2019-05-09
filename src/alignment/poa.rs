@@ -39,7 +39,6 @@ use std::cmp::{max, Ordering};
 use crate::utils::TextSlice;
 
 use crate::alignment::pairwise::{MatchFunc, Scoring};
-use crate::alignment::AlignmentMode;
 
 use petgraph::graph::NodeIndex;
 use petgraph::visit::Topo;
@@ -64,7 +63,6 @@ pub struct Alignment {
     pub score: i32,
     //    xstart: Edge,
     operations: Vec<AlignmentOperation>,
-    mode: AlignmentMode,
 }
 
 #[derive(Debug, Clone)]
@@ -228,7 +226,6 @@ impl Traceback {
         Alignment {
             score: self.matrix[self.last.index() + 1][self.cols].score,
             operations: ops,
-            mode: AlignmentMode::Custom,
         }
     }
 }
@@ -237,7 +234,6 @@ impl Traceback {
 ///
 /// Uses consuming builder pattern for constructing partial order alignments with method chaining
 pub struct Aligner<F: MatchFunc> {
-    sequence_names: Vec<String>,
     traceback: Traceback,
     query: Vec<u8>,
     poa: Poa<F>,
@@ -247,7 +243,6 @@ impl<F: MatchFunc> Aligner<F> {
     /// Create new instance.
     pub fn new(scoring: Scoring<F>, reference: TextSlice) -> Self {
         Aligner {
-            sequence_names: vec![],
             traceback: Traceback::new(),
             query: reference.to_vec(),
             poa: Poa::from_string(scoring, reference),
