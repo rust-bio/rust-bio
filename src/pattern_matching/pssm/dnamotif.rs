@@ -171,7 +171,7 @@ impl Motif for DNAMotif {
 impl From<Array2<f32>> for DNAMotif {
     fn from(scores: Array2<f32>) -> Self {
         let mut m = DNAMotif {
-            scores: scores,
+            scores,
             min_score: 0.0,
             max_score: 0.0,
         };

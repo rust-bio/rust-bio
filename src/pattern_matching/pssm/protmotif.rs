@@ -145,7 +145,7 @@ impl Motif for ProtMotif {
 impl From<Array2<f32>> for ProtMotif {
     fn from(scores: Array2<f32>) -> Self {
         let mut m = ProtMotif {
-            scores: scores,
+            scores,
             min_score: 0.0,
             max_score: 0.0,
         };

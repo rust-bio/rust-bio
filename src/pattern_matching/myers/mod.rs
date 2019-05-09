@@ -264,7 +264,7 @@ where
 
 impl<T: BitVec> Myers<T> {
     /// Create a new instance of Myers algorithm for a given pattern.
-    pub fn new<'a, C, P>(pattern: P) -> Self
+    pub fn new<C, P>(pattern: P) -> Self
     where
         C: Borrow<u8>,
         P: IntoIterator<Item = C>,
@@ -283,9 +283,9 @@ impl<T: BitVec> Myers<T> {
         }
 
         Myers {
-            peq: peq,
+            peq,
             bound: T::one() << (m.to_usize().unwrap() - 1),
-            m: m,
+            m,
             tb: Traceback::new(),
         }
     }
@@ -442,10 +442,10 @@ where
     fn new(myers: &'a Myers<T>, text: I, max_dist: T::DistType) -> Self {
         let state = State::init(myers.m);
         Matches {
-            myers: myers,
-            state: state,
+            myers,
+            state,
             text: text.enumerate(),
-            max_dist: max_dist,
+            max_dist,
         }
     }
 }
@@ -499,12 +499,12 @@ where
         let num_cols = (myers.m + min(max_dist, myers.m)).to_usize().unwrap();
         myers.tb.init(state.clone(), num_cols, myers.m);
         FullMatches {
-            state: state,
+            state,
             m: myers.m,
-            myers: myers,
+            myers,
             text_len: text_iter.len(),
             text: text_iter.enumerate(),
-            max_dist: max_dist,
+            max_dist,
             pos: 0,
             finished: false,
         }
@@ -653,12 +653,12 @@ where
         let state = State::init(myers.m);
         myers.tb.init(state.clone(), text_iter.len(), myers.m);
         LazyMatches {
-            state: state,
+            state,
             m: myers.m,
-            myers: myers,
+            myers,
             text_len: text_iter.len(),
             text: text_iter.enumerate(),
-            max_dist: max_dist,
+            max_dist,
         }
     }
 
@@ -810,7 +810,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     fn test_alignment() {
         let text =  "GGTCCTGAGGGATTA".replace('-', "");
         let pattern = "TCCT-AGGGA".replace('-', "");

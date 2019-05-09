@@ -53,8 +53,8 @@ impl GffType {
     /// First field is key value separator.
     /// Second field terminates a key value pair.
     /// Third field
-    fn separator(&self) -> (u8, u8, u8) {
-        match *self {
+    fn separator(self) -> (u8, u8, u8) {
+        match self {
             GffType::GFF3 => (b'=', b';', b','),
             GffType::GFF2 => (b' ', b';', 0u8),
             GffType::GTF2 => (b' ', b';', 0u8),

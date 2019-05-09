@@ -299,16 +299,17 @@ impl LogProb {
     pub fn ln_trapezoidal_integrate_exp<T, D>(mut density: D, a: T, b: T, n: usize) -> LogProb
     where
         T: Copy + Add<Output = T> + Sub<Output = T> + Div<Output = T> + Mul<Output = T> + Float,
-        D: FnMut(T) -> LogProb,
+        D: FnMut(usize, T) -> LogProb,
         f64: From<T>,
     {
         let mut probs = linspace(a, b, n)
+            .enumerate()
             .dropping(1)
             .dropping_back(1)
-            .map(|v| LogProb(*density(v) + 2.0f64.ln()))
+            .map(|(i, v)| LogProb(*density(i, v) + 2.0f64.ln()))
             .collect_vec();
-        probs.push(density(a));
-        probs.push(density(b));
+        probs.push(density(0, a));
+        probs.push(density(n, b));
         let width = f64::from(b - a);
 
         LogProb(*Self::ln_sum_exp(&probs) + width.ln() - (2.0 * (n - 1) as f64).ln())
@@ -318,7 +319,7 @@ impl LogProb {
     pub fn ln_simpsons_integrate_exp<T, D>(mut density: D, a: T, b: T, n: usize) -> LogProb
     where
         T: Copy + Add<Output = T> + Sub<Output = T> + Div<Output = T> + Mul<Output = T> + Float,
-        D: FnMut(T) -> LogProb,
+        D: FnMut(usize, T) -> LogProb,
         f64: From<T>,
     {
         assert_eq!(n % 2, 1, "n must be odd");
@@ -328,11 +329,11 @@ impl LogProb {
             .dropping_back(1)
             .map(|(i, v)| {
                 let weight = (2 + (i % 2) * 2) as f64;
-                LogProb(*density(v) + weight.ln()) // factors alter between 2 and 4
+                LogProb(*density(i, v) + weight.ln()) // factors alter between 2 and 4
             })
             .collect_vec();
-        probs.push(density(a));
-        probs.push(density(b));
+        probs.push(density(0, a));
+        probs.push(density(n, b));
         let width = f64::from(b - a);
 
         LogProb(*Self::ln_sum_exp(&probs) + width.ln() - ((n - 1) as f64).ln() - 3.0f64.ln())
@@ -523,14 +524,14 @@ mod tests {
 
     #[test]
     fn test_trapezoidal_integrate() {
-        let density = |_| LogProb(0.1f64.ln());
+        let density = |_, _| LogProb(0.1f64.ln());
         let prob = LogProb::ln_trapezoidal_integrate_exp(density, 0.0, 10.0, 5);
         assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon = 0.0000001);
     }
 
     #[test]
     fn test_simpsons_integrate() {
-        let density = |_| LogProb(0.1f64.ln());
+        let density = |_, _| LogProb(0.1f64.ln());
         let prob = LogProb::ln_simpsons_integrate_exp(density, 0.0, 10.0, 5);
         assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon = 0.0000001);
     }

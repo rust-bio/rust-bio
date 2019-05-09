@@ -99,8 +99,9 @@ impl RankSelect {
             // add the rank within the block
             let mask = ((2u16 << j) - 1) as u8;
             rank += (self.bits.get_block(b as usize) & mask).count_ones() as u64;
-            // add the popcounts of blocks in between
-            for block in s * 32 / 8..b {
+            // add the popcounts of blocks from the beginning of the current superblock
+            // up to the current block
+            for block in (s * self.s as u64 / 8)..b {
                 let b = self.bits.get_block(block as usize);
                 rank += b.count_ones() as u64;
             }
@@ -283,5 +284,15 @@ mod tests {
         assert_eq!(rs.select_0(1), Some(0));
         assert_eq!(rs.rank_0(0), Some(1));
         assert_eq!(rs.rank_1(0), Some(0));
+    }
+
+    #[test]
+    fn test_rank_k() {
+        let mut bits: BitVec<u8> = BitVec::new_fill(false, 72);
+        bits.set_bit(63, true);
+        let rs = RankSelect::new(bits, 2);
+        assert_eq!(rs.rank_1(63), Some(1));
+        assert_eq!(rs.rank_1(64), Some(1));
+        assert_eq!(rs.rank_1(71), Some(1));
     }
 }
