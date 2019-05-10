@@ -36,7 +36,9 @@ pub struct RankSelect {
     bits: BitVec<u8>,
     superblocks_1: Vec<u64>,
     superblocks_0: Vec<u64>,
+    /// superblock size in bits
     s: usize,
+    /// superblock size in 32 bits
     k: usize,
 }
 
@@ -181,7 +183,7 @@ impl RankSelect {
                 for i in 0..max_bit {
                     rank += is_match(b & bit) as u64;
                     if rank == j {
-                        return Some((first_block + block) as u64 * 8 + i);
+                        return Some(block as u64 * 8 + i);
                     }
                     bit <<= 1;
                 }
@@ -227,6 +229,8 @@ mod tests {
     use bv::BitVec;
     use bv::BitsMut;
 
+
+
     #[test]
     fn test_rank_select() {
         let mut bits: BitVec<u8> = BitVec::new_fill(false, 64);
@@ -242,6 +246,7 @@ mod tests {
         assert_eq!(rs.rank_1(64), None);
         assert_eq!(rs.select_1(0).unwrap(), 0);
         assert_eq!(rs.select_1(1).unwrap(), 5);
+        assert_eq!(rs.select_1(2).unwrap(), 32);
         assert_eq!(rs.rank_0(1).unwrap(), 2);
         assert_eq!(rs.rank_0(4).unwrap(), 5);
         assert_eq!(rs.rank_0(5).unwrap(), 5);
@@ -250,6 +255,15 @@ mod tests {
         assert_eq!(rs.get(5), true);
         assert_eq!(rs.get(1), false);
         assert_eq!(rs.get(32), true);
+    }
+
+    #[test]
+    fn test_rank_select2() {
+        let mut bits: BitVec<u8> = BitVec::new_fill(false, 64);
+        bits.set_bit(5, true);
+        bits.set_bit(32, true);
+        let rs = RankSelect::new(bits, 1);
+        assert_eq!(rs.select_1(2).unwrap(), 32);
     }
 
     #[test]
