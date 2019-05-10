@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.26.1] - 2019-05-10
+- Fix a bug in `select_1` and `select_0` that would lead to too large answers.
+
 # [0.26.0] - 2019-05-09
 - Added a trait system for computing Bayesian statistical models.
 - Added an implementation of MSA via partial order alignment.
