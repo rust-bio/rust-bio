@@ -164,6 +164,9 @@ impl RankSelect {
         is_match: F,
         count_all: C,
     ) -> Option<u64> {
+        if j == 0 {
+            return None;
+        }
         let mut superblock = match superblocks.binary_search(&j) {
             Ok(i) | Err(i) => i, // superblock with same rank exists
         };
@@ -229,8 +232,6 @@ mod tests {
     use bv::BitVec;
     use bv::BitsMut;
 
-
-
     #[test]
     fn test_rank_select() {
         let mut bits: BitVec<u8> = BitVec::new_fill(false, 64);
@@ -244,7 +245,7 @@ mod tests {
         assert_eq!(rs.rank_1(32).unwrap(), 2);
         assert_eq!(rs.rank_1(33).unwrap(), 2);
         assert_eq!(rs.rank_1(64), None);
-        assert_eq!(rs.select_1(0).unwrap(), 0);
+        assert_eq!(rs.select_1(0), None);
         assert_eq!(rs.select_1(1).unwrap(), 5);
         assert_eq!(rs.select_1(2).unwrap(), 32);
         assert_eq!(rs.rank_0(1).unwrap(), 2);
@@ -271,7 +272,7 @@ mod tests {
         let bits: BitVec<u8> = bit_vec![true, false];
         let rs = RankSelect::new(bits, 1);
 
-        assert_eq!(rs.select_0(0), Some(0));
+        assert_eq!(rs.select_0(0), None);
         assert_eq!(rs.select_1(0), None);
 
         assert_eq!(rs.select_0(1), Some(1));
@@ -287,13 +288,13 @@ mod tests {
         let rs = RankSelect::new(bits, 1);
         assert_eq!(rs.select_1(0), None);
         assert_eq!(rs.select_1(1), Some(0));
-        assert_eq!(rs.select_0(0), Some(0));
+        assert_eq!(rs.select_0(0), None);
         assert_eq!(rs.select_0(1), None);
 
         let bits: BitVec<u8> = bit_vec![false];
         let rs = RankSelect::new(bits, 1);
         assert_eq!(rs.select_1(1), None);
-        assert_eq!(rs.select_1(0), Some(0));
+        assert_eq!(rs.select_1(0), None);
         assert_eq!(rs.select_0(0), None);
         assert_eq!(rs.select_0(1), Some(0));
         assert_eq!(rs.rank_0(0), Some(1));
@@ -309,4 +310,5 @@ mod tests {
         assert_eq!(rs.rank_1(64), Some(1));
         assert_eq!(rs.rank_1(71), Some(1));
     }
+
 }
