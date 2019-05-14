@@ -229,8 +229,6 @@ mod tests {
     use bv::BitVec;
     use bv::BitsMut;
 
-
-
     #[test]
     fn test_rank_select() {
         let mut bits: BitVec<u8> = BitVec::new_fill(false, 64);
