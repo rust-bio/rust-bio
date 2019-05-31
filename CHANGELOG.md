@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.27.0] - 2019-05-31
+- Implement sequence-read-trait for FASTQ records.
+- Cleanup dependencies.
+
 # [0.26.1] - 2019-05-10
 - Fix a bug in `select_1` and `select_0` that would lead to too large answers.
 
