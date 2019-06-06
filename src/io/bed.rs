@@ -67,7 +67,7 @@ impl<R: io::Read> Reader<R> {
 
 type BedRecordCsv = (String, u64, u64, Option<Vec<String>>);
 
-/// A BED record.
+/// An iterator over the records of a BED file.
 pub struct Records<'a, R: io::Read> {
     inner: csv::DeserializeRecordsIter<'a, R, BedRecordCsv>,
 }
