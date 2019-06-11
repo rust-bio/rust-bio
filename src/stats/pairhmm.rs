@@ -116,6 +116,7 @@ fn ln_sum3_exp_approx(mut p0: LogProb, mut p1: LogProb, mut p2: LogProb) -> LogP
 /// A pair Hidden Markov Model for comparing sequences x and y as described by
 /// Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence Analysis.
 /// Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
+#[derive(Debug, Clone)]
 pub struct PairHMM {
     fm: [Vec<LogProb>; 2],
     fx: [Vec<LogProb>; 2],
