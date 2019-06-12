@@ -1,4 +1,4 @@
-// Copyright 2014-2016 Johannes Köster.
+// Copyright 2014-2018 Johannes Köster, Henning Timm.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -20,13 +20,20 @@ use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 
-use utils::TextSlice;
+use bio_types::sequence::SequenceRead;
+
+use crate::utils::TextSlice;
+
+/// Trait for FASTQ readers.
+pub trait FastqRead {
+    fn read(&mut self, record: &mut Record) -> io::Result<()>;
+}
 
 /// A FastQ reader.
 #[derive(Debug)]
 pub struct Reader<R: io::Read> {
     reader: io::BufReader<R>,
-    sep_line: String,
+    line_buf: String,
 }
 
 impl Reader<fs::File> {
@@ -41,40 +48,78 @@ impl<R: io::Read> Reader<R> {
     pub fn new(reader: R) -> Self {
         Reader {
             reader: io::BufReader::new(reader),
-            sep_line: String::new(),
+            line_buf: String::new(),
         }
     }
 
-    /// Read into a given record.
-    /// Returns an error if the record in incomplete or syntax is violated.
-    /// The content of the record can be checked via the record object.
-    pub fn read(&mut self, record: &mut Record) -> io::Result<()> {
+    /// Return an iterator over the records of this FastQ file.
+    pub fn records(self) -> Records<R> {
+        Records { reader: self }
+    }
+}
+
+impl<R> FastqRead for Reader<R>
+where
+    R: io::Read,
+{
+    /// Read the next FASTQ entry into the given `Record`.
+    /// An empty record indicates that no more records can be read.
+    ///
+    /// This method is useful when you want to read records as fast as
+    /// possible because it allows the reuse of a `Record` allocation.
+    ///
+    /// A more ergonomic approach to reading FASTQ records, is the
+    /// [records](Reader::records) iterator.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the record is incomplete,
+    /// syntax is violated or any form of I/O error is encountered.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::error::Error;
+    /// # use bio::io::fastq::{Reader, FastqRead};
+    /// # use bio::io::fastq::Record;
+    /// # fn main() -> Result<(), Box<Error>> {
+    /// const fastq_file: &'static [u8] = b"@id desc
+    /// AAAA
+    /// +
+    /// IIII
+    /// ";
+    /// let mut reader = Reader::new(fastq_file);
+    /// let mut record = Record::new();
+    ///
+    /// // Check for errors parsing the record
+    /// reader.read(&mut record)?;
+    ///
+    /// assert_eq!(record.id(), "id");
+    /// assert_eq!(record.desc().unwrap(), "desc");
+    /// assert_eq!(record.seq().to_vec(), b"AAAA");
+    /// assert_eq!(record.qual().to_vec(), b"IIII");
+    /// # Ok(())
+    /// # }
+    /// ```
+    fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
+        self.line_buf.clear();
 
-        let mut header = String::new();
-        try!(self.reader.read_line(&mut header));
+        r#try!(self.reader.read_line(&mut self.line_buf));
 
-        if !header.is_empty() {
-            if !header.starts_with('@') {
+        if !self.line_buf.is_empty() {
+            if !self.line_buf.starts_with('@') {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
                     "Expected @ at record start.",
                 ));
             }
-            record.id = header[1..]
-                .trim_right()
-                .splitn(2, ' ')
-                .nth(0)
-                .unwrap_or_default()
-                .to_owned();
-            record.desc = header[1..]
-                .trim_right()
-                .splitn(2, ' ')
-                .nth(1)
-                .map(|s| s.to_owned());
-            try!(self.reader.read_line(&mut record.seq));
-            try!(self.reader.read_line(&mut self.sep_line));
-            try!(self.reader.read_line(&mut record.qual));
+            let mut header_fields = self.line_buf[1..].trim_end().splitn(2, ' ');
+            record.id = header_fields.next().unwrap_or_default().to_owned();
+            record.desc = header_fields.next().map(|s| s.to_owned());
+            r#try!(self.reader.read_line(&mut record.seq));
+            r#try!(self.reader.read_line(&mut self.line_buf));
+            r#try!(self.reader.read_line(&mut record.qual));
             if record.qual.is_empty() {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
@@ -87,15 +132,10 @@ impl<R: io::Read> Reader<R> {
 
         Ok(())
     }
-
-    /// Return an iterator over the records of this FastQ file.
-    pub fn records(self) -> Records<R> {
-        Records { reader: self }
-    }
 }
 
 /// A FastQ record.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Record {
     id: String,
     desc: Option<String>,
@@ -115,7 +155,7 @@ impl Record {
     }
 
     /// Create a new FastQ record from given attributes.
-    pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice, qual: &[u8]) -> Self {
+    pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice<'_>, qual: &[u8]) -> Self {
         let desc = match desc {
             Some(desc) => Some(desc.to_owned()),
             _ => None,
@@ -165,13 +205,13 @@ impl Record {
     }
 
     /// Return the sequence of the record.
-    pub fn seq(&self) -> TextSlice {
-        self.seq.trim_right().as_bytes()
+    pub fn seq(&self) -> TextSlice<'_> {
+        self.seq.trim_end().as_bytes()
     }
 
     /// Return the base qualities of the record.
     pub fn qual(&self) -> &[u8] {
-        self.qual.trim_right().as_bytes()
+        self.qual.trim_end().as_bytes()
     }
 
     /// Clear the record.
@@ -184,7 +224,7 @@ impl Record {
 }
 
 impl fmt::Display for Record {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(
             f,
             "@{} {}\n{}\n+\n{}",
@@ -193,6 +233,24 @@ impl fmt::Display for Record {
             self.seq,
             self.qual
         )
+    }
+}
+
+impl SequenceRead for Record {
+    fn name(&self) -> &[u8] {
+        self.id.as_bytes()
+    }
+
+    fn base(&self, i: usize) -> u8 {
+        self.seq.as_bytes()[i]
+    }
+
+    fn base_qual(&self, i: usize) -> u8 {
+        self.qual.as_bytes()[i]
+    }
+
+    fn len(&self) -> usize {
+        self.seq().len()
     }
 }
 
@@ -246,20 +304,20 @@ impl<W: io::Write> Writer<W> {
         &mut self,
         id: &str,
         desc: Option<&str>,
-        seq: TextSlice,
+        seq: TextSlice<'_>,
         qual: &[u8],
     ) -> io::Result<()> {
-        try!(self.writer.write_all(b"@"));
-        try!(self.writer.write_all(id.as_bytes()));
+        r#try!(self.writer.write_all(b"@"));
+        r#try!(self.writer.write_all(id.as_bytes()));
         if desc.is_some() {
-            try!(self.writer.write_all(b" "));
-            try!(self.writer.write_all(desc.unwrap().as_bytes()));
+            r#try!(self.writer.write_all(b" "));
+            r#try!(self.writer.write_all(desc.unwrap().as_bytes()));
         }
-        try!(self.writer.write_all(b"\n"));
-        try!(self.writer.write_all(seq));
-        try!(self.writer.write_all(b"\n+\n"));
-        try!(self.writer.write_all(qual));
-        try!(self.writer.write_all(b"\n"));
+        r#try!(self.writer.write_all(b"\n"));
+        r#try!(self.writer.write_all(seq));
+        r#try!(self.writer.write_all(b"\n+\n"));
+        r#try!(self.writer.write_all(qual));
+        r#try!(self.writer.write_all(b"\n"));
 
         Ok(())
     }
@@ -294,6 +352,25 @@ IIIIIIJJJJJJ
             assert_eq!(record.seq(), b"ACCGTAGGCTGA");
             assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
         }
+    }
+
+    #[test]
+    fn test_fqread_trait() {
+        let path = "reads.fq.gz";
+        let mut fq_reader: Box<dyn FastqRead> = match path.ends_with(".gz") {
+            true => Box::new(Reader::new(io::BufReader::new(FASTQ_FILE))),
+            false => Box::new(Reader::new(FASTQ_FILE)),
+        };
+        // The read method can be called, since it is implemented by
+        // `Read`. Right now, the records method would not work.
+        let mut record = Record::new();
+        fq_reader.read(&mut record).unwrap();
+        // Check if the returned result is correct.
+        assert_eq!(record.check(), Ok(()));
+        assert_eq!(record.id(), "id");
+        assert_eq!(record.desc(), Some("desc"));
+        assert_eq!(record.seq(), b"ACCGTAGGCTGA");
+        assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
     }
 
     #[test]

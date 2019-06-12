@@ -27,7 +27,7 @@ use std::path::Path;
 
 use csv;
 
-use utils::Strand;
+use bio_types::strand::Strand;
 
 /// `GffType`
 ///
@@ -53,8 +53,8 @@ impl GffType {
     /// First field is key value separator.
     /// Second field terminates a key value pair.
     /// Third field
-    fn separator(&self) -> (u8, u8, u8) {
-        match *self {
+    fn separator(self) -> (u8, u8, u8) {
+        match self {
             GffType::GFF3 => (b'=', b';', b','),
             GffType::GFF2 => (b' ', b';', 0u8),
             GffType::GTF2 => (b' ', b';', 0u8),
@@ -91,7 +91,7 @@ impl<R: io::Read> Reader<R> {
     }
 
     /// Iterate over all records.
-    pub fn records(&mut self) -> Records<R> {
+    pub fn records(&mut self) -> Records<'_, R> {
         let (delim, term, vdelim) = self.gff_type.separator();
         let r = format!(
             r" *(?P<key>[^{delim}{term}\t]+){delim}(?P<value>[^{delim}{term}\t]+){term}?",
@@ -120,7 +120,7 @@ type GffRecordInner = (
 );
 
 /// A GFF record.
-pub struct Records<'a, R: 'a + io::Read> {
+pub struct Records<'a, R: io::Read> {
     inner: csv::DeserializeRecordsIter<'a, R, GffRecordInner>,
     attribute_re: Regex,
     value_delim: char,
@@ -224,7 +224,7 @@ impl<W: io::Write> Writer<W> {
 }
 
 /// A GFF record
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Record {
     seqname: String,
     source: String,
@@ -354,8 +354,8 @@ impl Record {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bio_types::strand::Strand;
     use multimap::MultiMap;
-    use utils::Strand;
 
     const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t\
 Note=Removed,Obsolete;ID=test

@@ -145,7 +145,7 @@ impl Motif for ProtMotif {
 impl From<Array2<f32>> for ProtMotif {
     fn from(scores: Array2<f32>) -> Self {
         let mut m = ProtMotif {
-            scores: scores,
+            scores,
             min_score: 0.0,
             max_score: 0.0,
         };
@@ -176,7 +176,8 @@ mod tests {
             0.81, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
             0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.81, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
             0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
-        ]).into_shape((4, 20))
+        ])
+        .into_shape((4, 20))
         .unwrap();
         let pssm: ProtMotif = m.into();
         let scored_pos = pssm.score(b"AAAAARNDAAA").unwrap();

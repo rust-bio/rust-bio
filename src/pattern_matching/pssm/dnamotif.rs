@@ -171,7 +171,7 @@ impl Motif for DNAMotif {
 impl From<Array2<f32>> for DNAMotif {
     fn from(scores: Array2<f32>) -> Self {
         let mut m = DNAMotif {
-            scores: scores,
+            scores,
             min_score: 0.0,
             max_score: 0.0,
         };
@@ -184,7 +184,7 @@ impl From<Array2<f32>> for DNAMotif {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pattern_matching::pssm::ScoredPos;
+    use crate::pattern_matching::pssm::ScoredPos;
     #[test]
     fn simple_pssm() {
         let pssm: DNAMotif = DNAMotif::from_seqs(
@@ -193,9 +193,11 @@ mod tests {
                 b"TTTT".to_vec(),
                 b"GGGG".to_vec(),
                 b"CCCC".to_vec(),
-            ].as_ref(),
+            ]
+            .as_ref(),
             None,
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(pssm.scores, Array2::from_elem((4, 4), 0.25));
     }
     #[test]

@@ -101,8 +101,8 @@ use std::cmp::max;
 use std::i32;
 use std::iter::repeat;
 
-use alignment::{Alignment, AlignmentMode, AlignmentOperation};
-use utils::TextSlice;
+use crate::alignment::{Alignment, AlignmentMode, AlignmentOperation};
+use crate::utils::TextSlice;
 
 pub mod banded;
 
@@ -433,7 +433,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `x` - Textslice
     /// * `y` - Textslice
     ///
-    pub fn custom(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn custom(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         let (m, n) = (x.len(), y.len());
         self.traceback.init(m, n);
 
@@ -462,7 +462,7 @@ impl<F: MatchFunc> Aligner<F> {
                 self.Sn.extend(repeat(MIN_SCORE).take(m + 1));
             }
 
-            for i in 1..m + 1 {
+            for i in 1..=m {
                 let mut tb = TracebackCell::new();
                 tb.set_all(TB_START);
                 if i == 1 {
@@ -510,7 +510,7 @@ impl<F: MatchFunc> Aligner<F> {
             }
         }
 
-        for j in 1..n + 1 {
+        for j in 1..=n {
             let curr = j % 2;
             let prev = 1 - curr;
 
@@ -556,15 +556,16 @@ impl<F: MatchFunc> Aligner<F> {
                 self.traceback.set(0, j, tb);
             }
 
-            for i in 1..m + 1 {
+            for i in 1..=m {
                 self.S[curr][i] = MIN_SCORE;
             }
 
             let q = y[j - 1];
-            let xclip_score = self.scoring.xclip_prefix + max(
-                self.scoring.yclip_prefix,
-                self.scoring.gap_open + self.scoring.gap_extend * (j as i32),
-            );
+            let xclip_score = self.scoring.xclip_prefix
+                + max(
+                    self.scoring.yclip_prefix,
+                    self.scoring.gap_open + self.scoring.gap_extend * (j as i32),
+                );
             for i in 1..m + 1 {
                 let p = x[i - 1];
                 let mut tb = TracebackCell::new();
@@ -645,7 +646,7 @@ impl<F: MatchFunc> Aligner<F> {
         }
 
         // Handle suffix clipping in the j=n case
-        for i in 0..m + 1 {
+        for i in 0..=m {
             let j = n;
             let curr = j % 2;
             if self.Sn[i] > self.S[curr][i] {
@@ -661,7 +662,7 @@ impl<F: MatchFunc> Aligner<F> {
 
         // Since there could be a change in the last column of S,
         // recompute the last column of I as this could also change
-        for i in 1..m + 1 {
+        for i in 1..=m {
             let j = n;
             let curr = j % 2;
             let s_score = self.S[curr][i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
@@ -761,7 +762,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Calculate global alignment of x against y.
-    pub fn global(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn global(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         // Store the current clip penalties
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -790,7 +791,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Calculate semiglobal alignment of x against y (x is global, y is local).
-    pub fn semiglobal(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn semiglobal(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         // Store the current clip penalties
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -822,7 +823,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Calculate local alignment of x against y.
-    pub fn local(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn local(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         // Store the current clip penalties
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -929,22 +930,22 @@ impl TracebackCell {
 
     // Gets 4 bits [pos, pos+4) of v
     #[inline(always)]
-    fn get_bits(&self, pos: u8) -> u16 {
+    fn get_bits(self, pos: u8) -> u16 {
         (self.v >> pos) & (0b1111)
     }
 
     #[inline(always)]
-    pub fn get_i_bits(&self) -> u16 {
+    pub fn get_i_bits(self) -> u16 {
         self.get_bits(I_POS)
     }
 
     #[inline(always)]
-    pub fn get_d_bits(&self) -> u16 {
+    pub fn get_d_bits(self) -> u16 {
         self.get_bits(D_POS)
     }
 
     #[inline(always)]
-    pub fn get_s_bits(&self) -> u16 {
+    pub fn get_s_bits(self) -> u16 {
         self.get_bits(S_POS)
     }
 
@@ -979,7 +980,7 @@ impl Traceback {
         let mut start = TracebackCell::new();
         start.set_all(TB_START);
         // set every cell to start
-        self.resize(m, n, &start);
+        self.resize(m, n, start);
     }
 
     #[inline(always)]
@@ -1002,18 +1003,18 @@ impl Traceback {
         &mut self.matrix[i * self.cols + j]
     }
 
-    fn resize(&mut self, m: usize, n: usize, v: &TracebackCell) {
+    fn resize(&mut self, m: usize, n: usize, v: TracebackCell) {
         self.rows = m + 1;
         self.cols = n + 1;
-        self.matrix.resize(self.rows * self.cols, *v);
+        self.matrix.resize(self.rows * self.cols, v);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alignment::AlignmentOperation::*;
-    use scores::blosum62;
+    use crate::alignment::AlignmentOperation::*;
+    use crate::scores::blosum62;
 
     #[test]
     fn traceback_cell() {

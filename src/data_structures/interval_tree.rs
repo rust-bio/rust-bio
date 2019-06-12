@@ -27,10 +27,10 @@
 //! ```
 //!
 
+use crate::utils::Interval;
 use std::cmp;
 use std::iter::FromIterator;
 use std::mem;
-use utils::Interval;
 
 /// An interval tree for storing intervals with data
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,7 +47,7 @@ impl<N: Ord + Clone, D> Default for IntervalTree<N, D> {
 /// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
 /// wraps the fields `interval` and `data` in an `Entry`.
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub struct Entry<'a, N: Ord + Clone + 'a, D: 'a> {
+pub struct Entry<'a, N: Ord + Clone, D> {
     data: &'a D,
     interval: &'a Interval<N>,
 }
@@ -66,7 +66,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Entry<'a, N, D> {
 
 /// An `IntervalTreeIterator` is returned by `Intervaltree::find` and iterates over the entries
 /// overlapping the query
-pub struct IntervalTreeIterator<'a, N: Ord + Clone + 'a, D: 'a> {
+pub struct IntervalTreeIterator<'a, N: Ord + Clone, D> {
     nodes: Vec<&'a Node<N, D>>,
     interval: Interval<N>,
 }
@@ -111,7 +111,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D>
 /// wraps the fields `interval` and `data` in an `EntryMut`. Only the data part can be mutably accessed
 /// using the `data` method
 #[derive(PartialEq, Eq, Debug)]
-pub struct EntryMut<'a, N: Ord + Clone + 'a, D: 'a> {
+pub struct EntryMut<'a, N: Ord + Clone, D> {
     data: &'a mut D,
     interval: &'a Interval<N>,
 }
@@ -130,7 +130,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> EntryMut<'a, N, D> {
 
 /// An `IntervalTreeIteratorMut` is returned by `Intervaltree::find_mut` and iterates over the entries
 /// overlapping the query allowing mutable access to the data `D`, not the `Interval`.
-pub struct IntervalTreeIteratorMut<'a, N: Ord + Clone + 'a, D: 'a> {
+pub struct IntervalTreeIteratorMut<'a, N: Ord + Clone, D> {
     nodes: Vec<&'a mut Node<N, D>>,
     interval: Interval<N>,
 }
@@ -187,7 +187,7 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
 
     /// Uses the provided `Interval` to find overlapping intervals in the tree and returns an
     /// `IntervalTreeIterator`
-    pub fn find<I: Into<Interval<N>>>(&self, interval: I) -> IntervalTreeIterator<N, D> {
+    pub fn find<I: Into<Interval<N>>>(&self, interval: I) -> IntervalTreeIterator<'_, N, D> {
         let interval = interval.into();
         match self.root {
             Some(ref n) => IntervalTreeIterator {
@@ -203,7 +203,10 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
 
     /// Uses the provided `Interval` to find overlapping intervals in the tree and returns an
     /// `IntervalTreeIteratorMut` that allows mutable access to the `data`
-    pub fn find_mut<I: Into<Interval<N>>>(&mut self, interval: I) -> IntervalTreeIteratorMut<N, D> {
+    pub fn find_mut<I: Into<Interval<N>>>(
+        &mut self,
+        interval: I,
+    ) -> IntervalTreeIteratorMut<'_, N, D> {
         let interval = interval.into();
         match self.root {
             Some(ref mut n) => IntervalTreeIteratorMut {
@@ -376,10 +379,10 @@ fn intersect<N: Ord + Clone>(range_1: &Interval<N>, range_2: &Interval<N>) -> bo
 #[cfg(test)]
 mod tests {
     use super::{Entry, IntervalTree, Node};
+    use crate::utils::Interval;
     use std::cmp;
     use std::cmp::{max, min};
     use std::ops::Range;
-    use utils::Interval;
 
     fn validate(node: &Node<i64, String>) {
         validate_height(node);
@@ -475,7 +478,7 @@ mod tests {
         target: Range<i64>,
         expected_results: Vec<Range<i64>>,
     ) {
-        let mut actual_entries: Vec<Entry<i64, String>> = tree.find(&target).collect();
+        let mut actual_entries: Vec<Entry<'_, i64, String>> = tree.find(&target).collect();
         println!("{:?}", actual_entries);
         actual_entries.sort_by(|x1, x2| x1.data.cmp(&x2.data));
         let expected_entries = make_entry_tuples(expected_results);
@@ -617,13 +620,12 @@ mod tests {
         for mut e in tree.find_mut(q.clone()) {
             *e.data() += 1;
         }
-        assert!(
-            tree.find(0..100)
-                .all(|e| if super::intersect(e.interval(), &q) {
-                    *e.data() == 1
-                } else {
-                    *e.data() == 0
-                })
-        );
+        assert!(tree
+            .find(0..100)
+            .all(|e| if super::intersect(e.interval(), &q) {
+                *e.data() == 1
+            } else {
+                *e.data() == 0
+            }));
     }
 }

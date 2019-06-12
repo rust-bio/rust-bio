@@ -24,11 +24,12 @@
 //! assert_eq!(occ, [(13, 1), (14, 1)]);
 //! ```
 
+use std::borrow::Borrow;
 use std::cmp::min;
 use std::iter;
 use std::iter::repeat;
 
-use utils::{IntoTextIterator, TextIterator, TextSlice};
+use crate::utils::TextSlice;
 
 /// Default cost function (unit costs).
 pub fn unit_cost(a: u8, b: u8) -> u32 {
@@ -60,17 +61,21 @@ where
 
     /// Find all matches between pattern and text with up to k errors.
     /// Matches are returned as an iterator over pairs of end position and distance.
-    pub fn find_all_end<'a, T: IntoTextIterator<'a>>(
+    pub fn find_all_end<'a, C, T>(
         &'a mut self,
         pattern: TextSlice<'a>,
         text: T,
         k: usize,
-    ) -> Matches<F, T::IntoIter> {
+    ) -> Matches<'_, F, C, T::IntoIter>
+    where
+        C: Borrow<u8>,
+        T: IntoIterator<Item = C>,
+    {
         let m = pattern.len();
         self.D[0].clear();
         self.D[0].extend(repeat(k + 1).take(m + 1));
         self.D[1].clear();
-        self.D[1].extend(0..m + 1);
+        self.D[1].extend(0..=m);
         Matches {
             ukkonen: self,
             pattern,
@@ -83,9 +88,11 @@ where
 }
 
 /// Iterator over pairs of end positions and distance of matches.
-pub struct Matches<'a, F, T: TextIterator<'a>>
+pub struct Matches<'a, F, C, T>
 where
-    F: 'a + Fn(u8, u8) -> u32,
+    F: Fn(u8, u8) -> u32,
+    C: Borrow<u8>,
+    T: Iterator<Item = C>,
 {
     ukkonen: &'a mut Ukkonen<F>,
     pattern: TextSlice<'a>,
@@ -95,9 +102,11 @@ where
     k: usize,
 }
 
-impl<'a, F, T: TextIterator<'a>> Iterator for Matches<'a, F, T>
+impl<'a, F, C, T> Iterator for Matches<'a, F, C, T>
 where
     F: 'a + Fn(u8, u8) -> u32,
+    C: Borrow<u8>,
+    T: Iterator<Item = C>,
 {
     type Item = (usize, usize);
 
@@ -112,10 +121,10 @@ where
             self.lastk = min(self.lastk + 1, self.m);
             // in each column, go at most one cell further than before
             // do not look at cells with too big k
-            for j in 1..self.lastk + 1 {
+            for j in 1..=self.lastk {
                 self.ukkonen.D[col][j] = min(
                     min(self.ukkonen.D[prev][j] + 1, self.ukkonen.D[col][j - 1] + 1),
-                    self.ukkonen.D[prev][j - 1] + (cost)(self.pattern[j - 1], *c) as usize,
+                    self.ukkonen.D[prev][j - 1] + (cost)(self.pattern[j - 1], *c.borrow()) as usize,
                 );
             }
 

@@ -11,4 +11,4 @@ pub mod hmm;
 pub mod pairhmm;
 pub mod probs;
 
-pub use stats::probs::{LogProb, PHREDProb, Prob};
+pub use crate::stats::probs::{LogProb, PHREDProb, Prob};

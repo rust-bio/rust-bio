@@ -263,7 +263,7 @@ fn viterbi_matrices<O, M: Model<O>>(
             // Subsequent columns.
             for j in hmm.states() {
                 let x = vals
-                    .subview(Axis(0), i - 1)
+                    .index_axis(Axis(0), i - 1)
                     .iter()
                     .enumerate()
                     .map(|(a, p)| (State(a), p))
@@ -279,7 +279,8 @@ fn viterbi_matrices<O, M: Model<O>>(
                                 .partial_cmp(&(y + hmm.transition_prob_idx(*b, j, i)))
                                 .unwrap()
                         }
-                    }).map(|(x, y)| (x, *y))
+                    })
+                    .map(|(x, y)| (x, *y))
                     .unwrap();
                 vals[[i, *j]] =
                     x.1 + hmm.transition_prob_idx(x.0, j, i) + hmm.observation_prob(j, o);
@@ -376,7 +377,8 @@ pub fn forward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>,
                         vals[[i - 1, *k]]
                             + hmm.transition_prob_idx(k, j, i)
                             + hmm.observation_prob(j, o)
-                    }).collect::<Vec<LogProb>>();
+                    })
+                    .collect::<Vec<LogProb>>();
                 vals[[i, *j]] = LogProb::ln_sum_exp(&xs);
             }
         }
@@ -437,7 +439,8 @@ pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>
                             + hmm.transition_prob_idx(j, k, n - i)
                             + hmm.observation_prob(j, o)
                             + maybe_initial
-                    }).collect::<Vec<LogProb>>();
+                    })
+                    .collect::<Vec<LogProb>>();
                 vals[[i, *j]] = LogProb::ln_sum_exp(&xs);
             }
         }
@@ -673,6 +676,7 @@ pub mod univariate_continuous_emission {
 #[cfg(test)]
 mod tests {
     use super::super::Prob;
+    use ndarray::array;
     use statrs::distribution::Normal;
 
     use super::discrete_emission::Model as DiscreteEmissionHMM;

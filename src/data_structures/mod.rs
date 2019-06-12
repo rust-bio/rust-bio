@@ -10,6 +10,7 @@ pub mod bit_tree;
 pub mod bitenc;
 pub mod bwt;
 pub mod fmindex;
+pub mod interpolation_table;
 pub mod interval_tree;
 pub mod qgram_index;
 pub mod rank_select;

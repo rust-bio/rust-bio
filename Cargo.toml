@@ -1,7 +1,7 @@
 [package]
 
 name = "bio"
-version = "0.22.1-alpha.0"
+version = "0.27.1-alpha.0"
 authors = ["Johannes Köster <johannes.koester@tu-dortmund.de>"]
 description = "A bioinformatics library for Rust. This library provides implementations of many algorithms and data structures that are useful for bioinformatics, but also in other fields."
 homepage = "https://rust-bio.github.io"
@@ -10,6 +10,7 @@ documentation = "https://docs.rs/bio"
 readme = "README.md"
 license = "MIT"
 build = "build.rs"
+edition = "2018"
 
 
 [features]
@@ -32,17 +33,24 @@ serde_derive = "1.0"
 approx = "0.3"
 custom_derive = "0.1"
 newtype_derive = "0.1"
-ordered-float = "0.5"
+ordered-float = "1.0"
 quick-error = "1.2"
 regex = "1.0"
 multimap = "0.4"
 fxhash = "0.2"
 statrs = "0.9.0"
-bio-types = ">=0.4"
+bio-types = ">=0.5.1"
+fnv = "1.0"
+strum = "0.13"
+strum_macros = "0.13"
 
 [dependencies.vec_map]
 version = "0.8"
 features = ["eders"]
+
+[dependencies.petgraph]
+version = "0.4"
+features = ["stable_graph"]
 
 [package.metadata.release]
 pre-release-commit-message = "release version {{version}}"
