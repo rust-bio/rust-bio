@@ -119,7 +119,7 @@ type GffRecordInner = (
     String,
 );
 
-/// A GFF record.
+/// An iterator over the records of a GFF file.
 pub struct Records<'a, R: io::Read> {
     inner: csv::DeserializeRecordsIter<'a, R, GffRecordInner>,
     attribute_re: Regex,
