@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.28.0] - 2019-06-19
+- Myers bit-parallel pattern matching now supports arbitrarily long patterns via bit vectors (thanks to @markschl).
+- Minor documentation updates (thanks to @anders-was-here).
+
 # [0.27.0] - 2019-05-31
 - Implement sequence-read-trait for FASTQ records.
 - Cleanup dependencies.
