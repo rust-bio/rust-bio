@@ -5,7 +5,7 @@ extern crate test;
 use test::Bencher;
 
 use bio::alignment::Alignment;
-use bio::pattern_matching::myers::*;
+use bio::pattern_matching::myers::{long, Myers};
 use bio::pattern_matching::ukkonen::*;
 
 static TEXT: &'static [u8] = b"GATCACAGGTCTATCACCCTATTAACCACTCACGGGAGCTCTCCATGC\
@@ -276,6 +276,30 @@ fn myers_end_64(b: &mut Bencher) {
     });
 }
 
+#[bench]
+fn myers_end_long_64(b: &mut Bencher) {
+    let myers = long::Myers::<u64>::new(PATTERN);
+    b.iter(|| {
+        let mut n = 0;
+        for _ in myers.find_all_end(TEXT, K as usize) {
+            n += 1;
+        }
+        assert_eq!(n, N_HITS);
+    });
+}
+
+#[bench]
+fn myers_end_long_8(b: &mut Bencher) {
+    let myers = long::Myers::<u8>::new(PATTERN);
+    b.iter(|| {
+        let mut n = 0;
+        for _ in myers.find_all_end(TEXT, K as usize) {
+            n += 1;
+        }
+        assert_eq!(n, N_HITS);
+    });
+}
+
 #[cfg(has_u128)]
 #[bench]
 fn myers_end_128(b: &mut Bencher) {
@@ -283,6 +307,19 @@ fn myers_end_128(b: &mut Bencher) {
     b.iter(|| {
         let mut n = 0;
         for _ in myers.find_all_end(TEXT, K) {
+            n += 1;
+        }
+        assert_eq!(n, N_HITS);
+    });
+}
+
+#[cfg(has_u128)]
+#[bench]
+fn myers_end_long_128(b: &mut Bencher) {
+    let myers = long::Myers::<u128>::new(PATTERN);
+    b.iter(|| {
+        let mut n = 0;
+        for _ in myers.find_all_end(TEXT, K as usize) {
             n += 1;
         }
         assert_eq!(n, N_HITS);
@@ -317,12 +354,69 @@ fn myers_pos_128(b: &mut Bencher) {
 }
 
 #[bench]
+fn myers_path_reverse_64(b: &mut Bencher) {
+    let mut myers = Myers::<u64>::new(PATTERN);
+    let mut ops = vec![];
+    b.iter(|| {
+        let mut n = 0;
+        let mut matches = myers.find_all(TEXT, K);
+        while let Some(_) = matches.next_path_reverse(&mut ops) {
+            n += 1;
+        }
+        assert_eq!(n, N_HITS);
+    });
+}
+
+#[bench]
 fn myers_path_64(b: &mut Bencher) {
     let mut myers = Myers::<u64>::new(PATTERN);
     let mut ops = vec![];
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all(TEXT, K);
+        while let Some(_) = matches.next_path(&mut ops) {
+            n += 1;
+        }
+        assert_eq!(n, N_HITS);
+    });
+}
+
+#[bench]
+fn myers_path_long_64(b: &mut Bencher) {
+    let mut myers = long::Myers::<u64>::new(PATTERN);
+    let mut ops = vec![];
+    b.iter(|| {
+        let mut n = 0;
+        let mut matches = myers.find_all(TEXT, K as usize);
+        while let Some(_) = matches.next_path(&mut ops) {
+            n += 1;
+        }
+        assert_eq!(n, N_HITS);
+    });
+}
+
+#[bench]
+fn myers_path_long_8(b: &mut Bencher) {
+    let mut myers = long::Myers::<u8>::new(PATTERN);
+    let mut ops = vec![];
+    b.iter(|| {
+        let mut n = 0;
+        let mut matches = myers.find_all(TEXT, K as usize);
+        while let Some(_) = matches.next_path(&mut ops) {
+            n += 1;
+        }
+        assert_eq!(n, N_HITS);
+    });
+}
+
+#[cfg(has_u128)]
+#[bench]
+fn myers_path_long_128(b: &mut Bencher) {
+    let mut myers = long::Myers::<u128>::new(PATTERN);
+    let mut ops = vec![];
+    b.iter(|| {
+        let mut n = 0;
+        let mut matches = myers.find_all(TEXT, K as usize);
         while let Some(_) = matches.next_path(&mut ops) {
             n += 1;
         }
@@ -393,7 +487,7 @@ fn myers_lazy_best_alignment_64(b: &mut Bencher) {
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all_lazy(TEXT, K);
-        let mut best_dist = ::std::u8::MAX;
+        let mut best_dist = u8::max_value();
         let mut best_end = 0;
         for (end, dist) in matches.by_ref() {
             if dist < best_dist {
