@@ -25,6 +25,7 @@
 //! ```
 
 use std::cmp;
+use std::ops::Deref;
 
 use bv::BitVec;
 use bv::Bits;
@@ -34,8 +35,8 @@ use bv::Bits;
 pub struct RankSelect {
     n: usize,
     bits: BitVec<u8>,
-    superblocks_1: Vec<u64>,
-    superblocks_0: Vec<u64>,
+    superblocks_1: Vec<SuperblockRank>,
+    superblocks_0: Vec<SuperblockRank>,
     /// superblock size in bits
     s: usize,
     /// superblock size in 32 bits
@@ -97,7 +98,7 @@ impl RankSelect {
             let b = i / 8; // the block
             let j = i % 8; // the bit in the block
                            // take the superblock rank
-            let mut rank = self.superblocks_1[s as usize];
+            let mut rank = *self.superblocks_1[s as usize];
             // add the rank within the block
             let mask = ((2u16 << j) - 1) as u8;
             rank += (self.bits.get_block(b as usize) & mask).count_ones() as u64;
@@ -160,20 +161,20 @@ impl RankSelect {
     fn select_x<F: Fn(u8) -> bool, C: Fn(u8) -> u32>(
         &self,
         j: u64,
-        superblocks: &[u64],
+        superblocks: &[SuperblockRank],
         is_match: F,
         count_all: C,
     ) -> Option<u64> {
         if j == 0 {
             return None;
         }
-        let mut superblock = match superblocks.binary_search(&j) {
+        let mut superblock = match superblocks.binary_search(&SuperblockRank::First(j)) {
             Ok(i) | Err(i) => i, // superblock with same rank exists
         };
         if superblock > 0 {
             superblock -= 1;
         }
-        let mut rank = superblocks[superblock];
+        let mut rank = *superblocks[superblock];
 
         let first_block = superblock * self.s / 8;
         for block in first_block..cmp::min(first_block + self.s / 8, self.bits.block_len()) {
@@ -203,16 +204,41 @@ impl RankSelect {
     }
 }
 
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SuperblockRank {
+    First(u64),
+    Some(u64),
+}
+
+impl Deref for SuperblockRank {
+    type Target = u64;
+
+    fn deref(&self) -> &u64 {
+        match self {
+            SuperblockRank::First(rank) => rank,
+            SuperblockRank::Some(rank) => rank,
+        }
+    }
+}
+
 /// Create `n` superblocks of size `s` from a given bitvector.
-fn superblocks(t: bool, n: usize, s: usize, bits: &BitVec<u8>) -> Vec<u64> {
+fn superblocks(t: bool, n: usize, s: usize, bits: &BitVec<u8>) -> Vec<SuperblockRank> {
     let mut superblocks = Vec::with_capacity(n / s + 1);
     let mut rank: u64 = 0;
+    let mut last_rank = None;
     let mut i = 0;
     let nblocks = (bits.len() as f64 / 8.0).ceil() as usize;
     for block in 0..nblocks {
         let b = bits.get_block(block);
         if i % s == 0 {
-            superblocks.push(rank);
+            superblocks.push(
+                if Some(rank) != last_rank {
+                    SuperblockRank::First(rank)
+                } else {
+                    SuperblockRank::Some(rank)
+                }
+            );
+            last_rank = Some(rank);
         }
         rank += if t {
             b.count_ones() as u64
@@ -231,6 +257,15 @@ mod tests {
     use bv::bit_vec;
     use bv::BitVec;
     use bv::BitsMut;
+
+    #[test]
+    fn test_select_end() {
+        let mut bits: BitVec<u8> = BitVec::new_fill(false, 900);
+        bits.set_bit(50, true);
+
+        let rs = RankSelect::new(bits, 1);
+        assert_eq!(rs.select_1(1).unwrap(), 50);
+    }
 
     #[test]
     fn test_rank_select() {
