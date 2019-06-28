@@ -439,6 +439,24 @@ mod tests {
     }
 
     #[test]
+    fn test_fmindex_not_found() {
+        let text = b"GCCTTAACATTATTACGCCTA$";
+        let alphabet = dna::n_alphabet();
+        let sa = suffix_array(text);
+        let bwt = bwt(text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+        let fm = FMIndex::new(&bwt, &less, &occ);
+
+        let pattern = b"TTT";
+        let sai = fm.backward_search(pattern.iter());
+
+        let positions = sai.occ(&sa);
+
+        assert_eq!(positions, []);
+    }
+
+    #[test]
     fn test_smems() {
         let orig_text = b"GCCTTAACAT";
         let revcomp_text = dna::revcomp(orig_text);
