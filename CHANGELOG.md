@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.28.1] - 2019-06-28
+- Fix select in RankSelect in cases where many superblocks have the same rank.
+
 # [0.28.0] - 2019-06-19
 - Myers bit-parallel pattern matching now supports arbitrarily long patterns via bit vectors (thanks to @markschl).
 - Minor documentation updates (thanks to @anders-was-here).
