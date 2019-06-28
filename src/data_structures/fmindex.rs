@@ -123,6 +123,12 @@ pub trait FMIndexable {
             let less = self.less(a);
             l = less + if l > 0 { self.occ(l - 1, a) } else { 0 };
             r = less + self.occ(r, a) - 1;
+
+            // The symbol was not found if we end up with an empty interval.
+            // Terminate the LF-mapping process.
+            if l == r {
+                break;
+            }
         }
 
         Interval {
