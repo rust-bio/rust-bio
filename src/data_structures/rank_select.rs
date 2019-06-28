@@ -231,13 +231,11 @@ fn superblocks(t: bool, n: usize, s: usize, bits: &BitVec<u8>) -> Vec<Superblock
     for block in 0..nblocks {
         let b = bits.get_block(block);
         if i % s == 0 {
-            superblocks.push(
-                if Some(rank) != last_rank {
-                    SuperblockRank::First(rank)
-                } else {
-                    SuperblockRank::Some(rank)
-                }
-            );
+            superblocks.push(if Some(rank) != last_rank {
+                SuperblockRank::First(rank)
+            } else {
+                SuperblockRank::Some(rank)
+            });
             last_rank = Some(rank);
         }
         rank += if t {
