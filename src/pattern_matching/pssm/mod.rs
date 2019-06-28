@@ -52,7 +52,6 @@ pub const EPSILON: f32 = 1e-5;
 /// value representing an invalid monomer in lookup table
 pub const INVALID_MONO: u8 = 255;
 
-/// Errors
 quick_error! {
     #[derive(Debug, PartialEq)]
     pub enum PSSMError {

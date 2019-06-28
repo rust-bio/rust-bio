@@ -85,7 +85,6 @@ use statrs::distribution::Continuous;
 
 use super::LogProb;
 
-/// Errors
 quick_error! {
     #[derive(Debug, PartialEq)]
     pub enum HMMError {
