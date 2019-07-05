@@ -204,7 +204,7 @@ impl RankSelect {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, PartialOrd)]
 pub enum SuperblockRank {
     First(u64),
     Some(u64),
@@ -217,6 +217,21 @@ impl Deref for SuperblockRank {
         match self {
             SuperblockRank::First(rank) => rank,
             SuperblockRank::Some(rank) => rank,
+        }
+    }
+}
+
+impl Ord for SuperblockRank {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        let cmp = (**self).cmp(&**other);
+        if cmp == cmp::Ordering::Equal {
+            match (self, other) {
+                (SuperblockRank::First(_), SuperblockRank::Some(_)) => cmp::Ordering::Less,
+                (SuperblockRank::Some(_), SuperblockRank::First(_)) => cmp::Ordering::Greater,
+                _ => cmp,
+            }
+        } else {
+            cmp
         }
     }
 }
@@ -255,6 +270,16 @@ mod tests {
     use bv::bit_vec;
     use bv::BitVec;
     use bv::BitsMut;
+
+    #[test]
+    fn test_select_start() {
+        let mut bits: BitVec<u8> = BitVec::new_fill(false, 900);
+        bits.set_bit(64, true);
+
+        let rs = RankSelect::new(bits, 1);
+
+        assert_eq!(rs.select_1(1), Some(64));
+    }
 
     #[test]
     fn test_select_end() {
