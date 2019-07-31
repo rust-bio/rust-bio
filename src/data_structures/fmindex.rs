@@ -123,6 +123,12 @@ pub trait FMIndexable {
             let less = self.less(a);
             l = less + if l > 0 { self.occ(l - 1, a) } else { 0 };
             r = less + self.occ(r, a) - 1;
+
+            // The symbol was not found if we end up with an empty interval.
+            // Terminate the LF-mapping process.
+            if l == r {
+                break;
+            }
         }
 
         Interval {
@@ -430,6 +436,24 @@ mod tests {
         let positions = sai.occ(&sa);
 
         assert_eq!(positions, [3, 12, 9]);
+    }
+
+    #[test]
+    fn test_fmindex_not_found() {
+        let text = b"GCCTTAACATTATTACGCCTA$";
+        let alphabet = dna::n_alphabet();
+        let sa = suffix_array(text);
+        let bwt = bwt(text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+        let fm = FMIndex::new(&bwt, &less, &occ);
+
+        let pattern = b"TTT";
+        let sai = fm.backward_search(pattern.iter());
+
+        let positions = sai.occ(&sa);
+
+        assert_eq!(positions, []);
     }
 
     #[test]
