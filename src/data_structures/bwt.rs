@@ -135,19 +135,35 @@ impl Occ {
         // https://github.com/rust-bio/rust-bio/pull/74
         // https://github.com/rust-bio/rust-bio/pull/76
 
-        // self.k is our sampling rate, so find our last sampled checkpoint
-        let i = r / self.k as usize;
-        let checkpoint = self.occ[i][a as usize];
+        // self.k is our sampling rate, so find the checkpoints either side of r.
+        let lo_checkpoint = r / self.k as usize;
+        let hi_checkpoint = lo_checkpoint + 1;
 
-        // find the portion of the BWT past the checkpoint which we need to count
-        let start = (i * self.k as usize) + 1;
-        let end = r + 1;
+        // Get the occurences at the low checkpoint
+        let lo_occ = self.occ[lo_checkpoint][a as usize];
 
-        // count all the matching bytes b/t the closest checkpoint and our desired lookup
-        let count = bytecount::count(&bwt[start..end], a);
+        // If there is a high checkpoint we can potentially use is it to find
+        // the occurences faster.
+        if let Some(hi_occs) = self.occ.get(hi_checkpoint) {
+            let hi_occ = hi_occs[a as usize];
 
-        // return the sampled checkpoint for this character + the manual count we just did
-        checkpoint + (count as usize)
+            // Its possible that there are no occurences between the low and high
+            // checkpoint in which case we bail early.
+            if lo_occ == hi_occ {
+                return lo_occ;
+            }
+
+            // If r is closer to the high checkpoint, count backwards from there.
+            let hi_idx = hi_checkpoint * self.k as usize;
+            if (hi_idx - r) < (self.k as usize / 2) {
+                let hi_occ = hi_occs[a as usize];
+                return hi_occ - bytecount::count(&bwt[r + 1..=hi_idx], a) as usize;
+            }
+        }
+
+        // Otherwise the default case is to count from the low checkpoint.
+        let lo_idx = lo_checkpoint * self.k as usize;
+        return lo_occ + bytecount::count(&bwt[lo_idx + 1..=r], a) as usize;
     }
 }
 
