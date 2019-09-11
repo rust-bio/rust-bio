@@ -27,12 +27,9 @@
 //! ## Enclose in struct
 //!
 //! `FMIndex` was designed to not forcibly own the BWT and auxiliary data structures.
-//! It can take a reference (`&`) or any of the more complex pointer types.
-//! This means that you need to use `Rc` (a reference counted pointer) if you want to
-//! put the `FMIndex` into a struct.
+//! It can take a reference (`&`), owned structs or any of the more complex pointer types.
 //!
 //! ```
-//! use std::rc::Rc;
 //! use bio::data_structures::bwt::{BWT, Less, bwt, less, Occ};
 //! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
 //! use bio::data_structures::suffix_array::suffix_array;
@@ -40,7 +37,7 @@
 //! use bio::utils::TextSlice;
 //!
 //! pub struct Example {
-//!     fmindex: FMIndex<Rc<BWT>, Rc<Less>, Rc<Occ>>
+//!     fmindex: FMIndex<BWT, Less, Occ>
 //! }
 //!
 //! impl Example {
@@ -50,17 +47,18 @@
 //!         let bwt = bwt(text, &sa);
 //!         let less = less(&bwt, &alphabet);
 //!         let occ = Occ::new(&bwt, 3, &alphabet);
-//!         let fm = FMIndex::new(Rc::new(bwt), Rc::new(less), Rc::new(occ));
+//!         let fm = FMIndex::new(bwt, less, occ);
 //!         Example { fmindex: fm }
 //!     }
 //! }
 //! ```
 
+use std::borrow::Borrow;
 use std::iter::DoubleEndedIterator;
 
-use alphabets::dna;
-use data_structures::bwt::{DerefBWT, DerefLess, DerefOcc, BWT};
-use data_structures::suffix_array::SuffixArray;
+use crate::alphabets::dna;
+use crate::data_structures::bwt::{Less, Occ, BWT};
+use crate::data_structures::suffix_array::SuffixArray;
 use std::mem::swap;
 
 /// A suffix array interval.
@@ -125,6 +123,12 @@ pub trait FMIndexable {
             let less = self.less(a);
             l = less + if l > 0 { self.occ(l - 1, a) } else { 0 };
             r = less + self.occ(r, a) - 1;
+
+            // The symbol was not found if we end up with an empty interval.
+            // Terminate the LF-mapping process.
+            if l == r {
+                break;
+            }
         }
 
         Interval {
@@ -137,39 +141,35 @@ pub trait FMIndexable {
 /// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
 /// intervals matching a given pattern.
 #[derive(Serialize, Deserialize)]
-pub struct FMIndex<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone> {
+pub struct FMIndex<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> {
     bwt: DBWT,
     less: DLess,
     occ: DOcc,
 }
 
-impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone> FMIndexable
+impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMIndexable
     for FMIndex<DBWT, DLess, DOcc>
 {
     fn occ(&self, r: usize, a: u8) -> usize {
-        self.occ.get(&self.bwt, r, a)
+        self.occ.borrow().get(self.bwt.borrow(), r, a)
     }
     fn less(&self, a: u8) -> usize {
-        self.less[a as usize]
+        self.less.borrow()[a as usize]
     }
     /// Provide a reference to the underlying BWT.
     fn bwt(&self) -> &BWT {
-        &self.bwt
+        self.bwt.borrow()
     }
 }
 
-impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone>
-    FMIndex<DBWT, DLess, DOcc>
-{
+impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMIndex<DBWT, DLess, DOcc> {
     /// Construct a new instance of the FM index.
     ///
     /// # Arguments
     ///
-    /// * `sa` - the suffix array (or sample)
     /// * `bwt` - the BWT
-    /// * `k` - the sampling rate of the occ array: every k-th entry will be stored (higher k means
-    ///   less memory usage, but worse performance)
-    /// * `alphabet` - the alphabet of the underlying text, omitting the sentinel
+    /// * `less` - the less array of the BWT
+    /// * `occ` - the occurence array of the BWT
     pub fn new(bwt: DBWT, less: DLess, occ: DOcc) -> Self {
         FMIndex { bwt, less, occ }
     }
@@ -211,11 +211,11 @@ impl BiInterval {
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
 #[derive(Serialize, Deserialize)]
-pub struct FMDIndex<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone> {
+pub struct FMDIndex<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> {
     fmindex: FMIndex<DBWT, DLess, DOcc>,
 }
 
-impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone> FMIndexable
+impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMIndexable
     for FMDIndex<DBWT, DLess, DOcc>
 {
     fn occ(&self, r: usize, a: u8) -> usize {
@@ -232,8 +232,8 @@ impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone> F
     }
 }
 
-impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone>
-    From<FMIndex<DBWT, DLess, DOcc>> for FMDIndex<DBWT, DLess, DOcc>
+impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> From<FMIndex<DBWT, DLess, DOcc>>
+    for FMDIndex<DBWT, DLess, DOcc>
 {
     /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
     /// This expects a BWT that was created from a text over the DNA alphabet with N
@@ -255,9 +255,7 @@ impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone>
     }
 }
 
-impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone>
-    FMDIndex<DBWT, DLess, DOcc>
-{
+impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, DLess, DOcc> {
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
     /// Complexity O(m) with pattern of length m.
     ///
@@ -369,7 +367,7 @@ impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone>
         BiInterval {
             lower: 0,
             lower_rev: 0,
-            size: self.fmindex.bwt.len(),
+            size: self.fmindex.bwt.borrow().len(),
             match_size: 0,
         }
     }
@@ -418,9 +416,9 @@ impl<DBWT: DerefBWT + Clone, DLess: DerefLess + Clone, DOcc: DerefOcc + Clone>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alphabets::dna;
-    use data_structures::bwt::{bwt, less, Occ};
-    use data_structures::suffix_array::suffix_array;
+    use crate::alphabets::dna;
+    use crate::data_structures::bwt::{bwt, less, Occ};
+    use crate::data_structures::suffix_array::suffix_array;
 
     #[test]
     fn test_fmindex() {
@@ -438,6 +436,24 @@ mod tests {
         let positions = sai.occ(&sa);
 
         assert_eq!(positions, [3, 12, 9]);
+    }
+
+    #[test]
+    fn test_fmindex_not_found() {
+        let text = b"GCCTTAACATTATTACGCCTA$";
+        let alphabet = dna::n_alphabet();
+        let sa = suffix_array(text);
+        let bwt = bwt(text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+        let fm = FMIndex::new(&bwt, &less, &occ);
+
+        let pattern = b"TTT";
+        let sai = fm.backward_search(pattern.iter());
+
+        let positions = sai.occ(&sa);
+
+        assert_eq!(positions, []);
     }
 
     #[test]

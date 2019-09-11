@@ -27,10 +27,10 @@
 //! assert_eq!(match_path, vec![(0,2), (1,3), (2,4), (3,5), (4,6), (5,7), (6,8)]);
 //! assert_eq!(sparse_al.score, 14);
 
-extern crate fxhash;
+use fxhash;
 
 use self::fxhash::FxHasher;
-use data_structures::bit_tree::MaxBitTree;
+use crate::data_structures::bit_tree::MaxBitTree;
 use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
@@ -642,7 +642,8 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
         for i in 0..res.path.len() {
             assert_eq!(matches[res.path[i] as usize], (i as u32, i as u32));
         }
-        */    }
+        */
+    }
 
     #[test]
     fn test_sdpkpp_tandem_repeat() {

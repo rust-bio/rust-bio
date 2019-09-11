@@ -15,8 +15,9 @@
 //! assert!(!alphabet.is_word(b"ACGT"));
 //! ```
 
-use alphabets::Alphabet;
-use utils::IntoTextIterator;
+use std::borrow::Borrow;
+
+use crate::alphabets::Alphabet;
 
 /// The RNA alphabet (uppercase and lowercase).
 pub fn alphabet() -> Alphabet {
@@ -34,9 +35,8 @@ pub fn iupac_alphabet() -> Alphabet {
 }
 
 lazy_static! {
-    static ref COMPLEMENT: Vec<u8> = {
-        let mut comp = Vec::new();
-        comp.resize(256, 0);
+    static ref COMPLEMENT: [u8; 256] = {
+        let mut comp = [0; 256];
         for (v, a) in comp.iter_mut().enumerate() {
             *a = v as u8;
         }
@@ -54,11 +54,16 @@ pub fn complement(a: u8) -> u8 {
 }
 
 /// Calculate reverse complement of given text (IUPAC alphabet supported).
-pub fn revcomp<'a, T: IntoTextIterator<'a>>(text: T) -> Vec<u8>
+pub fn revcomp<C, T>(text: T) -> Vec<u8>
 where
+    C: Borrow<u8>,
+    T: IntoIterator<Item = C>,
     T::IntoIter: DoubleEndedIterator,
 {
-    text.into_iter().rev().map(|&a| complement(a)).collect()
+    text.into_iter()
+        .rev()
+        .map(|a| complement(*a.borrow()))
+        .collect()
 }
 
 #[cfg(test)]

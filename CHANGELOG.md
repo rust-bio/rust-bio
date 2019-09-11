@@ -2,9 +2,41 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-# [dev]
+# [0.28.1] - 2019-06-28
+- Fix select in RankSelect in cases where many superblocks have the same rank.
+
+# [0.28.0] - 2019-06-19
+- Myers bit-parallel pattern matching now supports arbitrarily long patterns via bit vectors (thanks to @markschl).
+- Minor documentation updates (thanks to @anders-was-here).
+
+# [0.27.0] - 2019-05-31
+- Implement sequence-read-trait for FASTQ records.
+- Cleanup dependencies.
+
+# [0.26.1] - 2019-05-10
+- Fix a bug in `select_1` and `select_0` that would lead to too large answers.
+
+# [0.26.0] - 2019-05-09
+- Added a trait system for computing Bayesian statistical models.
+- Added an implementation of MSA via partial order alignment.
+- Performance improvements to FASTQ reader.
+
+# [0.25.0] - 2018-12-12
+- Added `FQRead` and `FARead` traits to `FastaReader` and `FastqReader` to be more flexible with input types. This allows to use readers on gzipped and on plain text input interchangeably.
+- Added an implementation of Bayes Factors and evidence scoring using the method of Kass and Raftery.
+
+# [0.24.0] - 2018-11-26
+- API overhaul to become more flexible when accepting text iterators. Now, anything that iterates over something can be borrowed as u8 is allowed.
+- FMIndex and FMDIndex now also allow plain owned versions of BWT, Less and Occ. This should greatly simplify their usage.
+- PairHMM and LogProb implementation has seen extensive performance improvements. Among that, (a) the usage of a fast approximation of exp() as presented by [Kopczynsi 2017](https://eldorado.tu-dortmund.de/bitstream/2003/36203/1/Dissertation_Kopczynski.pdf), and (b) banding of the pairHMM matrix with a given maximum edit distance.
+- All IO records now support serde.
+
+# [0.23.0] - 2018-11-06
 - Generalized Myers pattern matching algorithm to arbitrary unsigned integer types (u64, u128) (thanks to @markschl).
 - Implemented optional traceback and alignment output for Myers pattern matching algorithm (thanks to @markschl).
+- Use Strand type from bio-types crate in BED module (thanks to @ingolia).
+- Added an IntervalTree based data structure for looking up overlaps between annotation types (thanks to @ingolia).
+- Various bug fixes.
 
 # [0.22.0] - 2018-08-01
 - Added HMM implementation (thanks to @holtgrewe).

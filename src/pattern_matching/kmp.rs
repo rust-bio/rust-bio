@@ -22,9 +22,10 @@
 //! assert_eq!(occ, [4, 15]);
 //! ```
 
+use std::borrow::Borrow;
 use std::iter::{repeat, Enumerate};
 
-use utils::{IntoTextIterator, TextIterator, TextSlice};
+use crate::utils::TextSlice;
 
 type LPS = Vec<usize>;
 
@@ -57,7 +58,11 @@ impl<'a> KMP<'a> {
 
     /// Find all matches of pattern in a given text. Matches are returned as iterator over start
     /// positions.
-    pub fn find_all<'b, I: IntoTextIterator<'b>>(&'b self, text: I) -> Matches<'b, I::IntoIter> {
+    pub fn find_all<'b, C, T>(&'b self, text: T) -> Matches<'b, C, T::IntoIter>
+    where
+        C: Borrow<u8>,
+        T: IntoIterator<Item = C>,
+    {
         Matches {
             kmp: self,
             q: 0,
@@ -83,18 +88,26 @@ fn lps(pattern: &[u8]) -> LPS {
 }
 
 /// Iterator over start positions of matches.
-pub struct Matches<'a, I: TextIterator<'a>> {
+pub struct Matches<'a, C, T>
+where
+    C: Borrow<u8>,
+    T: Iterator<Item = C>,
+{
     kmp: &'a KMP<'a>,
     q: usize,
-    text: Enumerate<I>,
+    text: Enumerate<T>,
 }
 
-impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
+impl<'a, C, T> Iterator for Matches<'a, C, T>
+where
+    C: Borrow<u8>,
+    T: Iterator<Item = C>,
+{
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {
-        for (i, &c) in self.text.by_ref() {
-            self.q = self.kmp.delta(self.q, c);
+        for (i, c) in self.text.by_ref() {
+            self.q = self.kmp.delta(self.q, *c.borrow());
             if self.q == self.kmp.m {
                 return Some(1 + i - self.kmp.m);
             }

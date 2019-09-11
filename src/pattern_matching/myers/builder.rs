@@ -1,4 +1,8 @@
-use super::*;
+use std::borrow::Borrow;
+use std::collections::HashMap;
+
+use super::long::Myers as MyersLong;
+use super::{BitVec, Myers};
 
 /// Builds a Myers instance, allowing to specify ambiguities.
 ///
@@ -114,26 +118,31 @@ impl MyersBuilder {
         self
     }
 
-    /// Creates a Myers instance given a pattern, using `u64` as bit vector type
-    pub fn build_64<'a, P>(&self, pattern: P) -> Myers<u64>
+    /// Creates a Myers instance given a pattern, using `u64` as bit vector type.
+    /// Pattern length is restricted to at most 64 symbols.
+    pub fn build_64<C, P>(&self, pattern: P) -> Myers<u64>
     where
-        P: IntoTextIterator<'a>,
+        C: Borrow<u8>,
+        P: IntoIterator<Item = C>,
         P::IntoIter: ExactSizeIterator,
     {
         self.build(pattern)
     }
 
-    /// Creates a Myers instance given a pattern, using `u128` as bit vector type
+    /// Creates a Myers instance given a pattern, using `u128` as bit vector type.
+    /// Pattern length is restricted to at most 128 symbols.
     #[cfg(has_u128)]
-    pub fn build_128<'a, P>(&self, pattern: P) -> Myers<u128>
+    pub fn build_128<C, P>(&self, pattern: P) -> Myers<u128>
     where
-        P: IntoTextIterator<'a>,
+        C: Borrow<u8>,
+        P: IntoIterator<Item = C>,
         P::IntoIter: ExactSizeIterator,
     {
         self.build(pattern)
     }
 
-    /// Creates a Myers instance given a pattern, using any desired type for bit vectors
+    /// Creates a Myers instance given a pattern, using any desired type for bit vectors.
+    /// Pattern length is restricted to the size of the bit vector `T`.
     ///
     /// # Example:
     ///
@@ -147,41 +156,48 @@ impl MyersBuilder {
     ///     .build(b"TGAGCG*");
     /// // ...
     /// # }
-    pub fn build<'a, T, P>(&self, pattern: P) -> Myers<T>
+    pub fn build<T, C, P>(&self, pattern: P) -> Myers<T>
     where
         T: BitVec,
-        P: IntoTextIterator<'a>,
+        C: Borrow<u8>,
+        P: IntoIterator<Item = C>,
         P::IntoIter: ExactSizeIterator,
     {
-        let maxsize = T::DistType::from_usize(size_of::<T>() * 8).unwrap();
-        let pattern = pattern.into_iter();
-        let m = T::DistType::from_usize(pattern.len()).unwrap();
-        assert!(m <= maxsize, "Pattern too long");
-        assert!(m > T::DistType::zero(), "Pattern is empty");
+        Myers::new_ambig(pattern, Some(&self.ambigs), Some(&self.wildcards))
+    }
 
-        let mut peq = [T::zero(); 256];
+    /// Creates a `long::Myers` instance given a pattern, using `u64` as bit vector type.
+    /// Pattern length is not restricted regardless of the type of the bit vector.
+    pub fn build_long_64<C, P>(&self, pattern: P) -> MyersLong<u64>
+    where
+        C: Borrow<u8>,
+        P: IntoIterator<Item = C>,
+        P::IntoIter: ExactSizeIterator,
+    {
+        self.build_long(pattern)
+    }
 
-        for (i, &a) in pattern.enumerate() {
-            let mask = T::one() << i;
-            // equivalent
-            peq[a as usize] |= mask;
-            // ambiguities
-            if let Some(equivalents) = self.ambigs.get(&a) {
-                for &eq in equivalents {
-                    peq[eq as usize] |= mask;
-                }
-            }
-        }
+    /// Creates a `long::Myers` instance given a pattern, using `u128` as bit vector type.
+    /// Pattern length is not restricted regardless of the type of the bit vector.
+    #[cfg(has_u128)]
+    pub fn build_long_128<C, P>(&self, pattern: P) -> MyersLong<u128>
+    where
+        C: Borrow<u8>,
+        P: IntoIterator<Item = C>,
+        P::IntoIter: ExactSizeIterator,
+    {
+        self.build_long(pattern)
+    }
 
-        for &w in &self.wildcards {
-            peq[w as usize] = T::max_value();
-        }
-
-        Myers {
-            peq: peq,
-            bound: T::one() << (m.to_usize().unwrap() - 1),
-            m: m,
-            tb: Traceback::new(),
-        }
+    /// Creates a `long::Myers` instance given a pattern, using any desired type for bit vectors.
+    /// Pattern length is not restricted regardless of the type of the bit vector.
+    pub fn build_long<T, C, P>(&self, pattern: P) -> MyersLong<T>
+    where
+        T: BitVec,
+        C: Borrow<u8>,
+        P: IntoIterator<Item = C>,
+        P::IntoIter: ExactSizeIterator,
+    {
+        MyersLong::new_ambig(pattern, Some(&self.ambigs), Some(&self.wildcards))
     }
 }

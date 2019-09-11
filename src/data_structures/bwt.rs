@@ -9,25 +9,15 @@
 
 use std::iter::repeat;
 
-use alphabets::Alphabet;
+use crate::alphabets::Alphabet;
+use crate::data_structures::suffix_array::RawSuffixArray;
+use crate::utils::prescan;
 use bytecount;
-use data_structures::suffix_array::RawSuffixArray;
-use std::ops::Deref;
-use utils::prescan;
 
 pub type BWT = Vec<u8>;
 pub type BWTSlice = [u8];
 pub type Less = Vec<usize>;
 pub type BWTFind = Vec<usize>;
-
-pub trait DerefBWT: Deref<Target = BWT> {}
-impl<T: Deref<Target = BWT>> DerefBWT for T {}
-
-pub trait DerefOcc: Deref<Target = Occ> {}
-impl<T: Deref<Target = Occ>> DerefOcc for T {}
-
-pub trait DerefLess: Deref<Target = Less> {}
-impl<T: Deref<Target = Less>> DerefLess for T {}
 
 /// Calculate Burrows-Wheeler-Transform of the given text of length n.
 /// Complexity: O(n).
@@ -194,8 +184,8 @@ pub fn bwtfind(bwt: &BWTSlice, alphabet: &Alphabet) -> BWTFind {
 #[cfg(test)]
 mod tests {
     use super::{bwt, bwtfind, invert_bwt, Occ};
-    use alphabets::Alphabet;
-    use data_structures::suffix_array::suffix_array;
+    use crate::alphabets::Alphabet;
+    use crate::data_structures::suffix_array::suffix_array;
 
     #[test]
     fn test_bwtfind() {

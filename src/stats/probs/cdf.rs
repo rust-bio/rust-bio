@@ -14,7 +14,7 @@ use std::slice;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
-use stats::LogProb;
+use crate::stats::LogProb;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entry<T: Ord> {
@@ -60,7 +60,9 @@ impl<T: Ord> CDF<T> {
 
         // cap at prob=1.0 if there are slightly exceeding values due to numerical issues.
         for e in &mut cdf.inner {
-            if relative_eq!(*e.prob, *LogProb::ln_one()) && *e.prob > *LogProb::ln_one() {
+            if relative_eq!(*e.prob, *LogProb::ln_one(), epsilon = 0.00001)
+                && *e.prob > *LogProb::ln_one()
+            {
                 e.prob = LogProb::ln_one();
             }
         }
@@ -104,18 +106,18 @@ impl<T: Ord> CDF<T> {
     }
 
     /// Provide iterator.
-    pub fn iter(&self) -> slice::Iter<Entry<T>> {
+    pub fn iter(&self) -> slice::Iter<'_, Entry<T>> {
         self.inner.iter()
     }
 
     /// Mutable iterator over entries. This does not check for consistency. In other words, you
     /// should not change the order of the entries, nor the probabilities!
-    pub fn iter_mut(&mut self) -> slice::IterMut<Entry<T>> {
+    pub fn iter_mut(&mut self) -> slice::IterMut<'_, Entry<T>> {
         self.inner.iter_mut()
     }
 
     /// Iterator over corresponding PMF.
-    pub fn iter_pmf(&self) -> CDFPMFIter<T> {
+    pub fn iter_pmf(&self) -> CDFPMFIter<'_, T> {
         fn cdf_to_pmf<'a, G: Ord>(
             last_prob: &mut LogProb,
             e: &'a Entry<G>,
@@ -260,15 +262,15 @@ pub type CDFPMFIter<'a, T> = iter::Scan<
 #[cfg(test)]
 mod test {
     use super::*;
-    use ordered_float::NotNaN;
-    use stats::LogProb;
+    use crate::stats::LogProb;
+    use ordered_float::NotNan;
 
     #[test]
     fn test_cdf() {
-        let mut pmf = vec![Entry::new(NotNaN::new(0.0).unwrap(), LogProb(0.1f64.ln()))];
+        let mut pmf = vec![Entry::new(NotNan::new(0.0).unwrap(), LogProb(0.1f64.ln()))];
         for i in 0..9 {
             pmf.push(Entry::new(
-                NotNaN::new(i as f64).unwrap(),
+                NotNan::new(i as f64).unwrap(),
                 LogProb(0.1f64.ln()),
             ));
         }
@@ -277,15 +279,11 @@ mod test {
         let cdf = CDF::from_pmf(pmf.clone());
         println!("{:?}", cdf);
         for e in pmf.iter().skip(2) {
-            assert_ulps_eq!(
-                *e.prob,
-                *cdf.get_pmf(&e.value).unwrap(),
-                epsilon = 0.0000000000001
-            );
+            assert_relative_eq!(*e.prob, *cdf.get_pmf(&e.value).unwrap(), epsilon = 0.000003);
         }
         assert_relative_eq!(*cdf.total_prob(), 1.0f64.ln());
         assert_relative_eq!(
-            *cdf.get(&NotNaN::new(1.0).unwrap()).unwrap(),
+            *cdf.get(&NotNan::new(1.0).unwrap()).unwrap(),
             0.3f64.ln(),
             epsilon = 0.00000001
         );
@@ -297,7 +295,11 @@ mod test {
 
         {
             for e in cdf.iter_pmf() {
-                assert_relative_eq!(e.prob.exp(), if **e.value == 0.0 { 0.2 } else { 0.1 });
+                assert_relative_eq!(
+                    e.prob.exp(),
+                    if **e.value == 0.0 { 0.2 } else { 0.1 },
+                    epsilon = 0.0001
+                );
             }
         }
 

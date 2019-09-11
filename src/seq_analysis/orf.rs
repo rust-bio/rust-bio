@@ -29,9 +29,9 @@
 //! But that's not so performance friendly, as the reverse complementation and the orf research
 //! could go on at the same time.
 
+use std::borrow::Borrow;
 use std::collections::VecDeque;
 use std::iter;
-use utils::{IntoTextIterator, TextIterator};
 
 /// An implementation of a naive algorithm finder
 pub struct Finder {
@@ -49,26 +49,31 @@ impl Finder {
     ) -> Self {
         Finder {
             start_codons: start_codons
-                .into_iter() // Convert start_ and
+                .iter() // Convert start_ and
                 .map(|x| {
                     // stop_codons from
-                    x.into_iter() // Vec<&[u8;3]> to
+                    x.iter() // Vec<&[u8;3]> to
                         .map(|&x| x as u8) // Vec<VecDeque<u8>>
                         .collect::<VecDeque<u8>>() // so they can be
                 }) // easily compared
                 .collect(), // with codon built
             stop_codons: stop_codons
-                .into_iter() // from IntoTextIterator
+                .iter() // from IntoTextIterator
                 .map(|x| {
                     // object.
-                    x.into_iter().map(|&x| x as u8).collect::<VecDeque<u8>>()
-                }).collect(),
+                    x.iter().map(|&x| x as u8).collect::<VecDeque<u8>>()
+                })
+                .collect(),
             min_len,
         }
     }
 
     /// Find all orfs in the given sequence
-    pub fn find_all<'a, I: IntoTextIterator<'a>>(&'a self, seq: I) -> Matches<I::IntoIter> {
+    pub fn find_all<C, T>(&self, seq: T) -> Matches<'_, C, T::IntoIter>
+    where
+        C: Borrow<u8>,
+        T: IntoIterator<Item = C>,
+    {
         Matches {
             finder: self,
             state: State::new(),
@@ -103,25 +108,33 @@ impl State {
 }
 
 /// Iterator over offset, start position, end position and sequence of matched orfs.
-pub struct Matches<'a, I: TextIterator<'a>> {
+pub struct Matches<'a, C, T>
+where
+    C: Borrow<u8>,
+    T: Iterator<Item = C>,
+{
     finder: &'a Finder,
     state: State,
-    seq: iter::Enumerate<I>,
+    seq: iter::Enumerate<T>,
 }
 
-impl<'a, I: Iterator<Item = &'a u8>> Iterator for Matches<'a, I> {
+impl<'a, C, T> Iterator for Matches<'a, C, T>
+where
+    C: Borrow<u8>,
+    T: Iterator<Item = C>,
+{
     type Item = Orf;
 
     fn next(&mut self) -> Option<Orf> {
         let mut result: Option<Orf> = None;
         let mut offset: usize;
 
-        for (index, &nuc) in self.seq.by_ref() {
+        for (index, nuc) in self.seq.by_ref() {
             // update the codon
             if self.state.codon.len() >= 3 {
                 self.state.codon.pop_front();
             }
-            self.state.codon.push_back(nuc);
+            self.state.codon.push_back(*nuc.borrow());
             offset = (index + 1) % 3;
 
             // inside orf
