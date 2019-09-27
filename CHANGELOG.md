@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.29.0] - 2019-09-27
+- Migrate error handling to the snafu crate (this is an API breaking change).
+- Fix edge cases in pairwise alignment.
+- Fix error in backward search if symbol isn't found.
+
 # [0.28.1] - 2019-06-28
 - Fix select in RankSelect in cases where many superblocks have the same rank.
 
