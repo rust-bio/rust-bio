@@ -29,7 +29,7 @@ impl ProtMotif {
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently impossible - see
     /// https://github.com/rust-lang/rust/issues/42863
-    pub fn from_seqs(seqs: &Vec<Vec<u8>>, pseudos: Option<&[f32]>) -> Result<Self, PSSMError> {
+    pub fn from_seqs(seqs: &Vec<Vec<u8>>, pseudos: Option<&[f32]>) -> Result<Self> {
         let w = Self::seqs_to_weights(seqs, pseudos)?;
         let mut m = ProtMotif {
             scores: w,
@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn test_scoring() {
         // should match "ARND"
-        let m: Array2<f32> = Array::from_vec(vec![
+        let m: Array2<f32> = Array::from(vec![
             0.81, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
             0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.81, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
             0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
@@ -189,7 +189,7 @@ mod tests {
         let pssm = ProtMotif::from_seqs(vec![b"ARGN".to_vec()].as_ref(), None).unwrap();
         assert_eq!(
             pssm.score(b"AAAABAAAAAAAAA"),
-            Err(PSSMError::InvalidMonomer(b'B'))
+            Err(Error::InvalidMonomer { mono: b'B' })
         );
     }
 
@@ -200,7 +200,7 @@ mod tests {
                 vec![b"NNNNN".to_vec(), b"RRRRR".to_vec(), b"C".to_vec()].as_ref(),
                 Some(&[0.0; 20])
             ),
-            Err(PSSMError::InconsistentLen)
+            Err(Error::InconsistentLen)
         );
     }
 }

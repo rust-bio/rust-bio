@@ -76,6 +76,8 @@
 //! - Rabiner, Lawrence R. "A tutorial on hidden Markov models and selected applications
 //!   in speech recognition." Proceedings of the IEEE 77, no. 2 (1989): 257-286.
 
+pub mod errors;
+
 use std::cmp::Ordering;
 
 use ndarray::prelude::*;
@@ -83,19 +85,9 @@ use num_traits::Zero;
 use ordered_float::OrderedFloat;
 use statrs::distribution::Continuous;
 
-use super::LogProb;
+pub use self::errors::{Error, Result};
 
-quick_error! {
-    #[derive(Debug, PartialEq)]
-    pub enum HMMError {
-        InvalidDimension(an0: usize, an1: usize, bn: usize, bm: usize, pin: usize) {
-            description("invalid dimensions on construction")
-            display(
-                "inferred from A: N_0={}, N_1={} (must be equal), from B: N={}, M={}, from \
-                pi: N={}", an0, an1, bn, bm, pin)
-        }
-    }
-}
+use super::LogProb;
 
 custom_derive! {
     /// A newtype for HMM states.
@@ -384,7 +376,7 @@ pub fn forward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>,
     }
 
     // Compute final probability.
-    let prob = LogProb::ln_sum_exp(vals.row(observations.len() - 1).into_slice().unwrap());
+    let prob = LogProb::ln_sum_exp(vals.row(observations.len() - 1).to_slice().unwrap());
 
     (vals, prob)
 }
@@ -446,7 +438,7 @@ pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>
     }
 
     // Compute final probability.
-    let prob = LogProb::ln_sum_exp(vals.row(observations.len() - 1).into_slice().unwrap());
+    let prob = LogProb::ln_sum_exp(vals.row(observations.len() - 1).to_slice().unwrap());
 
     (vals, prob)
 }
@@ -483,13 +475,19 @@ pub mod discrete_emission {
             transition: Array2<LogProb>,
             observation: Array2<LogProb>,
             initial: Array1<LogProb>,
-        ) -> Result<Self, HMMError> {
+        ) -> Result<Self> {
             let (an0, an1) = transition.dim();
             let (bn, bm) = observation.dim();
             let pin = initial.dim();
 
             if an0 != an1 || an0 != bn || an0 != pin {
-                Err(HMMError::InvalidDimension(an0, an1, bn, bm, pin))
+                Err(Error::InvalidDimension {
+                    an0,
+                    an1,
+                    bn,
+                    bm,
+                    pin,
+                })
             } else {
                 Ok(Self {
                     transition,
@@ -505,7 +503,7 @@ pub mod discrete_emission {
             transition: &Array2<Prob>,
             observation: &Array2<Prob>,
             initial: &Array1<Prob>,
-        ) -> Result<Self, HMMError> {
+        ) -> Result<Self> {
             Self::new(
                 transition.map(|x| LogProb::from(*x)),
                 observation.map(|x| LogProb::from(*x)),
@@ -519,7 +517,7 @@ pub mod discrete_emission {
             transition: &Array2<f64>,
             observation: &Array2<f64>,
             initial: &Array1<f64>,
-        ) -> Result<Self, HMMError> {
+        ) -> Result<Self> {
             Self::new(
                 transition.map(|x| LogProb::from(Prob(*x))),
                 observation.map(|x| LogProb::from(Prob(*x))),
@@ -590,13 +588,19 @@ pub mod univariate_continuous_emission {
             transition: Array2<LogProb>,
             observation: Vec<Dist>,
             initial: Array1<LogProb>,
-        ) -> Result<Self, HMMError> {
+        ) -> Result<Self> {
             let (an0, an1) = transition.dim();
             let bn = observation.len();
             let pin = initial.dim();
 
             if an0 != an1 || an0 != bn || an0 != pin {
-                Err(HMMError::InvalidDimension(an0, an1, bn, bn, pin))
+                Err(Error::InvalidDimension {
+                    an0,
+                    an1,
+                    bn,
+                    bm: bn,
+                    pin,
+                })
             } else {
                 Ok(Self {
                     transition,
@@ -612,7 +616,7 @@ pub mod univariate_continuous_emission {
             transition: &Array2<Prob>,
             observation: Vec<Dist>,
             initial: &Array1<Prob>,
-        ) -> Result<Self, HMMError> {
+        ) -> Result<Self> {
             Self::new(
                 transition.map(|x| LogProb::from(*x)),
                 observation,
@@ -626,7 +630,7 @@ pub mod univariate_continuous_emission {
             transition: &Array2<f64>,
             observation: Vec<Dist>,
             initial: &Array1<f64>,
-        ) -> Result<Self, HMMError> {
+        ) -> Result<Self> {
             Self::new(
                 transition.map(|x| LogProb::from(Prob(*x))),
                 observation,

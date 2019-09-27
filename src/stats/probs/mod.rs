@@ -7,17 +7,21 @@
 //! in a numerically stable way, in particular when having probabilities close to zero.
 
 pub mod cdf;
+pub mod errors;
 
 use std::f64;
 use std::iter;
 use std::mem;
 use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
-use crate::utils::FastExp;
 use itertools::Itertools;
 use itertools_num::linspace;
 use num_traits::{Float, Zero};
 use ordered_float::NotNan;
+
+use crate::utils::FastExp;
+
+pub use self::errors::{Error, Result};
 
 /// A factor to convert log-probabilities to PHRED-scale (phred = p * `LOG_TO_PHRED_FACTOR`).
 const LOG_TO_PHRED_FACTOR: f64 = -4.342_944_819_032_517_5; // -10 * 1 / ln(10)
@@ -73,11 +77,11 @@ custom_derive! {
 }
 
 impl Prob {
-    pub fn checked(p: f64) -> Result<Self, ProbError> {
+    pub fn checked(p: f64) -> Result<Self> {
         if p >= 0.0 && p <= 1.0 {
             Ok(Prob(p))
         } else {
-            Err(ProbError::InvalidProb(p))
+            Err(Error::InvalidProb { prob: p })
         }
     }
 }
@@ -456,16 +460,6 @@ impl Zero for PHREDProb {
 
     fn is_zero(&self) -> bool {
         *self == Self::zero()
-    }
-}
-
-quick_error! {
-    #[derive(Debug)]
-    pub enum ProbError {
-        InvalidProb(value: f64) {
-            description("invalid probability")
-            display("probabilty {} not in interval [0,1]", value)
-        }
     }
 }
 

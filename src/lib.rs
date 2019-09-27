@@ -99,13 +99,13 @@ extern crate lazy_static;
 extern crate newtype_derive;
 
 #[macro_use]
-extern crate quick_error;
-
-#[macro_use]
 extern crate serde_derive;
 
 #[macro_use]
 extern crate strum_macros;
+
+#[macro_use]
+extern crate snafu;
 
 pub mod alignment;
 pub mod alphabets;

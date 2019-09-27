@@ -12,18 +12,21 @@ license = "MIT"
 build = "build.rs"
 edition = "2018"
 
+[features]
+runtime-dispatch-simd = ["bytecount/runtime-dispatch-simd"]
+generic-simd = ["bytecount/generic-simd"]
 
 [dependencies]
-bytecount = { version = "0.5.1", features = ["runtime-dispatch-simd"] }
-csv = "1.0"
+bytecount = "0.6"
+csv = "1.1"
 num-traits = "0.2"
 num-integer = "0.1"
-itertools = "0.7"
+itertools = "0.8"
 itertools-num = "0.1"
-bv = { version = "0.10", features = ["serde"] }
+bv = { version = "0.11", features = ["serde"] }
 bit-set = "0.5"
-ndarray= "0.12"
-lazy_static = "1.0"
+ndarray= "0.13"
+lazy_static = "1.4"
 serde = "1.0"
 serde_derive = "1.0"
 approx = "0.3"
@@ -31,14 +34,15 @@ custom_derive = "0.1"
 newtype_derive = "0.1"
 ordered-float = "1.0"
 quick-error = "1.2"
-regex = "1.0"
-multimap = "0.4"
+regex = "1.3"
+multimap = "0.6"
 fxhash = "0.2"
 statrs = "0.11"
 bio-types = ">=0.5.1"
 fnv = "1.0"
-strum = "0.15"
-strum_macros = "0.15"
+strum = "0.16"
+strum_macros = "0.16"
+snafu = "0.5"
 
 [dependencies.vec_map]
 version = "0.8"

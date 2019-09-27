@@ -12,7 +12,6 @@ pub fn trim_newline(s: &mut String) {
 
 #[cfg(test)]
 mod tests {
-    use itertools::Itertools;
     use std::ops::Deref;
 
     /// This function demonstrates the use of the IntoSequenceIterator alias, which takes both
@@ -27,7 +26,7 @@ mod tests {
     fn test_print_sequence() {
         let s = b"ACGT";
         // use iterator
-        print_sequence(s.iter().step(1));
+        print_sequence(s.iter().step_by(1));
         // use slice
         print_sequence(&s[..]);
         // use vec
