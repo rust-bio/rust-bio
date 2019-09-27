@@ -1,4 +1,8 @@
+pub mod errors;
+
 use std::ops::{Deref, Range};
+
+pub use self::errors::{Result, Error};
 
 /// An `Interval` wraps the `std::ops::Range` from the stdlib and is defined by a start and end field
 /// where end should be >= start.
@@ -8,11 +12,11 @@ pub struct Interval<N: Ord + Clone>(Range<N>);
 impl<N: Ord + Clone> Interval<N> {
     /// Construct a new `Interval` from the given Range.
     /// Will return `Err` if end < start.
-    pub fn new(r: Range<N>) -> Result<Interval<N>, IntervalError> {
+    pub fn new(r: Range<N>) -> Result<Interval<N>> {
         if r.end >= r.start {
             Ok(Interval(r))
         } else {
-            Err(IntervalError::InvalidRange)
+            Err(Error::InvalidRange)
         }
     }
 }
@@ -22,7 +26,7 @@ impl<N: Ord + Clone> From<Range<N>> for Interval<N> {
     fn from(r: Range<N>) -> Self {
         match Interval::new(r) {
             Ok(interval) => interval,
-            Err(IntervalError::InvalidRange) => {
+            Err(Error::InvalidRange) => {
                 panic!("Cannot convert negative width range to interval")
             }
         }
@@ -35,7 +39,7 @@ impl<'a, N: Ord + Clone> From<&'a Range<N>> for Interval<N> {
     fn from(r: &Range<N>) -> Self {
         match Interval::new(r.clone()) {
             Ok(interval) => interval,
-            Err(IntervalError::InvalidRange) => {
+            Err(Error::InvalidRange) => {
                 panic!("Cannot convert negative width range to interval")
             }
         }
@@ -48,15 +52,6 @@ impl<N: Ord + Clone> Deref for Interval<N> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-quick_error! {
-    #[derive(Debug)]
-    pub enum IntervalError {
-        InvalidRange {
-            description("An Interval must have a Range with a positive width")
-        }
     }
 }
 

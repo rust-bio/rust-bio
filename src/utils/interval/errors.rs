@@ -3,13 +3,13 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Error definitions for the `probs` module.
+//! Error definitions for the `interval` module.
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Snafu, Debug, PartialEq)]
 #[snafu(visibility = "pub")]
 pub enum Error {
-    #[snafu(display("probabilty {} not in interval [0,1]", prob))]
-    InvalidProb { prob: f64 },
+    #[snafu(display("an Interval must have a Range with a positive width"))]
+    InvalidRange,
 }
