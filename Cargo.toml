@@ -12,7 +12,6 @@ license = "MIT"
 build = "build.rs"
 edition = "2018"
 
-
 [features]
 runtime-dispatch-simd = ["bytecount/runtime-dispatch-simd"]
 generic-simd = ["bytecount/generic-simd"]
