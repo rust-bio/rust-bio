@@ -10,8 +10,12 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 #[derive(Snafu, Debug, PartialEq)]
 #[snafu(visibility = "pub")]
 pub enum Error {
-    #[snafu(display("query length {} is shorter than motif length {}", query_len, motif_len))]
-    QueryTooShort {motif_len: usize, query_len: usize},
+    #[snafu(display(
+        "query length {} is shorter than motif length {}",
+        query_len,
+        motif_len
+    ))]
+    QueryTooShort { motif_len: usize, query_len: usize },
     #[snafu(display("attempted to build a motif from sequences with mismatched lengths"))]
     InconsistentLen,
     #[snafu(display("monomer '{}' is invalid", char::from(*mono)))]

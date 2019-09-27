@@ -99,7 +99,7 @@ impl<T: Ord> CDF<T> {
         } else {
             let s = self.inner.len() / (n - 1);
             let last = self.inner.pop().unwrap();
-            let mut inner = self.inner.into_iter().step(s).collect_vec();
+            let mut inner = self.inner.into_iter().step_by(s).collect_vec();
             inner.push(last);
             CDF { inner }
         }

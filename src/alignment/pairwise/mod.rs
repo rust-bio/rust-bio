@@ -1458,5 +1458,4 @@ mod tests {
 
         assert_eq!(alignment.operations, [Yclip(6), Match, Match, Match]);
     }
-
 }

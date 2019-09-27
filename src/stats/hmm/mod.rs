@@ -85,7 +85,7 @@ use num_traits::Zero;
 use ordered_float::OrderedFloat;
 use statrs::distribution::Continuous;
 
-pub use self::errors::{Result, Error};
+pub use self::errors::{Error, Result};
 
 use super::LogProb;
 
@@ -376,7 +376,7 @@ pub fn forward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>,
     }
 
     // Compute final probability.
-    let prob = LogProb::ln_sum_exp(vals.row(observations.len() - 1).into_slice().unwrap());
+    let prob = LogProb::ln_sum_exp(vals.row(observations.len() - 1).to_slice().unwrap());
 
     (vals, prob)
 }
@@ -438,7 +438,7 @@ pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>
     }
 
     // Compute final probability.
-    let prob = LogProb::ln_sum_exp(vals.row(observations.len() - 1).into_slice().unwrap());
+    let prob = LogProb::ln_sum_exp(vals.row(observations.len() - 1).to_slice().unwrap());
 
     (vals, prob)
 }
@@ -481,7 +481,13 @@ pub mod discrete_emission {
             let pin = initial.dim();
 
             if an0 != an1 || an0 != bn || an0 != pin {
-                Err(Error::InvalidDimension{an0, an1, bn, bm, pin})
+                Err(Error::InvalidDimension {
+                    an0,
+                    an1,
+                    bn,
+                    bm,
+                    pin,
+                })
             } else {
                 Ok(Self {
                     transition,
@@ -588,7 +594,13 @@ pub mod univariate_continuous_emission {
             let pin = initial.dim();
 
             if an0 != an1 || an0 != bn || an0 != pin {
-                Err(Error::InvalidDimension {an0, an1, bn, bm: bn, pin})
+                Err(Error::InvalidDimension {
+                    an0,
+                    an1,
+                    bn,
+                    bm: bn,
+                    pin,
+                })
             } else {
                 Ok(Self {
                     transition,

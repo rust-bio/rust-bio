@@ -21,7 +21,7 @@ use ordered_float::NotNan;
 
 use crate::utils::FastExp;
 
-pub use self::errors::{Result, Error};
+pub use self::errors::{Error, Result};
 
 /// A factor to convert log-probabilities to PHRED-scale (phred = p * `LOG_TO_PHRED_FACTOR`).
 const LOG_TO_PHRED_FACTOR: f64 = -4.342_944_819_032_517_5; // -10 * 1 / ln(10)

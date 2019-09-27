@@ -39,12 +39,12 @@ use itertools::Itertools;
 use ndarray::prelude::Array2;
 
 mod dnamotif;
-mod protmotif;
 pub mod errors;
+mod protmotif;
 
 pub use self::dnamotif::DNAMotif;
+pub use self::errors::{Error, Result};
 pub use self::protmotif::ProtMotif;
-pub use self::errors::{Result, Error};
 
 /// default pseudocount - used to prevent 0 tallies
 pub const DEF_PSEUDO: f32 = 0.5;
@@ -90,10 +90,7 @@ pub trait Motif {
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently unsupported
-    fn seqs_to_weights(
-        seqs: &Vec<Vec<u8>>,
-        _pseudos: Option<&[f32]>,
-    ) -> Result<Array2<f32>> {
+    fn seqs_to_weights(seqs: &Vec<Vec<u8>>, _pseudos: Option<&[f32]>) -> Result<Array2<f32>> {
         let p1 = vec![DEF_PSEUDO; Self::MONO_CT];
         let pseudos = match _pseudos {
             Some(ref p2) => p2,
@@ -101,7 +98,7 @@ pub trait Motif {
         };
 
         if pseudos.len() != Self::MONO_CT {
-            return Err(Error::InvalidPseudos{
+            return Err(Error::InvalidPseudos {
                 expected: Self::MONO_CT as u8,
                 received: pseudos.len() as u8,
             });
@@ -252,7 +249,10 @@ pub trait Motif {
         let pssm_len = self.len();
         let seq = seq_it.into_iter().map(|c| *c.borrow()).collect_vec();
         if seq.len() < pssm_len {
-            return Err(Error::QueryTooShort { motif_len: pssm_len, query_len: seq.len() });
+            return Err(Error::QueryTooShort {
+                motif_len: pssm_len,
+                query_len: seq.len(),
+            });
         }
         let min_score = self.get_min_score();
         let max_score = self.get_max_score();

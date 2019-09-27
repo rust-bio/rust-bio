@@ -2,7 +2,7 @@ pub mod errors;
 
 use std::ops::{Deref, Range};
 
-pub use self::errors::{Result, Error};
+pub use self::errors::{Error, Result};
 
 /// An `Interval` wraps the `std::ops::Range` from the stdlib and is defined by a start and end field
 /// where end should be >= start.
@@ -26,9 +26,7 @@ impl<N: Ord + Clone> From<Range<N>> for Interval<N> {
     fn from(r: Range<N>) -> Self {
         match Interval::new(r) {
             Ok(interval) => interval,
-            Err(Error::InvalidRange) => {
-                panic!("Cannot convert negative width range to interval")
-            }
+            Err(Error::InvalidRange) => panic!("Cannot convert negative width range to interval"),
         }
     }
 }
@@ -39,9 +37,7 @@ impl<'a, N: Ord + Clone> From<&'a Range<N>> for Interval<N> {
     fn from(r: &Range<N>) -> Self {
         match Interval::new(r.clone()) {
             Ok(interval) => interval,
-            Err(Error::InvalidRange) => {
-                panic!("Cannot convert negative width range to interval")
-            }
+            Err(Error::InvalidRange) => panic!("Cannot convert negative width range to interval"),
         }
     }
 }

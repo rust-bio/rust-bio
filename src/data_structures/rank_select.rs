@@ -368,5 +368,4 @@ mod tests {
         assert_eq!(rs.rank_1(64), Some(1));
         assert_eq!(rs.rank_1(71), Some(1));
     }
-
 }
