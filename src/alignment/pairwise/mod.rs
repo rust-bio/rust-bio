@@ -244,18 +244,60 @@ impl<F: MatchFunc> Scoring<F> {
     ///
     /// * `penalty` - Clipping penalty for x (both prefix and suffix, should not be positive)
     ///
-    pub fn xclip(self, penalty: i32) -> Self {
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).xclip(-5);
+    /// assert!(scoring.xclip_prefix==-5);
+    /// assert!(scoring.yclip_prefix==MIN_SCORE);
+    /// assert!(scoring.xclip_suffix==-5);
+    /// assert!(scoring.yclip_suffix==MIN_SCORE);
+    /// ```
+    pub fn xclip(mut self, penalty: i32) -> Self {
         assert!(penalty <= 0, "Clipping penalty can't be positive");
-        Scoring {
-            gap_open: self.gap_open,
-            gap_extend: self.gap_extend,
-            match_fn: self.match_fn,
-            match_scores: None,
-            xclip_prefix: penalty,
-            xclip_suffix: penalty,
-            yclip_prefix: self.yclip_prefix,
-            yclip_suffix: self.yclip_suffix,
-        }
+        self.xclip_prefix = penalty;
+        self.xclip_suffix = penalty;
+        self
+    }
+
+    /// Sets the prefix clipping penalty for x to the input value
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - Prefix clipping penalty for x (should not be positive)
+    ///
+    /// # Example
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).xclip_prefix(-5);
+    /// assert!(scoring.xclip_prefix==-5);
+    /// assert!(scoring.yclip_prefix==MIN_SCORE);
+    /// assert!(scoring.xclip_suffix==MIN_SCORE);
+    /// assert!(scoring.yclip_suffix==MIN_SCORE);
+    /// ```
+    pub fn xclip_prefix(mut self, penalty: i32) -> Self {
+        assert!(penalty <= 0, "Clipping penalty can't be positive");
+        self.xclip_prefix = penalty;
+        self
+    }
+
+    /// Sets the suffix clipping penalty for x to the input value
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - Suffix clipping penalty for x (should not be positive)
+    ///
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).xclip_suffix(-5);
+    /// assert!(scoring.xclip_prefix==MIN_SCORE);
+    /// assert!(scoring.yclip_prefix==MIN_SCORE);
+    /// assert!(scoring.xclip_suffix==-5);
+    /// assert!(scoring.yclip_suffix==MIN_SCORE);
+    /// ```
+    pub fn xclip_suffix(mut self, penalty: i32) -> Self {
+        assert!(penalty <= 0, "Clipping penalty can't be positive");
+        self.xclip_suffix = penalty;
+        self
     }
 
     /// Sets the prefix and suffix clipping penalties for y to the input value
@@ -264,18 +306,59 @@ impl<F: MatchFunc> Scoring<F> {
     ///
     /// * `penalty` - Clipping penalty for y (both prefix and suffix, should not be positive)
     ///
-    pub fn yclip(self, penalty: i32) -> Self {
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).yclip(-5);
+    /// assert!(scoring.xclip_prefix==MIN_SCORE);
+    /// assert!(scoring.yclip_prefix==-5);
+    /// assert!(scoring.xclip_suffix==MIN_SCORE);
+    /// assert!(scoring.yclip_suffix==-5);
+    /// ```
+    pub fn yclip(mut self, penalty: i32) -> Self {
         assert!(penalty <= 0, "Clipping penalty can't be positive");
-        Scoring {
-            gap_open: self.gap_open,
-            gap_extend: self.gap_extend,
-            match_fn: self.match_fn,
-            match_scores: None,
-            xclip_prefix: self.xclip_prefix,
-            xclip_suffix: self.xclip_suffix,
-            yclip_prefix: penalty,
-            yclip_suffix: penalty,
-        }
+        self.yclip_prefix = penalty;
+        self.yclip_suffix = penalty;
+        self
+    }
+
+    /// Sets the prefix clipping penalty for y to the input value
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - Prefix clipping penalty for y (should not be positive)
+    ///
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).yclip_prefix(-5);
+    /// assert!(scoring.xclip_prefix==MIN_SCORE);
+    /// assert!(scoring.yclip_prefix==-5);
+    /// assert!(scoring.xclip_suffix==MIN_SCORE);
+    /// assert!(scoring.yclip_suffix==MIN_SCORE);
+    /// ```
+    pub fn yclip_prefix(mut self, penalty: i32) -> Self {
+        assert!(penalty <= 0, "Clipping penalty can't be positive");
+        self.yclip_prefix = penalty;
+        self
+    }
+
+    /// Sets the suffix clipping penalty for y to the input value
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - Suffix clipping penalty for y (should not be positive)
+    ///
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).yclip_suffix(-5);
+    /// assert!(scoring.xclip_prefix==MIN_SCORE);
+    /// assert!(scoring.yclip_prefix==MIN_SCORE);
+    /// assert!(scoring.xclip_suffix==MIN_SCORE);
+    /// assert!(scoring.yclip_suffix==-5);
+    /// ```
+    pub fn yclip_suffix(mut self, penalty: i32) -> Self {
+        assert!(penalty <= 0, "Clipping penalty can't be positive");
+        self.yclip_suffix = penalty;
+        self
     }
 }
 
@@ -460,6 +543,8 @@ impl<F: MatchFunc> Aligner<F> {
                 self.Ly.extend(repeat(0usize).take(m + 1));
                 self.Sn.clear();
                 self.Sn.extend(repeat(MIN_SCORE).take(m + 1));
+                self.Sn[0] = self.scoring.yclip_suffix;
+                self.Ly[0] = n;
             }
 
             for i in 1..=m {
@@ -506,6 +591,11 @@ impl<F: MatchFunc> Aligner<F> {
 
                 if k == 0 {
                     self.traceback.set(i, 0, tb);
+                }
+                // Track the score if we do suffix clip (y) from here
+                if self.S[k][i] + self.scoring.yclip_suffix > self.Sn[i] {
+                    self.Sn[i] = self.S[k][i] + self.scoring.yclip_suffix;
+                    self.Ly[i] = n;
                 }
             }
         }
@@ -1457,5 +1547,71 @@ mod tests {
         let alignment = aligner.custom(x, y);
 
         assert_eq!(alignment.operations, [Yclip(6), Match, Match, Match]);
+    }
+
+    #[test]
+    fn test_only_clips() {
+        let x = b"GGAAAAAAAAAAAAA";
+        let y = b"TTTTAATTTGTGTAAAAAATAATA";
+        let base_score = Scoring::from_scores(-4, -4, 4, -7);
+        let scoring = Scoring {
+            xclip_prefix: 0,
+            xclip_suffix: 0,
+            yclip_suffix: 0,
+            ..base_score
+        };
+        let mut al = Aligner::with_scoring(scoring);
+        let alignment = al.custom(x, y);
+        assert_eq!(alignment.score, 0);
+    }
+
+    #[test]
+    fn test_zero_score_clips() {
+        let x = b"AA";
+        let y = b"CC";
+        let base_score = Scoring::from_scores(-1, -1, 1, -1);
+        {
+            let scoring = Scoring {
+                xclip_prefix: 0,
+                yclip_prefix: 0,
+                ..base_score.clone()
+            };
+            let mut al = Aligner::with_scoring(scoring);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+
+        {
+            let scoring = Scoring {
+                xclip_prefix: 0,
+                yclip_suffix: 0,
+                ..base_score.clone()
+            };
+            let mut al = Aligner::with_scoring(scoring);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+
+        {
+            let scoring = Scoring {
+                xclip_suffix: 0,
+                yclip_prefix: 0,
+                ..base_score.clone()
+            };
+            let mut al = Aligner::with_scoring(scoring);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+
+        {
+            let scoring = Scoring {
+                xclip_suffix: 0,
+                yclip_suffix: 0,
+                ..base_score.clone()
+            };
+            let mut al = Aligner::with_scoring(scoring);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
     }
 }
