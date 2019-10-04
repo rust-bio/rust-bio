@@ -105,7 +105,7 @@ where
         record.clear();
         self.line_buf.clear();
 
-        r#try!(self.reader.read_line(&mut self.line_buf));
+        self.reader.read_line(&mut self.line_buf)?;
 
         if !self.line_buf.is_empty() {
             if !self.line_buf.starts_with('@') {
@@ -117,9 +117,9 @@ where
             let mut header_fields = self.line_buf[1..].trim_end().splitn(2, ' ');
             record.id = header_fields.next().unwrap_or_default().to_owned();
             record.desc = header_fields.next().map(|s| s.to_owned());
-            r#try!(self.reader.read_line(&mut record.seq));
-            r#try!(self.reader.read_line(&mut self.line_buf));
-            r#try!(self.reader.read_line(&mut record.qual));
+            self.reader.read_line(&mut record.seq)?;
+            self.reader.read_line(&mut self.line_buf)?;
+            self.reader.read_line(&mut record.qual)?;
             if record.qual.is_empty() {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
@@ -307,17 +307,17 @@ impl<W: io::Write> Writer<W> {
         seq: TextSlice<'_>,
         qual: &[u8],
     ) -> io::Result<()> {
-        r#try!(self.writer.write_all(b"@"));
-        r#try!(self.writer.write_all(id.as_bytes()));
+        self.writer.write_all(b"@")?;
+        self.writer.write_all(id.as_bytes())?;
         if desc.is_some() {
-            r#try!(self.writer.write_all(b" "));
-            r#try!(self.writer.write_all(desc.unwrap().as_bytes()));
+            self.writer.write_all(b" ")?;
+            self.writer.write_all(desc.unwrap().as_bytes())?;
         }
-        r#try!(self.writer.write_all(b"\n"));
-        r#try!(self.writer.write_all(seq));
-        r#try!(self.writer.write_all(b"\n+\n"));
-        r#try!(self.writer.write_all(qual));
-        r#try!(self.writer.write_all(b"\n"));
+        self.writer.write_all(b"\n")?;
+        self.writer.write_all(seq)?;
+        self.writer.write_all(b"\n+\n")?;
+        self.writer.write_all(qual)?;
+        self.writer.write_all(b"\n")?;
 
         Ok(())
     }
