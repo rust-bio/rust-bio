@@ -139,7 +139,7 @@ where
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
         if self.line.is_empty() {
-            r#try!(self.reader.read_line(&mut self.line));
+            self.reader.read_line(&mut self.line)?;
             if self.line.is_empty() {
                 return Ok(());
             }
@@ -156,7 +156,7 @@ where
         record.desc = header_fields.next().map(|s| s.to_owned());
         loop {
             self.line.clear();
-            r#try!(self.reader.read_line(&mut self.line));
+            self.reader.read_line(&mut self.line)?;
             if self.line.is_empty() || self.line.starts_with('>') {
                 break;
             }
@@ -246,7 +246,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     /// Read from a FASTA and its index, both given as `io::Read`. FASTA has to
     /// be `io::Seek` in addition.
     pub fn new<I: io::Read>(fasta: R, fai: I) -> csv::Result<Self> {
-        let index = r#try!(Index::new(fai));
+        let index = Index::new(fai)?;
         Ok(IndexedReader {
             reader: io::BufReader::new(fasta),
             index,
@@ -425,7 +425,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         let line_offset = start % idx.line_bases;
         let line_start = start / idx.line_bases * idx.line_bytes;
         let offset = idx.offset + line_start + line_offset;
-        r#try!(self.reader.seek(io::SeekFrom::Start(offset)));
+        self.reader.seek(io::SeekFrom::Start(offset))?;
 
         Ok(line_offset)
     }
@@ -584,15 +584,15 @@ impl<W: io::Write> Writer<W> {
 
     /// Write a Fasta record with given id, optional description and sequence.
     pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> io::Result<()> {
-        r#try!(self.writer.write_all(b">"));
-        r#try!(self.writer.write_all(id.as_bytes()));
+        self.writer.write_all(b">")?;
+        self.writer.write_all(id.as_bytes())?;
         if desc.is_some() {
-            r#try!(self.writer.write_all(b" "));
-            r#try!(self.writer.write_all(desc.unwrap().as_bytes()));
+            self.writer.write_all(b" ")?;
+            self.writer.write_all(desc.unwrap().as_bytes())?;
         }
-        r#try!(self.writer.write_all(b"\n"));
-        r#try!(self.writer.write_all(seq));
-        r#try!(self.writer.write_all(b"\n"));
+        self.writer.write_all(b"\n")?;
+        self.writer.write_all(seq)?;
+        self.writer.write_all(b"\n")?;
 
         Ok(())
     }
