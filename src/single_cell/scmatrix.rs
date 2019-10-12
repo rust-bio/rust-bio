@@ -4,13 +4,14 @@ use std::error::Error;
 use crate::single_cell::eds;
 
 // currently fixing the generic to f64
+#[derive(Debug)]
 pub struct ScMatrix {
     data: CsMatBase<f64, usize, Vec<usize>, Vec<usize>, Vec<f64>>,
     row_names: Vec<String>,
     column_names: Vec<String>,
 }
 
-//#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
 pub enum ScMatType {
     EDS,
     MTX,
@@ -58,7 +59,7 @@ impl ScMatrix {
 
     // single cell matrix reader based on the file format
     pub fn reader(mat_type: ScMatType,
-              input_path: &str
+                  input_path: &str
     ) -> Result<ScMatrix, Box<dyn Error>> {
         match mat_type {
             ScMatType::EDS => eds::reader(input_path),
@@ -68,8 +69,8 @@ impl ScMatrix {
 
     // single cell matrix writer based on the file format
     pub fn writer(mat_type: ScMatType,
-              matrix: ScMatrix,
-              output_path: &str
+                  matrix: ScMatrix,
+                  output_path: &str
     ) -> Result<(), Box<dyn Error>> {
         match mat_type {
             ScMatType::EDS => eds::writer(matrix, output_path),

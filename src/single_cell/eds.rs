@@ -42,7 +42,7 @@ fn get_reserved_spaces(num_bit_vecs: usize,
                        num_rows: usize,
                        mut file: GzDecoder<BufReader<File>>
 ) -> Result<Vec<usize>, Box<dyn Error>> {
-    let mut bit_vec_length: Vec<usize> = vec![0, num_bit_vecs + 1];
+    let mut bit_vec_lengths: Vec<usize> = vec![0; num_rows + 1];
     let mut bit_vec = vec![0; num_bit_vecs];
     let mut running_sum = 0;
 
@@ -54,7 +54,7 @@ fn get_reserved_spaces(num_bit_vecs: usize,
         }
 
         running_sum += num_ones;
-        bit_vec_length[i+1] = running_sum;
+        bit_vec_lengths[i+1] = running_sum;
 
         // no seek command yet
         // copied from https://github.com/rust-lang/rust/issues/53294#issue-349837288
@@ -62,7 +62,7 @@ fn get_reserved_spaces(num_bit_vecs: usize,
         //file.seek(SeekFrom::Current((num_ones * 4) as i64))?;
     }
 
-    Ok(bit_vec_length)
+    Ok(bit_vec_lengths)
 }
 
 // writes the EDS format single cell matrix into the given path
@@ -101,7 +101,7 @@ pub fn reader(
         let num_bit_vecs: usize = round::ceil(num_columns as f64 / 8.0, 0) as usize;
         let bit_vector_lengths = get_reserved_spaces(num_bit_vecs, num_rows, file)?;
 
-        let total_nnz = bit_vector_lengths.iter().sum();
+        let total_nnz = bit_vector_lengths[num_rows];
         let mut data: Vec<f64> = vec![0.0; total_nnz];
         let mut indices: Vec<usize> = vec![0; total_nnz];
 
