@@ -114,5 +114,6 @@ pub mod io;
 pub mod pattern_matching;
 pub mod scores;
 pub mod seq_analysis;
+pub mod single_cell;
 pub mod stats;
 pub mod utils;
