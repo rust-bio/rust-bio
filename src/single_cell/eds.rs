@@ -166,7 +166,8 @@ pub fn writer(
     matrix: scmatrix::ScMatrix,
     path_str: &str,
 ) -> Result<(), Box<dyn Error>> {
-    let (quants_mat, quants_mat_rows, quants_mat_cols) = get_file_names(path_str)?;
+    let quants_file_handle = File::create(path_str)?;
+    let (_, quants_mat_rows, quants_mat_cols) = get_file_names(path_str)?;
 
     { // writing row file
         let file_handle = File::create(quants_mat_rows)?;
@@ -189,8 +190,7 @@ pub fn writer(
     }
 
     { // writing matrix
-        let file_handle = File::create(quants_mat)?;
-        let buffered = BufWriter::new(file_handle);
+        let buffered = BufWriter::new(quants_file_handle);
         let mut file = GzEncoder::new(buffered, Compression::default());
 
         let num_bit_vecs: usize = round::ceil(matrix.num_columns() as f64 / 8.0, 0) as usize;
