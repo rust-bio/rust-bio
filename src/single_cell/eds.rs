@@ -1,8 +1,8 @@
-use std::fs::{File, canonicalize};
-use std::io;
-use std::path::PathBuf;
 use std::error::Error;
-use std::io::{Read, Write, BufReader, BufRead, BufWriter};
+use std::fs::{canonicalize, File};
+use std::io;
+use std::io::{BufRead, BufReader, BufWriter, Read, Write};
+use std::path::PathBuf;
 
 use byteorder::{ByteOrder, LittleEndian};
 use flate2::read::GzDecoder;
@@ -11,8 +11,8 @@ use math::round;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 
-use sprs::CsMatBase;
 use crate::single_cell::scmatrix;
+use sprs::CsMatBase;
 
 fn get_file_names(path: &str) -> Result<(PathBuf, PathBuf, PathBuf), Box<dyn Error>> {
     // futuristic customization of alevin output name
@@ -20,7 +20,8 @@ fn get_file_names(path: &str) -> Result<(PathBuf, PathBuf, PathBuf), Box<dyn Err
     let quants_mat: PathBuf;
     let mut quants_mat_rows: PathBuf;
     let mut quants_mat_cols: PathBuf;
-    { // assigning names of the file to read
+    {
+        // assigning names of the file to read
         match eds_type {
             0_14 => {
                 quants_mat = canonicalize(path)?;
@@ -30,7 +31,7 @@ fn get_file_names(path: &str) -> Result<(PathBuf, PathBuf, PathBuf), Box<dyn Err
 
                 quants_mat_cols = quants_mat.clone();
                 quants_mat_cols.set_file_name("quants_mat_cols.txt");
-            },
+            }
             _ => unreachable!(),
         };
     }
@@ -38,9 +39,10 @@ fn get_file_names(path: &str) -> Result<(PathBuf, PathBuf, PathBuf), Box<dyn Err
     Ok((quants_mat, quants_mat_rows, quants_mat_cols))
 }
 
-fn get_reserved_spaces(num_bit_vecs: usize,
-                       num_rows: usize,
-                       mut file: GzDecoder<BufReader<File>>
+fn get_reserved_spaces(
+    num_bit_vecs: usize,
+    num_rows: usize,
+    mut file: GzDecoder<BufReader<File>>,
 ) -> Result<Vec<usize>, Box<dyn Error>> {
     let mut bit_vec_lengths: Vec<usize> = vec![0; num_rows + 1];
     let mut bit_vec = vec![0; num_bit_vecs];
@@ -54,11 +56,14 @@ fn get_reserved_spaces(num_bit_vecs: usize,
         }
 
         running_sum += num_ones;
-        bit_vec_lengths[i+1] = running_sum;
+        bit_vec_lengths[i + 1] = running_sum;
 
         // no seek command yet
         // copied from https://github.com/rust-lang/rust/issues/53294#issue-349837288
-        io::copy(&mut file.by_ref().take((num_ones * 4) as u64), &mut io::sink())?;
+        io::copy(
+            &mut file.by_ref().take((num_ones * 4) as u64),
+            &mut io::sink(),
+        )?;
         //file.seek(SeekFrom::Current((num_ones * 4) as i64))?;
     }
 
@@ -66,14 +71,13 @@ fn get_reserved_spaces(num_bit_vecs: usize,
 }
 
 // writes the EDS format single cell matrix into the given path
-pub fn reader(
-    input_path: &str,
-) -> Result<scmatrix::ScMatrix, Box<dyn Error>> {
+pub fn reader(input_path: &str) -> Result<scmatrix::ScMatrix, Box<dyn Error>> {
     // extracting the path of the files
     let (quants_mat, quants_mat_rows, quants_mat_cols) = get_file_names(input_path)?;
 
     let mut row_names: Vec<String> = Vec::with_capacity(1_000);
-    { // reading rows file
+    {
+        // reading rows file
         let file_handle = File::open(quants_mat_rows)?;
         let buffered = BufReader::new(file_handle);
         for line in buffered.lines() {
@@ -82,7 +86,8 @@ pub fn reader(
     }
 
     let mut column_names: Vec<String> = Vec::with_capacity(1_000);
-    { // reading columns file
+    {
+        // reading columns file
         let file_handle = File::open(quants_mat_cols)?;
         let buffered = BufReader::new(file_handle);
         for line in buffered.lines() {
@@ -90,7 +95,8 @@ pub fn reader(
         }
     }
 
-    let matrix = { // reading the matrix
+    let matrix = {
+        // reading the matrix
         let num_rows = row_names.len();
         let num_columns = column_names.len();
 
@@ -113,7 +119,7 @@ pub fn reader(
         let mut bit_vec = vec![0; num_bit_vecs];
         for i in 0..num_rows {
             file.read_exact(&mut bit_vec[..])?;
-            let num_ones = bit_vector_lengths[i+1] - bit_vector_lengths[i];
+            let num_ones = bit_vector_lengths[i + 1] - bit_vector_lengths[i];
 
             let mut one_validator = 0;
             for (j, flag) in bit_vec.iter().enumerate() {
@@ -122,10 +128,10 @@ pub fn reader(
                         match bit_id {
                             '1' => {
                                 let offset = i + (8 * j);
-                                indices[ global_pointer + one_validator ] = offset;
+                                indices[global_pointer + one_validator] = offset;
 
                                 one_validator += 1;
-                            },
+                            }
                             _ => (),
                         };
                     }
@@ -145,31 +151,19 @@ pub fn reader(
         }
 
         assert_eq!(global_pointer, total_nnz);
-        CsMatBase::new(
-            (num_rows, num_columns),
-            bit_vector_lengths,
-            indices,
-            data,
-        )
+        CsMatBase::new((num_rows, num_columns), bit_vector_lengths, indices, data)
     };
 
-    Ok(scmatrix::ScMatrix::new(
-        matrix,
-        row_names,
-        column_names
-    ))
+    Ok(scmatrix::ScMatrix::new(matrix, row_names, column_names))
 }
 
-
 // writes the EDS format single cell matrix into the given path
-pub fn writer(
-    matrix: scmatrix::ScMatrix,
-    path_str: &str,
-) -> Result<(), Box<dyn Error>> {
+pub fn writer(matrix: scmatrix::ScMatrix, path_str: &str) -> Result<(), Box<dyn Error>> {
     let quants_file_handle = File::create(path_str)?;
     let (_, quants_mat_rows, quants_mat_cols) = get_file_names(path_str)?;
 
-    { // writing row file
+    {
+        // writing row file
         let file_handle = File::create(quants_mat_rows)?;
         let mut file = BufWriter::new(file_handle);
 
@@ -179,7 +173,8 @@ pub fn writer(
         }
     }
 
-    { // writing columns file
+    {
+        // writing columns file
         let file_handle = File::create(quants_mat_cols)?;
         let mut file = BufWriter::new(file_handle);
 
@@ -189,7 +184,8 @@ pub fn writer(
         }
     }
 
-    { // writing matrix
+    {
+        // writing matrix
         let buffered = BufWriter::new(quants_file_handle);
         let mut file = GzEncoder::new(buffered, Compression::default());
 
