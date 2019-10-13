@@ -2,14 +2,14 @@ use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use std::collections::BTreeMap;
-use std::io::{BufRead, BufReader, Write, BufWriter};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 
-use std::fs::{canonicalize, File};
-use std::error::Error;
-use std::path::PathBuf;
 use sprs::CsMatBase;
+use std::error::Error;
+use std::fs::{canonicalize, File};
+use std::path::PathBuf;
 
-use crate::single_cell::scmatrix::{ScMatrix, MatValT, MatIdxT};
+use crate::single_cell::scmatrix::{MatIdxT, MatValT, ScMatrix};
 
 fn get_file_names(path: &str) -> Result<(PathBuf, PathBuf, PathBuf), Box<dyn Error>> {
     // futuristic customization of alevin output name
@@ -37,33 +37,35 @@ fn get_file_names(path: &str) -> Result<(PathBuf, PathBuf, PathBuf), Box<dyn Err
     Ok((quants_mat, quants_mat_rows, quants_mat_cols))
 }
 
-
 fn triplets_to_sparse_matrix(
     triplets: Vec<BTreeMap<usize, MatValT>>,
     num_columns: usize,
 ) -> Result<CsMatBase<MatValT, MatIdxT, Vec<MatIdxT>, Vec<MatIdxT>, Vec<MatValT>>, Box<dyn Error>> {
-
     let num_rows = triplets.len();
-    let ballpark: usize = ((num_rows * num_columns) as f64 / 8.0) as usize ;
+    let ballpark: usize = ((num_rows * num_columns) as f64 / 8.0) as usize;
 
     let mut ind_ptr = vec![0; num_rows + 1];
     let mut data = Vec::with_capacity(ballpark);
     let mut indices = Vec::with_capacity(ballpark);
 
     let mut total_entries = 0;
-    for (row_id, col_data) in triplets.into_iter().enumerate() {
-        total_entries += col_data.len();
+    for (row_id, column_data) in triplets.into_iter().enumerate() {
+        total_entries += column_data.len();
         ind_ptr[row_id + 1] = total_entries;
 
-        for (col_id, val) in col_data {
-            indices.push(col_id);
+        for (column_id, val) in column_data {
+            indices.push(column_id);
             data.push(val as MatValT);
         }
     }
 
-    Ok(CsMatBase::new((num_rows, num_columns), ind_ptr, indices, data))
+    Ok(CsMatBase::new(
+        (num_rows, num_columns),
+        ind_ptr,
+        indices,
+        data,
+    ))
 }
-
 
 // reads the MTX format single cell matrix from the given path
 pub fn reader(input_path: &str) -> Result<ScMatrix, Box<dyn Error>> {
@@ -125,9 +127,7 @@ pub fn reader(input_path: &str) -> Result<ScMatrix, Box<dyn Error>> {
                 .parse::<usize>()
                 .expect("can't convert column id");
 
-            let value = vals[2]
-                .parse::<MatValT>()
-                .expect("can't convert value");
+            let value = vals[2].parse::<MatValT>().expect("can't convert value");
 
             if header {
                 header = false;
@@ -142,7 +142,6 @@ pub fn reader(input_path: &str) -> Result<ScMatrix, Box<dyn Error>> {
 
         triplets_to_sparse_matrix(triplets, num_columns)?
     };
-
 
     Ok(ScMatrix::new(matrix, row_names, column_names))
 }
@@ -180,12 +179,18 @@ pub fn writer(matrix: ScMatrix, path_str: &str) -> Result<(), Box<dyn Error>> {
         let mut file = GzEncoder::new(buffered, Compression::default());
 
         let header = "%%MatrixMarket\tmatrix\tcoordinate\treal\tgeneral".to_string();
-        write!(&mut file, "{}\n{}\t{}\t{}\n", header, matrix.num_rows(), matrix.num_columns(), matrix.nnz())?;
-
+        write!(
+            &mut file,
+            "{}\n{}\t{}\t{}\n",
+            header,
+            matrix.num_rows(),
+            matrix.num_columns(),
+            matrix.nnz()
+        )?;
 
         for (row_ind, row_vec) in matrix.data().outer_iterator().enumerate() {
-            for (col_ind, &val) in row_vec.iter() {
-                write!(&mut file, "{}\t{}\t{}\n", row_ind + 1, col_ind + 1, val)?;
+            for (column_ind, &val) in row_vec.iter() {
+                write!(&mut file, "{}\t{}\t{}\n", row_ind + 1, column_ind + 1, val)?;
             }
         }
     }

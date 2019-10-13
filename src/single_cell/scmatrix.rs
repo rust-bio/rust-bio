@@ -1,7 +1,7 @@
 use sprs::CsMatBase;
 use std::error::Error;
 
-use crate::single_cell::{eds, mtx};
+use crate::single_cell::{csv, eds, mtx};
 
 pub type MatValT = f64;
 pub type MatIdxT = usize;
@@ -51,7 +51,7 @@ impl ScMatrix {
 
     // The number of non-zero elements this matrix stores
     pub fn nnz(&self) -> usize {
-        return self.data.nnz()
+        return self.data.nnz();
     }
 
     pub fn new(
@@ -71,6 +71,7 @@ impl ScMatrix {
         match mat_type {
             ScMatType::EDS => eds::reader(input_path),
             ScMatType::MTX => mtx::reader(input_path),
+            ScMatType::CSV => csv::reader(input_path),
             _ => unimplemented!(),
         }
     }
@@ -84,6 +85,7 @@ impl ScMatrix {
         match mat_type {
             ScMatType::EDS => eds::writer(matrix, output_path),
             ScMatType::MTX => eds::writer(matrix, output_path),
+            ScMatType::CSV => csv::writer(matrix, output_path),
             _ => unimplemented!(),
         }
     }
