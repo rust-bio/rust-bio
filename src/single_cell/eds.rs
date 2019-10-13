@@ -11,7 +11,7 @@ use math::round;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 
-use crate::single_cell::scmatrix;
+use crate::single_cell::scmatrix::{MatValT, ScMatrix};
 use sprs::CsMatBase;
 
 fn get_file_names(path: &str) -> Result<(PathBuf, PathBuf, PathBuf), Box<dyn Error>> {
@@ -70,8 +70,8 @@ fn get_reserved_spaces(
     Ok(bit_vec_lengths)
 }
 
-// writes the EDS format single cell matrix into the given path
-pub fn reader(input_path: &str) -> Result<scmatrix::ScMatrix, Box<dyn Error>> {
+// reads the EDS format single cell matrix from the given path
+pub fn reader(input_path: &str) -> Result<ScMatrix, Box<dyn Error>> {
     // extracting the path of the files
     let (quants_mat, quants_mat_rows, quants_mat_cols) = get_file_names(input_path)?;
 
@@ -108,7 +108,7 @@ pub fn reader(input_path: &str) -> Result<scmatrix::ScMatrix, Box<dyn Error>> {
         let bit_vector_lengths = get_reserved_spaces(num_bit_vecs, num_rows, file)?;
 
         let total_nnz = bit_vector_lengths[num_rows];
-        let mut data: Vec<f64> = vec![0.0; total_nnz];
+        let mut data: Vec<MatValT> = vec![0.0; total_nnz];
         let mut indices: Vec<usize> = vec![0; total_nnz];
 
         let file_handle = File::open(quants_mat)?;
@@ -145,7 +145,7 @@ pub fn reader(input_path: &str) -> Result<scmatrix::ScMatrix, Box<dyn Error>> {
             LittleEndian::read_f32_into(&expression, &mut float_buffer);
 
             for i in 0..float_buffer.len() {
-                data[global_pointer] = float_buffer[i] as f64;
+                data[global_pointer] = float_buffer[i] as MatValT;
                 global_pointer += 1;
             }
         }
@@ -154,11 +154,11 @@ pub fn reader(input_path: &str) -> Result<scmatrix::ScMatrix, Box<dyn Error>> {
         CsMatBase::new((num_rows, num_columns), bit_vector_lengths, indices, data)
     };
 
-    Ok(scmatrix::ScMatrix::new(matrix, row_names, column_names))
+    Ok(ScMatrix::new(matrix, row_names, column_names))
 }
 
 // writes the EDS format single cell matrix into the given path
-pub fn writer(matrix: scmatrix::ScMatrix, path_str: &str) -> Result<(), Box<dyn Error>> {
+pub fn writer(matrix: ScMatrix, path_str: &str) -> Result<(), Box<dyn Error>> {
     let quants_file_handle = File::create(path_str)?;
     let (_, quants_mat_rows, quants_mat_cols) = get_file_names(path_str)?;
 

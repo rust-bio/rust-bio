@@ -1,12 +1,15 @@
 use sprs::CsMatBase;
 use std::error::Error;
 
-use crate::single_cell::eds;
+use crate::single_cell::{eds, mtx};
+
+pub type MatValT = f64;
+pub type MatIdxT = usize;
 
 // currently fixing the generic to f64
 #[derive(Debug)]
 pub struct ScMatrix {
-    data: CsMatBase<f64, usize, Vec<usize>, Vec<usize>, Vec<f64>>,
+    data: CsMatBase<MatValT, MatIdxT, Vec<MatIdxT>, Vec<MatIdxT>, Vec<MatValT>>,
     row_names: Vec<String>,
     column_names: Vec<String>,
 }
@@ -42,12 +45,17 @@ impl ScMatrix {
     }
 
     // returns the reference to the sparse matrix data
-    pub fn data(&self) -> &sprs::CsMat<f64> {
+    pub fn data(&self) -> &sprs::CsMat<MatValT> {
         return &self.data;
     }
 
+    // The number of non-zero elements this matrix stores
+    pub fn nnz(&self) -> usize {
+        return self.data.nnz()
+    }
+
     pub fn new(
-        data: sprs::CsMat<f64>,
+        data: sprs::CsMat<MatValT>,
         row_names: Vec<String>,
         column_names: Vec<String>,
     ) -> ScMatrix {
@@ -62,6 +70,7 @@ impl ScMatrix {
     pub fn reader(mat_type: ScMatType, input_path: &str) -> Result<ScMatrix, Box<dyn Error>> {
         match mat_type {
             ScMatType::EDS => eds::reader(input_path),
+            ScMatType::MTX => mtx::reader(input_path),
             _ => unimplemented!(),
         }
     }
@@ -74,6 +83,7 @@ impl ScMatrix {
     ) -> Result<(), Box<dyn Error>> {
         match mat_type {
             ScMatType::EDS => eds::writer(matrix, output_path),
+            ScMatType::MTX => eds::writer(matrix, output_path),
             _ => unimplemented!(),
         }
     }
