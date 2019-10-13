@@ -1,7 +1,7 @@
 use sprs::CsMatBase;
 use std::error::Error;
 
-use crate::single_cell::{csv, eds, mtx};
+use crate::single_cell::{csv, eds, h5, mtx};
 
 pub type MatValT = f64;
 pub type MatIdxT = usize;
@@ -86,6 +86,7 @@ impl ScMatrix {
             ScMatType::EDS => eds::writer(matrix, output_path),
             ScMatType::MTX => eds::writer(matrix, output_path),
             ScMatType::CSV => csv::writer(matrix, output_path),
+            ScMatType::H5 => h5::writer(matrix, output_path),
             _ => unimplemented!(),
         }
     }
