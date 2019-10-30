@@ -225,13 +225,16 @@ impl Record {
 
 impl fmt::Display for Record {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        let header = match self.desc() {
+            Some(d) => format!("{} {}", self.id, d),
+            None => self.id.to_owned(),
+        };
         write!(
             f,
-            "@{} {}\n{}\n+\n{}",
-            self.id,
-            self.desc().unwrap_or_default(),
-            self.seq,
-            self.qual
+            "@{}\n{}\n+\n{}\n",
+            header,
+            std::str::from_utf8(self.seq()).unwrap(),
+            std::str::from_utf8(self.qual()).unwrap()
         )
     }
 }
@@ -331,6 +334,7 @@ impl<W: io::Write> Writer<W> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fmt::Write as FmtWrite;
     use std::io;
 
     const FASTQ_FILE: &'static [u8] = b"@id desc
@@ -352,6 +356,32 @@ IIIIIIJJJJJJ
             assert_eq!(record.seq(), b"ACCGTAGGCTGA");
             assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
         }
+    }
+
+    #[test]
+    fn test_display_record_no_desc_id_without_space_after() {
+        let fq: &'static [u8] = b"@id\nACGT\n+\n!!!!\n";
+        let mut records = Reader::new(fq).records().map(|r| r.unwrap());
+        let record = records.next().unwrap();
+        let mut actual = String::new();
+        write!(actual, "{}", record).unwrap();
+
+        let expected = std::str::from_utf8(fq).unwrap();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_display_record_with_desc_id_has_space_between_id_and_desc() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+        let mut records = Reader::new(fq).records().map(|r| r.unwrap());
+        let record = records.next().unwrap();
+        let mut actual = String::new();
+        write!(actual, "{}", record).unwrap();
+
+        let expected = std::str::from_utf8(fq).unwrap();
+
+        assert_eq!(actual, expected)
     }
 
     #[test]
