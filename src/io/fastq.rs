@@ -53,6 +53,22 @@ impl<R: io::Read> Reader<R> {
     }
 
     /// Return an iterator over the records of this FastQ file.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if a record is incomplete
+    /// or syntax is violated.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use bio::io::fastq;
+    /// let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+    /// let records = fastq::Reader::new(fq).records().map(|record| record.unwrap());
+    /// for record in records {
+    ///     assert!(record.check().is_ok())
+    /// }
+    /// ```
     pub fn records(self) -> Records<R> {
         Records { reader: self }
     }
