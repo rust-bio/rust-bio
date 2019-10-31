@@ -507,4 +507,22 @@ IIIIIIJJJJJJ
         assert_eq!(actual.kind(), expected.kind());
         assert_eq!(actual.to_string(), expected.to_string())
     }
+
+    #[test]
+    fn test_reader_from_file_path_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.fq");
+
+        let actual = Reader::from_file(path).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert!(actual.to_string().starts_with("No such file or directory"))
+    }
+
+    #[test]
+    fn test_reader_from_file_path_exists_returns_ok() {
+        let path = Path::new("Cargo.toml");
+
+        assert!(Reader::from_file(path).is_ok())
+    }
 }
