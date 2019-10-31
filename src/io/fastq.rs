@@ -422,4 +422,51 @@ IIIIIIJJJJJJ
         writer.flush().ok().expect("Expected successful write");
         assert_eq!(writer.writer.get_ref(), &FASTQ_FILE);
     }
+
+    #[test]
+    fn test_check_record_id_is_empty_raises_err() {
+        let record = Record::with_attrs("", None, b"ACGT", b"!!!!");
+
+        let actual = record.check().unwrap_err();
+        let expected = "Expecting id for FastQ record.";
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_check_record_seq_is_not_ascii_raises_err() {
+        let record = Record::with_attrs("id", None, "Prüfung".as_ref(), b"!!!!");
+
+        let actual = record.check().unwrap_err();
+        let expected = "Non-ascii character found in sequence.";
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_check_record_quality_is_not_ascii_raises_err() {
+        let record = Record::with_attrs("id", None, b"ACGT", "Qualität".as_ref());
+
+        let actual = record.check().unwrap_err();
+        let expected = "Non-ascii character found in qualities.";
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_check_record_quality_and_seq_diff_len_raises_err() {
+        let record = Record::with_attrs("id", None, b"ACGT", b"!!!");
+
+        let actual = record.check().unwrap_err();
+        let expected = "Unequal length of sequence an qualities.";
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_check_valid_record() {
+        let record = Record::with_attrs("id", None, b"ACGT", b"!!!!");
+
+        assert!(record.check().is_ok())
+    }
 }
