@@ -245,11 +245,11 @@ impl SequenceRead for Record {
     }
 
     fn base(&self, i: usize) -> u8 {
-        self.seq.as_bytes()[i]
+        self.seq()[i]
     }
 
     fn base_qual(&self, i: usize) -> u8 {
-        self.qual.as_bytes()[i]
+        self.qual()[i]
     }
 
     fn len(&self) -> usize {
@@ -524,5 +524,82 @@ IIIIIIJJJJJJ
         let path = Path::new("Cargo.toml");
 
         assert!(Reader::from_file(path).is_ok())
+    }
+
+    #[test]
+    fn test_sequence_read_for_record_trait_method_name() {
+        let record = Record::with_attrs("id", None, b"ACGT", b"!!!!");
+
+        let actual = record.name();
+        let expected = b"id";
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_sequence_read_for_record_trait_method_base_idx_in_range() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+        let idx = 2;
+
+        let actual = record.base(idx);
+        let expected = b'G';
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_sequence_read_for_record_trait_method_base_idx_out_of_range() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+        // idx 4 is where the newline character would be - we dont want that included
+        let idx = 4;
+
+        record.base(idx);
+    }
+
+    #[test]
+    fn test_sequence_read_for_record_trait_method_base_qual_idx_in_range() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+        let idx = 2;
+
+        let actual = record.base_qual(idx);
+        let expected = b'!';
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_sequence_read_for_record_trait_method_base_qual_idx_out_of_range() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+        // idx 4 is where the newline character would be - we dont want that included
+        let idx = 4;
+
+        record.base_qual(idx);
+    }
+
+    #[test]
+    fn test_sequence_read_for_record_trait_method_len() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+
+        let actual = record.len();
+        let expected = 4;
+
+        assert_eq!(actual, expected)
     }
 }
