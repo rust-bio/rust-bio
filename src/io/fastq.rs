@@ -495,4 +495,16 @@ IIIIIIJJJJJJ
         assert_eq!(actual.kind(), expected.kind());
         assert_eq!(actual.to_string(), expected.to_string())
     }
+
+    #[test]
+    fn test_record_iterator_next_read_returns_err_causes_next_to_return_some_err() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n";
+        let mut records = Reader::new(fq).records();
+
+        let actual = records.next().unwrap().unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::Other, "Incomplete record. Each FastQ record has to consist of 4 lines: header, sequence, separator and qualities.");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert_eq!(actual.to_string(), expected.to_string())
+    }
 }
