@@ -469,4 +469,30 @@ IIIIIIJJJJJJ
 
         assert!(record.check().is_ok())
     }
+
+    #[test]
+    fn test_read_header_does_not_start_with_correct_char_raises_err() {
+        let fq: &'static [u8] = b">id description\nACGT\n+\n!!!!\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+
+        let actual = reader.read(&mut record).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::Other, "Expected @ at record start.");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert_eq!(actual.to_string(), expected.to_string())
+    }
+
+    #[test]
+    fn test_read_quality_is_empty_raises_err() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+
+        let actual = reader.read(&mut record).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::Other, "Incomplete record. Each FastQ record has to consist of 4 lines: header, sequence, separator and qualities.");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert_eq!(actual.to_string(), expected.to_string())
+    }
 }
