@@ -620,4 +620,24 @@ IIIIIIJJJJJJ
 
         assert!(Writer::to_file(path).is_ok())
     }
+
+    #[test]
+    fn test_write_record() {
+        let path = Path::new("test.fq");
+        let file = fs::File::create(path).unwrap();
+        {
+            let handle = io::BufWriter::new(file);
+            let mut writer = Writer { writer: handle };
+            let record = Record::with_attrs("id", Some("desc"), b"ACGT", b"!!!!");
+
+            let write_result = writer.write_record(&record);
+            assert!(write_result.is_ok());
+        }
+
+        let actual = fs::read_to_string(path).unwrap();
+        let expected = "@id desc\nACGT\n+\n!!!!\n";
+
+        assert!(fs::remove_file(path).is_ok());
+        assert_eq!(actual, expected)
+    }
 }
