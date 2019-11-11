@@ -44,6 +44,9 @@ strum = "0.16"
 strum_macros = "0.16"
 snafu = "0.5"
 
+[dev-dependencies]
+proptest = "0.9.4"
+
 [dependencies.vec_map]
 version = "0.8"
 features = ["eders"]
