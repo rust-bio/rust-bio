@@ -151,7 +151,7 @@ where
                 "Expected > at record start.",
             ));
         }
-        let mut header_fields = self.line[1..].trim_end().splitn(2, ' ');
+        let mut header_fields = self.line[1..].trim_end().splitn(2, char::is_whitespace);
         record.id = header_fields.next().map(|s| s.to_owned()).unwrap();
         record.desc = header_fields.next().map(|s| s.to_owned());
         loop {
