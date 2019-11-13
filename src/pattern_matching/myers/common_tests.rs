@@ -136,7 +136,7 @@ macro_rules! impl_tests {
 
             // compare with each other and lazy matches
             for ((&start, (end, dist)), (f_start, f_end, f_dist)) in
-                starts_exp.into_iter().zip(end_dist).zip(full_hits)
+                starts_exp.iter().zip(end_dist).zip(full_hits)
             {
                 assert_eq!(start, f_start);
                 assert_eq!(dist, f_dist);

@@ -777,7 +777,7 @@ mod tests {
                 "complex with revcomps"),
              ];
 
-        for &(text, test_name) in test_cases.into_iter() {
+        for &(text, test_name) in test_cases.iter() {
             let pos = suffix_array(text);
             for i in 0..(pos.len() - 2) {
                 // Check that every element in the suffix array is lexically <= the next elem
