@@ -52,6 +52,7 @@ pub trait Posterior {
 /// This can be used to define custom caching mechanisms. See
 /// [here](https://github.com/varlociraptor/varlociraptor/blob/694e994547e8f523e5b0013fdf951b694f3870fa/src/model/modes/generic.rs#L200)
 /// for an example.
+#[derive(Clone, Debug, Getters, MutGetters)]
 pub struct Model<L, Pr, Po, Payload = ()>
 where
     L: Likelihood<Payload>,
@@ -59,8 +60,14 @@ where
     Po: Posterior,
     Payload: Default,
 {
+    #[get]
+    #[get_mut]
     likelihood: L,
+    #[get]
+    #[get_mut]
     prior: Pr,
+    #[get]
+    #[get_mut]
     posterior: Po,
     payload: PhantomData<Payload>,
 }

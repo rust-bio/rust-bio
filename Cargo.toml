@@ -43,6 +43,8 @@ fnv = "1.0"
 strum = "0.16"
 strum_macros = "0.16"
 snafu = "0.5"
+getset = "0.0.9"
+
 
 [dependencies.vec_map]
 version = "0.8"
