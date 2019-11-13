@@ -60,14 +60,14 @@ where
     Po: Posterior,
     Payload: Default,
 {
-    #[get]
-    #[get_mut]
+    #[get = "pub"]
+    #[get_mut = "pub"]
     likelihood: L,
-    #[get]
-    #[get_mut]
+    #[get = "pub"]
+    #[get_mut = "pub"]
     prior: Pr,
-    #[get]
-    #[get_mut]
+    #[get = "pub"]
+    #[get_mut = "pub"]
     posterior: Po,
     payload: PhantomData<Payload>,
 }
