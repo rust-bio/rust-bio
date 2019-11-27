@@ -578,7 +578,35 @@ impl<W: io::Write> Writer<W> {
         }
     }
 
-    /// Directly write a Fasta record.
+    /// Directly write a [`fasta::Record`](struct.Record.html).
+    ///
+    /// # Errors
+    /// If there is an issue writing to the `Writer`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use std::io;
+    /// use std::fs;
+    /// use bio::io::fasta::{Writer, Record};
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("test.fa");
+    /// let file = fs::File::create(path).unwrap();
+    /// {
+    ///     let handle = io::BufWriter::new(file);
+    ///     let mut writer = Writer::new(handle);
+    ///     let record = Record::with_attrs("id", Some("desc"), b"ACGT");
+    ///
+    ///     let write_result = writer.write_record(&record);
+    ///     assert!(write_result.is_ok());
+    /// }
+    ///
+    /// let actual = fs::read_to_string(path).unwrap();
+    /// let expected = ">id desc\nACGT\n";
+    ///
+    /// assert!(fs::remove_file(path).is_ok());
+    /// assert_eq!(actual, expected)
+    /// ```
     pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
         self.write(record.id(), record.desc(), record.seq())
     }
@@ -1381,5 +1409,43 @@ ATTGTTGTTTTA
 
         assert_eq!(actual.kind(), expected.kind());
         assert_eq!(actual.to_string(), expected.to_string())
+    }
+
+    #[test]
+    fn test_writer_to_file_dir_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.fa");
+
+        let actual = Writer::to_file(path).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert!(actual.to_string().starts_with("No such file or directory"))
+    }
+
+    #[test]
+    fn test_writer_to_file_dir_exists_returns_ok() {
+        let path = Path::new("/tmp/out.fa");
+
+        assert!(Writer::to_file(path).is_ok())
+    }
+
+    #[test]
+    fn test_write_record() {
+        let path = Path::new("test.fa");
+        let file = fs::File::create(path).unwrap();
+        {
+            let handle = io::BufWriter::new(file);
+            let mut writer = Writer { writer: handle };
+            let record = Record::with_attrs("id", Some("desc"), b"ACGT");
+
+            let write_result = writer.write_record(&record);
+            assert!(write_result.is_ok());
+        }
+
+        let actual = fs::read_to_string(path).unwrap();
+        let expected = ">id desc\nACGT\n";
+
+        assert!(fs::remove_file(path).is_ok());
+        assert_eq!(actual, expected)
     }
 }
