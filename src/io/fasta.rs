@@ -1367,4 +1367,19 @@ ATTGTTGTTTTA
 
         assert_eq!(actual, expected)
     }
+
+    #[test]
+    fn test_index_record_idx_by_rid_invalid_index_returns_error() {
+        let reader = ReaderMock {
+            seek_fails: false,
+            read_fails: false,
+        };
+        let index_reader = IndexedReader::new(reader, FAI_FILE).unwrap();
+
+        let actual = index_reader.idx_by_rid(99999).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::Other, "Invalid record index in fasta file.");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert_eq!(actual.to_string(), expected.to_string())
+    }
 }
