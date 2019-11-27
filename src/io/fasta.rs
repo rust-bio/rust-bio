@@ -650,7 +650,19 @@ impl Record {
         }
     }
 
-    /// Create a new Fasta record from given attributes.
+    /// Create a new `Record` from given attributes.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use bio::io::fasta::Record;
+    ///
+    /// let read_id = "read1";
+    /// let description = Some("sampleid=foobar");
+    /// let sequence = b"ACGT";
+    /// let record = Record::with_attrs(read_id, description, sequence);
+    ///
+    /// assert_eq!(">read1 sampleid=foobar\nACGT\n", record.to_string())
+    /// ```
     pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> Self {
         let desc = match desc {
             Some(desc) => Some(desc.to_owned()),
@@ -959,7 +971,15 @@ ATTGTTGTTTTA
     }
 
     #[test]
-    fn test_record_with_attrs() {
+    fn test_record_with_attrs_without_description() {
+        let record = Record::with_attrs("id_str", None, b"ATGCGGG");
+        assert_eq!(record.id(), "id_str");
+        assert_eq!(record.desc(), None);
+        assert_eq!(record.seq(), b"ATGCGGG");
+    }
+
+    #[test]
+    fn test_record_with_attrs_with_description() {
         let record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG");
         assert_eq!(record.id(), "id_str");
         assert_eq!(record.desc(), Some("desc"));
@@ -1422,13 +1442,16 @@ ATTGTTGTTTTA
         let actual = index_reader.fetch_by_rid(1, 1, 3);
 
         assert!(actual.is_ok());
-        assert_eq!(index_reader.fetched_idx, Some(IndexRecord {
-            name: String::from("id2"),
-            len: 40,
-            offset: 71,
-            line_bases: 12,
-            line_bytes: 13
-        }))
+        assert_eq!(
+            index_reader.fetched_idx,
+            Some(IndexRecord {
+                name: String::from("id2"),
+                len: 40,
+                offset: 71,
+                line_bases: 12,
+                line_bytes: 13
+            })
+        )
     }
 
     #[test]
