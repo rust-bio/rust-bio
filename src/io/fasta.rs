@@ -24,6 +24,7 @@ use std::path::Path;
 use csv;
 
 use crate::utils::{Text, TextSlice};
+use std::fmt;
 
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
@@ -677,6 +678,49 @@ impl Record {
     }
 }
 
+impl fmt::Display for Record {
+    /// Allows for using `Record` in a given formatter `f`. In general this is for
+    /// creating a `String` representation of a `Record` and, optionally, writing it to
+    /// a file.
+    ///
+    /// # Errors
+    /// Returns [`std::fmt::Error`](https://doc.rust-lang.org/std/fmt/struct.Error.html)
+    /// if there is an issue formatting to the stream.
+    ///
+    /// # Examples
+    ///
+    /// Read in a Fasta `Record` and create a `String` representation of it.
+    ///
+    /// ```rust
+    /// use bio::io::fasta::Reader;
+    /// use std::fmt::Write;
+    /// // create a "fake" fasta file
+    /// let fasta: &'static [u8] = b">id comment1 comment2\nACGT\n";
+    /// let mut records = Reader::new(fasta).records().map(|r| r.unwrap());
+    /// let record = records.next().unwrap();
+    ///
+    /// let mut actual = String::new();
+    /// // populate `actual` with a string representation of our record
+    /// write!(actual, "{}", record).unwrap();
+    ///
+    /// let expected = std::str::from_utf8(fasta).unwrap();
+    ///
+    /// assert_eq!(actual, expected)
+    /// ```
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        let header = match self.desc() {
+            Some(d) => format!("{} {}", self.id().to_owned(), d),
+            None => self.id().to_owned(),
+        };
+        write!(
+            f,
+            ">{}\n{}\n",
+            header,
+            std::str::from_utf8(self.seq()).unwrap(),
+        )
+    }
+}
+
 /// An iterator over the records of a Fasta file.
 pub struct Records<R: io::Read> {
     reader: Reader<R>,
@@ -706,6 +750,7 @@ impl<R: io::Read> Iterator for Records<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fmt::Write as FmtWrite;
     use std::io;
 
     const FASTA_FILE: &'static [u8] = b">id desc
@@ -1295,5 +1340,31 @@ ATTGTTGTTTTA
         writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
         writer.flush().unwrap();
         assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
+    }
+
+    #[test]
+    fn test_display_record_no_desc_id_without_space_after() {
+        let fasta: &'static [u8] = b">id\nACGT\n";
+        let mut records = Reader::new(fasta).records().map(|r| r.unwrap());
+        let record = records.next().unwrap();
+        let mut actual = String::new();
+        write!(actual, "{}", record).unwrap();
+
+        let expected = std::str::from_utf8(fasta).unwrap();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_display_record_with_desc_id_has_space_between_id_and_desc() {
+        let fasta: &'static [u8] = b">id comment1 comment2\nACGT\n";
+        let mut records = Reader::new(fasta).records().map(|r| r.unwrap());
+        let record = records.next().unwrap();
+        let mut actual = String::new();
+        write!(actual, "{}", record).unwrap();
+
+        let expected = std::str::from_utf8(fasta).unwrap();
+
+        assert_eq!(actual, expected)
     }
 }
