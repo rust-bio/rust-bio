@@ -480,7 +480,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 }
 
 /// Record of a FASTA index.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 struct IndexRecord {
     name: String,
     len: u64,
@@ -1409,6 +1409,26 @@ ATTGTTGTTTTA
 
         assert_eq!(actual.kind(), expected.kind());
         assert_eq!(actual.to_string(), expected.to_string())
+    }
+
+    #[test]
+    fn test_index_record_fetch_by_rid_second_index_returns_second_record() {
+        let reader = ReaderMock {
+            seek_fails: false,
+            read_fails: false,
+        };
+        let mut index_reader = IndexedReader::new(reader, FAI_FILE).unwrap();
+
+        let actual = index_reader.fetch_by_rid(1, 1, 3);
+
+        assert!(actual.is_ok());
+        assert_eq!(index_reader.fetched_idx, Some(IndexRecord {
+            name: String::from("id2"),
+            len: 40,
+            offset: 71,
+            line_bases: 12,
+            line_bytes: 13
+        }))
     }
 
     #[test]
