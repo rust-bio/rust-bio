@@ -240,10 +240,38 @@ impl Record {
 }
 
 impl fmt::Display for Record {
+    /// Allows for using `Record` in a given formatter `f`. In general this is for
+    /// creating a `String` representation of a `Record` and, optionally, writing it to
+    /// a file.
+    ///
+    /// # Errors
+    /// Returns [`std::fmt::Error`](https://doc.rust-lang.org/std/fmt/struct.Error.html)
+    /// if there is an issue formatting to the stream.
+    ///
+    /// # Examples
+    ///
+    /// Read in a Fastq `Record` and create a `String` representation of it.
+    ///
+    /// ```rust
+    /// use bio::io::fastq::Reader;
+    /// use std::fmt::Write;
+    /// // create a "fake" fastq file
+    /// let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+    /// let mut records = Reader::new(fq).records().map(|r| r.unwrap());
+    /// let record = records.next().unwrap();
+    ///
+    /// let mut actual = String::new();
+    /// // populate `actual` with a string representation of our record
+    /// write!(actual, "{}", record).unwrap();
+    ///
+    /// let expected = std::str::from_utf8(fq).unwrap();
+    ///
+    /// assert_eq!(actual, expected)
+    /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let header = match self.desc() {
-            Some(d) => format!("{} {}", self.id, d),
-            None => self.id.to_owned(),
+            Some(d) => format!("{} {}", self.id().to_owned(), d),
+            None => self.id().to_owned(),
         };
         write!(
             f,

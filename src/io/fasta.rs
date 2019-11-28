@@ -24,6 +24,7 @@ use std::path::Path;
 use csv;
 
 use crate::utils::{Text, TextSlice};
+use std::fmt;
 
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
@@ -479,7 +480,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 }
 
 /// Record of a FASTA index.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 struct IndexRecord {
     name: String,
     len: u64,
@@ -577,7 +578,35 @@ impl<W: io::Write> Writer<W> {
         }
     }
 
-    /// Directly write a Fasta record.
+    /// Directly write a [`fasta::Record`](struct.Record.html).
+    ///
+    /// # Errors
+    /// If there is an issue writing to the `Writer`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use std::io;
+    /// use std::fs;
+    /// use bio::io::fasta::{Writer, Record};
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("test.fa");
+    /// let file = fs::File::create(path).unwrap();
+    /// {
+    ///     let handle = io::BufWriter::new(file);
+    ///     let mut writer = Writer::new(handle);
+    ///     let record = Record::with_attrs("id", Some("desc"), b"ACGT");
+    ///
+    ///     let write_result = writer.write_record(&record);
+    ///     assert!(write_result.is_ok());
+    /// }
+    ///
+    /// let actual = fs::read_to_string(path).unwrap();
+    /// let expected = ">id desc\nACGT\n";
+    ///
+    /// assert!(fs::remove_file(path).is_ok());
+    /// assert_eq!(actual, expected)
+    /// ```
     pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
         self.write(record.id(), record.desc(), record.seq())
     }
@@ -621,7 +650,19 @@ impl Record {
         }
     }
 
-    /// Create a new Fasta record from given attributes.
+    /// Create a new `Record` from given attributes.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use bio::io::fasta::Record;
+    ///
+    /// let read_id = "read1";
+    /// let description = Some("sampleid=foobar");
+    /// let sequence = b"ACGT";
+    /// let record = Record::with_attrs(read_id, description, sequence);
+    ///
+    /// assert_eq!(">read1 sampleid=foobar\nACGT\n", record.to_string())
+    /// ```
     pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> Self {
         let desc = match desc {
             Some(desc) => Some(desc.to_owned()),
@@ -677,6 +718,49 @@ impl Record {
     }
 }
 
+impl fmt::Display for Record {
+    /// Allows for using `Record` in a given formatter `f`. In general this is for
+    /// creating a `String` representation of a `Record` and, optionally, writing it to
+    /// a file.
+    ///
+    /// # Errors
+    /// Returns [`std::fmt::Error`](https://doc.rust-lang.org/std/fmt/struct.Error.html)
+    /// if there is an issue formatting to the stream.
+    ///
+    /// # Examples
+    ///
+    /// Read in a Fasta `Record` and create a `String` representation of it.
+    ///
+    /// ```rust
+    /// use bio::io::fasta::Reader;
+    /// use std::fmt::Write;
+    /// // create a "fake" fasta file
+    /// let fasta: &'static [u8] = b">id comment1 comment2\nACGT\n";
+    /// let mut records = Reader::new(fasta).records().map(|r| r.unwrap());
+    /// let record = records.next().unwrap();
+    ///
+    /// let mut actual = String::new();
+    /// // populate `actual` with a string representation of our record
+    /// write!(actual, "{}", record).unwrap();
+    ///
+    /// let expected = std::str::from_utf8(fasta).unwrap();
+    ///
+    /// assert_eq!(actual, expected)
+    /// ```
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        let header = match self.desc() {
+            Some(d) => format!("{} {}", self.id().to_owned(), d),
+            None => self.id().to_owned(),
+        };
+        write!(
+            f,
+            ">{}\n{}\n",
+            header,
+            std::str::from_utf8(self.seq()).unwrap(),
+        )
+    }
+}
+
 /// An iterator over the records of a Fasta file.
 pub struct Records<R: io::Read> {
     reader: Reader<R>,
@@ -706,6 +790,7 @@ impl<R: io::Read> Iterator for Records<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fmt::Write as FmtWrite;
     use std::io;
 
     const FASTA_FILE: &'static [u8] = b">id desc
@@ -886,7 +971,15 @@ ATTGTTGTTTTA
     }
 
     #[test]
-    fn test_record_with_attrs() {
+    fn test_record_with_attrs_without_description() {
+        let record = Record::with_attrs("id_str", None, b"ATGCGGG");
+        assert_eq!(record.id(), "id_str");
+        assert_eq!(record.desc(), None);
+        assert_eq!(record.seq(), b"ATGCGGG");
+    }
+
+    #[test]
+    fn test_record_with_attrs_with_description() {
         let record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG");
         assert_eq!(record.id(), "id_str");
         assert_eq!(record.desc(), Some("desc"));
@@ -1295,5 +1388,107 @@ ATTGTTGTTTTA
         writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
         writer.flush().unwrap();
         assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
+    }
+
+    #[test]
+    fn test_display_record_no_desc_id_without_space_after() {
+        let fasta: &'static [u8] = b">id\nACGT\n";
+        let mut records = Reader::new(fasta).records().map(|r| r.unwrap());
+        let record = records.next().unwrap();
+        let mut actual = String::new();
+        write!(actual, "{}", record).unwrap();
+
+        let expected = std::str::from_utf8(fasta).unwrap();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_display_record_with_desc_id_has_space_between_id_and_desc() {
+        let fasta: &'static [u8] = b">id comment1 comment2\nACGT\n";
+        let mut records = Reader::new(fasta).records().map(|r| r.unwrap());
+        let record = records.next().unwrap();
+        let mut actual = String::new();
+        write!(actual, "{}", record).unwrap();
+
+        let expected = std::str::from_utf8(fasta).unwrap();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_index_record_idx_by_rid_invalid_index_returns_error() {
+        let reader = ReaderMock {
+            seek_fails: false,
+            read_fails: false,
+        };
+        let index_reader = IndexedReader::new(reader, FAI_FILE).unwrap();
+
+        let actual = index_reader.idx_by_rid(99999).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::Other, "Invalid record index in fasta file.");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert_eq!(actual.to_string(), expected.to_string())
+    }
+
+    #[test]
+    fn test_index_record_fetch_by_rid_second_index_returns_second_record() {
+        let reader = ReaderMock {
+            seek_fails: false,
+            read_fails: false,
+        };
+        let mut index_reader = IndexedReader::new(reader, FAI_FILE).unwrap();
+
+        let actual = index_reader.fetch_by_rid(1, 1, 3);
+
+        assert!(actual.is_ok());
+        assert_eq!(
+            index_reader.fetched_idx,
+            Some(IndexRecord {
+                name: String::from("id2"),
+                len: 40,
+                offset: 71,
+                line_bases: 12,
+                line_bytes: 13
+            })
+        )
+    }
+
+    #[test]
+    fn test_writer_to_file_dir_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.fa");
+
+        let actual = Writer::to_file(path).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert!(actual.to_string().starts_with("No such file or directory"))
+    }
+
+    #[test]
+    fn test_writer_to_file_dir_exists_returns_ok() {
+        let path = Path::new("/tmp/out.fa");
+
+        assert!(Writer::to_file(path).is_ok())
+    }
+
+    #[test]
+    fn test_write_record() {
+        let path = Path::new("test.fa");
+        let file = fs::File::create(path).unwrap();
+        {
+            let handle = io::BufWriter::new(file);
+            let mut writer = Writer { writer: handle };
+            let record = Record::with_attrs("id", Some("desc"), b"ACGT");
+
+            let write_result = writer.write_record(&record);
+            assert!(write_result.is_ok());
+        }
+
+        let actual = fs::read_to_string(path).unwrap();
+        let expected = ">id desc\nACGT\n";
+
+        assert!(fs::remove_file(path).is_ok());
+        assert_eq!(actual, expected)
     }
 }
