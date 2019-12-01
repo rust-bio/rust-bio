@@ -46,7 +46,7 @@ bio-types = ">=0.5.1"
 fnv = "1.0"
 strum = "0.16"
 strum_macros = "0.16"
-snafu = "0.5"
+snafu = ">= 0.5, <= 0.6"
 getset = "0.0.9"
 
 [dependencies.vec_map]
