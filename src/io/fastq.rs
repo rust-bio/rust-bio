@@ -133,9 +133,31 @@ where
             let mut header_fields = self.line_buf[1..].trim_end().splitn(2, ' ');
             record.id = header_fields.next().unwrap_or_default().to_owned();
             record.desc = header_fields.next().map(|s| s.to_owned());
-            self.reader.read_line(&mut record.seq)?;
+            self.line_buf.clear();
+
             self.reader.read_line(&mut self.line_buf)?;
-            self.reader.read_line(&mut record.qual)?;
+            if self.line_buf.starts_with('+') {
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Missing a sequence after header: {}.", record.id),
+                ));
+            }
+            let mut lines_read = 0;
+            while !self.line_buf.starts_with('+') {
+                record.seq.push_str(&self.line_buf.trim_end());
+                self.line_buf.clear();
+                self.reader.read_line(&mut self.line_buf)?;
+                lines_read += 1;
+            }
+            for _ in 0..lines_read {
+                self.line_buf.clear();
+                self.reader.read_line(&mut self.line_buf)?;
+                record.qual.push_str(self.line_buf.trim_end());
+            }
+//            self.reader.read_line(&mut record.seq)?;
+//            self.reader.read_line(&mut self.line_buf)?;
+//            self.reader.read_line(&mut record.qual)?;
+
             if record.qual.is_empty() {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
@@ -144,6 +166,8 @@ where
                      qualities.",
                 ));
             }
+
+
         }
 
         Ok(())
@@ -541,13 +565,30 @@ IIIIIIJJJJJJ
     }
 
     #[test]
-    fn test_read_sequence_and_quality_are_wrapped_is_handled() {
+    fn test_read_sequence_and_quality_are_wrapped_is_handled_with_one_sequence() {
         let fq: &'static [u8] = b"@id description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!\n$\n";
         let mut reader = Reader::new(fq);
 
         let mut actual = Record::new();
         reader.read(&mut actual).unwrap();
         let expected = Record::with_attrs("id", Some("description"), b"ACGTGGGGC", b"@@@@!!!!$");
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_read_sequence_and_quality_are_wrapped_is_handled_with_two_sequences() {
+        let fq: &'static [u8] = b"@id description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!\n$\n@id2 description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!\n$\n";
+        let mut reader = Reader::new(fq);
+
+        let mut actual = Record::new();
+        reader.read(&mut actual).unwrap();
+        let expected = Record::with_attrs("id", Some("description"), b"ACGTGGGGC", b"@@@@!!!!$");
+
+        assert_eq!(actual, expected);
+
+        reader.read(&mut actual).unwrap();
+        let expected = Record::with_attrs("id2", Some("description"), b"ACGTGGGGC", b"@@@@!!!!$");
 
         assert_eq!(actual, expected)
     }
