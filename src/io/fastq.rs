@@ -151,7 +151,7 @@ where
 }
 
 /// A FastQ record.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct Record {
     id: String,
     desc: Option<String>,
@@ -538,6 +538,18 @@ IIIIIIJJJJJJ
 
         assert_eq!(actual.kind(), expected.kind());
         assert_eq!(actual.to_string(), expected.to_string())
+    }
+
+    #[test]
+    fn test_read_sequence_and_quality_are_wrapped_is_handled() {
+        let fq: &'static [u8] = b"@id description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!\n$\n";
+        let mut reader = Reader::new(fq);
+
+        let mut actual = Record::new();
+        reader.read(&mut actual).unwrap();
+        let expected = Record::with_attrs("id", Some("description"), b"ACGTGGGGC", b"@@@@!!!!$");
+
+        assert_eq!(actual, expected)
     }
 
     #[test]
