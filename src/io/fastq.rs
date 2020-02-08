@@ -33,7 +33,7 @@ pub trait FastqRead {
 #[derive(Debug)]
 pub struct Reader<R: io::Read> {
     reader: io::BufReader<R>,
-    line_buf: String,
+    line_buffer: String,
 }
 
 impl Reader<fs::File> {
@@ -48,7 +48,7 @@ impl<R: io::Read> Reader<R> {
     pub fn new(reader: R) -> Self {
         Reader {
             reader: io::BufReader::new(reader),
-            line_buf: String::new(),
+            line_buffer: String::new(),
         }
     }
 
@@ -119,44 +119,43 @@ where
     /// ```
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
-        self.line_buf.clear();
+        self.line_buffer.clear();
 
-        self.reader.read_line(&mut self.line_buf)?;
+        self.reader.read_line(&mut self.line_buffer)?;
 
-        if !self.line_buf.is_empty() {
-            if !self.line_buf.starts_with('@') {
+        if !self.line_buffer.is_empty() {
+            if !self.line_buffer.starts_with('@') {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
                     "Expected @ at record start.",
                 ));
             }
-            let mut header_fields = self.line_buf[1..].trim_end().splitn(2, ' ');
-            record.id = header_fields.next().unwrap_or_default().to_owned();
+            let mut header_fields = self.line_buffer[1..].trim_end().splitn(2, ' ');
+            record.id = header_fields.next().unwrap_or_default().to_owned();  // todo: handle unwrap
             record.desc = header_fields.next().map(|s| s.to_owned());
-            self.line_buf.clear();
+            self.line_buffer.clear();
 
-            self.reader.read_line(&mut self.line_buf)?;
-            if self.line_buf.starts_with('+') {
+            self.reader.read_line(&mut self.line_buffer)?;
+            if self.line_buffer.starts_with('+') {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
                     format!("Missing a sequence after header: {}.", record.id),
                 ));
             }
+
             let mut lines_read = 0;
-            while !self.line_buf.starts_with('+') {
-                record.seq.push_str(&self.line_buf.trim_end());
-                self.line_buf.clear();
-                self.reader.read_line(&mut self.line_buf)?;
+            while !self.line_buffer.starts_with('+') {
+                record.seq.push_str(&self.line_buffer.trim_end());
+                self.line_buffer.clear();
+                self.reader.read_line(&mut self.line_buffer)?;
                 lines_read += 1;
             }
+
             for _ in 0..lines_read {
-                self.line_buf.clear();
-                self.reader.read_line(&mut self.line_buf)?;
-                record.qual.push_str(self.line_buf.trim_end());
+                self.line_buffer.clear();
+                self.reader.read_line(&mut self.line_buffer)?;
+                record.qual.push_str(self.line_buffer.trim_end());
             }
-//            self.reader.read_line(&mut record.seq)?;
-//            self.reader.read_line(&mut self.line_buf)?;
-//            self.reader.read_line(&mut record.qual)?;
 
             if record.qual.is_empty() {
                 return Err(io::Error::new(
@@ -166,7 +165,6 @@ where
                      qualities.",
                 ));
             }
-
 
         }
 
