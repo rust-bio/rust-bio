@@ -252,17 +252,17 @@ impl<W: io::Write> Writer<W> {
 }
 
 /// A GFF record
-#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Record {
-    seqname: String,
-    source: String,
-    feature_type: String,
-    start: u64,
-    end: u64,
-    score: String,
-    strand: String,
-    frame: String,
-    attributes: MultiMap<String, String>,
+    pub seqname: String,
+    pub source: String,
+    pub feature_type: String,
+    pub start: u64,
+    pub end: u64,
+    pub score: String,
+    pub strand: String,
+    pub frame: String,
+    pub attributes: MultiMap<String, String>,
 }
 
 impl Record {
@@ -382,7 +382,6 @@ impl Record {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bio_types::strand::Strand;
     use multimap::MultiMap;
 
     const GFF_FILE: &[u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t\
@@ -428,20 +427,44 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 
     #[test]
     fn test_reader_gff3() {
-        let seqname = ["P0A7B8", "P0A7B8"];
-        let source = ["UniProtKB", "UniProtKB"];
-        let feature_type = ["Initiator methionine", "Chain"];
-        let starts = [1, 2];
-        let ends = [1, 176];
-        let scores = [None, Some(50)];
-        let strand = [None, Some(Strand::Forward)];
-        let frame = [".", "."];
-        let mut attributes = [MultiMap::new(), MultiMap::new()];
-        attributes[0].insert("ID".to_owned(), "test".to_owned());
-        attributes[0].insert("Note".to_owned(), "Removed".to_owned());
-        attributes[0].insert("Note".to_owned(), "Obsolete".to_owned());
-        attributes[1].insert("ID".to_owned(), "PRO_0000148105".to_owned());
-        attributes[1].insert(
+        let mut gffs = vec![
+            Record {
+                seqname: "P0A7B8".to_string(),
+                source: "UniProtKB".to_string(),
+                feature_type: "Initiator methionine".to_string(),
+                start: 1,
+                end: 1,
+                score: ".".to_string(),
+                strand: ".".to_string(),
+                frame: ".".to_string(),
+                attributes: MultiMap::new(),
+            },
+            Record {
+                seqname: "P0A7B8".to_string(),
+                source: "UniProtKB".to_string(),
+                feature_type: "Chain".to_string(),
+                start: 2,
+                end: 176,
+                score: "50".to_string(),
+                strand: "+".to_string(),
+                frame: ".".to_string(),
+                attributes: MultiMap::new(),
+            },
+        ];
+
+        gffs[0]
+            .attributes
+            .insert("ID".to_owned(), "test".to_owned());
+        gffs[0]
+            .attributes
+            .insert("Note".to_owned(), "Removed".to_owned());
+        gffs[0]
+            .attributes
+            .insert("Note".to_owned(), "Obsolete".to_owned());
+        gffs[1]
+            .attributes
+            .insert("ID".to_owned(), "PRO_0000148105".to_owned());
+        gffs[1].attributes.insert(
             "Note".to_owned(),
             "ATP-dependent protease subunit HslV".to_owned(),
         );
@@ -449,29 +472,13 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut reader = Reader::new(GFF_FILE, GffType::GFF3);
         for (i, r) in reader.records().enumerate() {
             let record = r.unwrap();
-            assert_eq!(record.seqname(), seqname[i]);
-            assert_eq!(record.source(), source[i]);
-            assert_eq!(record.feature_type(), feature_type[i]);
-            assert_eq!(*record.start(), starts[i]);
-            assert_eq!(*record.end(), ends[i]);
-            assert_eq!(record.score(), scores[i]);
-            assert_eq!(record.strand(), strand[i]);
-            assert_eq!(record.frame(), frame[i]);
-            assert_eq!(record.attributes(), &attributes[i]);
+            assert_eq!(record, gffs[i]);
         }
 
         let mut reader = Reader::new(GFF_FILE_WITH_COMMENT, GffType::GFF3);
         for (i, r) in reader.records().enumerate() {
             let record = r.unwrap();
-            assert_eq!(record.seqname(), seqname[i]);
-            assert_eq!(record.source(), source[i]);
-            assert_eq!(record.feature_type(), feature_type[i]);
-            assert_eq!(*record.start(), starts[i]);
-            assert_eq!(*record.end(), ends[i]);
-            assert_eq!(record.score(), scores[i]);
-            assert_eq!(record.strand(), strand[i]);
-            assert_eq!(record.frame(), frame[i]);
-            assert_eq!(record.attributes(), &attributes[i]);
+            assert_eq!(record, gffs[i]);
         }
     }
 
@@ -495,54 +502,92 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 
     #[test]
     fn test_reader_gtf2() {
-        let seqname = ["P0A7B8", "P0A7B8"];
-        let source = ["UniProtKB", "UniProtKB"];
-        let feature_type = ["Initiator methionine", "Chain"];
-        let starts = [1, 2];
-        let ends = [1, 176];
-        let scores = [None, Some(50)];
-        let strand = [None, Some(Strand::Forward)];
-        let frame = [".", "."];
-        let mut attributes = [MultiMap::new(), MultiMap::new()];
-        attributes[0].insert("ID".to_owned(), "test".to_owned());
-        attributes[0].insert("Note".to_owned(), "Removed".to_owned());
-        attributes[1].insert("ID".to_owned(), "PRO_0000148105".to_owned());
-        attributes[1].insert("Note".to_owned(), "ATP-dependent".to_owned());
+        let mut gffs = vec![
+            Record {
+                seqname: "P0A7B8".to_string(),
+                source: "UniProtKB".to_string(),
+                feature_type: "Initiator methionine".to_string(),
+                start: 1,
+                end: 1,
+                score: ".".to_string(),
+                strand: ".".to_string(),
+                frame: ".".to_string(),
+                attributes: MultiMap::new(),
+            },
+            Record {
+                seqname: "P0A7B8".to_string(),
+                source: "UniProtKB".to_string(),
+                feature_type: "Chain".to_string(),
+                start: 2,
+                end: 176,
+                score: "50".to_string(),
+                strand: "+".to_string(),
+                frame: ".".to_string(),
+                attributes: MultiMap::new(),
+            },
+        ];
+
+        gffs[0]
+            .attributes
+            .insert("ID".to_owned(), "test".to_owned());
+        gffs[0]
+            .attributes
+            .insert("Note".to_owned(), "Removed".to_owned());
+        gffs[1]
+            .attributes
+            .insert("ID".to_owned(), "PRO_0000148105".to_owned());
+        gffs[1]
+            .attributes
+            .insert("Note".to_owned(), "ATP-dependent".to_owned());
 
         let mut reader = Reader::new(GTF_FILE, GffType::GTF2);
         for (i, r) in reader.records().enumerate() {
             let record = r.unwrap();
-            assert_eq!(record.seqname(), seqname[i]);
-            assert_eq!(record.source(), source[i]);
-            assert_eq!(record.feature_type(), feature_type[i]);
-            assert_eq!(*record.start(), starts[i]);
-            assert_eq!(*record.end(), ends[i]);
-            assert_eq!(record.score(), scores[i]);
-            assert_eq!(record.strand(), strand[i]);
-            assert_eq!(record.frame(), frame[i]);
-            assert_eq!(record.attributes(), &attributes[i]);
+            assert_eq!(record, gffs[i]);
         }
     }
 
     #[test]
     fn test_reader_gtf2_2() {
-        let seqname = ["chr1", "chr1"];
-        let source = ["HAVANA", "HAVANA"];
-        let feature_type = ["gene", "transcript"];
-        let starts = [11869, 11869];
-        let ends = [14409, 14409];
-        let scores = [None, None];
-        let strand = [Some(Strand::Forward), Some(Strand::Forward)];
-        let frame = [".", "."];
-        let mut attributes = [MultiMap::new(), MultiMap::new()];
-        attributes[0].insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
-        attributes[0].insert(
+        let mut gffs = vec![
+            Record {
+                seqname: "chr1".to_string(),
+                source: "HAVANA".to_string(),
+                feature_type: "gene".to_string(),
+                start: 11869,
+                end: 14409,
+                score: ".".to_string(),
+                strand: "+".to_string(),
+                frame: ".".to_string(),
+                attributes: MultiMap::new(),
+            },
+            Record {
+                seqname: "chr1".to_string(),
+                source: "HAVANA".to_string(),
+                feature_type: "transcript".to_string(),
+                start: 11869,
+                end: 14409,
+                score: ".".to_string(),
+                strand: "+".to_string(),
+                frame: ".".to_string(),
+                attributes: MultiMap::new(),
+            },
+        ];
+
+        gffs[0]
+            .attributes
+            .insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
+        gffs[0].attributes.insert(
             "gene_type".to_owned(),
             "transcribed_unprocessed_pseudogene".to_owned(),
         );
-        attributes[1].insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
-        attributes[1].insert("transcript_id".to_owned(), "ENST00000456328.2".to_owned());
-        attributes[1].insert(
+        gffs[1]
+            .attributes
+            .insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
+        gffs[1]
+            .attributes
+            .insert("transcript_id".to_owned(), "ENST00000456328.2".to_owned());
+        gffs[1].attributes.insert(
             "gene_type".to_owned(),
             "transcribed_unprocessed_pseudogene".to_owned(),
         );
@@ -550,15 +595,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut reader = Reader::new(GTF_FILE_2, GffType::GTF2);
         for (i, r) in reader.records().enumerate() {
             let record = r.unwrap();
-            assert_eq!(record.seqname(), seqname[i]);
-            assert_eq!(record.source(), source[i]);
-            assert_eq!(record.feature_type(), feature_type[i]);
-            assert_eq!(*record.start(), starts[i]);
-            assert_eq!(*record.end(), ends[i]);
-            assert_eq!(record.score(), scores[i]);
-            assert_eq!(record.strand(), strand[i]);
-            assert_eq!(record.frame(), frame[i]);
-            assert_eq!(record.attributes(), &attributes[i]);
+            assert_eq!(record, gffs[i]);
         }
     }
 
