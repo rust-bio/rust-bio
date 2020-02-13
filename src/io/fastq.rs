@@ -575,8 +575,8 @@ IIIIIIJJJJJJ
     }
 
     #[test]
-    fn test_read_sequence_and_quality_are_wrapped_is_handled_with_two_sequences() {
-        let fq: &'static [u8] = b"@id description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!\n$\n@id2 description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!\n$\n";
+    fn test_read_sequence_and_quality_are_wrapped_is_handled_with_three_sequences() {
+        let fq: &'static [u8] = b"@id description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!\n$\n@id2 description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!\n$\n@id3 desc1 desc2\nAAA\nAAA\nAA\n+\n^^^\n^^^\n^^\n";
         let mut reader = Reader::new(fq);
 
         let mut actual = Record::new();
@@ -588,7 +588,29 @@ IIIIIIJJJJJJ
         reader.read(&mut actual).unwrap();
         let expected = Record::with_attrs("id2", Some("description"), b"ACGTGGGGC", b"@@@@!!!!$");
 
+        assert_eq!(actual, expected);
+
+        reader.read(&mut actual).unwrap();
+        let expected = Record::with_attrs("id3", Some("desc1 desc2"), b"AAAAAAAA", b"^^^^^^^^");
+
         assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_read_wrapped_record_with_inconsistent_wrapping_errors() {
+        let fq: &'static [u8] = b"@id description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!$\n@id2 description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!\n$\n@id3 desc1 desc2\nAAA\nAAA\nAA\n+\n^^^\n^^^\n^^\n";
+        let mut reader = Reader::new(fq);
+
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+        let actual = reader.read(&mut record).unwrap_err();
+        let expected = io::Error::new(
+            io::ErrorKind::Other,
+            "Expected @ at record start.",
+        );
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert_eq!(actual.to_string(), expected.to_string())
     }
 
     #[test]
