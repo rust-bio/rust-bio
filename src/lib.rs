@@ -107,6 +107,9 @@ extern crate strum_macros;
 #[macro_use]
 extern crate snafu;
 
+#[macro_use]
+extern crate getset;
+
 pub mod alignment;
 pub mod alphabets;
 pub mod data_structures;
