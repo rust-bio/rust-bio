@@ -257,7 +257,7 @@ pub trait Motif {
         let min_score = self.get_min_score();
         let max_score = self.get_max_score();
 
-        if approx_eq!(max_score, min_score) {
+        if abs_diff_eq!(max_score, min_score) {
             return Err(Error::NullMotif);
         }
 
