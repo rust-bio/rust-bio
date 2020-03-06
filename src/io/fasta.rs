@@ -615,9 +615,9 @@ impl<W: io::Write> Writer<W> {
     pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> io::Result<()> {
         self.writer.write_all(b">")?;
         self.writer.write_all(id.as_bytes())?;
-        if desc.is_some() {
+        if let Some(desc) = desc {
             self.writer.write_all(b" ")?;
-            self.writer.write_all(desc.unwrap().as_bytes())?;
+            self.writer.write_all(desc.as_bytes())?;
         }
         self.writer.write_all(b"\n")?;
         self.writer.write_all(seq)?;
