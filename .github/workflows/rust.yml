@@ -7,21 +7,34 @@ on:
     branches: [ master ]
 
 jobs:
+  Formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt
+      
+      - name: Check format
+        run: cargo fmt -- --check
+     
   Linting:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Install nightly toolchain
+      - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
-          components: clippy,rustfmt
-      
-      - name: Check format
-        run: cargo fmt -- --check
+          components: clippy
       
       - name: Lint with clippy
         uses: actions-rs/clippy-check@v1
@@ -30,7 +43,7 @@ jobs:
 
 
   Testing:
-    needs: Linting
+    needs: Formatting
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
