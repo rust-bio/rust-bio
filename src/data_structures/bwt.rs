@@ -137,27 +137,28 @@ impl Occ {
 
         // self.k is our sampling rate, so find the checkpoints either side of r.
         let lo_checkpoint = r / self.k as usize;
-        let hi_checkpoint = lo_checkpoint + 1;
-
         // Get the occurences at the low checkpoint
         let lo_occ = self.occ[lo_checkpoint][a as usize];
 
-        // If there is a high checkpoint we can potentially use is it to find
-        // the occurences faster.
-        if let Some(hi_occs) = self.occ.get(hi_checkpoint) {
-            let hi_occ = hi_occs[a as usize];
-
-            // Its possible that there are no occurences between the low and high
-            // checkpoint in which case we bail early.
-            if lo_occ == hi_occ {
-                return lo_occ;
-            }
-
-            // If r is closer to the high checkpoint, count backwards from there.
-            let hi_idx = hi_checkpoint * self.k as usize;
-            if (hi_idx - r) < (self.k as usize / 2) {
+        // If the sampling rate is infrequent it is worth checking if there is a closer
+        // hi checkpoint.
+        if self.k > 64 {
+            let hi_checkpoint = lo_checkpoint + 1;
+            if let Some(hi_occs) = self.occ.get(hi_checkpoint) {
                 let hi_occ = hi_occs[a as usize];
-                return hi_occ - bytecount::count(&bwt[r + 1..=hi_idx], a) as usize;
+
+                // Its possible that there are no occurences between the low and high
+                // checkpoint in which case we bail early.
+                if lo_occ == hi_occ {
+                    return lo_occ;
+                }
+
+                // If r is closer to the high checkpoint, count backwards from there.
+                let hi_idx = hi_checkpoint * self.k as usize;
+                if (hi_idx - r) < (self.k as usize / 2) {
+                    let hi_occ = hi_occs[a as usize];
+                    return hi_occ - bytecount::count(&bwt[r + 1..=hi_idx], a) as usize;
+                }
             }
         }
 
