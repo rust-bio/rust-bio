@@ -19,6 +19,7 @@ use itertools::Itertools;
 use multimap::MultiMap;
 use regex::Regex;
 use std::convert::AsRef;
+use std::fmt;
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -30,11 +31,10 @@ use csv;
 /// We have one format in the GAF family.
 /// The change is in the last field of GAF.
 /// For each type we have key value separator and field separator
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GafType {
     GAF1,
     GAF2,
-    Any(u8, u8, u8),
 }
 
 impl GafType {
@@ -43,17 +43,15 @@ impl GafType {
         match *self {
             GafType::GAF1 => (b':', b'|', 0u8),
             GafType::GAF2 => (b':', b'|', 0u8),
-            GafType::Any(x, y, z) => (x, y, z),
         }
     }
 
     // Used in writer. Should be GafType::GAF1 instead of string in comparison there, but can't quite make it work
     #[inline]
-    fn name(&self) -> (String) {
+    pub fn name(&self) -> String {
         match *self {
             GafType::GAF1 => "GAF1".to_string(),
             GafType::GAF2 => "GAF2".to_string(),
-            GafType::Any(_x, _y, _z) => "".to_string(),
         }
     }
 }
@@ -120,95 +118,108 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
     type Item = csv::Result<Record>;
 
     fn next(&mut self) -> Option<csv::Result<Record>> {
-        self.inner.next().map(|res| {
-            res.map(|v| {
-                let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
+        self.inner
+            .next()
+            .map(|res| res.map(|v| self.from_csv_row(v)))
+    }
+}
 
-                let db = v[0].clone();
-                let db_object_id = v[1].clone();
-                let db_object_symbol = v[2].clone();
-                let raw_qualifier = v[3].clone();
-                let go_id = v[4].clone();
-                let raw_db_ref = v[5].clone();
-                let evidence_code = v[6].clone();
-                let raw_with_from = v[7].clone();
-                let aspect = v[8].clone();
-                let db_object_name = v[9].clone();
-                let raw_db_object_synonym = v[10].clone();
-                let db_object_type = v[11].clone();
-                let raw_taxon = v[12].clone();
-                let date = v[13].clone();
-                let assigned_by = v[14].clone();
-                let raw_annotation_extension = if v.len() >= 16 {
-                    v[15].clone()
-                } else {
-                    "".to_string()
-                };
-                let gene_product_form_id = if v.len() >= 17 {
-                    v[16].clone()
-                } else {
-                    "".to_string()
-                };
+impl<'a, R: io::Read> Records<'a, R> {
+    fn from_csv_row(&mut self, v: Vec<String>) -> Record {
+        let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
 
-                let mut db_ref = MultiMap::new();
-                for caps in self.db_ref_re.captures_iter(&raw_db_ref.to_string()) {
-                    for value in caps["value"].split(self.value_delim) {
-                        db_ref.insert(trim_quotes(&caps["key"]), trim_quotes(value));
+        let db = v[0].clone();
+        let db_object_id = v[1].clone();
+        let db_object_symbol = v[2].clone();
+        let raw_qualifier = v[3].clone();
+        let go_id = v[4].clone();
+        let raw_db_ref = v[5].clone();
+        let evidence_code = v[6].clone();
+        let raw_with_from = v[7].clone();
+        let aspect = v[8].clone();
+        let db_object_name = v[9].clone();
+        let raw_db_object_synonym = v[10].clone();
+        let db_object_type = v[11].clone();
+        let raw_taxon = v[12].clone();
+        let date = v[13].clone();
+        let assigned_by = v[14].clone();
+        let raw_annotation_extension = if v.len() >= 16 {
+            v[15].clone()
+        } else {
+            String::new()
+        };
+        let gene_product_form_id: Option<String> = if v.len() >= 17 {
+            Some(v[16].clone())
+        } else {
+            None
+        };
+
+        let mut db_ref = MultiMap::new();
+        for caps in self.db_ref_re.captures_iter(&raw_db_ref.to_string()) {
+            for value in caps["value"].split(self.value_delim) {
+                db_ref.insert(trim_quotes(&caps["key"]), trim_quotes(value));
+            }
+        }
+
+        let mut qualifier = Vec::<String>::new();
+        for caps in self.default_re.captures_iter(&raw_qualifier.to_string()) {
+            qualifier.push(trim_quotes(&caps["value"]));
+        }
+
+        let mut with_from = Vec::<String>::new();
+        for caps in self.default_re.captures_iter(&raw_with_from.to_string()) {
+            with_from.push(trim_quotes(&caps["value"]));
+        }
+
+        let mut db_object_synonym = Vec::<String>::new();
+        for caps in self
+            .default_re
+            .captures_iter(&raw_db_object_synonym.to_string())
+        {
+            db_object_synonym.push(trim_quotes(&caps["value"]));
+        }
+
+        let mut taxon = Vec::<String>::new();
+        for caps in self.default_re.captures_iter(&raw_taxon.to_string()) {
+            taxon.push(trim_quotes(&caps["value"]));
+        }
+
+        let mut annotation_extension: Option<Vec<String>> = None;
+        for caps in self
+            .default_re
+            .captures_iter(&raw_annotation_extension.to_string())
+        {
+            if annotation_extension.is_some() {
+                match annotation_extension.as_mut() {
+                    Some(ae) => {
+                        ae.push(trim_quotes(&caps["value"]));
                     }
+                    None => {}
                 }
+            } else {
+                annotation_extension = Some(vec![trim_quotes(&caps["value"])]);
+            }
+        }
 
-                let mut qualifier = Vec::<String>::new();
-                for caps in self.default_re.captures_iter(&raw_qualifier.to_string()) {
-                    qualifier.push(trim_quotes(&caps["value"]));
-                }
-
-                let mut with_from = Vec::<String>::new();
-                for caps in self.default_re.captures_iter(&raw_with_from.to_string()) {
-                    with_from.push(trim_quotes(&caps["value"]));
-                }
-
-                let mut db_object_synonym = Vec::<String>::new();
-                for caps in self
-                    .default_re
-                    .captures_iter(&raw_db_object_synonym.to_string())
-                {
-                    db_object_synonym.push(trim_quotes(&caps["value"]));
-                }
-
-                let mut taxon = Vec::<String>::new();
-                for caps in self.default_re.captures_iter(&raw_taxon.to_string()) {
-                    taxon.push(trim_quotes(&caps["value"]));
-                }
-
-                let mut annotation_extension = Vec::<String>::new();
-                for caps in self
-                    .default_re
-                    .captures_iter(&raw_annotation_extension.to_string())
-                {
-                    annotation_extension.push(trim_quotes(&caps["value"]));
-                }
-
-                Record {
-                    db,
-                    db_object_id,
-                    db_object_symbol,
-                    qualifier,
-                    go_id,
-                    db_ref,
-                    evidence_code,
-                    with_from,
-                    aspect,
-                    db_object_name,
-                    db_object_synonym,
-                    db_object_type,
-                    taxon,
-                    date,
-                    assigned_by,
-                    annotation_extension,
-                    gene_product_form_id,
-                }
-            })
-        })
+        Record {
+            db,
+            db_object_id,
+            db_object_symbol,
+            qualifier,
+            go_id,
+            db_ref,
+            evidence_code,
+            with_from,
+            aspect,
+            db_object_name,
+            db_object_synonym,
+            db_object_type,
+            taxon,
+            date,
+            assigned_by,
+            annotation_extension,
+            gene_product_form_id,
+        }
     }
 }
 
@@ -246,69 +257,11 @@ impl<W: io::Write> Writer<W> {
 
     /// Write a given GAF record.
     pub fn write(&mut self, record: &Record) -> csv::Result<()> {
-        let db_ref = if !record.db_ref.is_empty() {
-            record
-                .db_ref
-                .iter()
-                .map(|(a, b)| format!("{}{}{}", a, self.delimiter, b))
-                .join(&self.terminator)
-        } else {
-            "".to_owned()
-        };
-
-        let qualifier = if !record.qualifier.is_empty() {
-            record.qualifier.join(&self.terminator.to_string())
-        } else {
-            "".to_owned()
-        };
-
-        let with_from = if !record.with_from.is_empty() {
-            record.with_from.join(&self.terminator.to_string())
-        } else {
-            "".to_owned()
-        };
-
-        let db_object_synonym = if !record.db_object_synonym.is_empty() {
-            record.db_object_synonym.join(&self.terminator.to_string())
-        } else {
-            "".to_owned()
-        };
-
-        let taxon = if !record.taxon.is_empty() {
-            record.taxon.join(&self.terminator.to_string())
-        } else {
-            "".to_owned()
-        };
-
-        let annotation_extension = if !record.annotation_extension.is_empty() {
-            record
-                .annotation_extension
-                .join(&self.terminator.to_string())
-        } else {
-            "".to_owned()
-        };
-
-        let mut v = vec![
-            record.db.clone(),
-            record.db_object_id.clone(),
-            record.db_object_symbol.clone(),
-            qualifier,
-            record.go_id.clone(),
-            db_ref,
-            record.evidence_code.clone(),
-            with_from,
-            record.aspect.clone(),
-            record.db_object_name.clone(),
-            db_object_synonym,
-            record.db_object_type.clone(),
-            taxon,
-            record.date.clone(),
-            record.assigned_by.clone(),
-        ];
-        if self.fileformat.name() == "GAF2" {
-            v.push(annotation_extension);
-            v.push(record.gene_product_form_id.clone());
-        }
+        let v = record.into_csv(
+            &self.fileformat,
+            self.delimiter.to_string(),
+            self.terminator.to_string(),
+        );
         self.inner.serialize(v)
     }
 }
@@ -331,32 +284,113 @@ pub struct Record {
     taxon: Vec<String>,
     date: String,
     assigned_by: String,
-    annotation_extension: Vec<String>,
-    gene_product_form_id: String,
+    annotation_extension: Option<Vec<String>>,
+    gene_product_form_id: Option<String>,
+}
+
+/// Implementing fmt::Display for easier output
+impl fmt::Display for Record {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        let s = self
+            .into_csv(&GafType::GAF2, ":".to_string(), "|".to_string())
+            .join("\t");
+        write!(f, "{}", s)
+    }
 }
 
 impl Record {
     /// Create a new GAF record.
     pub fn new() -> Self {
         Record {
-            db: "".to_owned(),
-            db_object_id: "".to_owned(),
-            db_object_symbol: "".to_owned(),
+            db: String::new(),
+            db_object_id: String::new(),
+            db_object_symbol: String::new(),
             qualifier: Vec::<String>::new(),
-            go_id: "".to_owned(),
+            go_id: String::new(),
             db_ref: MultiMap::<String, String>::new(),
-            evidence_code: "".to_owned(),
+            evidence_code: String::new(),
             with_from: Vec::<String>::new(),
-            aspect: "".to_owned(),
-            db_object_name: "".to_owned(),
+            aspect: String::new(),
+            db_object_name: String::new(),
             db_object_synonym: Vec::<String>::new(),
-            db_object_type: "".to_owned(),
+            db_object_type: String::new(),
             taxon: Vec::<String>::new(),
-            date: "".to_owned(),
-            assigned_by: "".to_owned(),
-            annotation_extension: Vec::<String>::new(),
-            gene_product_form_id: "".to_owned(),
+            date: String::new(),
+            assigned_by: String::new(),
+            annotation_extension: None,
+            gene_product_form_id: None,
         }
+    }
+
+    pub fn into_csv(
+        &self,
+        fileformat: &GafType,
+        delimiter: String,
+        terminator: String,
+    ) -> Vec<String> {
+        let db_ref = if !self.db_ref.is_empty() {
+            self.db_ref
+                .iter()
+                .map(|(a, b)| format!("{}{}{}", a, delimiter, b))
+                .join(&terminator)
+        } else {
+            String::new()
+        };
+
+        let qualifier = if !self.qualifier.is_empty() {
+            self.qualifier.join(&terminator.to_string())
+        } else {
+            String::new()
+        };
+
+        let with_from = if !self.with_from.is_empty() {
+            self.with_from.join(&terminator.to_string())
+        } else {
+            String::new()
+        };
+
+        let db_object_synonym = if !self.db_object_synonym.is_empty() {
+            self.db_object_synonym.join(&terminator.to_string())
+        } else {
+            String::new()
+        };
+
+        let taxon = if !self.taxon.is_empty() {
+            self.taxon.join(&terminator.to_string())
+        } else {
+            String::new()
+        };
+
+        let annotation_extension = match &self.annotation_extension {
+            Some(ae) => ae.join(&terminator.to_string()),
+            None => String::new(),
+        };
+
+        let mut v = vec![
+            self.db.clone(),
+            self.db_object_id.clone(),
+            self.db_object_symbol.clone(),
+            qualifier,
+            self.go_id.clone(),
+            db_ref,
+            self.evidence_code.clone(),
+            with_from,
+            self.aspect.clone(),
+            self.db_object_name.clone(),
+            db_object_synonym,
+            self.db_object_type.clone(),
+            taxon,
+            self.date.clone(),
+            self.assigned_by.clone(),
+        ];
+        if *fileformat == GafType::GAF2 {
+            v.push(annotation_extension);
+            v.push(match &self.gene_product_form_id {
+                Some(gene_product_form_id) => gene_product_form_id.clone(),
+                None => String::new(),
+            });
+        }
+        v
     }
 
     /// Get reference on db
@@ -435,27 +469,27 @@ impl Record {
     }
 
     /// Get reference on annotation_extension
-    pub fn annotation_extension(&self) -> &Vec<String> {
+    pub fn annotation_extension(&self) -> &Option<Vec<String>> {
         &self.annotation_extension
     }
 
     /// Get reference on gene_product_form_id
-    pub fn gene_product_form_id(&self) -> &str {
+    pub fn gene_product_form_id(&self) -> &Option<String> {
         &self.gene_product_form_id
     }
 
     /// Get mutable reference on db
-    pub fn db_mut(&mut self) -> &mut str {
+    pub fn db_mut(&mut self) -> &mut String {
         &mut self.db
     }
 
     /// Get mutable reference on db_object_id
-    pub fn db_object_id_mut(&mut self) -> &mut str {
+    pub fn db_object_id_mut(&mut self) -> &mut String {
         &mut self.db_object_id
     }
 
     /// Get mutable reference on db_object_symbol
-    pub fn db_object_symbol_mut(&mut self) -> &mut str {
+    pub fn db_object_symbol_mut(&mut self) -> &mut String {
         &mut self.db_object_symbol
     }
 
@@ -465,7 +499,7 @@ impl Record {
     }
 
     /// Get mutable reference on go_id
-    pub fn go_id_mut(&mut self) -> &mut str {
+    pub fn go_id_mut(&mut self) -> &mut String {
         &mut self.go_id
     }
 
@@ -475,7 +509,7 @@ impl Record {
     }
 
     /// Get mutable reference on evidence_code
-    pub fn evidence_code_mut(&mut self) -> &mut str {
+    pub fn evidence_code_mut(&mut self) -> &mut String {
         &mut self.evidence_code
     }
 
@@ -485,12 +519,12 @@ impl Record {
     }
 
     /// Get mutable reference on aspect
-    pub fn aspect_mut(&mut self) -> &mut str {
+    pub fn aspect_mut(&mut self) -> &mut String {
         &mut self.aspect
     }
 
     /// Get mutable reference on db_object_name
-    pub fn db_object_name_mut(&mut self) -> &mut str {
+    pub fn db_object_name_mut(&mut self) -> &mut String {
         &mut self.db_object_name
     }
 
@@ -500,7 +534,7 @@ impl Record {
     }
 
     /// Get mutable reference on db_object_type
-    pub fn db_object_type_mut(&mut self) -> &mut str {
+    pub fn db_object_type_mut(&mut self) -> &mut String {
         &mut self.db_object_type
     }
 
@@ -510,22 +544,22 @@ impl Record {
     }
 
     /// Get mutable reference on date
-    pub fn date_mut(&mut self) -> &mut str {
+    pub fn date_mut(&mut self) -> &mut String {
         &mut self.date
     }
 
     /// Get mutable reference on assigned_by
-    pub fn assigned_by_mut(&mut self) -> &mut str {
+    pub fn assigned_by_mut(&mut self) -> &mut String {
         &mut self.assigned_by
     }
 
     /// Get mutable reference on annotation_extension
-    pub fn annotation_extension_mut(&mut self) -> &mut Vec<String> {
+    pub fn annotation_extension_mut(&mut self) -> &mut Option<Vec<String>> {
         &mut self.annotation_extension
     }
 
     /// Get mutable reference on gene_product_form_id
-    pub fn gene_product_form_id_mut(&mut self) -> &mut str {
+    pub fn gene_product_form_id_mut(&mut self) -> &mut Option<String> {
         &mut self.gene_product_form_id
     }
 }
@@ -614,4 +648,172 @@ mod tests {
         assert_eq!(s1, s2)
     }
 
+    #[test]
+    fn test_gaftype_separator() {
+        assert_eq!(GafType::GAF1.separator(), (b':', b'|', 0u8));
+        assert_eq!(GafType::GAF2.separator(), (b':', b'|', 0u8));
+    }
+
+    #[test]
+    fn test_gaftype_name() {
+        assert_eq!(GafType::GAF1.name(), "GAF1");
+        assert_eq!(GafType::GAF2.name(), "GAF2");
+    }
+
+    #[test]
+    fn test_gaf_record_db() {
+        let mut r = Record::new();
+        assert_eq!(r.db(), "");
+        *r.db_mut() = "TEST".to_string();
+        assert_eq!(r.db(), "TEST");
+    }
+
+    #[test]
+    fn test_gaf_record_db_object_id() {
+        let mut r = Record::new();
+        assert_eq!(r.db_object_id(), "");
+        *r.db_object_id_mut() = "TEST".to_string();
+        assert_eq!(r.db_object_id(), "TEST");
+    }
+
+    #[test]
+    fn test_gaf_record_db_object_symbol() {
+        let mut r = Record::new();
+        assert_eq!(r.db_object_symbol(), "");
+        *r.db_object_symbol_mut() = "TEST".to_string();
+        assert_eq!(r.db_object_symbol(), "TEST");
+    }
+
+    #[test]
+    fn test_gaf_record_go_id() {
+        let mut r = Record::new();
+        assert_eq!(r.go_id(), "");
+        *r.go_id_mut() = "TEST".to_string();
+        assert_eq!(r.go_id(), "TEST");
+    }
+
+    #[test]
+    fn test_gaf_record_evidence_code() {
+        let mut r = Record::new();
+        assert_eq!(r.evidence_code(), "");
+        *r.evidence_code_mut() = "TEST".to_string();
+        assert_eq!(r.evidence_code(), "TEST");
+    }
+
+    #[test]
+    fn test_gaf_record_aspect() {
+        let mut r = Record::new();
+        assert_eq!(r.aspect(), "");
+        *r.aspect_mut() = "TEST".to_string();
+        assert_eq!(r.aspect(), "TEST");
+    }
+
+    #[test]
+    fn test_gaf_record_date() {
+        let mut r = Record::new();
+        assert_eq!(r.date(), "");
+        *r.date_mut() = "TEST".to_string();
+        assert_eq!(r.date(), "TEST");
+    }
+
+    #[test]
+    fn test_gaf_record_assigned_by() {
+        let mut r = Record::new();
+        assert_eq!(r.assigned_by(), "");
+        *r.assigned_by_mut() = "TEST".to_string();
+        assert_eq!(r.assigned_by(), "TEST");
+    }
+
+    #[test]
+    fn test_gaf_record_db_object_name() {
+        let mut r = Record::new();
+        assert_eq!(r.db_object_name(), "");
+        *r.db_object_name_mut() = "TEST".to_string();
+        assert_eq!(r.db_object_name(), "TEST");
+    }
+
+    #[test]
+    fn test_gaf_record_db_object_type() {
+        let mut r = Record::new();
+        assert_eq!(r.db_object_type(), "");
+        *r.db_object_type_mut() = "TEST".to_string();
+        assert_eq!(r.db_object_type(), "TEST");
+    }
+
+    #[test]
+    fn test_gaf_record_qualifier() {
+        let mut r = Record::new();
+        let test = vec!["TEST".to_string()];
+        assert!(r.qualifier().is_empty());
+        *r.qualifier_mut() = test.clone();
+        assert_eq!(*r.qualifier(), test);
+    }
+
+    #[test]
+    fn test_gaf_record_with_from() {
+        let mut r = Record::new();
+        let test = vec!["TEST".to_string()];
+        assert!(r.with_from().is_empty());
+        *r.with_from_mut() = test.clone();
+        assert_eq!(*r.with_from(), test);
+    }
+
+    #[test]
+    fn test_gaf_record_db_object_synonym() {
+        let mut r = Record::new();
+        let test = vec!["TEST".to_string()];
+        assert!(r.db_object_synonym().is_empty());
+        *r.db_object_synonym_mut() = test.clone();
+        assert_eq!(*r.db_object_synonym(), test);
+    }
+
+    #[test]
+    fn test_gaf_record_taxon() {
+        let mut r = Record::new();
+        let test = vec!["TEST".to_string()];
+        assert!(r.taxon().is_empty());
+        *r.taxon_mut() = test.clone();
+        assert_eq!(*r.taxon(), test);
+    }
+
+    #[test]
+    fn test_gaf_record_annotation_extension() {
+        let mut r = Record::new();
+        let test = Some(vec!["TEST".to_string()]);
+        assert!(r.annotation_extension().is_none());
+        *r.annotation_extension_mut() = test.clone();
+        assert_eq!(*r.annotation_extension(), test);
+    }
+
+    #[test]
+    fn test_gaf_record_gene_product_form_id() {
+        let mut r = Record::new();
+        let test = Some("TEST".to_string());
+        assert!(r.gene_product_form_id().is_none());
+        *r.gene_product_form_id_mut() = test.clone();
+        assert_eq!(*r.gene_product_form_id(), test);
+    }
+
+    #[test]
+    fn test_gaf_record_db_ref() {
+        let mut r = Record::new();
+        let mut test = MultiMap::new();
+        test.insert("k1".to_string(), "v1".to_string());
+        test.insert("k1".to_string(), "v2".to_string());
+        test.insert("k3".to_string(), "v3".to_string());
+        assert!(r.db_ref().is_empty());
+        *r.db_ref_mut() = test.clone();
+        assert_eq!(*r.db_ref(), test);
+    }
+
+    #[test]
+    fn test_gaf_record_fmt() {
+        let line = "GeneDB\tPF3D7_0100100.1\tVAR\t\tGO:0020002\tPMID:11420100\tTAS\t\tC\terythrocyte membrane protein 1, PfEMP1\tPFA0005w|VAR-UPSB1|MAL1P4.01\tmRNA\ttaxon:36329\t20190204\tGeneDB\t\t";
+        let mut reader = Reader::new(GAF_FILE1, GafType::GAF1);
+        for (_i, r) in reader.records().enumerate() {
+            let record = r.unwrap();
+            assert_eq!(format!("{}", record), line);
+            break;
+        }
+    }
 }
