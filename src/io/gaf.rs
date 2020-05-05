@@ -288,7 +288,7 @@ pub struct Record {
     gene_product_form_id: Option<String>,
 }
 
-/// Implementing fmt::Display for easier output
+/// Implementing fmt::Display for easier output. Assumes GAF2 as it is a superset of GAF1
 impl fmt::Display for Record {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let s = self
@@ -328,63 +328,36 @@ impl Record {
         delimiter: String,
         terminator: String,
     ) -> Vec<String> {
-        let db_ref = if !self.db_ref.is_empty() {
-            self.db_ref
-                .iter()
-                .map(|(a, b)| format!("{}{}{}", a, delimiter, b))
-                .join(&terminator)
-        } else {
-            String::new()
-        };
-
-        let qualifier = if !self.qualifier.is_empty() {
-            self.qualifier.join(&terminator.to_string())
-        } else {
-            String::new()
-        };
-
-        let with_from = if !self.with_from.is_empty() {
-            self.with_from.join(&terminator.to_string())
-        } else {
-            String::new()
-        };
-
-        let db_object_synonym = if !self.db_object_synonym.is_empty() {
-            self.db_object_synonym.join(&terminator.to_string())
-        } else {
-            String::new()
-        };
-
-        let taxon = if !self.taxon.is_empty() {
-            self.taxon.join(&terminator.to_string())
-        } else {
-            String::new()
-        };
-
-        let annotation_extension = match &self.annotation_extension {
-            Some(ae) => ae.join(&terminator.to_string()),
-            None => String::new(),
-        };
+        let db_ref = self
+            .db_ref
+            .iter()
+            .map(|(a, b)| format!("{}{}{}", a, delimiter, b))
+            .join(&terminator);
 
         let mut v = vec![
             self.db.clone(),
             self.db_object_id.clone(),
             self.db_object_symbol.clone(),
-            qualifier,
+            self.qualifier.join(&terminator),
             self.go_id.clone(),
             db_ref,
             self.evidence_code.clone(),
-            with_from,
+            self.with_from.join(&terminator),
             self.aspect.clone(),
             self.db_object_name.clone(),
-            db_object_synonym,
+            self.db_object_synonym.join(&terminator),
             self.db_object_type.clone(),
-            taxon,
+            self.taxon.join(&terminator),
             self.date.clone(),
             self.assigned_by.clone(),
         ];
+
         if *fileformat == GafType::GAF2 {
-            v.push(annotation_extension);
+            v.push(match &self.annotation_extension {
+                Some(ae) => ae.join(&terminator),
+                None => String::new(),
+            });
+
             v.push(match &self.gene_product_form_id {
                 Some(gene_product_form_id) => gene_product_form_id.clone(),
                 None => String::new(),
