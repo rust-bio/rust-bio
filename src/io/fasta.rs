@@ -13,6 +13,7 @@
 //! let reader = fasta::Reader::new(io::stdin());
 //! ```
 
+use flate2::read::GzDecoder;
 use std::cmp::min;
 use std::collections;
 use std::convert::AsRef;
@@ -45,6 +46,16 @@ impl Reader<fs::File> {
     /// Read FASTA from given file path.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::open(path).map(Reader::new)
+    }
+
+    /// Read gunzip-compressed FASTA from given file path.
+    pub fn from_gz<P: AsRef<Path>>(path: P) -> io::Result<Reader<GzDecoder<fs::File>>> {
+        let f = match fs::File::open(path) {
+            Ok(file) => file,
+            Err(e) => return Err(e),
+        };
+
+        Ok(Reader::new(GzDecoder::new(f)))
     }
 }
 
@@ -790,6 +801,8 @@ impl<R: io::Read> Iterator for Records<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use flate2::write::GzEncoder;
+    use flate2::Compression;
     use std::fmt::Write as FmtWrite;
     use std::io;
 
@@ -1490,5 +1503,30 @@ ATTGTTGTTTTA
 
         assert!(fs::remove_file(path).is_ok());
         assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_reader_from_gz() {
+        let path = Path::new("test.fa.gz");
+        {
+            let mut file = fs::File::create(path).unwrap();
+            let mut gz_out = GzEncoder::new(Vec::new(), Compression::default());
+            gz_out.write_all(FASTA_FILE).unwrap();
+            file.write_all(&gz_out.finish().unwrap()).unwrap();
+        }
+
+        let expected = Reader::new(FASTA_FILE).records().next().unwrap().unwrap();
+
+        let actual = Reader::from_gz(path)
+            .unwrap()
+            .records()
+            .next()
+            .unwrap()
+            .unwrap();
+
+        assert!(fs::remove_file(path).is_ok());
+        assert_eq!(expected.id(), actual.id());
+        assert_eq!(expected.desc(), actual.desc());
+        assert_eq!(expected.seq(), actual.seq());
     }
 }
