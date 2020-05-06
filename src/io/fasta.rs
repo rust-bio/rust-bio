@@ -48,7 +48,31 @@ impl Reader<fs::File> {
         fs::File::open(path).map(Reader::new)
     }
 
-    /// Read gunzip-compressed FASTA from given file path.
+    /// Read gzip-compressed FASTA from the given path.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the file at the supplied path
+    /// is not in gzip compression format or if there is an io error.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use bio::io::fasta::{Reader}
+    /// use std::io::{self}
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let fasta = bio::io::fasta::Reader::from_gz("fasta.gz")?;
+    ///     for r in fasta.records() {
+    ///         match r {
+    ///             Ok(record) => print!("{}", record),
+    ///             Err(e) => return Err(e),
+    ///         }
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn from_gz<P: AsRef<Path>>(path: P) -> io::Result<Reader<MultiGzDecoder<fs::File>>> {
         let f = match fs::File::open(path) {
             Ok(file) => file,
@@ -1525,5 +1549,19 @@ ATTGTTGTTTTA
             assert_eq!(r1.desc(), r2.desc());
             assert_eq!(r1.seq(), r2.seq());
         }
+    }
+
+    #[test]
+    fn test_reader_from_gz_invalid_path() {
+        let invalid_path = Path::new("nonexistent.fa.gz");
+        let path = Path::new("test.fa.gz");
+        {
+            let mut file = fs::File::create(path).unwrap();
+            let mut gz_out = GzEncoder::new(Vec::new(), Compression::default());
+            gz_out.write_all(FASTA_FILE).unwrap();
+            file.write_all(&gz_out.finish().unwrap()).unwrap();
+        }
+
+        assert!(!Reader::from_gz(invalid_path).is_ok());
     }
 }
