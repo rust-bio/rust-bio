@@ -1515,18 +1515,15 @@ ATTGTTGTTTTA
             file.write_all(&gz_out.finish().unwrap()).unwrap();
         }
 
-        let expected = Reader::new(FASTA_FILE).records().next().unwrap().unwrap();
+        let expected = Reader::new(FASTA_FILE).records().map(|r| r.unwrap());
 
-        let actual = Reader::from_gz(path)
-            .unwrap()
-            .records()
-            .next()
-            .unwrap()
-            .unwrap();
+        let actual = Reader::from_gz(path).unwrap().records().map(|r| r.unwrap());
 
         assert!(fs::remove_file(path).is_ok());
-        assert_eq!(expected.id(), actual.id());
-        assert_eq!(expected.desc(), actual.desc());
-        assert_eq!(expected.seq(), actual.seq());
+        for (r1, r2) in expected.zip(actual) {
+            assert_eq!(r1.id(), r2.id());
+            assert_eq!(r1.desc(), r2.desc());
+            assert_eq!(r1.seq(), r2.seq());
+        }
     }
 }
