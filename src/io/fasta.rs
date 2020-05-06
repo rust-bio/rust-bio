@@ -13,7 +13,7 @@
 //! let reader = fasta::Reader::new(io::stdin());
 //! ```
 
-use flate2::read::GzDecoder;
+use flate2::read::MultiGzDecoder;
 use std::cmp::min;
 use std::collections;
 use std::convert::AsRef;
@@ -49,13 +49,13 @@ impl Reader<fs::File> {
     }
 
     /// Read gunzip-compressed FASTA from given file path.
-    pub fn from_gz<P: AsRef<Path>>(path: P) -> io::Result<Reader<GzDecoder<fs::File>>> {
+    pub fn from_gz<P: AsRef<Path>>(path: P) -> io::Result<Reader<MultiGzDecoder<fs::File>>> {
         let f = match fs::File::open(path) {
             Ok(file) => file,
             Err(e) => return Err(e),
         };
 
-        Ok(Reader::new(GzDecoder::new(f)))
+        Ok(Reader::new(MultiGzDecoder::new(f)))
     }
 }
 
