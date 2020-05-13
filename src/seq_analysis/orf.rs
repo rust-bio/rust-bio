@@ -85,6 +85,7 @@ impl Finder {
 /// An orf representation with start and end position of said orf,
 /// as well as offset of the reading frame (1,2,3) and strand location
 // (current: +, reverse complementary: -).
+#[derive(Debug, PartialEq)]
 pub struct Orf {
     pub start: usize,
     pub end: usize,
@@ -169,17 +170,60 @@ where
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_orf() {
+    fn basic_finder() -> Finder {
         let start_codons = vec![b"ATG"];
         let stop_codons = vec![b"TGA", b"TAG", b"TAA"];
-        let min_len = 50;
-        let finder = Finder::new(start_codons, stop_codons, min_len);
+        let min_len = 5;
+        Finder::new(start_codons, stop_codons, min_len)
+    }
 
+    #[test]
+    fn test_no_orf() {
+        let finder = basic_finder();
         let sequence = b"ACGGCTAGAAAAGGCTAGAAAA";
+        assert!(finder.find_all(sequence).collect::<Vec<Orf>>().is_empty());
+    }
 
-        for Orf { start, end, .. } in finder.find_all(sequence) {
-            let _ = &sequence[start..end];
-        }
+    #[test]
+    fn test_one_orf_no_offset() {
+        let finder = basic_finder();
+        let sequence = b"GGGATGGGGTGAGGG";
+        let expected = vec![Orf {
+            start: 3,
+            end: 12,
+            offset: 0,
+        }];
+        assert_eq!(expected, finder.find_all(sequence).collect::<Vec<Orf>>());
+    }
+
+    #[test]
+    fn test_one_orf_with_offset() {
+        let finder = basic_finder();
+        let sequence = b"AGGGATGGGGTGAGGG";
+        let expected = vec![Orf {
+            start: 4,
+            end: 13,
+            offset: 1,
+        }];
+        assert_eq!(expected, finder.find_all(sequence).collect::<Vec<Orf>>());
+    }
+
+    #[test]
+    fn test_two_orfs_different_offsets() {
+        let finder = basic_finder();
+        let sequence = b"ATGGGGTGAGGGGGATGGAAAAATAAG";
+        let expected = vec![
+            Orf {
+                start: 0,
+                end: 9,
+                offset: 0,
+            },
+            Orf {
+                start: 14,
+                end: 26,
+                offset: 2,
+            },
+        ];
+        assert_eq!(expected, finder.find_all(sequence).collect::<Vec<Orf>>());
     }
 }
