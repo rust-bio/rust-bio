@@ -205,25 +205,7 @@ impl PairHMM {
 
             let prob_emit_x = emission_params.prob_emit_x(i);
 
-            let j_min = if do_gap_x_extend {
-                0
-            } else {
-                // The final upper triangle in the dynamic programming matrix
-                // will be only zeros if gap extension is not allowed on x.
-                // Hence we can omit it.
-                emission_params
-                    .len_y()
-                    .saturating_sub(emission_params.len_x() - i + 1)
-            };
-
-            let j_max = if do_gap_x_extend {
-                emission_params.len_y()
-            } else {
-                // The initial lower triangle in the dynamic programming matrix
-                // will be only zeros if gap extension is not allowed on x.
-                // Hence we can omit it.
-                cmp::min(i + 1, emission_params.len_y())
-            };
+            let (j_min, j_max) = (0, emission_params.len_y());
 
             // iterate over y
             for j in j_min..j_max {
