@@ -205,6 +205,7 @@ impl PairHMM {
 
             let prob_emit_x = emission_params.prob_emit_x(i);
 
+            // TODO: in the case of no gap extensions, we can reduce the number of columns of y that need to be looked at (by cone).
             let (j_min, j_max) = (0, emission_params.len_y());
 
             // iterate over y
