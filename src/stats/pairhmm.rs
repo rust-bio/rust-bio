@@ -456,6 +456,36 @@ mod tests {
     const T_GAP_Y: LogProb = LogProb(-12.186270018233994);
 
     #[test]
+    fn test_interleave_gaps() {
+        let x = b"AGAGAG";
+        let y = b"ACGTACGTACGT";
+
+        let emission_params = TestEmissionParams { x, y };
+        let gap_params = TestSingleGapParams;
+
+        let mut pair_hmm = PairHMM::new();
+        let p = pair_hmm.prob_related(&gap_params, &emission_params, None);
+
+        let n_matches = 6.;
+        let n_insertions = 6.;
+
+        let p_most_likely_path = LogProb(
+            *EMIT_MATCH * n_matches
+                + *T_MATCH * (n_matches - n_insertions)
+                + *EMIT_GAP_X * n_insertions
+                + *T_GAP_X * n_insertions
+                + (1. - *PROB_ILLUMINA_INS).ln() * n_insertions,
+        );
+
+        let p_max = LogProb(*T_GAP_X * n_insertions);
+
+        assert!(*p <= 0.0);
+        assert_relative_eq!(*p_most_likely_path, *p, epsilon = 0.01);
+        assert_relative_eq!(*p, *p_max, epsilon = 0.1);
+        assert!(*p <= *p_max);
+    }
+
+    #[test]
     fn test_same() {
         let x = b"AGCTCGATCGATCGATC";
         let y = b"AGCTCGATCGATCGATC";
