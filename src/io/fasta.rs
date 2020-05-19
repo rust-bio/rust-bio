@@ -692,7 +692,7 @@ impl<W: io::Write> Writer<W> {
 }
 
 /// A FASTA record.
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Record {
     id: String,
     desc: Option<String>,
@@ -1569,9 +1569,7 @@ ATTGTTGTTTTA
             .map(|r| r.unwrap());
 
         for (r1, r2) in expected.zip(actual) {
-            assert_eq!(r1.id(), r2.id());
-            assert_eq!(r1.desc(), r2.desc());
-            assert_eq!(r1.seq(), r2.seq());
+            assert_eq!(r1, r2);
         }
         assert!(fs::remove_file(path).is_ok());
     }
@@ -1594,9 +1592,7 @@ ATTGTTGTTTTA
             .map(|r| r.unwrap());
 
         for (r1, r2) in expected.zip(actual) {
-            assert_eq!(r1.id(), r2.id());
-            assert_eq!(r1.desc(), r2.desc());
-            assert_eq!(r1.seq(), r2.seq());
+            assert_eq!(r1, r2);
         }
         assert!(fs::remove_file(path).is_ok());
     }
