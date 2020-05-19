@@ -14,12 +14,15 @@
 //! ```
 
 use flate2::read::MultiGzDecoder;
+use rust_htslib::htslib::hts_open;
 use std::cmp::min;
 use std::collections;
 use std::convert::AsRef;
+use std::ffi;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
+use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 
 use csv;
@@ -35,6 +38,20 @@ pub trait FastaRead {
     fn read(&mut self, record: &mut Record) -> io::Result<()>;
 }
 
+/// An enum to cover different compression cases for Reader
+pub enum Compression {
+    PlainText(fs::File),
+    GzCompressed(MultiGzDecoder<fs::File>),
+}
+impl io::Read for Compression {
+    fn read(&mut self, b: &mut [u8]) -> std::result::Result<usize, std::io::Error> {
+        match self {
+            Compression::PlainText(f) => f.read(b),
+            Compression::GzCompressed(g) => g.read(b),
+        }
+    }
+}
+
 /// A FASTA reader.
 #[derive(Debug)]
 pub struct Reader<R: io::Read> {
@@ -42,18 +59,13 @@ pub struct Reader<R: io::Read> {
     line: String,
 }
 
-impl Reader<fs::File> {
-    /// Read FASTA from given file path.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::open(path).map(Reader::new)
-    }
-
-    /// Read gzip-compressed FASTA from the given path.
+impl Reader<Compression> {
+    /// Read plain-text or gzip-compressed FASTA from the given path.
     ///
     /// # Errors
     ///
     /// This function will return an error if the file at the supplied path
-    /// is not in gzip compression format or if there is an io error.
+    /// does not exist.
     ///
     /// # Example
     ///
@@ -62,7 +74,7 @@ impl Reader<fs::File> {
     /// use std::io::{self}
     ///
     /// fn main() -> io::Result<()> {
-    ///     let fasta = bio::io::fasta::Reader::from_gz("fasta.gz")?;
+    ///     let fasta = bio::io::fasta::Reader::from_file("fasta.gz")?;
     ///     for r in fasta.records() {
     ///         match r {
     ///             Ok(record) => print!("{}", record),
@@ -73,13 +85,25 @@ impl Reader<fs::File> {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_gz<P: AsRef<Path>>(path: P) -> io::Result<Reader<MultiGzDecoder<fs::File>>> {
-        let f = match fs::File::open(path) {
-            Ok(file) => file,
-            Err(e) => return Err(e),
-        };
+    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        let rfile = fs::File::open(&path)?;
+        let p = ffi::CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+        let c_str = ffi::CString::new(p).unwrap();
+        let c_mode = ffi::CString::new("r").unwrap();
 
-        Ok(Reader::new(MultiGzDecoder::new(f)))
+        let fp = unsafe { hts_open(c_str.as_ptr(), c_mode.as_ptr()) };
+        let format = unsafe { (*fp).format };
+
+        match format.compression {
+            0 => Ok(Reader::new(Compression::PlainText(rfile))),
+            1 => Ok(Reader::new(Compression::GzCompressed(MultiGzDecoder::new(
+                rfile,
+            )))),
+            _ => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Format not supported yet.",
+            )),
+        }
     }
 }
 
@@ -1530,7 +1554,30 @@ ATTGTTGTTTTA
     }
 
     #[test]
-    fn test_reader_from_gz() {
+    fn test_reader_from_file_plaintext() {
+        let path = Path::new("test.fa");
+        {
+            let mut file = fs::File::create(path).unwrap();
+            file.write_all(&FASTA_FILE).unwrap();
+        }
+
+        let expected = Reader::new(FASTA_FILE).records().map(|r| r.unwrap());
+
+        let actual = Reader::from_file(path)
+            .unwrap()
+            .records()
+            .map(|r| r.unwrap());
+
+        for (r1, r2) in expected.zip(actual) {
+            assert_eq!(r1.id(), r2.id());
+            assert_eq!(r1.desc(), r2.desc());
+            assert_eq!(r1.seq(), r2.seq());
+        }
+        assert!(fs::remove_file(path).is_ok());
+    }
+
+    #[test]
+    fn test_reader_from_file_gz() {
         let path = Path::new("test.fa.gz");
         {
             let mut file = fs::File::create(path).unwrap();
@@ -1541,27 +1588,23 @@ ATTGTTGTTTTA
 
         let expected = Reader::new(FASTA_FILE).records().map(|r| r.unwrap());
 
-        let actual = Reader::from_gz(path).unwrap().records().map(|r| r.unwrap());
+        let actual = Reader::from_file(path)
+            .unwrap()
+            .records()
+            .map(|r| r.unwrap());
 
-        assert!(fs::remove_file(path).is_ok());
         for (r1, r2) in expected.zip(actual) {
             assert_eq!(r1.id(), r2.id());
             assert_eq!(r1.desc(), r2.desc());
             assert_eq!(r1.seq(), r2.seq());
         }
+        assert!(fs::remove_file(path).is_ok());
     }
 
     #[test]
-    fn test_reader_from_gz_invalid_path() {
+    fn test_reader_from_file_invalid_path() {
         let invalid_path = Path::new("nonexistent.fa.gz");
-        let path = Path::new("test.fa.gz");
-        {
-            let mut file = fs::File::create(path).unwrap();
-            let mut gz_out = GzEncoder::new(Vec::new(), Compression::default());
-            gz_out.write_all(FASTA_FILE).unwrap();
-            file.write_all(&gz_out.finish().unwrap()).unwrap();
-        }
 
-        assert!(!Reader::from_gz(invalid_path).is_ok());
+        assert!(!Reader::from_file(invalid_path).is_ok());
     }
 }
