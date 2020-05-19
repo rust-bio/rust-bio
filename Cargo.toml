@@ -49,6 +49,8 @@ strum_macros = "0.16"
 snafu = ">= 0.5, <= 0.6"
 getset = "0.0.9"
 flate2 = "1.0.14"
+rust-htslib = {git = "https://github.com/rust-bio/rust-htslib.git"}
+
 
 [dependencies.vec_map]
 version = "0.8"
