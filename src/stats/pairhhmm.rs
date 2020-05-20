@@ -802,7 +802,7 @@ mod tests {
         let hop_params = TestHopParams;
 
         let mut pair_hmm = PairHHMM::new();
-        let p = pair_hmm.prob_related(&NO_GAP_PARAMS, &hop_params, &emission_params, None);
+        let p = pair_hmm.prob_related(&NO_GAP_PARAMS, &hop_params, &emission_params, &Global, None);
         let p_most_likely_path_with_hops = LogProb(
             *EMIT_MATCH // A A
                 + *T_MATCH
