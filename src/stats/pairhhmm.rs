@@ -313,6 +313,28 @@ fn build_transition_table<G: GapParameters, H: HopParameters>(
     transition_probs
 }
 
+
+pub enum AlignmentMode {
+    Global,
+    Semiglobal,
+}
+
+impl StartEndGapParameters for AlignmentMode {
+    fn free_start_gap_x(&self) -> bool {
+        match self {
+            AlignmentMode::Semiglobal => true,
+            AlignmentMode::Global => false,
+        }
+    }
+
+    fn free_end_gap_x(&self) -> bool {
+        match self {
+            AlignmentMode::Semiglobal => true,
+            AlignmentMode::Global => false,
+        }
+    }
+}
+
 impl PairHHMM {
     pub fn new() -> Self {
         Self {}
@@ -326,17 +348,19 @@ impl PairHHMM {
     /// * `hop_params` - parameters for opening or extending hops
     /// * `emission_params` - parameters for emission
     /// * `max_edit_dist` - maximum edit distance to consider; if not `None`, perform banded alignment
-    pub fn prob_related<G, H, E>(
+    pub fn prob_related<G, H, E, A>(
         &mut self,
         gap_params: &G,
         hop_params: &H,
         emission_params: &E,
+        alignment_mode: &A,
         max_edit_dist: Option<usize>,
     ) -> TLogProb
     where
-        G: GapParameters + StartEndGapParameters,
+        G: GapParameters,
         H: HopParameters,
         E: EmissionParameters,
+        A: StartEndGapParameters,
     {
         let mut prev = 0;
         let mut curr = 1;
@@ -347,6 +371,8 @@ impl PairHHMM {
         let len_x = emission_params.len_x();
         let mut min_edit_dist: [Vec<usize>; 2] =
             [vec![usize::MAX; len_y + 1], vec![usize::MAX; len_y + 1]];
+        let free_end_gap_x = alignment_mode.free_end_gap_x();
+        let free_start_gap_x = alignment_mode.free_start_gap_x();
         let mut prob_cols = Vec::with_capacity(len_x * STATES.len());
 
         for state in &STATES {
@@ -359,12 +385,19 @@ impl PairHHMM {
         v[curr] = v[prev].clone();
 
         for i in 0..len_x {
-            if gap_params.free_start_gap_x() {
+            if free_start_gap_x {
                 for &m in &MATCH_STATES {
                     v[prev][m][0] += TLogProb::one();
                 }
                 min_edit_dist[prev][0] = 0;
             }
+
+            // cache probs for x[i]
+            let prob_emit_x_and_gap = emission_params.prob_emit_x_and_gap(GapY, i);
+            // let probs_emit_x_and_hop: SmallVec<[TLogProb; 4]> = HOP_Y_STATES
+            //     .iter()
+            //     .map(|&h| emission_params.prob_emit_x_and_hop(h, i))
+            //     .collect();
 
             for j in 0..len_y {
                 let j_ = j + 1;
@@ -395,7 +428,7 @@ impl PairHHMM {
                             .unwrap();
                 }
 
-                v[curr][GapY][j_] = emission_params.prob_emit_x_and_gap(GapY, i)
+                v[curr][GapY][j_] = prob_emit_x_and_gap
                     * (MATCH_STATES
                         .iter()
                         .map(|&s| transition_probs[s >> GapY] * v[prev][s][j_])
@@ -440,7 +473,7 @@ impl PairHHMM {
                     )
                 };
 
-                if gap_params.free_end_gap_x() {
+                if free_end_gap_x {
                     // Cache column probabilities or simply record the last probability.
                     // We can put all of them in one array since we simply have to sum in the end.
                     // This is also good for numerical stability.
@@ -458,7 +491,7 @@ impl PairHHMM {
                 v[curr][s][0] = TLogProb::one() / 4.;
             }
         }
-        if gap_params.free_end_gap_x() {
+        if free_end_gap_x {
             // TODO: use sum instead and implement Sum<TLogProb> trait
             prob_cols.iter().cloned().fold1(TLogProb::add).unwrap()
         } else {
@@ -480,6 +513,7 @@ mod tests {
     use super::*;
     use crate::stats::probs::TLogProb;
     use crate::stats::{LogProb, Prob};
+    use crate::stats::pairhhmm::AlignmentMode::{Global, Semiglobal};
 
     // Single base insertion and deletion rates for R1 according to Schirmer et al.
     // BMC Bioinformatics 2016, 10.1186/s12859-016-0976-y
@@ -640,16 +674,6 @@ mod tests {
         }
     }
 
-    impl StartEndGapParameters for TestSingleGapParams {
-        fn free_start_gap_x(&self) -> bool {
-            false
-        }
-
-        fn free_end_gap_x(&self) -> bool {
-            false
-        }
-    }
-
     struct NoGapParams;
 
     impl GapParameters for NoGapParams {
@@ -670,16 +694,6 @@ mod tests {
         }
     }
 
-    impl StartEndGapParameters for NoGapParams {
-        fn free_start_gap_x(&self) -> bool {
-            false
-        }
-
-        fn free_end_gap_x(&self) -> bool {
-            false
-        }
-    }
-
     pub struct SemiglobalGapParams;
 
     impl GapParameters for SemiglobalGapParams {
@@ -697,16 +711,6 @@ mod tests {
 
         fn prob_gap_y_extend(&self) -> TLogProb {
             TLogProb::zero()
-        }
-    }
-
-    impl StartEndGapParameters for SemiglobalGapParams {
-        fn free_start_gap_x(&self) -> bool {
-            true
-        }
-
-        fn free_end_gap_x(&self) -> bool {
-            true
         }
     }
 
@@ -768,7 +772,7 @@ mod tests {
         let hop_params = TestHopParams;
 
         let mut pair_hmm = PairHHMM::new();
-        let p = pair_hmm.prob_related(&NO_GAP_PARAMS, &hop_params, &emission_params, None);
+        let p = pair_hmm.prob_related(&NO_GAP_PARAMS, &hop_params, &emission_params, &Global, None);
         let p_most_likely_path_with_hops = LogProb(
             *EMIT_MATCH // A A
                 + *T_MATCH
@@ -828,7 +832,13 @@ mod tests {
         let emission_params = TestEmissionParams { x, y };
 
         let mut pair_hmm = PairHHMM::new();
-        let p = pair_hmm.prob_related(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS, &emission_params, None);
+        let p = pair_hmm.prob_related(
+            &SINGLE_GAP_PARAMS,
+            &NO_HOP_PARAMS,
+            &emission_params,
+            &Global,
+            None,
+        );
 
         let n_matches = 6.;
         let n_insertions = 6.;
@@ -859,7 +869,13 @@ mod tests {
         let emission_params = TestEmissionParams { x, y };
 
         let mut pair_hmm = PairHHMM::new();
-        let p = pair_hmm.prob_related(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS, &emission_params, None);
+        let p = pair_hmm.prob_related(
+            &SINGLE_GAP_PARAMS,
+            &NO_HOP_PARAMS,
+            &emission_params,
+            &Global,
+            None,
+        );
         let n = x.len() as f64;
         let p_most_likely_path = LogProb(*EMIT_MATCH * n + *T_MATCH * (n - 1.));
         let p_max = LogProb(*EMIT_MATCH * n);
@@ -878,7 +894,13 @@ mod tests {
         let emission_params = TestEmissionParams { x, y };
 
         let mut pair_hmm = PairHHMM::new();
-        let p = pair_hmm.prob_related(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS, &emission_params, None);
+        let p = pair_hmm.prob_related(
+            &SINGLE_GAP_PARAMS,
+            &NO_HOP_PARAMS,
+            &emission_params,
+            &Global,
+            None,
+        );
 
         let n_matches = 17.;
         let n_insertions = 2.;
@@ -906,7 +928,13 @@ mod tests {
         let emission_params = TestEmissionParams { x, y };
 
         let mut pair_hmm = PairHHMM::new();
-        let p = pair_hmm.prob_related(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS, &emission_params, None);
+        let p = pair_hmm.prob_related(
+            &SINGLE_GAP_PARAMS,
+            &NO_HOP_PARAMS,
+            &emission_params,
+            &Global,
+            None,
+        );
 
         let n_matches = 6.;
         let n_insertions = 1.;
@@ -934,7 +962,13 @@ mod tests {
         let emission_params = TestEmissionParams { x, y };
 
         let mut pair_hmm = PairHHMM::new();
-        let p = pair_hmm.prob_related(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS, &emission_params, None);
+        let p = pair_hmm.prob_related(
+            &SINGLE_GAP_PARAMS,
+            &NO_HOP_PARAMS,
+            &emission_params,
+            &Global,
+            None,
+        );
 
         let n_matches = 17.;
         let n_deletions = 2.;
@@ -962,7 +996,13 @@ mod tests {
         let emission_params = TestEmissionParams { x, y };
 
         let mut pair_hmm = PairHHMM::new();
-        let p = pair_hmm.prob_related(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS, &emission_params, None);
+        let p = pair_hmm.prob_related(
+            &SINGLE_GAP_PARAMS,
+            &NO_HOP_PARAMS,
+            &emission_params,
+            &Global,
+            None,
+        );
 
         let n = x.len() as f64;
         let p_most_likely_path = TLogProb(
@@ -987,9 +1027,21 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         let gap_params = SemiglobalGapParams;
 
         let mut pair_hmm = PairHHMM::new();
-        let p = pair_hmm.prob_related(&gap_params, &NO_HOP_PARAMS, &emission_params, None);
+        let p = pair_hmm.prob_related(
+            &gap_params,
+            &NO_HOP_PARAMS,
+            &emission_params,
+            &Semiglobal,
+            None,
+        );
 
-        let p_banded = pair_hmm.prob_related(&gap_params, &NO_HOP_PARAMS, &emission_params, Some(2));
+        let p_banded = pair_hmm.prob_related(
+            &gap_params,
+            &NO_HOP_PARAMS,
+            &emission_params,
+            &Semiglobal,
+            Some(2),
+        );
 
         assert_relative_eq!(*p, *p_banded, epsilon = 1e-3);
     }
