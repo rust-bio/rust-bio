@@ -378,15 +378,16 @@ impl PairHHMM {
             v[prev][*state] = vec![TLogProb::zero(); len_y + 1];
         }
 
+        v[curr] = v[prev].clone();
+
         for &m in &MATCH_STATES {
             v[prev][m][0] = TLogProb::one() / 4.;
         }
-        v[curr] = v[prev].clone();
 
         for i in 0..len_x {
             if free_start_gap_x {
                 for &m in &MATCH_STATES {
-                    v[prev][m][0] += TLogProb::one();
+                    v[prev][m][0] += TLogProb::one() / 4.;
                 }
                 min_edit_dist[prev][0] = 0;
             }
@@ -430,8 +431,8 @@ impl PairHHMM {
                     * (MATCH_STATES
                         .iter()
                         .map(|&s| transition_probs[s >> GapY] * v[prev][s][j_])
-                        .sum::<TLogProb>()
-                        + transition_probs[GapY >> GapY] * v[prev][GapY][j_]);
+                        .sum::<TLogProb>())
+                    + transition_probs[GapY >> GapY] * v[prev][GapY][j_];
 
                 MATCH_HOP_Y.iter().for_each(|&(m, h)| {
                     v[curr][h][j_] = emission_params.prob_emit_x_and_hop(h, i)
@@ -443,8 +444,8 @@ impl PairHHMM {
                     * (MATCH_STATES
                         .iter()
                         .map(|&s| transition_probs[s >> GapX] * v[curr][s][j_minus_one])
-                        .sum::<TLogProb>()
-                        + transition_probs[GapX >> GapX] * v[curr][GapX][j_minus_one]);
+                        .sum::<TLogProb>())
+                    + transition_probs[GapX >> GapX] * v[curr][GapX][j_minus_one];
 
                 MATCH_HOP_X.iter().for_each(|&(m, h)| {
                     v[curr][h][j_] = emission_params.prob_emit_hop_and_y(h, j)
@@ -484,11 +485,9 @@ impl PairHHMM {
             mem::swap(&mut prev, &mut curr);
             for &s in &MATCH_STATES {
                 v[curr][s].reset(TLogProb::zero());
-                v[curr][s][0] = TLogProb::one() / 4.;
             }
         }
         if free_end_gap_x {
-            // TODO: use sum instead and implement Sum<TLogProb> trait
             prob_cols.iter().cloned().sum::<TLogProb>()
         } else {
             STATES
