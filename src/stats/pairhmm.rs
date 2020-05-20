@@ -456,7 +456,49 @@ mod tests {
     const T_GAP_Y: LogProb = LogProb(-12.186270018233994);
 
     #[test]
-    fn test_interleave_gaps() {
+    fn impossible_global_alignment() {
+        let x = b"AAA";
+        let y = b"A";
+        let emission_params = TestEmissionParams { x, y };
+
+        let mut pair_hmm = PairHMM::new();
+        let p = pair_hmm.prob_related(&TestSingleGapParams, &emission_params, None);
+        dbg!(p);
+        assert_eq!(p, LogProb::ln_zero());
+    }
+
+    #[test]
+    fn test_interleave_gaps_y() {
+        let x = b"ACGTACGTACGT";
+        let y = b"AGAGAG";
+
+        let emission_params = TestEmissionParams { x, y };
+        let gap_params = TestSingleGapParams;
+
+        let mut pair_hmm = PairHMM::new();
+        let p = pair_hmm.prob_related(&gap_params, &emission_params, None);
+
+        let n_matches = 6.;
+        let n_insertions = 6.;
+
+        let p_most_likely_path = LogProb(
+            *EMIT_MATCH * n_matches
+                + *T_MATCH * (n_matches - n_insertions)
+                + *EMIT_GAP_Y * n_insertions
+                + *T_GAP_Y * n_insertions
+                + (1. - *PROB_ILLUMINA_DEL).ln() * n_insertions,
+        );
+
+        let p_max = LogProb(*T_GAP_Y * n_insertions);
+
+        assert!(*p <= 0.0);
+        assert_relative_eq!(*p_most_likely_path, *p, epsilon = 0.01);
+        assert_relative_eq!(*p, *p_max, epsilon = 0.1);
+        assert!(*p <= *p_max);
+    }
+
+    #[test]
+    fn test_interleave_gaps_x() {
         let x = b"AGAGAG";
         let y = b"ACGTACGTACGT";
 

@@ -18,6 +18,9 @@ impl LogProb {
     pub fn exp(self) -> f64 {
         self.0.exp()
     }
+    pub fn fastexp(self) -> f64 {
+        self.0.fastexp()
+    }
 }
 
 impl From<Prob> for LogProb {
@@ -53,11 +56,21 @@ impl Add for LogProb {
     type Output = Self;
 
     fn add(self, other: Self) -> Self::Output {
-        let (mut x, mut y) = (self.0, other.0);
-        if x < y {
-            mem::swap(&mut x, &mut y)
-        };
-        LogProb(x + (y - x).fastexp().ln_1p())
+        if other == Self::zero() {
+            self
+        } else {
+            let (mut x, mut y) = (self.0, other.0);
+            if x < y {
+                mem::swap(&mut x, &mut y)
+            };
+            if x == f64::NEG_INFINITY {
+                Self::zero()
+            } else if x == f64::INFINITY {
+                LogProb(f64::INFINITY)
+            } else {
+                LogProb(x + (y - x).fastexp().ln_1p())
+            }
+        }
     }
 }
 
