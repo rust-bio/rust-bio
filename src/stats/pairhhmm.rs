@@ -287,8 +287,8 @@ fn build_transition_table<G: GapParameters, H: HopParameters>(
         .iter()
         .for_each(|(a, b)| transition_probs[*a >> *b] = (TLogProb::one() - prob_hop_y_extend) / 1.);
 
-    let match_same = (TLogProb::one() - (prob_gap_x + prob_gap_y + prob_hop_x + prob_hop_y)) / 1.;
-    let match_other = (TLogProb::one() - (prob_gap_x + prob_gap_y + prob_hop_x + prob_hop_y)) / 1.;
+    let match_same = (TLogProb::one() - (prob_gap_y + prob_gap_x + prob_hop_x + prob_hop_y)) / 1.;
+    let match_other = (TLogProb::one() - (prob_gap_y + prob_gap_x + prob_hop_x + prob_hop_y)) / 1.;
     MATCH_SAME_
         .iter()
         .for_each(|(a, b)| transition_probs[*a >> *b] = match_same);
@@ -298,21 +298,20 @@ fn build_transition_table<G: GapParameters, H: HopParameters>(
 
     MATCH_STATES
         .iter()
-        .for_each(|&a| transition_probs[a >> GapX] = prob_gap_x);
+        .for_each(|&a| transition_probs[a >> GapX] = prob_gap_y);
     MATCH_STATES
         .iter()
-        .for_each(|&a| transition_probs[a >> GapY] = prob_gap_y);
+        .for_each(|&a| transition_probs[a >> GapY] = prob_gap_x);
     MATCH_STATES
         .iter()
-        .for_each(|&b| transition_probs[GapX >> b] = (TLogProb::one() - prob_gap_x_extend) / 1.);
+        .for_each(|&b| transition_probs[GapX >> b] = (TLogProb::one() - prob_gap_y_extend) / 1.);
     MATCH_STATES
         .iter()
-        .for_each(|&b| transition_probs[GapY >> b] = (TLogProb::one() - prob_gap_y_extend) / 1.);
-    transition_probs[GapX >> GapX] = prob_gap_x_extend;
-    transition_probs[GapY >> GapY] = prob_gap_y_extend;
+        .for_each(|&b| transition_probs[GapY >> b] = (TLogProb::one() - prob_gap_x_extend) / 1.);
+    transition_probs[GapX >> GapX] = prob_gap_y_extend;
+    transition_probs[GapY >> GapY] = prob_gap_x_extend;
     transition_probs
 }
-
 
 pub enum AlignmentMode {
     Global,
