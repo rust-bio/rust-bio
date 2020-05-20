@@ -52,7 +52,11 @@ impl Add for LogProb {
     type Output = Self;
 
     fn add(self, other: Self) -> Self::Output {
-        LogProb((self.0.exp() + other.0.exp()).ln())
+        let (mut x, mut y) = (self.0, other.0);
+        if x < y {
+            mem::swap(&mut x, &mut y)
+        };
+        LogProb(x + (y - x).fastexp().ln_1p())
     }
 }
 
