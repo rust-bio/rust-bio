@@ -424,16 +424,14 @@ impl PairHHMM {
                         * STATES
                             .iter()
                             .map(|&s| transition_probs[s >> m] * v[prev][s][j_minus_one])
-                            .fold1(TLogProb::add)
-                            .unwrap();
+                            .sum::<TLogProb>();
                 }
 
                 v[curr][GapY][j_] = prob_emit_x_and_gap
                     * (MATCH_STATES
                         .iter()
                         .map(|&s| transition_probs[s >> GapY] * v[prev][s][j_])
-                        .fold1(TLogProb::add)
-                        .unwrap()
+                        .sum::<TLogProb>()
                         + transition_probs[GapY >> GapY] * v[prev][GapY][j_]);
 
                 MATCH_HOP_Y.iter().for_each(|&(m, h)| {
@@ -446,8 +444,7 @@ impl PairHHMM {
                     * (MATCH_STATES
                         .iter()
                         .map(|&s| transition_probs[s >> GapX] * v[curr][s][j_minus_one])
-                        .fold1(TLogProb::add)
-                        .unwrap()
+                        .sum::<TLogProb>()
                         + transition_probs[GapX >> GapX] * v[curr][GapX][j_minus_one]);
 
                 MATCH_HOP_X.iter().for_each(|&(m, h)| {
@@ -493,13 +490,12 @@ impl PairHHMM {
         }
         if free_end_gap_x {
             // TODO: use sum instead and implement Sum<TLogProb> trait
-            prob_cols.iter().cloned().fold1(TLogProb::add).unwrap()
+            prob_cols.iter().cloned().sum::<TLogProb>()
         } else {
             STATES
                 .iter()
                 .map(|&state| v[prev][state][len_y])
-                .fold1(TLogProb::add)
-                .unwrap()
+                .sum::<TLogProb>()
         }
     }
 }

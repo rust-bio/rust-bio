@@ -6,6 +6,7 @@ use num_traits::Pow;
 
 use crate::stats::Prob;
 use crate::utils::FastExp;
+use std::iter::Sum;
 
 const LOGPROB_ZERO: LogProb = LogProb(f64::NEG_INFINITY);
 const LOGPROB_ONE: LogProb = LogProb(0.0);
@@ -63,6 +64,45 @@ impl Add for LogProb {
 impl AddAssign for LogProb {
     fn add_assign(&mut self, other: LogProb) {
         *self = *self + other;
+    }
+}
+
+impl Sum<Self> for LogProb {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        let probs: Vec<LogProb> = iter.collect();
+        if probs.is_empty() {
+            LogProb::zero()
+        } else {
+            let mut pmax = probs[0];
+            let mut imax = 0;
+            for (i, &p) in probs.iter().enumerate().skip(1) {
+                if p > pmax {
+                    pmax = p;
+                    imax = i;
+                }
+            }
+            if pmax == Self::zero() {
+                Self::zero()
+            } else if *pmax == f64::INFINITY {
+                LogProb(f64::INFINITY)
+            } else {
+                LogProb(
+                    pmax.0
+                        + (probs
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(i, &p)| {
+                                if i == imax || p == Self::zero() {
+                                    None
+                                } else {
+                                    Some((p.0 - pmax.0).fastexp())
+                                }
+                            })
+                            .sum::<f64>())
+                        .ln_1p(),
+                )
+            }
+        }
     }
 }
 
