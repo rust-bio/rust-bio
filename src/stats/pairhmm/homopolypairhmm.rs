@@ -1,4 +1,5 @@
 // Copyright 2014-2016 Johannes Köster.
+// Copyright 2020 Till Hartmann.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -6,6 +7,8 @@
 //! A pair Hidden Markov Model for calculating the probability that two sequences are related to
 //! each other. Depending on the used parameters, this can, e.g., be used to calculate the
 //! probability that a certain sequencing read comes from a given position in a reference genome.
+//! In contrast to `PairHMM`, this `HomopolyPairHMM` takes into account homopolymer errors as
+//! often encountered e.g. in Oxford Nanopore Technologies sequencing.
 
 use std::cmp;
 use std::fmt::Debug;
@@ -23,21 +26,10 @@ use crate::stats::pairhmm::{GapParameters, StartEndGapParameters, XYEmission};
 use crate::stats::probs::LogProb;
 use crate::stats::Prob;
 
-/// Trait for parametrization of `PairHMM` gap behavior.
-pub trait HopParameters {
-    /// Probability to open gap in x.
-    fn prob_hop_x(&self) -> LogProb;
-
-    /// Probability to open gap in y.
-    fn prob_hop_y(&self) -> LogProb;
-
-    /// Probability to extend gap in x.
-    fn prob_hop_x_extend(&self) -> LogProb;
-
-    /// Probability to extend gap in y.
-    fn prob_hop_y_extend(&self) -> LogProb;
-}
-
+/// The HomopolyPairHMM defined in this module has one Match state for each character from [A, C, G, T],
+/// for each of those Match states two corresponding Hop (homopolymer run) states
+/// (one for a run in sequence `x`, one for a run in `y`),
+/// as well as the usual GapX and GapY states.
 #[derive(Eq, PartialEq, Debug, Enum, Clone, Copy)]
 #[repr(usize)]
 pub enum State {
@@ -66,20 +58,9 @@ const MATCH_STATES: [State; 4] = [MatchA, MatchC, MatchG, MatchT];
 const HOP_X_STATES: [State; 4] = [HopAX, HopCX, HopGX, HopTX];
 const HOP_Y_STATES: [State; 4] = [HopAY, HopCY, HopGY, HopTY];
 
-fn space_bits(a: u32) -> u64 {
-    let mut x = a as u64 & 0x0000_0000_FFFF_FFFF;
-    x = (x | (x << 16)) & 0x0000_FFFF_0000_FFFF;
-    x = (x | (x << 8)) & 0x00FF_00FF_00FF_00FF;
-    x = (x | (x << 4)) & 0x0F0F_0F0F_0F0F_0F0F;
-    x = (x | (x << 2)) & 0x3333_3333_3333_3333;
-    x = (x | (x << 1)) & 0x5555_5555_5555_5555;
-    x
-}
-
-pub fn interleave_bits(a: u32, b: u32) -> u64 {
-    space_bits(a) << 1 | space_bits(b)
-}
-
+// We define Shr (>>) for `State` such that a transition from State `a` to State `b` can be modeled
+// as `a >> b`, where `a >> b` is an integer in `0..(1 << (2 * NUM_STATES)) - 1]` used for indexing
+// the transition table (see `build_transition_table`).
 impl Shr for State {
     type Output = usize;
 
@@ -90,7 +71,36 @@ impl Shr for State {
     }
 }
 
-/// Trait for parametrization of `PairHMM` emission behavior.
+fn space_bits(a: u32) -> u64 {
+    let mut x = a as u64 & 0x0000_0000_FFFF_FFFF;
+    x = (x | (x << 16)) & 0x0000_FFFF_0000_FFFF;
+    x = (x | (x << 8)) & 0x00FF_00FF_00FF_00FF;
+    x = (x | (x << 4)) & 0x0F0F_0F0F_0F0F_0F0F;
+    x = (x | (x << 2)) & 0x3333_3333_3333_3333;
+    x = (x | (x << 1)) & 0x5555_5555_5555_5555;
+    x
+}
+
+fn interleave_bits(a: u32, b: u32) -> u64 {
+    space_bits(a) << 1 | space_bits(b)
+}
+
+/// Trait for parametrization of `PairHMM` hop behavior.
+pub trait HopParameters {
+    /// Probability to start hop in x.
+    fn prob_hop_x(&self) -> LogProb;
+
+    /// Probability to start hop in y.
+    fn prob_hop_y(&self) -> LogProb;
+
+    /// Probability to extend hop in x.
+    fn prob_hop_x_extend(&self) -> LogProb;
+
+    /// Probability to extend hop in y.
+    fn prob_hop_y_extend(&self) -> LogProb;
+}
+
+/// Trait for parametrization of `HomopolyPairHMM` emission behavior.
 pub trait EmissionParameters {
     /// Emission probability for (x[i], y[j]).
     /// Returns one of the enum variants Match(prob) or Mismatch(prob)
@@ -102,10 +112,10 @@ pub trait EmissionParameters {
     /// Emission probability for (-, y[j]).
     fn prob_emit_gap_and_y(&self, s: State, j: usize) -> LogProb;
 
-    /// Emission probability for (x[i], ~).
+    /// Emission probability for (x[i], +).
     fn prob_emit_x_and_hop(&self, s: State, i: usize) -> LogProb;
 
-    /// Emission probability for (~, y[j]).
+    /// Emission probability for (+, y[j]).
     fn prob_emit_hop_and_y(&self, s: State, j: usize) -> LogProb;
 
     fn len_x(&self) -> usize;
@@ -113,14 +123,194 @@ pub trait EmissionParameters {
     fn len_y(&self) -> usize;
 }
 
-trait Reset<T: Copy> {
-    fn reset(&mut self, value: T);
+/// A pair Hidden Markov Model for comparing sequences x and y as described by
+/// Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence Analysis.
+/// Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
+/// The default model has been extended to consider homopolymer errors, at the cost of more states
+/// and transitions.
+#[derive(Debug, Clone)]
+pub struct HomopolyPairHMM {
+    transition_probs: Vec<LogProb>,
 }
 
-impl<T: Copy> Reset<T> for [T] {
-    fn reset(&mut self, value: T) {
-        for v in self {
-            *v = value;
+impl HomopolyPairHMM {
+    /// Create a new instance of a HomopolyPairHMM.
+    /// # Arguments
+    ///
+    /// * `gap_params` - parameters for opening or extending gaps
+    /// * `hop_params` - parameters for opening or extending hops
+    pub fn new<G, H>(gap_params: &G, hop_params: &H) -> Self
+    where
+        G: GapParameters,
+        H: HopParameters,
+    {
+        Self {
+            transition_probs: build_transition_table(gap_params, hop_params),
+        }
+    }
+
+    /// Calculate the probability of sequence x being related to y via any alignment.
+    ///
+    /// # Arguments
+    ///
+    /// * `emission_params` - parameters for emission
+    /// * `alignment_mode` - parameters for free end/start gaps
+    /// * `max_edit_dist` - maximum edit distance to consider; if not `None`, perform banded alignment
+    pub fn prob_related<E, A>(
+        &self,
+        emission_params: &E,
+        alignment_mode: &A,
+        max_edit_dist: Option<usize>,
+    ) -> LogProb
+    where
+        E: EmissionParameters,
+        A: StartEndGapParameters,
+    {
+        let mut prev = 0;
+        let mut curr = 1;
+        let mut v: [EnumMap<State, Vec<LogProb>>; 2] = [EnumMap::new(), EnumMap::new()];
+        let transition_probs = &self.transition_probs;
+
+        let len_y = emission_params.len_y();
+        let len_x = emission_params.len_x();
+        let mut min_edit_dist: [Vec<usize>; 2] =
+            [vec![usize::MAX; len_y + 1], vec![usize::MAX; len_y + 1]];
+        let free_end_gap_x = alignment_mode.free_end_gap_x();
+        let free_start_gap_x = alignment_mode.free_start_gap_x();
+
+        let mut prob_cols = Vec::with_capacity(len_x * STATES.len());
+
+        for state in &STATES {
+            v[prev][*state] = vec![LogProb::zero(); len_y + 1];
+        }
+
+        v[curr] = v[prev].clone();
+
+        for &m in &MATCH_STATES {
+            v[prev][m][0] = LogProb::from(Prob(1. / 4.));
+        }
+
+        for i in 0..len_x {
+            if free_start_gap_x {
+                let prob_start_gap_x = LogProb(*alignment_mode.prob_start_gap_x(i) - 4.);
+                for &m in &MATCH_STATES {
+                    v[prev][m][0] = v[prev][m][0].ln_add_exp(prob_start_gap_x);
+                }
+                min_edit_dist[prev][0] = 0;
+            }
+
+            // cache probs for x[i]
+            let prob_emit_x_and_gap = emission_params.prob_emit_x_and_gap(GapY, i);
+            let mut probs_emit_x_and_hop: EnumMap<State, LogProb> = EnumMap::new();
+            HOP_Y_STATES
+                .iter()
+                .for_each(|&h| probs_emit_x_and_hop[h] = emission_params.prob_emit_x_and_hop(h, i));
+
+            for j in 0..len_y {
+                let j_ = j + 1;
+                let j_minus_one = j_ - 1;
+
+                let min_edit_dist_topleft = min_edit_dist[prev][j_minus_one];
+                let min_edit_dist_top = min_edit_dist[curr][j_minus_one];
+                let min_edit_dist_left = min_edit_dist[prev][j_];
+
+                if let Some(max_edit_dist) = max_edit_dist {
+                    if min3(min_edit_dist_topleft, min_edit_dist_top, min_edit_dist_left)
+                        > max_edit_dist
+                    {
+                        // skip this cell if best edit dist is already larger than given maximum
+                        continue;
+                    }
+                }
+
+                let mut any_match = false;
+                for &m in &MATCH_STATES {
+                    let emission = emission_params.prob_emit_x_and_y(m, i, j);
+                    any_match |= emission.is_match();
+                    v[curr][m][j_] = emission.prob()
+                        + LogProb::ln_sum_exp(
+                            &STATES
+                                .iter()
+                                .map(|&s| transition_probs[s >> m] + v[prev][s][j_minus_one])
+                                .collect_vec(),
+                        );
+                }
+
+                v[curr][GapY][j_] = prob_emit_x_and_gap
+                    + LogProb::ln_sum_exp(
+                        &MATCH_STATES
+                            .iter()
+                            .map(|&s| transition_probs[s >> GapY] + v[prev][s][j_])
+                            .chain(once(transition_probs[GapY >> GapY] + v[prev][GapY][j_]))
+                            .collect_vec(),
+                    );
+
+                MATCH_HOP_Y.iter().for_each(|&(m, h)| {
+                    v[curr][h][j_] = probs_emit_x_and_hop[h]
+                        + ((transition_probs[m >> h] + v[prev][m][j_])
+                            .ln_add_exp(transition_probs[h >> h] + v[prev][h][j_]))
+                });
+
+                v[curr][GapX][j_] = emission_params.prob_emit_gap_and_y(GapX, j)
+                    + LogProb::ln_sum_exp(
+                        &MATCH_STATES
+                            .iter()
+                            .map(|&s| transition_probs[s >> GapX] + v[curr][s][j_minus_one])
+                            .chain(once(
+                                transition_probs[GapX >> GapX] + v[curr][GapX][j_minus_one],
+                            ))
+                            .collect_vec(),
+                    );
+
+                MATCH_HOP_X.iter().for_each(|&(m, h)| {
+                    v[curr][h][j_] = emission_params.prob_emit_hop_and_y(h, j)
+                        + ((transition_probs[m >> h] + v[curr][m][j_minus_one])
+                            .ln_add_exp(transition_probs[h >> h] + v[curr][h][j_minus_one]))
+                });
+
+                // calculate minimal number of mismatches
+                if max_edit_dist.is_some() {
+                    min_edit_dist[curr][j_] = min3(
+                        if any_match {
+                            // a match, so nothing changes
+                            min_edit_dist_topleft
+                        } else {
+                            // one new mismatch
+                            min_edit_dist_topleft.saturating_add(1)
+                        },
+                        // gap or hop in y (no new mismatch)
+                        min_edit_dist_left.saturating_add(1),
+                        // gap or hop in x (no new mismatch)
+                        min_edit_dist_top.saturating_add(1),
+                    )
+                };
+
+                if free_end_gap_x {
+                    // Cache column probabilities or simply record the last probability.
+                    // We can put all of them in one array since we simply have to sum in the end.
+                    // This is also good for numerical stability.
+                    prob_cols.extend(MATCH_STATES.iter().map(|&s| v[curr][s][len_y]));
+                    prob_cols.extend(HOP_Y_STATES.iter().map(|&s| v[curr][s][len_y]));
+                    prob_cols.extend(HOP_X_STATES.iter().map(|&s| v[curr][s][len_y]));
+                    prob_cols.push(v[curr][GapY][len_y]);
+                    // TODO check removing this (we don't want open gaps in x):
+                    prob_cols.push(v[curr][GapX][len_y]);
+                }
+            }
+            mem::swap(&mut prev, &mut curr);
+            for &s in &MATCH_STATES {
+                v[curr][s].reset(LogProb::zero());
+            }
+        }
+        if free_end_gap_x {
+            LogProb::ln_sum_exp(&prob_cols.iter().cloned().collect_vec())
+        } else {
+            LogProb::ln_sum_exp(
+                &STATES
+                    .iter()
+                    .map(|&state| v[prev][state][len_y])
+                    .collect_vec(),
+            )
         }
     }
 }
@@ -272,6 +462,18 @@ fn build_transition_table<G: GapParameters, H: HopParameters>(
     transition_probs
 }
 
+trait Reset<T: Copy> {
+    fn reset(&mut self, value: T);
+}
+
+impl<T: Copy> Reset<T> for [T] {
+    fn reset(&mut self, value: T) {
+        for v in self {
+            *v = value;
+        }
+    }
+}
+
 pub enum AlignmentMode {
     Global,
     Semiglobal,
@@ -289,196 +491,6 @@ impl StartEndGapParameters for AlignmentMode {
         match self {
             AlignmentMode::Semiglobal => true,
             AlignmentMode::Global => false,
-        }
-    }
-}
-
-/// A pair Hidden Markov Model for comparing sequences x and y as described by
-/// Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence Analysis.
-/// Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
-#[derive(Debug, Clone)]
-pub struct HomopolyPairHMM {
-    transition_probs: Vec<LogProb>,
-}
-
-impl HomopolyPairHMM {
-    /// Create a new instance of a PairHMM with homopolymer states
-    /// # Arguments
-    ///
-    /// * `gap_params` - parameters for opening or extending gaps
-    /// * `hop_params` - parameters for opening or extending hops
-    pub fn new<G, H>(gap_params: &G, hop_params: &H) -> Self
-    where
-        G: GapParameters,
-        H: HopParameters,
-    {
-        Self {
-            transition_probs: build_transition_table(gap_params, hop_params),
-        }
-    }
-
-    /// Calculate the probability of sequence x being related to y via any alignment.
-    ///
-    /// # Arguments
-    ///
-    /// * `emission_params` - parameters for emission
-    /// * `alignment_mode` - parameters for free end/start gaps
-    /// * `max_edit_dist` - maximum edit distance to consider; if not `None`, perform banded alignment
-    pub fn prob_related<E, A>(
-        &self,
-        emission_params: &E,
-        alignment_mode: &A,
-        max_edit_dist: Option<usize>,
-    ) -> LogProb
-    where
-        E: EmissionParameters,
-        A: StartEndGapParameters,
-    {
-        let mut prev = 0;
-        let mut curr = 1;
-        let mut v: [EnumMap<State, Vec<LogProb>>; 2] = [EnumMap::new(), EnumMap::new()];
-        let transition_probs = &self.transition_probs;
-
-        let len_y = emission_params.len_y();
-        let len_x = emission_params.len_x();
-        let mut min_edit_dist: [Vec<usize>; 2] =
-            [vec![usize::MAX; len_y + 1], vec![usize::MAX; len_y + 1]];
-        let free_end_gap_x = alignment_mode.free_end_gap_x();
-        let free_start_gap_x = alignment_mode.free_start_gap_x();
-
-        let mut prob_cols = Vec::with_capacity(len_x * STATES.len());
-
-        for state in &STATES {
-            v[prev][*state] = vec![LogProb::zero(); len_y + 1];
-        }
-
-        v[curr] = v[prev].clone();
-
-        for &m in &MATCH_STATES {
-            v[prev][m][0] = LogProb::from(Prob(1. / 4.));
-        }
-
-        for i in 0..len_x {
-            if free_start_gap_x {
-                let prob_start_gap_x = LogProb(*alignment_mode.prob_start_gap_x(i) - 4.);
-                for &m in &MATCH_STATES {
-                    v[prev][m][0] = v[prev][m][0].ln_add_exp(prob_start_gap_x);
-                }
-                min_edit_dist[prev][0] = 0;
-            }
-
-            // cache probs for x[i]
-            let prob_emit_x_and_gap = emission_params.prob_emit_x_and_gap(GapY, i);
-            // let probs_emit_x_and_hop: SmallVec<[LogProb; 4]> = HOP_Y_STATES
-            //     .iter()
-            //     .map(|&h| emission_params.prob_emit_x_and_hop(h, i))
-            //     .collect();
-
-            for j in 0..len_y {
-                let j_ = j + 1;
-                let j_minus_one = j_ - 1;
-
-                let min_edit_dist_topleft = min_edit_dist[prev][j_minus_one];
-                let min_edit_dist_top = min_edit_dist[curr][j_minus_one];
-                let min_edit_dist_left = min_edit_dist[prev][j_];
-
-                if let Some(max_edit_dist) = max_edit_dist {
-                    if min3(min_edit_dist_topleft, min_edit_dist_top, min_edit_dist_left)
-                        > max_edit_dist
-                    {
-                        // skip this cell if best edit dist is already larger than given maximum
-                        continue;
-                    }
-                }
-
-                let mut any_match = false;
-                for &m in &MATCH_STATES {
-                    let emission = emission_params.prob_emit_x_and_y(m, i, j);
-                    any_match |= emission.is_match();
-                    v[curr][m][j_] = emission.prob()
-                        + LogProb::ln_sum_exp(
-                            &STATES
-                                .iter()
-                                .map(|&s| transition_probs[s >> m] + v[prev][s][j_minus_one])
-                                .collect_vec(),
-                        );
-                }
-
-                v[curr][GapY][j_] = prob_emit_x_and_gap
-                    + LogProb::ln_sum_exp(
-                        &MATCH_STATES
-                            .iter()
-                            .map(|&s| transition_probs[s >> GapY] + v[prev][s][j_])
-                            .chain(once(transition_probs[GapY >> GapY] + v[prev][GapY][j_]))
-                            .collect_vec(),
-                    );
-
-                MATCH_HOP_Y.iter().for_each(|&(m, h)| {
-                    v[curr][h][j_] = emission_params.prob_emit_x_and_hop(h, i)
-                        + ((transition_probs[m >> h] + v[prev][m][j_])
-                            .ln_add_exp(transition_probs[h >> h] + v[prev][h][j_]))
-                });
-
-                v[curr][GapX][j_] = emission_params.prob_emit_gap_and_y(GapX, j)
-                    + LogProb::ln_sum_exp(
-                        &MATCH_STATES
-                            .iter()
-                            .map(|&s| transition_probs[s >> GapX] + v[curr][s][j_minus_one])
-                            .chain(once(
-                                transition_probs[GapX >> GapX] + v[curr][GapX][j_minus_one],
-                            ))
-                            .collect_vec(),
-                    );
-
-                MATCH_HOP_X.iter().for_each(|&(m, h)| {
-                    v[curr][h][j_] = emission_params.prob_emit_hop_and_y(h, j)
-                        + ((transition_probs[m >> h] + v[curr][m][j_minus_one])
-                            .ln_add_exp(transition_probs[h >> h] + v[curr][h][j_minus_one]))
-                });
-
-                // calculate minimal number of mismatches
-                if max_edit_dist.is_some() {
-                    min_edit_dist[curr][j_] = min3(
-                        if any_match {
-                            // a match, so nothing changes
-                            min_edit_dist_topleft
-                        } else {
-                            // one new mismatch
-                            min_edit_dist_topleft.saturating_add(1)
-                        },
-                        // gap or hop in y (no new mismatch)
-                        min_edit_dist_left.saturating_add(1),
-                        // gap or hop in x (no new mismatch)
-                        min_edit_dist_top.saturating_add(1),
-                    )
-                };
-
-                if free_end_gap_x {
-                    // Cache column probabilities or simply record the last probability.
-                    // We can put all of them in one array since we simply have to sum in the end.
-                    // This is also good for numerical stability.
-                    prob_cols.extend(MATCH_STATES.iter().map(|&s| v[curr][s][len_y]));
-                    prob_cols.extend(HOP_Y_STATES.iter().map(|&s| v[curr][s][len_y]));
-                    prob_cols.extend(HOP_X_STATES.iter().map(|&s| v[curr][s][len_y]));
-                    prob_cols.push(v[curr][GapY][len_y]);
-                    // TODO check removing this (we don't want open gaps in x):
-                    prob_cols.push(v[curr][GapX][len_y]);
-                }
-            }
-            mem::swap(&mut prev, &mut curr);
-            for &s in &MATCH_STATES {
-                v[curr][s].reset(LogProb::zero());
-            }
-        }
-        if free_end_gap_x {
-            LogProb::ln_sum_exp(&prob_cols.iter().cloned().collect_vec())
-        } else {
-            LogProb::ln_sum_exp(
-                &STATES
-                    .iter()
-                    .map(|&state| v[prev][state][len_y])
-                    .collect_vec(),
-            )
         }
     }
 }
@@ -754,18 +766,17 @@ mod tests {
         let emission_params = TestEmissionParams { x, y };
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
-        let p = pair_hmm.prob_related(
-            &emission_params,
-            &Global,
-            None,
-        );
+        let p = pair_hmm.prob_related(&emission_params, &Global, None);
         assert_eq!(p, LogProb::zero());
     }
-    lazy_static!(
-        static ref SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM = HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
-        static ref EXTEND_GAPS_NO_HOPS_PHMM: HomopolyPairHMM = HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &NO_HOP_PARAMS);
-        static ref NO_GAPS_WITH_HOPS_PHMM: HomopolyPairHMM = HomopolyPairHMM::new(&NO_GAP_PARAMS, &TestHopParams);
-    );
+    lazy_static! {
+        static ref SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
+        static ref EXTEND_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &NO_HOP_PARAMS);
+        static ref NO_GAPS_WITH_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&NO_GAP_PARAMS, &TestHopParams);
+    }
 
     #[test]
     fn test_hompolymer_run_in_y() {
@@ -829,11 +840,7 @@ mod tests {
         let emission_params = TestEmissionParams { x, y };
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
-        let p = pair_hmm.prob_related(
-            &emission_params,
-            &Global,
-            None,
-        );
+        let p = pair_hmm.prob_related(&emission_params, &Global, None);
 
         let n_matches = 6.;
         let n_insertions = 6.;
@@ -861,12 +868,8 @@ mod tests {
 
         let emission_params = TestEmissionParams { x, y };
 
-        let pair_hmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
-        let p = pair_hmm.prob_related(
-            &emission_params,
-            &Global,
-            None,
-        );
+        let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
+        let p = pair_hmm.prob_related(&emission_params, &Global, None);
 
         let n_matches = 6.;
         let n_insertions = 6.;
@@ -897,12 +900,8 @@ mod tests {
         let y = b"AGCTCGATCGATCGATC";
         let emission_params = TestEmissionParams { x, y };
 
-        let pair_hmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
-        let p = pair_hmm.prob_related(
-            &emission_params,
-            &Global,
-            None,
-        );
+        let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
+        let p = pair_hmm.prob_related(&emission_params, &Global, None);
         let n = x.len() as f64;
         let p_most_likely_path = LogProb(*EMIT_MATCH * n + *T_MATCH_TO_MATCH * (n - 1.));
         let p_max = LogProb(*EMIT_MATCH * n);
@@ -918,12 +917,8 @@ mod tests {
         let y = b"AGCTCGATCTGATCGATCT";
         let emission_params = TestEmissionParams { x, y };
 
-        let pair_hmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
-        let p = pair_hmm.prob_related(
-            &emission_params,
-            &Global,
-            None,
-        );
+        let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
+        let p = pair_hmm.prob_related(&emission_params, &Global, None);
 
         let n_matches = 17.;
         let n_insertions = 2.;
@@ -949,12 +944,8 @@ mod tests {
         let y = b"ACAGTCA";
         let emission_params = TestEmissionParams { x, y };
 
-        let pair_hmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
-        let p = pair_hmm.prob_related(
-            &emission_params,
-            &Global,
-            None,
-        );
+        let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
+        let p = pair_hmm.prob_related(&emission_params, &Global, None);
 
         let n_matches = 6.;
         let n_insertions = 1.;
@@ -980,12 +971,8 @@ mod tests {
         let y = b"AGCTCGATCGATCGATC";
         let emission_params = TestEmissionParams { x, y };
 
-        let pair_hmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
-        let p = pair_hmm.prob_related(
-            &emission_params,
-            &Global,
-            None,
-        );
+        let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
+        let p = pair_hmm.prob_related(&emission_params, &Global, None);
 
         let n_matches = 17.;
         let n_deletions = 2.;
@@ -1012,12 +999,8 @@ mod tests {
         let y = b"AGCTTCTGATCGATCT";
         let emission_params = TestEmissionParams { x, y };
 
-        let pair_hmm =  &EXTEND_GAPS_NO_HOPS_PHMM;
-        let p = pair_hmm.prob_related(
-            &emission_params,
-            &Global,
-            None,
-        );
+        let pair_hmm = &EXTEND_GAPS_NO_HOPS_PHMM;
+        let p = pair_hmm.prob_related(&emission_params, &Global, None);
         let n_matches = 16.;
         let n_consecutive_deletions = 3.;
         let p_most_likely_path = LogProb(
@@ -1039,12 +1022,8 @@ mod tests {
         let y = b"TGCTCGATCGATCGATC";
         let emission_params = TestEmissionParams { x, y };
 
-        let pair_hmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
-        let p = pair_hmm.prob_related(
-            &emission_params,
-            &Global,
-            None,
-        );
+        let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
+        let p = pair_hmm.prob_related(&emission_params, &Global, None);
 
         let n = x.len() as f64;
         let p_most_likely_path = LogProb(
@@ -1070,17 +1049,9 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         let emission_params = TestEmissionParams { x, y };
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
-        let p = pair_hmm.prob_related(
-            &emission_params,
-            &Semiglobal,
-            None,
-        );
+        let p = pair_hmm.prob_related(&emission_params, &Semiglobal, None);
 
-        let p_banded = pair_hmm.prob_related(
-            &emission_params,
-            &Semiglobal,
-            Some(2),
-        );
+        let p_banded = pair_hmm.prob_related(&emission_params, &Semiglobal, Some(2));
         assert_relative_eq!(*p, *p_banded, epsilon = 1e-3);
     }
 
@@ -1090,12 +1061,8 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         let y = b"ACGTACGTC";
         let emission_params = TestEmissionParams { x, y };
 
-        let pair_hhmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
-        let p1 = pair_hhmm.prob_related(
-            &emission_params,
-            &Global,
-            None,
-        );
+        let pair_hhmm = &SINGLE_GAPS_NO_HOPS_PHMM;
+        let p1 = pair_hhmm.prob_related(&emission_params, &Global, None);
 
         let mut pair_hmm = PairHMM::new();
 
