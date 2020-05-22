@@ -4,6 +4,7 @@ use std::ops::{Add, AddAssign, Deref, Div, Mul, Sub};
 use num_traits::identities::{One, Zero};
 use num_traits::Pow;
 
+use crate::stats::probs::ln_1m_exp;
 use crate::stats::Prob;
 use crate::utils::FastExp;
 use std::iter::Sum;
@@ -123,14 +124,25 @@ impl Sub for LogProb {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self::Output {
-        if other.is_zero() {
+        if other == Self::zero() {
             self
-        } else if self.is_zero() {
-            LogProb(-other.0.exp())
-        } else if self.0 - other.0 <= f64::EPSILON {
-            LogProb::zero()
         } else {
-            LogProb((self.0.exp() - other.0.exp()).ln())
+            let (p0, p1) = (self, other);
+            assert!(
+                *p0 >= *p1,
+                "Subtraction would lead to negative probability, which is undefined in log space."
+            );
+            if p1.is_zero() {
+                p0
+            } else if relative_eq!(*p0, *p1) || p0.is_zero() {
+                // the first case leads to zero,
+                // in the second case p0 and p1 are -inf, which is fine
+                Self::zero()
+            } else if *p0 == f64::INFINITY {
+                LogProb(f64::INFINITY)
+            } else {
+                LogProb(*p0 + ln_1m_exp(*p1 - *p0))
+            }
         }
     }
 }
