@@ -403,7 +403,6 @@ mod tests {
 
         let mut pair_hmm = PairHMM::new();
         let p = pair_hmm.prob_related(&TestSingleGapParams, &emission_params, None);
-        dbg!(p);
         assert_eq!(p, LogProb::ln_zero());
     }
 
