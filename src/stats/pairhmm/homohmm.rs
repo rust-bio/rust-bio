@@ -10,91 +10,32 @@
 use std::cmp;
 use std::fmt::Debug;
 use std::mem;
-use std::ops::{Add, AddAssign, Div, Mul, Shr, Sub};
 use std::usize;
 
 use enum_map::{Enum, EnumMap};
 use itertools::Itertools;
-use num_traits::{One, Zero};
+use num_traits::Zero;
 
-use crate::stats::pairhhmm::State::*;
-use crate::stats::probs::TLogProb;
-
-/// Trait for parametrization of `PairHMM` gap behavior.
-pub trait GapParameters {
-    /// Probability to open gap in x.
-    fn prob_gap_x(&self) -> TLogProb;
-
-    /// Probability to open gap in y.
-    fn prob_gap_y(&self) -> TLogProb;
-
-    /// Probability to extend gap in x.
-    fn prob_gap_x_extend(&self) -> TLogProb;
-
-    /// Probability to extend gap in y.
-    fn prob_gap_y_extend(&self) -> TLogProb;
-}
+use crate::stats::pairhmm::homohmm::State::*;
+use crate::stats::pairhmm::{GapParameters, StartEndGapParameters, XYEmission};
+use crate::stats::probs::LogProb;
+use crate::stats::Prob;
+use std::iter::once;
+use std::ops::Shr;
 
 /// Trait for parametrization of `PairHMM` gap behavior.
 pub trait HopParameters {
     /// Probability to open gap in x.
-    fn prob_hop_x(&self) -> TLogProb;
+    fn prob_hop_x(&self) -> LogProb;
 
     /// Probability to open gap in y.
-    fn prob_hop_y(&self) -> TLogProb;
+    fn prob_hop_y(&self) -> LogProb;
 
     /// Probability to extend gap in x.
-    fn prob_hop_x_extend(&self) -> TLogProb;
+    fn prob_hop_x_extend(&self) -> LogProb;
 
     /// Probability to extend gap in y.
-    fn prob_hop_y_extend(&self) -> TLogProb;
-}
-
-/// Trait for parametrization of `PairHMM` start and end gap behavior.
-/// This trait can be used to implement global and semiglobal alignments.
-///
-/// * global: methods return `false` and `TLogProb::ln_zero()`.
-/// * semiglobal: methods return `true` and `TLogProb::ln_one()`.
-pub trait StartEndGapParameters {
-    /// Probability to start at x[i]. This can be left unchanged if you use `free_start_gap_x` and
-    /// `free_end_gap_x`.
-    #[inline]
-    #[allow(unused_variables)]
-    fn prob_start_gap_x(&self, i: usize) -> TLogProb {
-        if self.free_start_gap_x() {
-            TLogProb::one()
-        } else {
-            // For global alignment, this has to return 0.0.
-            TLogProb::zero()
-        }
-    }
-
-    /// Allow free start gap in x.
-    fn free_start_gap_x(&self) -> bool;
-
-    /// Allow free end gap in x.
-    fn free_end_gap_x(&self) -> bool;
-}
-
-pub enum XYEmission {
-    Match(TLogProb),
-    Mismatch(TLogProb),
-}
-
-impl XYEmission {
-    pub fn prob(&self) -> TLogProb {
-        match self {
-            &XYEmission::Match(p) => p,
-            &XYEmission::Mismatch(p) => p,
-        }
-    }
-
-    pub fn is_match(&self) -> bool {
-        match self {
-            &XYEmission::Match(_) => true,
-            &XYEmission::Mismatch(_) => false,
-        }
-    }
+    fn prob_hop_y_extend(&self) -> LogProb;
 }
 
 #[derive(Eq, PartialEq, Debug, Enum, Clone, Copy)]
@@ -152,43 +93,27 @@ impl Shr for State {
 /// Trait for parametrization of `PairHMM` emission behavior.
 pub trait EmissionParameters {
     /// Emission probability for (x[i], y[j]).
-    /// Returns a tuple with probability and a boolean indicating whether emissions match
-    /// (e.g., are the same DNA alphabet letter).
+    /// Returns one of the enum variants Match(prob) or Mismatch(prob)
     fn prob_emit_x_and_y(&self, s: State, i: usize, j: usize) -> XYEmission;
 
     /// Emission probability for (x[i], -).
-    fn prob_emit_x_and_gap(&self, s: State, i: usize) -> TLogProb;
+    fn prob_emit_x_and_gap(&self, s: State, i: usize) -> LogProb;
 
     /// Emission probability for (-, y[j]).
-    fn prob_emit_gap_and_y(&self, s: State, j: usize) -> TLogProb;
+    fn prob_emit_gap_and_y(&self, s: State, j: usize) -> LogProb;
 
-    /// Emission probability for (x[i], -).
-    fn prob_emit_x_and_hop(&self, s: State, i: usize) -> TLogProb;
+    /// Emission probability for (x[i], ~).
+    fn prob_emit_x_and_hop(&self, s: State, i: usize) -> LogProb;
 
-    /// Emission probability for (-, y[j]).
-    fn prob_emit_hop_and_y(&self, s: State, j: usize) -> TLogProb;
+    /// Emission probability for (~, y[j]).
+    fn prob_emit_hop_and_y(&self, s: State, j: usize) -> LogProb;
 
     fn len_x(&self) -> usize;
 
     fn len_y(&self) -> usize;
 }
 
-trait Pr:
-    Add<Output = Self>
-    + AddAssign<Self>
-    + Sub<Output = Self>
-    + Mul<Output = Self>
-    + Div<Output = Self>
-    + Div<f64, Output = Self>
-    + One
-    + Zero
-    + Clone
-    + Copy
-    + Debug
-{
-}
-
-pub trait Reset<T: Copy> {
+trait Reset<T: Copy> {
     fn reset(&mut self, value: T);
 }
 
@@ -204,7 +129,7 @@ impl<T: Copy> Reset<T> for [T] {
 /// Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence Analysis.
 /// Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
 #[derive(Debug, Clone)]
-pub struct PairHHMM {}
+pub struct HomoHMM {}
 
 lazy_static! {
     static ref MATCH_HOP_X: Vec<(State, State)> = MATCH_STATES
@@ -253,10 +178,10 @@ lazy_static! {
 fn build_transition_table<G: GapParameters, H: HopParameters>(
     gap_params: &G,
     hop_params: &H,
-) -> Vec<TLogProb> {
+) -> Vec<LogProb> {
     let n = STATES.len();
     let max_pair_label = (1 << (2 * n)) - 1;
-    let mut transition_probs = vec![TLogProb::zero(); max_pair_label];
+    let mut transition_probs = vec![LogProb::zero(); max_pair_label];
 
     let prob_hop_x = hop_params.prob_hop_x();
     let prob_hop_y = hop_params.prob_hop_y();
@@ -282,13 +207,15 @@ fn build_transition_table<G: GapParameters, H: HopParameters>(
         .for_each(|(a, b)| transition_probs[*a >> *b] = prob_hop_y_extend);
     HOP_X_MATCH
         .iter()
-        .for_each(|(a, b)| transition_probs[*a >> *b] = (TLogProb::one() - prob_hop_x_extend) / 1.);
+        .for_each(|(a, b)| transition_probs[*a >> *b] = prob_hop_x_extend.ln_one_minus_exp());
     HOP_Y_MATCH
         .iter()
-        .for_each(|(a, b)| transition_probs[*a >> *b] = (TLogProb::one() - prob_hop_y_extend) / 1.);
+        .for_each(|(a, b)| transition_probs[*a >> *b] = prob_hop_y_extend.ln_one_minus_exp());
 
-    let match_same = (TLogProb::one() - (prob_gap_y + prob_gap_x + prob_hop_x + prob_hop_y)) / 1.;
-    let match_other = (TLogProb::one() - (prob_gap_y + prob_gap_x + prob_hop_x + prob_hop_y)) / 1.;
+    let match_same =
+        LogProb::ln_sum_exp(&[prob_gap_y, prob_gap_x, prob_hop_x, prob_hop_y]).ln_one_minus_exp();
+    let match_other =
+        LogProb::ln_sum_exp(&[prob_gap_y, prob_gap_x, prob_hop_x, prob_hop_y]).ln_one_minus_exp();
     MATCH_SAME_
         .iter()
         .for_each(|(a, b)| transition_probs[*a >> *b] = match_same);
@@ -304,10 +231,10 @@ fn build_transition_table<G: GapParameters, H: HopParameters>(
         .for_each(|&a| transition_probs[a >> GapY] = prob_gap_x);
     MATCH_STATES
         .iter()
-        .for_each(|&b| transition_probs[GapX >> b] = (TLogProb::one() - prob_gap_y_extend) / 1.);
+        .for_each(|&b| transition_probs[GapX >> b] = prob_gap_y_extend.ln_one_minus_exp());
     MATCH_STATES
         .iter()
-        .for_each(|&b| transition_probs[GapY >> b] = (TLogProb::one() - prob_gap_x_extend) / 1.);
+        .for_each(|&b| transition_probs[GapY >> b] = prob_gap_x_extend.ln_one_minus_exp());
     transition_probs[GapX >> GapX] = prob_gap_y_extend;
     transition_probs[GapY >> GapY] = prob_gap_x_extend;
     transition_probs
@@ -334,7 +261,7 @@ impl StartEndGapParameters for AlignmentMode {
     }
 }
 
-impl PairHHMM {
+impl HomoHMM {
     pub fn new() -> Self {
         Self {}
     }
@@ -354,7 +281,7 @@ impl PairHHMM {
         emission_params: &E,
         alignment_mode: &A,
         max_edit_dist: Option<usize>,
-    ) -> TLogProb
+    ) -> LogProb
     where
         G: GapParameters,
         H: HopParameters,
@@ -363,7 +290,7 @@ impl PairHHMM {
     {
         let mut prev = 0;
         let mut curr = 1;
-        let mut v: [EnumMap<State, Vec<TLogProb>>; 2] = [EnumMap::new(), EnumMap::new()];
+        let mut v: [EnumMap<State, Vec<LogProb>>; 2] = [EnumMap::new(), EnumMap::new()];
         let transition_probs = build_transition_table(gap_params, hop_params);
 
         let len_y = emission_params.len_y();
@@ -372,29 +299,31 @@ impl PairHHMM {
             [vec![usize::MAX; len_y + 1], vec![usize::MAX; len_y + 1]];
         let free_end_gap_x = alignment_mode.free_end_gap_x();
         let free_start_gap_x = alignment_mode.free_start_gap_x();
+
         let mut prob_cols = Vec::with_capacity(len_x * STATES.len());
 
         for state in &STATES {
-            v[prev][*state] = vec![TLogProb::zero(); len_y + 1];
+            v[prev][*state] = vec![LogProb::zero(); len_y + 1];
         }
 
         v[curr] = v[prev].clone();
 
         for &m in &MATCH_STATES {
-            v[prev][m][0] = TLogProb::one() / 4.;
+            v[prev][m][0] = LogProb::from(Prob(1. / 4.));
         }
 
         for i in 0..len_x {
             if free_start_gap_x {
+                let prob_start_gap_x = LogProb(*alignment_mode.prob_start_gap_x(i) - 4.);
                 for &m in &MATCH_STATES {
-                    v[prev][m][0] += TLogProb::one() / 4.;
+                    v[prev][m][0] = v[prev][m][0].ln_add_exp(prob_start_gap_x);
                 }
                 min_edit_dist[prev][0] = 0;
             }
 
             // cache probs for x[i]
             let prob_emit_x_and_gap = emission_params.prob_emit_x_and_gap(GapY, i);
-            // let probs_emit_x_and_hop: SmallVec<[TLogProb; 4]> = HOP_Y_STATES
+            // let probs_emit_x_and_hop: SmallVec<[LogProb; 4]> = HOP_Y_STATES
             //     .iter()
             //     .map(|&h| emission_params.prob_emit_x_and_hop(h, i))
             //     .collect();
@@ -421,36 +350,44 @@ impl PairHHMM {
                     let emission = emission_params.prob_emit_x_and_y(m, i, j);
                     any_match |= emission.is_match();
                     v[curr][m][j_] = emission.prob()
-                        * STATES
-                            .iter()
-                            .map(|&s| transition_probs[s >> m] * v[prev][s][j_minus_one])
-                            .sum::<TLogProb>();
+                        + LogProb::ln_sum_exp(
+                            &STATES
+                                .iter()
+                                .map(|&s| transition_probs[s >> m] + v[prev][s][j_minus_one])
+                                .collect_vec(),
+                        );
                 }
 
                 v[curr][GapY][j_] = prob_emit_x_and_gap
-                    * (MATCH_STATES
-                        .iter()
-                        .map(|&s| transition_probs[s >> GapY] * v[prev][s][j_])
-                        .sum::<TLogProb>())
-                    + transition_probs[GapY >> GapY] * v[prev][GapY][j_];
+                    + LogProb::ln_sum_exp(
+                        &MATCH_STATES
+                            .iter()
+                            .map(|&s| transition_probs[s >> GapY] + v[prev][s][j_])
+                            .chain(once(transition_probs[GapY >> GapY] + v[prev][GapY][j_]))
+                            .collect_vec(),
+                    );
 
                 MATCH_HOP_Y.iter().for_each(|&(m, h)| {
                     v[curr][h][j_] = emission_params.prob_emit_x_and_hop(h, i)
-                        * (transition_probs[m >> h] * v[prev][m][j_]
-                            + transition_probs[h >> h] * v[prev][h][j_])
+                        + ((transition_probs[m >> h] + v[prev][m][j_])
+                            .ln_add_exp(transition_probs[h >> h] + v[prev][h][j_]))
                 });
 
                 v[curr][GapX][j_] = emission_params.prob_emit_gap_and_y(GapX, j)
-                    * (MATCH_STATES
-                        .iter()
-                        .map(|&s| transition_probs[s >> GapX] * v[curr][s][j_minus_one])
-                        .sum::<TLogProb>())
-                    + transition_probs[GapX >> GapX] * v[curr][GapX][j_minus_one];
+                    + LogProb::ln_sum_exp(
+                        &MATCH_STATES
+                            .iter()
+                            .map(|&s| transition_probs[s >> GapX] + v[curr][s][j_minus_one])
+                            .chain(once(
+                                transition_probs[GapX >> GapX] + v[curr][GapX][j_minus_one],
+                            ))
+                            .collect_vec(),
+                    );
 
                 MATCH_HOP_X.iter().for_each(|&(m, h)| {
                     v[curr][h][j_] = emission_params.prob_emit_hop_and_y(h, j)
-                        * (transition_probs[m >> h] * v[curr][m][j_minus_one]
-                            + transition_probs[h >> h] * v[curr][h][j_minus_one])
+                        + ((transition_probs[m >> h] + v[curr][m][j_minus_one])
+                            .ln_add_exp(transition_probs[h >> h] + v[curr][h][j_minus_one]))
                 });
 
                 // calculate minimal number of mismatches
@@ -484,16 +421,16 @@ impl PairHHMM {
             }
             mem::swap(&mut prev, &mut curr);
             for &s in &MATCH_STATES {
-                v[curr][s].reset(TLogProb::zero());
+                v[curr][s].reset(LogProb::zero());
             }
         }
         if free_end_gap_x {
-            prob_cols.iter().cloned().sum::<TLogProb>()
+            LogProb::ln_sum_exp(&prob_cols.iter().cloned().collect_vec())
         } else {
-            STATES
+            LogProb::ln_sum_exp(&STATES
                 .iter()
                 .map(|&state| v[prev][state][len_y])
-                .sum::<TLogProb>()
+                .collect_vec())
         }
     }
 }
@@ -504,9 +441,8 @@ fn min3<T: Ord>(a: T, b: T, c: T) -> T {
 
 #[cfg(test)]
 mod tests {
-    use crate::stats::pairhhmm::AlignmentMode::{Global, Semiglobal};
+    use crate::stats::pairhmm::homohmm::AlignmentMode::{Global, Semiglobal};
     use crate::stats::pairhmm::PairHMM;
-    use crate::stats::probs::TLogProb;
     use crate::stats::{LogProb, Prob};
 
     use super::*;
@@ -522,55 +458,55 @@ mod tests {
         y: &'static [u8],
     }
     // log(0.0021)
-    const PROB_SUBSTITUTION: TLogProb = TLogProb(-6.165_817_934_252_76);
+    const PROB_SUBSTITUTION: LogProb = LogProb(-6.165_817_934_252_76);
     // log(2.8e-6)
-    const PROB_OPEN_GAP_Y: TLogProb = TLogProb(-12.785_891_140_783_116);
+    const PROB_OPEN_GAP_Y: LogProb = LogProb(-12.785_891_140_783_116);
     // log(5.1e-6)
-    const PROB_OPEN_GAP_X: TLogProb = TLogProb(-12.186_270_018_233_994);
+    const PROB_OPEN_GAP_X: LogProb = LogProb(-12.186_270_018_233_994);
 
-    const EMIT_MATCH: TLogProb = TLogProb(-0.0021022080918701985);
-    const EMIT_GAP_AND_Y: TLogProb = TLogProb(-0.0021022080918701985);
-    const EMIT_X_AND_GAP: TLogProb = TLogProb(-0.0021022080918701985);
+    const EMIT_MATCH: LogProb = LogProb(-0.0021022080918701985);
+    const EMIT_GAP_AND_Y: LogProb = LogProb(-0.0021022080918701985);
+    const EMIT_X_AND_GAP: LogProb = LogProb(-0.0021022080918701985);
 
-    const T_MATCH_TO_HOP_X: TLogProb = TLogProb(-11.512925464970229);
-    const T_MATCH_TO_HOP_Y: TLogProb = TLogProb(-11.512925464970229);
-    const T_HOP_X_TO_HOP_X: TLogProb = TLogProb(-2.3025850929940455);
-    const T_HOP_Y_TO_HOP_Y: TLogProb = TLogProb(-2.3025850929940455);
+    const T_MATCH_TO_HOP_X: LogProb = LogProb(-11.512925464970229);
+    const T_MATCH_TO_HOP_Y: LogProb = LogProb(-11.512925464970229);
+    const T_HOP_X_TO_HOP_X: LogProb = LogProb(-2.3025850929940455);
+    const T_HOP_Y_TO_HOP_Y: LogProb = LogProb(-2.3025850929940455);
 
-    const T_MATCH_TO_MATCH: TLogProb = TLogProb(-7.900031205113962e-06);
-    const T_MATCH_TO_GAP_Y: TLogProb = TLogProb(-12.785_891_140_783_116);
-    const T_MATCH_TO_GAP_X: TLogProb = TLogProb(-12.186_270_018_233_994);
-    const T_GAP_TO_GAP: TLogProb = TLogProb(-9.210340371976182);
+    const T_MATCH_TO_MATCH: LogProb = LogProb(-7.900031205113962e-06);
+    const T_MATCH_TO_GAP_Y: LogProb = LogProb(-12.785_891_140_783_116);
+    const T_MATCH_TO_GAP_X: LogProb = LogProb(-12.186_270_018_233_994);
+    const T_GAP_TO_GAP: LogProb = LogProb(-9.210340371976182);
 
     impl EmissionParameters for TestEmissionParams {
         fn prob_emit_x_and_y(&self, s: State, i: usize, j: usize) -> XYEmission {
             let (a, b) = (self.x[i], self.y[j]);
             let p = match s {
                 State::MatchA => match (a, b) {
-                    (b'A', b'A') => TLogProb::one() - PROB_SUBSTITUTION,
-                    (b'A', _y) => PROB_SUBSTITUTION / 6.,
-                    (_x, b'A') => PROB_SUBSTITUTION / 6.,
-                    _ => TLogProb::zero(),
+                    (b'A', b'A') => PROB_SUBSTITUTION.ln_one_minus_exp(),
+                    (b'A', _y) => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
+                    (_x, b'A') => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
+                    _ => LogProb::zero(),
                 },
                 State::MatchC => match (a, b) {
-                    (b'C', b'C') => TLogProb::one() - PROB_SUBSTITUTION,
-                    (b'C', _y) => PROB_SUBSTITUTION / 6.,
-                    (_x, b'C') => PROB_SUBSTITUTION / 6.,
-                    _ => TLogProb::zero(),
+                    (b'C', b'C') => PROB_SUBSTITUTION.ln_one_minus_exp(),
+                    (b'C', _y) => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
+                    (_x, b'C') => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
+                    _ => LogProb::zero(),
                 },
                 State::MatchG => match (a, b) {
-                    (b'G', b'G') => TLogProb::one() - PROB_SUBSTITUTION,
-                    (b'G', _y) => PROB_SUBSTITUTION / 6.,
-                    (_x, b'G') => PROB_SUBSTITUTION / 6.,
-                    _ => TLogProb::zero(),
+                    (b'G', b'G') => PROB_SUBSTITUTION.ln_one_minus_exp(),
+                    (b'G', _y) => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
+                    (_x, b'G') => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
+                    _ => LogProb::zero(),
                 },
                 State::MatchT => match (a, b) {
-                    (b'T', b'T') => TLogProb::one() - PROB_SUBSTITUTION,
-                    (b'T', _y) => PROB_SUBSTITUTION / 6.,
-                    (_x, b'T') => PROB_SUBSTITUTION / 6.,
-                    _ => TLogProb::zero(),
+                    (b'T', b'T') => PROB_SUBSTITUTION.ln_one_minus_exp(),
+                    (b'T', _y) => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
+                    (_x, b'T') => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
+                    _ => LogProb::zero(),
                 },
-                _ => TLogProb::zero(),
+                _ => LogProb::zero(),
             };
             if self.x[i] == self.y[j] {
                 XYEmission::Match(p)
@@ -579,79 +515,79 @@ mod tests {
             }
         }
 
-        fn prob_emit_x_and_gap(&self, _s: State, _i: usize) -> TLogProb {
-            TLogProb::one() - PROB_SUBSTITUTION
+        fn prob_emit_x_and_gap(&self, _s: State, _i: usize) -> LogProb {
+            PROB_SUBSTITUTION.ln_one_minus_exp()
         }
 
-        fn prob_emit_gap_and_y(&self, _s: State, _j: usize) -> TLogProb {
-            TLogProb::one() - PROB_SUBSTITUTION
+        fn prob_emit_gap_and_y(&self, _s: State, _j: usize) -> LogProb {
+            PROB_SUBSTITUTION.ln_one_minus_exp()
         }
 
-        fn prob_emit_x_and_hop(&self, s: State, i: usize) -> TLogProb {
+        fn prob_emit_x_and_hop(&self, s: State, i: usize) -> LogProb {
             match s {
                 State::HopAY => {
                     if self.x[i] == b'A' {
-                        TLogProb::one() - PROB_SUBSTITUTION
+                        PROB_SUBSTITUTION.ln_one_minus_exp()
                     } else {
-                        PROB_SUBSTITUTION / 3.
+                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
                     }
                 }
                 State::HopCY => {
                     if self.x[i] == b'C' {
-                        TLogProb::one() - PROB_SUBSTITUTION
+                        PROB_SUBSTITUTION.ln_one_minus_exp()
                     } else {
-                        PROB_SUBSTITUTION / 3.
+                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
                     }
                 }
                 State::HopGY => {
                     if self.x[i] == b'G' {
-                        TLogProb::one() - PROB_SUBSTITUTION
+                        PROB_SUBSTITUTION.ln_one_minus_exp()
                     } else {
-                        PROB_SUBSTITUTION / 3.
+                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
                     }
                 }
                 State::HopTY => {
                     if self.x[i] == b'T' {
-                        TLogProb::one() - PROB_SUBSTITUTION
+                        PROB_SUBSTITUTION.ln_one_minus_exp()
                     } else {
-                        PROB_SUBSTITUTION / 3.
+                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
                     }
                 }
-                _ => TLogProb::zero(),
+                _ => LogProb::zero(),
             }
         }
 
-        fn prob_emit_hop_and_y(&self, s: State, j: usize) -> TLogProb {
+        fn prob_emit_hop_and_y(&self, s: State, j: usize) -> LogProb {
             match s {
                 State::HopAX => {
                     if self.y[j] == b'A' {
-                        TLogProb::one() - PROB_SUBSTITUTION
+                        PROB_SUBSTITUTION.ln_one_minus_exp()
                     } else {
-                        PROB_SUBSTITUTION / 3.
+                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
                     }
                 }
                 State::HopCX => {
                     if self.y[j] == b'C' {
-                        TLogProb::one() - PROB_SUBSTITUTION
+                        PROB_SUBSTITUTION.ln_one_minus_exp()
                     } else {
-                        PROB_SUBSTITUTION / 3.
+                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
                     }
                 }
                 State::HopGX => {
                     if self.y[j] == b'G' {
-                        TLogProb::one() - PROB_SUBSTITUTION
+                        PROB_SUBSTITUTION.ln_one_minus_exp()
                     } else {
-                        PROB_SUBSTITUTION / 3.
+                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
                     }
                 }
                 State::HopTX => {
                     if self.y[j] == b'T' {
-                        TLogProb::one() - PROB_SUBSTITUTION
+                        PROB_SUBSTITUTION.ln_one_minus_exp()
                     } else {
-                        PROB_SUBSTITUTION / 3.
+                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
                     }
                 }
-                _ => TLogProb::zero(),
+                _ => LogProb::zero(),
             }
         }
 
@@ -667,98 +603,98 @@ mod tests {
     struct TestSingleGapParams;
 
     impl GapParameters for TestSingleGapParams {
-        fn prob_gap_x(&self) -> TLogProb {
+        fn prob_gap_x(&self) -> LogProb {
             PROB_OPEN_GAP_Y
         }
 
-        fn prob_gap_y(&self) -> TLogProb {
+        fn prob_gap_y(&self) -> LogProb {
             PROB_OPEN_GAP_X
         }
 
-        fn prob_gap_x_extend(&self) -> TLogProb {
-            TLogProb::zero()
+        fn prob_gap_x_extend(&self) -> LogProb {
+            LogProb::zero()
         }
 
-        fn prob_gap_y_extend(&self) -> TLogProb {
-            TLogProb::zero()
+        fn prob_gap_y_extend(&self) -> LogProb {
+            LogProb::zero()
         }
     }
 
     struct NoGapParams;
 
     impl GapParameters for NoGapParams {
-        fn prob_gap_x(&self) -> TLogProb {
-            TLogProb::zero()
+        fn prob_gap_x(&self) -> LogProb {
+            LogProb::zero()
         }
 
-        fn prob_gap_y(&self) -> TLogProb {
-            TLogProb::zero()
+        fn prob_gap_y(&self) -> LogProb {
+            LogProb::zero()
         }
 
-        fn prob_gap_x_extend(&self) -> TLogProb {
-            TLogProb::zero()
+        fn prob_gap_x_extend(&self) -> LogProb {
+            LogProb::zero()
         }
 
-        fn prob_gap_y_extend(&self) -> TLogProb {
-            TLogProb::zero()
+        fn prob_gap_y_extend(&self) -> LogProb {
+            LogProb::zero()
         }
     }
 
     struct TestExtendGapParams;
 
     impl GapParameters for TestExtendGapParams {
-        fn prob_gap_x(&self) -> TLogProb {
-            TLogProb::from(PROB_ILLUMINA_INS)
+        fn prob_gap_x(&self) -> LogProb {
+            LogProb::from(PROB_ILLUMINA_INS)
         }
 
-        fn prob_gap_y(&self) -> TLogProb {
-            TLogProb::from(PROB_ILLUMINA_DEL)
+        fn prob_gap_y(&self) -> LogProb {
+            LogProb::from(PROB_ILLUMINA_DEL)
         }
 
-        fn prob_gap_x_extend(&self) -> TLogProb {
+        fn prob_gap_x_extend(&self) -> LogProb {
             T_GAP_TO_GAP
         }
 
-        fn prob_gap_y_extend(&self) -> TLogProb {
+        fn prob_gap_y_extend(&self) -> LogProb {
             T_GAP_TO_GAP
         }
     }
 
     struct TestNoHopParams;
     impl HopParameters for TestNoHopParams {
-        fn prob_hop_x(&self) -> TLogProb {
-            TLogProb::zero()
+        fn prob_hop_x(&self) -> LogProb {
+            LogProb::zero()
         }
 
-        fn prob_hop_y(&self) -> TLogProb {
-            TLogProb::zero()
+        fn prob_hop_y(&self) -> LogProb {
+            LogProb::zero()
         }
 
-        fn prob_hop_x_extend(&self) -> TLogProb {
-            TLogProb::zero()
+        fn prob_hop_x_extend(&self) -> LogProb {
+            LogProb::zero()
         }
 
-        fn prob_hop_y_extend(&self) -> TLogProb {
-            TLogProb::zero()
+        fn prob_hop_y_extend(&self) -> LogProb {
+            LogProb::zero()
         }
     }
 
     struct TestHopParams;
 
     impl HopParameters for TestHopParams {
-        fn prob_hop_x(&self) -> TLogProb {
+        fn prob_hop_x(&self) -> LogProb {
             T_MATCH_TO_HOP_X
         }
 
-        fn prob_hop_y(&self) -> TLogProb {
+        fn prob_hop_y(&self) -> LogProb {
             T_MATCH_TO_HOP_Y
         }
 
-        fn prob_hop_x_extend(&self) -> TLogProb {
+        fn prob_hop_x_extend(&self) -> LogProb {
             T_HOP_X_TO_HOP_X
         }
 
-        fn prob_hop_y_extend(&self) -> TLogProb {
+        fn prob_hop_y_extend(&self) -> LogProb {
             T_HOP_Y_TO_HOP_Y
         }
     }
@@ -769,7 +705,7 @@ mod tests {
         let y = b"A";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = PairHHMM::new();
+        let mut pair_hmm = HomoHMM::new();
         let p = pair_hmm.prob_related(
             &SINGLE_GAP_PARAMS,
             &NO_HOP_PARAMS,
@@ -777,7 +713,7 @@ mod tests {
             &Global,
             None,
         );
-        assert_eq!(p, TLogProb::zero());
+        assert_eq!(p, LogProb::zero());
     }
 
     #[test]
@@ -787,7 +723,7 @@ mod tests {
         let emission_params = TestEmissionParams { x, y };
         let hop_params = TestHopParams;
 
-        let mut pair_hmm = PairHHMM::new();
+        let mut pair_hmm = HomoHMM::new();
         let p = pair_hmm.prob_related(&NO_GAP_PARAMS, &hop_params, &emission_params, &Global, None);
         let p_most_likely_path_with_hops = LogProb(
             *EMIT_MATCH // A A
@@ -815,7 +751,7 @@ mod tests {
         let emission_params = TestEmissionParams { x, y };
         let hop_params = TestHopParams;
 
-        let mut pair_hmm = PairHHMM::new();
+        let mut pair_hmm = HomoHMM::new();
         let p = pair_hmm.prob_related(&NO_GAP_PARAMS, &hop_params, &emission_params, &Global, None);
         let p_most_likely_path_with_hops = LogProb(
             *EMIT_MATCH // A A
@@ -843,7 +779,7 @@ mod tests {
 
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = PairHHMM::new();
+        let mut pair_hmm = HomoHMM::new();
         let p = pair_hmm.prob_related(
             &SINGLE_GAP_PARAMS,
             &NO_HOP_PARAMS,
@@ -855,15 +791,15 @@ mod tests {
         let n_matches = 6.;
         let n_insertions = 6.;
 
-        let p_most_likely_path = TLogProb(
+        let p_most_likely_path = LogProb(
             *EMIT_MATCH * n_matches
                 + *T_MATCH_TO_MATCH * (n_matches - n_insertions)
                 + *EMIT_GAP_AND_Y * n_insertions
                 + *T_MATCH_TO_GAP_X * n_insertions
-                + *(TLogProb::one() - PROB_OPEN_GAP_Y) * n_insertions,
+                + *(PROB_OPEN_GAP_Y.ln_one_minus_exp()) * n_insertions,
         );
 
-        let p_max = TLogProb(*T_MATCH_TO_GAP_X * n_insertions);
+        let p_max = LogProb(*T_MATCH_TO_GAP_X * n_insertions);
 
         assert!(*p <= 0.0);
         assert_relative_eq!(*p_most_likely_path, *p, epsilon = 0.01);
@@ -878,7 +814,7 @@ mod tests {
 
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = PairHHMM::new();
+        let mut pair_hmm = HomoHMM::new();
         let p = pair_hmm.prob_related(
             &SINGLE_GAP_PARAMS,
             &NO_HOP_PARAMS,
@@ -890,15 +826,15 @@ mod tests {
         let n_matches = 6.;
         let n_insertions = 6.;
 
-        let p_most_likely_path = TLogProb(
+        let p_most_likely_path = LogProb(
             *EMIT_MATCH * n_matches
                 + *T_MATCH_TO_MATCH * (n_matches - n_insertions)
                 + *EMIT_X_AND_GAP * n_insertions
                 + *T_MATCH_TO_GAP_Y * n_insertions
-                + *(TLogProb::one() - PROB_OPEN_GAP_X) * n_insertions,
+                + *PROB_OPEN_GAP_X.ln_one_minus_exp() * n_insertions,
         );
 
-        let p_max = TLogProb(*T_MATCH_TO_GAP_Y * n_insertions);
+        let p_max = LogProb(*T_MATCH_TO_GAP_Y * n_insertions);
 
         assert!(*p <= 0.0);
         assert_relative_eq!(*p_most_likely_path, *p, epsilon = 0.01);
@@ -916,7 +852,7 @@ mod tests {
         let y = b"AGCTCGATCGATCGATC";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = PairHHMM::new();
+        let mut pair_hmm = HomoHMM::new();
         let p = pair_hmm.prob_related(
             &SINGLE_GAP_PARAMS,
             &NO_HOP_PARAMS,
@@ -939,7 +875,7 @@ mod tests {
         let y = b"AGCTCGATCTGATCGATCT";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = PairHHMM::new();
+        let mut pair_hmm = HomoHMM::new();
         let p = pair_hmm.prob_related(
             &SINGLE_GAP_PARAMS,
             &NO_HOP_PARAMS,
@@ -951,7 +887,7 @@ mod tests {
         let n_matches = 17.;
         let n_insertions = 2.;
 
-        let p_most_likely_path = TLogProb(
+        let p_most_likely_path = LogProb(
             *EMIT_MATCH * n_matches
                 + *T_MATCH_TO_MATCH * (n_matches - n_insertions)
                 + *EMIT_GAP_AND_Y * n_insertions
@@ -959,7 +895,7 @@ mod tests {
                 + (1. - *PROB_ILLUMINA_INS).ln(),
         );
 
-        let p_max = TLogProb(*T_MATCH_TO_GAP_X * 2.);
+        let p_max = LogProb(*T_MATCH_TO_GAP_X * 2.);
         assert!(*p <= 0.0);
         assert_relative_eq!(*p_most_likely_path, *p, epsilon = 0.01);
         assert_relative_eq!(*p, *p_max, epsilon = 0.1);
@@ -972,7 +908,7 @@ mod tests {
         let y = b"ACAGTCA";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = PairHHMM::new();
+        let mut pair_hmm = HomoHMM::new();
         let p = pair_hmm.prob_related(
             &SINGLE_GAP_PARAMS,
             &NO_HOP_PARAMS,
@@ -984,7 +920,7 @@ mod tests {
         let n_matches = 6.;
         let n_insertions = 1.;
 
-        let p_most_likely_path = TLogProb(
+        let p_most_likely_path = LogProb(
             *EMIT_MATCH * n_matches
                 + *T_MATCH_TO_MATCH * (n_matches - n_insertions)
                 + *EMIT_GAP_AND_Y * n_insertions
@@ -992,7 +928,7 @@ mod tests {
                 + (1. - *PROB_ILLUMINA_INS).ln(),
         );
 
-        let p_max = TLogProb(*T_MATCH_TO_GAP_X * n_insertions);
+        let p_max = LogProb(*T_MATCH_TO_GAP_X * n_insertions);
         assert!(*p <= 0.0);
         assert_relative_eq!(*p_most_likely_path, *p, epsilon = 0.01);
         assert_relative_eq!(*p, *p_max, epsilon = 0.1);
@@ -1005,7 +941,7 @@ mod tests {
         let y = b"AGCTCGATCGATCGATC";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = PairHHMM::new();
+        let mut pair_hmm = HomoHMM::new();
         let p = pair_hmm.prob_related(
             &SINGLE_GAP_PARAMS,
             &NO_HOP_PARAMS,
@@ -1017,7 +953,7 @@ mod tests {
         let n_matches = 17.;
         let n_deletions = 2.;
 
-        let p_most_likely_path = TLogProb(
+        let p_most_likely_path = LogProb(
             *EMIT_MATCH * n_matches
                 + *T_MATCH_TO_MATCH * (n_matches - n_deletions)
                 + *EMIT_X_AND_GAP * n_deletions
@@ -1025,7 +961,7 @@ mod tests {
                 + (1. - *PROB_ILLUMINA_DEL).ln(),
         );
 
-        let p_max = TLogProb(*T_MATCH_TO_GAP_Y * 2.);
+        let p_max = LogProb(*T_MATCH_TO_GAP_Y * 2.);
 
         assert!(*p <= 0.0);
         assert_relative_eq!(*p_most_likely_path, *p, epsilon = 0.01);
@@ -1039,7 +975,7 @@ mod tests {
         let y = b"AGCTTCTGATCGATCT";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = PairHHMM::new();
+        let mut pair_hmm = HomoHMM::new();
         let p = pair_hmm.prob_related(
             &EXTEND_GAP_PARAMS,
             &NO_HOP_PARAMS,
@@ -1049,13 +985,13 @@ mod tests {
         );
         let n_matches = 16.;
         let n_consecutive_deletions = 3.;
-        let p_most_likely_path = TLogProb(
+        let p_most_likely_path = LogProb(
             *EMIT_MATCH * n_matches
                 + *T_MATCH_TO_MATCH * (n_matches - n_consecutive_deletions)
                 + *PROB_OPEN_GAP_Y
                 + *EMIT_X_AND_GAP * n_consecutive_deletions
                 + *T_GAP_TO_GAP * (n_consecutive_deletions - 1.)
-                + *(TLogProb::one() - T_GAP_TO_GAP),
+                + *T_GAP_TO_GAP.ln_one_minus_exp(),
         );
 
         assert!(*p <= 0.0);
@@ -1068,7 +1004,7 @@ mod tests {
         let y = b"TGCTCGATCGATCGATC";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = PairHHMM::new();
+        let mut pair_hmm = HomoHMM::new();
         let p = pair_hmm.prob_related(
             &SINGLE_GAP_PARAMS,
             &NO_HOP_PARAMS,
@@ -1078,12 +1014,12 @@ mod tests {
         );
 
         let n = x.len() as f64;
-        let p_most_likely_path = TLogProb(
+        let p_most_likely_path = LogProb(
             *EMIT_MATCH * (n - 2.)
                 + *T_MATCH_TO_MATCH * (n - 1.)
                 + (*PROB_ILLUMINA_SUBST / 3.).ln() * 2.,
         );
-        let p_max = TLogProb((*PROB_ILLUMINA_SUBST / 3.).ln() * 2.);
+        let p_max = LogProb((*PROB_ILLUMINA_SUBST / 3.).ln() * 2.);
         assert!(*p <= 0.0);
         assert_relative_eq!(*p_most_likely_path, *p, epsilon = 1e-2);
         assert_relative_eq!(*p, *p_max, epsilon = 1e-1);
@@ -1100,7 +1036,7 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
 
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = PairHHMM::new();
+        let mut pair_hmm = HomoHMM::new();
         let p = pair_hmm.prob_related(
             &SINGLE_GAP_PARAMS,
             &NO_HOP_PARAMS,
@@ -1125,7 +1061,7 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         let y = b"ACGTACGTC";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hhmm = PairHHMM::new();
+        let mut pair_hhmm = HomoHMM::new();
         let p1 = pair_hhmm.prob_related(
             &SINGLE_GAP_PARAMS,
             &NO_HOP_PARAMS,
@@ -1173,7 +1109,7 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
             y: &'static [u8],
         }
 
-        impl crate::stats::pairhmm::EmissionParameters for TestEmissionParamsPairHMM {
+        impl crate::stats::pairhmm::pairhmm::EmissionParameters for TestEmissionParamsPairHMM {
             fn prob_emit_xy(&self, i: usize, j: usize) -> crate::stats::pairhmm::XYEmission {
                 if self.x[i] == self.y[j] {
                     crate::stats::pairhmm::XYEmission::Match(LogProb::from(
