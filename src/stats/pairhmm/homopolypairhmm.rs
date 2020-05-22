@@ -492,10 +492,6 @@ mod tests {
     static PROB_ILLUMINA_DEL: Prob = Prob(5.1e-6);
     static PROB_ILLUMINA_SUBST: Prob = Prob(0.0021);
 
-    struct TestEmissionParams {
-        x: &'static [u8],
-        y: &'static [u8],
-    }
     // log(0.0021)
     const PROB_SUBSTITUTION: LogProb = LogProb(-6.165_817_934_252_76);
     // log(2.8e-6)
@@ -536,6 +532,11 @@ mod tests {
                 AlignmentMode::Global => false,
             }
         }
+    }
+
+    struct TestEmissionParams {
+        x: &'static [u8],
+        y: &'static [u8],
     }
 
     impl EmissionParameters for TestEmissionParams {
@@ -759,6 +760,15 @@ mod tests {
         }
     }
 
+    lazy_static! {
+        static ref SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
+        static ref EXTEND_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &NO_HOP_PARAMS);
+        static ref NO_GAPS_WITH_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&NO_GAP_PARAMS, &TestHopParams);
+    }
+
     #[test]
     fn impossible_global_alignment() {
         let x = b"AAA";
@@ -768,14 +778,6 @@ mod tests {
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Global, None);
         assert_eq!(p, LogProb::zero());
-    }
-    lazy_static! {
-        static ref SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
-            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
-        static ref EXTEND_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
-            HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &NO_HOP_PARAMS);
-        static ref NO_GAPS_WITH_HOPS_PHMM: HomopolyPairHMM =
-            HomopolyPairHMM::new(&NO_GAP_PARAMS, &TestHopParams);
     }
 
     #[test]
