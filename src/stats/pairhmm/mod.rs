@@ -1,6 +1,6 @@
-mod pairhmm;
-mod homohmm;
+pub use homopolypairhmm::EmissionParameters as ExtendedEmissionParameters;
+pub use homopolypairhmm::{HomopolyPairHMM, HopParameters};
+pub use pairhmm::{EmissionParameters, GapParameters, PairHMM, StartEndGapParameters, XYEmission};
 
-pub use pairhmm::{PairHMM, GapParameters, StartEndGapParameters, EmissionParameters, XYEmission};
-pub use homohmm::{HomoHMM, HopParameters};
-pub use homohmm::EmissionParameters as ExtendedEmissionParameters;
+mod homopolypairhmm;
+mod pairhmm;
