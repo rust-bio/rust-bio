@@ -125,12 +125,6 @@ impl<T: Copy> Reset<T> for [T] {
     }
 }
 
-/// A pair Hidden Markov Model for comparing sequences x and y as described by
-/// Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence Analysis.
-/// Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
-#[derive(Debug, Clone)]
-pub struct HomopolyPairHMM {}
-
 // explicitly defined groups of transitions between states
 const MATCH_HOP_X: [(State, State); 4] = [
     (MatchA, HopAX),
@@ -299,37 +293,51 @@ impl StartEndGapParameters for AlignmentMode {
     }
 }
 
+/// A pair Hidden Markov Model for comparing sequences x and y as described by
+/// Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence Analysis.
+/// Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
+#[derive(Debug, Clone)]
+pub struct HomopolyPairHMM {
+    transition_probs: Vec<LogProb>,
+}
+
 impl HomopolyPairHMM {
-    pub fn new() -> Self {
-        Self {}
+    /// Create a new instance of a PairHMM with homopolymer states
+    /// # Arguments
+    ///
+    /// * `gap_params` - parameters for opening or extending gaps
+    /// * `hop_params` - parameters for opening or extending hops
+    pub fn new<G, H>(gap_params: &G, hop_params: &H) -> Self
+    where
+        G: GapParameters,
+        H: HopParameters,
+    {
+        Self {
+            transition_probs: build_transition_table(gap_params, hop_params),
+        }
     }
 
     /// Calculate the probability of sequence x being related to y via any alignment.
     ///
     /// # Arguments
     ///
-    /// * `gap_params` - parameters for opening or extending gaps
-    /// * `hop_params` - parameters for opening or extending hops
     /// * `emission_params` - parameters for emission
+    /// * `alignment_mode` - parameters for free end/start gaps
     /// * `max_edit_dist` - maximum edit distance to consider; if not `None`, perform banded alignment
-    pub fn prob_related<G, H, E, A>(
-        &mut self,
-        gap_params: &G,
-        hop_params: &H,
+    pub fn prob_related<E, A>(
+        &self,
         emission_params: &E,
         alignment_mode: &A,
         max_edit_dist: Option<usize>,
     ) -> LogProb
     where
-        G: GapParameters,
-        H: HopParameters,
         E: EmissionParameters,
         A: StartEndGapParameters,
     {
         let mut prev = 0;
         let mut curr = 1;
         let mut v: [EnumMap<State, Vec<LogProb>>; 2] = [EnumMap::new(), EnumMap::new()];
-        let transition_probs = build_transition_table(gap_params, hop_params);
+        let transition_probs = &self.transition_probs;
 
         let len_y = emission_params.len_y();
         let len_x = emission_params.len_x();
@@ -745,26 +753,28 @@ mod tests {
         let y = b"A";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = HomopolyPairHMM::new();
+        let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(
-            &SINGLE_GAP_PARAMS,
-            &NO_HOP_PARAMS,
             &emission_params,
             &Global,
             None,
         );
         assert_eq!(p, LogProb::zero());
     }
+    lazy_static!(
+        static ref SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM = HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
+        static ref EXTEND_GAPS_NO_HOPS_PHMM: HomopolyPairHMM = HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &NO_HOP_PARAMS);
+        static ref NO_GAPS_WITH_HOPS_PHMM: HomopolyPairHMM = HomopolyPairHMM::new(&NO_GAP_PARAMS, &TestHopParams);
+    );
 
     #[test]
     fn test_hompolymer_run_in_y() {
         let x = b"ACGT";
         let y = b"ACCCCGT";
         let emission_params = TestEmissionParams { x, y };
-        let hop_params = TestHopParams;
 
-        let mut pair_hmm = HomopolyPairHMM::new();
-        let p = pair_hmm.prob_related(&NO_GAP_PARAMS, &hop_params, &emission_params, &Global, None);
+        let pair_hmm = &NO_GAPS_WITH_HOPS_PHMM;
+        let p = pair_hmm.prob_related(&emission_params, &Global, None);
         let p_most_likely_path_with_hops = LogProb(
             *EMIT_MATCH // A A
                 + *T_MATCH_TO_MATCH
@@ -789,10 +799,9 @@ mod tests {
         let x = b"ACCCCGT";
         let y = b"ACGT";
         let emission_params = TestEmissionParams { x, y };
-        let hop_params = TestHopParams;
 
-        let mut pair_hmm = HomopolyPairHMM::new();
-        let p = pair_hmm.prob_related(&NO_GAP_PARAMS, &hop_params, &emission_params, &Global, None);
+        let pair_hmm = &NO_GAPS_WITH_HOPS_PHMM;
+        let p = pair_hmm.prob_related(&emission_params, &Global, None);
         let p_most_likely_path_with_hops = LogProb(
             *EMIT_MATCH // A A
                 + *T_MATCH_TO_MATCH
@@ -819,10 +828,8 @@ mod tests {
 
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = HomopolyPairHMM::new();
+        let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(
-            &SINGLE_GAP_PARAMS,
-            &NO_HOP_PARAMS,
             &emission_params,
             &Global,
             None,
@@ -854,10 +861,8 @@ mod tests {
 
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = HomopolyPairHMM::new();
+        let pair_hmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(
-            &SINGLE_GAP_PARAMS,
-            &NO_HOP_PARAMS,
             &emission_params,
             &Global,
             None,
@@ -892,10 +897,8 @@ mod tests {
         let y = b"AGCTCGATCGATCGATC";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = HomopolyPairHMM::new();
+        let pair_hmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(
-            &SINGLE_GAP_PARAMS,
-            &NO_HOP_PARAMS,
             &emission_params,
             &Global,
             None,
@@ -915,10 +918,8 @@ mod tests {
         let y = b"AGCTCGATCTGATCGATCT";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = HomopolyPairHMM::new();
+        let pair_hmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(
-            &SINGLE_GAP_PARAMS,
-            &NO_HOP_PARAMS,
             &emission_params,
             &Global,
             None,
@@ -948,10 +949,8 @@ mod tests {
         let y = b"ACAGTCA";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = HomopolyPairHMM::new();
+        let pair_hmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(
-            &SINGLE_GAP_PARAMS,
-            &NO_HOP_PARAMS,
             &emission_params,
             &Global,
             None,
@@ -981,10 +980,8 @@ mod tests {
         let y = b"AGCTCGATCGATCGATC";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = HomopolyPairHMM::new();
+        let pair_hmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(
-            &SINGLE_GAP_PARAMS,
-            &NO_HOP_PARAMS,
             &emission_params,
             &Global,
             None,
@@ -1015,10 +1012,8 @@ mod tests {
         let y = b"AGCTTCTGATCGATCT";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = HomopolyPairHMM::new();
+        let pair_hmm =  &EXTEND_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(
-            &EXTEND_GAP_PARAMS,
-            &NO_HOP_PARAMS,
             &emission_params,
             &Global,
             None,
@@ -1044,10 +1039,8 @@ mod tests {
         let y = b"TGCTCGATCGATCGATC";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = HomopolyPairHMM::new();
+        let pair_hmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(
-            &SINGLE_GAP_PARAMS,
-            &NO_HOP_PARAMS,
             &emission_params,
             &Global,
             None,
@@ -1076,18 +1069,14 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
 
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hmm = HomopolyPairHMM::new();
+        let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(
-            &SINGLE_GAP_PARAMS,
-            &NO_HOP_PARAMS,
             &emission_params,
             &Semiglobal,
             None,
         );
 
         let p_banded = pair_hmm.prob_related(
-            &SINGLE_GAP_PARAMS,
-            &NO_HOP_PARAMS,
             &emission_params,
             &Semiglobal,
             Some(2),
@@ -1101,10 +1090,8 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         let y = b"ACGTACGTC";
         let emission_params = TestEmissionParams { x, y };
 
-        let mut pair_hhmm = HomopolyPairHMM::new();
+        let pair_hhmm =  &SINGLE_GAPS_NO_HOPS_PHMM;
         let p1 = pair_hhmm.prob_related(
-            &SINGLE_GAP_PARAMS,
-            &NO_HOP_PARAMS,
             &emission_params,
             &Global,
             None,
