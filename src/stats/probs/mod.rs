@@ -8,7 +8,6 @@
 
 pub mod cdf;
 pub mod errors;
-mod transparent;
 
 use std::f64;
 use std::iter;
@@ -23,7 +22,6 @@ use ordered_float::NotNan;
 use crate::utils::FastExp;
 
 pub use self::errors::{Error, Result};
-pub use transparent::LogProb as TLogProb;
 
 /// A factor to convert log-probabilities to PHRED-scale (phred = p * `LOG_TO_PHRED_FACTOR`).
 const LOG_TO_PHRED_FACTOR: f64 = -4.342_944_819_032_517_5; // -10 * 1 / ln(10)
