@@ -131,49 +131,87 @@ impl<T: Copy> Reset<T> for [T] {
 #[derive(Debug, Clone)]
 pub struct HomopolyPairHMM {}
 
-lazy_static! {
-    static ref MATCH_HOP_X: Vec<(State, State)> = MATCH_STATES
-        .iter()
-        .copied()
-        .zip(HOP_X_STATES.iter().copied())
-        .collect_vec();
-    static ref MATCH_HOP_Y: Vec<(State, State)> = MATCH_STATES
-        .iter()
-        .copied()
-        .zip(HOP_Y_STATES.iter().copied())
-        .collect_vec();
-    static ref HOP_X_HOP_X: Vec<(State, State)> = HOP_X_STATES
-        .iter()
-        .copied()
-        .zip(HOP_X_STATES.iter().copied())
-        .collect_vec();
-    static ref HOP_Y_HOP_Y: Vec<(State, State)> = HOP_Y_STATES
-        .iter()
-        .copied()
-        .zip(HOP_Y_STATES.iter().copied())
-        .collect_vec();
-    static ref HOP_X_MATCH: Vec<(State, State)> = HOP_X_STATES
-        .iter()
-        .copied()
-        .cartesian_product(MATCH_STATES.iter().copied())
-        .collect_vec();
-    static ref HOP_Y_MATCH: Vec<(State, State)> = HOP_Y_STATES
-        .iter()
-        .copied()
-        .cartesian_product(MATCH_STATES.iter().copied())
-        .collect_vec();
-    static ref MATCH_SAME_: Vec<(State, State)> = MATCH_STATES
-        .iter()
-        .copied()
-        .zip(MATCH_STATES.iter().copied())
-        .collect_vec();
-    static ref MATCH_OTHER: Vec<(State, State)> = MATCH_STATES
-        .iter()
-        .copied()
-        .cartesian_product(MATCH_STATES.iter().copied())
-        .filter(|(a, b)| a != b)
-        .collect_vec();
-}
+// explicitly defined groups of transitions between states
+const MATCH_HOP_X: [(State, State); 4] = [
+    (MatchA, HopAX),
+    (MatchC, HopCX),
+    (MatchG, HopGX),
+    (MatchT, HopTX),
+];
+const MATCH_HOP_Y: [(State, State); 4] = [
+    (MatchA, HopAY),
+    (MatchC, HopCY),
+    (MatchG, HopGY),
+    (MatchT, HopTY),
+];
+const HOP_X_HOP_X: [(State, State); 4] = [
+    (HopAX, HopAX),
+    (HopCX, HopCX),
+    (HopGX, HopGX),
+    (HopTX, HopTX),
+];
+const HOP_Y_HOP_Y: [(State, State); 4] = [
+    (HopAY, HopAY),
+    (HopCY, HopCY),
+    (HopGY, HopGY),
+    (HopTY, HopTY),
+];
+const HOP_X_MATCH: [(State, State); 16] = [
+    (HopAX, MatchA),
+    (HopAX, MatchC),
+    (HopAX, MatchG),
+    (HopAX, MatchT),
+    (HopCX, MatchC),
+    (HopCX, MatchC),
+    (HopCX, MatchG),
+    (HopCX, MatchT),
+    (HopGX, MatchG),
+    (HopGX, MatchC),
+    (HopGX, MatchG),
+    (HopGX, MatchT),
+    (HopTX, MatchT),
+    (HopTX, MatchC),
+    (HopTX, MatchG),
+    (HopTX, MatchT),
+];
+const HOP_Y_MATCH: [(State, State); 16] = [
+    (HopAY, MatchA),
+    (HopAY, MatchC),
+    (HopAY, MatchG),
+    (HopAY, MatchT),
+    (HopCY, MatchC),
+    (HopCY, MatchC),
+    (HopCY, MatchG),
+    (HopCY, MatchT),
+    (HopGY, MatchG),
+    (HopGY, MatchC),
+    (HopGY, MatchG),
+    (HopGY, MatchT),
+    (HopTY, MatchT),
+    (HopTY, MatchC),
+    (HopTY, MatchG),
+    (HopTY, MatchT),
+];
+const MATCH_SAME_: [(State, State); 4] = [
+    (MatchA, MatchA),
+    (MatchC, MatchC),
+    (MatchG, MatchG),
+    (MatchT, MatchT),
+];
+const MATCH_OTHER: [(State, State); 12] = [
+    (MatchA, MatchC),
+    (MatchA, MatchG),
+    (MatchA, MatchT),
+    (MatchC, MatchA),
+    (MatchC, MatchG),
+    (MatchC, MatchT),
+    (MatchG, MatchC),
+    (MatchG, MatchA),
+    (MatchG, MatchT),
+    (MatchT, MatchC),
+    (MatchT, MatchG),
+    (MatchT, MatchA),
+];
 
 fn build_transition_table<G: GapParameters, H: HopParameters>(
     gap_params: &G,
