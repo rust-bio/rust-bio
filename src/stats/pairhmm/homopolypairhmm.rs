@@ -474,38 +474,17 @@ impl<T: Copy> Reset<T> for [T] {
     }
 }
 
-pub enum AlignmentMode {
-    Global,
-    Semiglobal,
-}
-
-impl StartEndGapParameters for AlignmentMode {
-    fn free_start_gap_x(&self) -> bool {
-        match self {
-            AlignmentMode::Semiglobal => true,
-            AlignmentMode::Global => false,
-        }
-    }
-
-    fn free_end_gap_x(&self) -> bool {
-        match self {
-            AlignmentMode::Semiglobal => true,
-            AlignmentMode::Global => false,
-        }
-    }
-}
-
 fn min3<T: Ord>(a: T, b: T, c: T) -> T {
     cmp::min(a, cmp::min(b, c))
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::stats::pairhmm::homopolypairhmm::AlignmentMode::{Global, Semiglobal};
     use crate::stats::pairhmm::PairHMM;
     use crate::stats::{LogProb, Prob};
 
     use super::*;
+    use crate::stats::pairhmm::homopolypairhmm::tests::AlignmentMode::{Global, Semiglobal};
 
     // Single base insertion and deletion rates for R1 according to Schirmer et al.
     // BMC Bioinformatics 2016, 10.1186/s12859-016-0976-y
@@ -537,6 +516,27 @@ mod tests {
     const T_MATCH_TO_GAP_Y: LogProb = LogProb(-12.785_891_140_783_116);
     const T_MATCH_TO_GAP_X: LogProb = LogProb(-12.186_270_018_233_994);
     const T_GAP_TO_GAP: LogProb = LogProb(-9.210340371976182);
+
+    pub enum AlignmentMode {
+        Global,
+        Semiglobal,
+    }
+
+    impl StartEndGapParameters for AlignmentMode {
+        fn free_start_gap_x(&self) -> bool {
+            match self {
+                AlignmentMode::Semiglobal => true,
+                AlignmentMode::Global => false,
+            }
+        }
+
+        fn free_end_gap_x(&self) -> bool {
+            match self {
+                AlignmentMode::Semiglobal => true,
+                AlignmentMode::Global => false,
+            }
+        }
+    }
 
     impl EmissionParameters for TestEmissionParams {
         fn prob_emit_x_and_y(&self, s: State, i: usize, j: usize) -> XYEmission {
