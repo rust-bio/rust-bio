@@ -144,13 +144,13 @@ impl Mul for LogProb {
     }
 }
 
-impl Mul<f64> for LogProb {
-    type Output = LogProb;
-
-    fn mul(self, other: f64) -> Self::Output {
-        LogProb((self.0.exp() * other).ln())
-    }
-}
+// impl Mul<f64> for LogProb {
+//     type Output = LogProb;
+//
+//     fn mul(self, other: f64) -> Self::Output {
+//         LogProb((self.0.exp() * other).ln())
+//     }
+// }
 
 impl Div for LogProb {
     type Output = Self;
@@ -161,13 +161,13 @@ impl Div for LogProb {
     }
 }
 
-impl Div<f64> for LogProb {
-    type Output = LogProb;
-
-    fn div(self, other: f64) -> Self::Output {
-        LogProb((self.0.exp() / other).ln())
-    }
-}
+// impl Div<f64> for LogProb {
+//     type Output = LogProb;
+//
+//     fn div(self, other: f64) -> Self::Output {
+//         LogProb((self.0.exp() / other).ln())
+//     }
+// }
 
 impl Pow<f64> for LogProb {
     type Output = LogProb;
