@@ -112,12 +112,6 @@ pub trait EmissionParameters {
     /// Emission probability for (-, y[j]).
     fn prob_emit_gap_and_y(&self, s: State, j: usize) -> LogProb;
 
-    /// Emission probability for (x[i], +).
-    fn prob_emit_x_and_hop(&self, s: State, i: usize) -> LogProb;
-
-    /// Emission probability for (+, y[j]).
-    fn prob_emit_hop_and_y(&self, s: State, j: usize) -> LogProb;
-
     fn len_x(&self) -> usize;
 
     fn len_y(&self) -> usize;
@@ -201,10 +195,6 @@ impl HomopolyPairHMM {
 
             // cache probs for x[i]
             let prob_emit_x_and_gap = emission_params.prob_emit_x_and_gap(GapY, i);
-            let mut probs_emit_x_and_hop: EnumMap<State, LogProb> = EnumMap::new();
-            HOP_Y_STATES
-                .iter()
-                .for_each(|&h| probs_emit_x_and_hop[h] = emission_params.prob_emit_x_and_hop(h, i));
 
             for j in 0..len_y {
                 let j_ = j + 1;
@@ -246,9 +236,8 @@ impl HomopolyPairHMM {
                     );
 
                 MATCH_HOP_Y.iter().for_each(|&(m, h)| {
-                    v[curr][h][j_] = probs_emit_x_and_hop[h]
-                        + ((transition_probs[m >> h] + v[prev][m][j_])
-                            .ln_add_exp(transition_probs[h >> h] + v[prev][h][j_]))
+                    v[curr][h][j_] = (transition_probs[m >> h] + v[prev][m][j_])
+                        .ln_add_exp(transition_probs[h >> h] + v[prev][h][j_])
                 });
 
                 v[curr][GapX][j_] = emission_params.prob_emit_gap_and_y(GapX, j)
@@ -263,9 +252,8 @@ impl HomopolyPairHMM {
                     );
 
                 MATCH_HOP_X.iter().for_each(|&(m, h)| {
-                    v[curr][h][j_] = emission_params.prob_emit_hop_and_y(h, j)
-                        + ((transition_probs[m >> h] + v[curr][m][j_minus_one])
-                            .ln_add_exp(transition_probs[h >> h] + v[curr][h][j_minus_one]))
+                    v[curr][h][j_] = (transition_probs[m >> h] + v[curr][m][j_minus_one])
+                        .ln_add_exp(transition_probs[h >> h] + v[curr][h][j_minus_one])
                 });
 
                 // calculate minimal number of mismatches
@@ -485,6 +473,7 @@ mod tests {
 
     use super::*;
     use crate::stats::pairhmm::homopolypairhmm::tests::AlignmentMode::{Global, Semiglobal};
+    use std::iter::repeat;
 
     // Single base insertion and deletion rates for R1 according to Schirmer et al.
     // BMC Bioinformatics 2016, 10.1186/s12859-016-0976-y
@@ -535,8 +524,8 @@ mod tests {
     }
 
     struct TestEmissionParams {
-        x: &'static [u8],
-        y: &'static [u8],
+        x: Vec<u8>,
+        y: Vec<u8>,
     }
 
     impl EmissionParameters for TestEmissionParams {
@@ -582,74 +571,6 @@ mod tests {
 
         fn prob_emit_gap_and_y(&self, _s: State, _j: usize) -> LogProb {
             PROB_SUBSTITUTION.ln_one_minus_exp()
-        }
-
-        fn prob_emit_x_and_hop(&self, s: State, i: usize) -> LogProb {
-            match s {
-                State::HopAY => {
-                    if self.x[i] == b'A' {
-                        PROB_SUBSTITUTION.ln_one_minus_exp()
-                    } else {
-                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
-                    }
-                }
-                State::HopCY => {
-                    if self.x[i] == b'C' {
-                        PROB_SUBSTITUTION.ln_one_minus_exp()
-                    } else {
-                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
-                    }
-                }
-                State::HopGY => {
-                    if self.x[i] == b'G' {
-                        PROB_SUBSTITUTION.ln_one_minus_exp()
-                    } else {
-                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
-                    }
-                }
-                State::HopTY => {
-                    if self.x[i] == b'T' {
-                        PROB_SUBSTITUTION.ln_one_minus_exp()
-                    } else {
-                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
-                    }
-                }
-                _ => LogProb::zero(),
-            }
-        }
-
-        fn prob_emit_hop_and_y(&self, s: State, j: usize) -> LogProb {
-            match s {
-                State::HopAX => {
-                    if self.y[j] == b'A' {
-                        PROB_SUBSTITUTION.ln_one_minus_exp()
-                    } else {
-                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
-                    }
-                }
-                State::HopCX => {
-                    if self.y[j] == b'C' {
-                        PROB_SUBSTITUTION.ln_one_minus_exp()
-                    } else {
-                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
-                    }
-                }
-                State::HopGX => {
-                    if self.y[j] == b'G' {
-                        PROB_SUBSTITUTION.ln_one_minus_exp()
-                    } else {
-                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
-                    }
-                }
-                State::HopTX => {
-                    if self.y[j] == b'T' {
-                        PROB_SUBSTITUTION.ln_one_minus_exp()
-                    } else {
-                        LogProb(*PROB_SUBSTITUTION - 3f64.ln())
-                    }
-                }
-                _ => LogProb::zero(),
-            }
         }
 
         fn len_x(&self) -> usize {
@@ -771,8 +692,8 @@ mod tests {
 
     #[test]
     fn impossible_global_alignment() {
-        let x = b"AAA";
-        let y = b"A";
+        let x = b"AAA".to_vec();
+        let y = b"A".to_vec();
         let emission_params = TestEmissionParams { x, y };
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
@@ -782,62 +703,66 @@ mod tests {
 
     #[test]
     fn test_hompolymer_run_in_y() {
-        let x = b"ACGT";
-        let y = b"ACCCCGT";
-        let emission_params = TestEmissionParams { x, y };
-
         let pair_hmm = &NO_GAPS_WITH_HOPS_PHMM;
-        let p = pair_hmm.prob_related(&emission_params, &Global, None);
-        let p_most_likely_path_with_hops = LogProb(
-            *EMIT_MATCH // A A
-                + *T_MATCH_TO_MATCH
-                + *EMIT_MATCH // C C
-                + *T_MATCH_TO_HOP_X
-                + *EMIT_MATCH // C CC
-                + *T_HOP_X_TO_HOP_X
-                + *EMIT_MATCH // C CCC
-                + *T_HOP_X_TO_HOP_X
-                + *EMIT_MATCH // C CCCC
-                + (1. - 0.1f64).ln()
-                + *EMIT_MATCH // G G
-                + *T_MATCH_TO_MATCH
-                + *EMIT_MATCH, // T T
-        );
-        assert!(*p <= 0.0);
-        assert_relative_eq!(*p_most_likely_path_with_hops, *p, epsilon = 0.001);
+        for i in 1..5 {
+            let x = b"ACGT".to_vec();
+            let y = format!("AC{}GT", repeat("C").take(i).join(""))
+                .as_bytes()
+                .to_vec();
+            let emission_params = TestEmissionParams { x, y };
+
+            let p = pair_hmm.prob_related(&emission_params, &Global, None);
+            let p_most_likely_path_with_hops = LogProb(
+                *EMIT_MATCH // A A
+                    + *T_MATCH_TO_MATCH
+                    + *EMIT_MATCH // C C
+                    + *T_MATCH_TO_HOP_X // C CC
+                    + *T_HOP_X_TO_HOP_X * ((i - 1) as f64)
+                    + (1. - 0.1f64).ln()
+                    + *EMIT_MATCH // G G
+                    + *T_MATCH_TO_MATCH
+                    + *EMIT_MATCH, // T T
+            );
+            assert!(*p <= 0.0);
+            assert!(*p >= *p_most_likely_path_with_hops);
+            assert!(*p < *p_most_likely_path_with_hops + 1.);
+        }
     }
 
     #[test]
     fn test_hompolymer_run_in_x() {
-        let x = b"ACCCCGT";
-        let y = b"ACGT";
-        let emission_params = TestEmissionParams { x, y };
-
         let pair_hmm = &NO_GAPS_WITH_HOPS_PHMM;
-        let p = pair_hmm.prob_related(&emission_params, &Global, None);
-        let p_most_likely_path_with_hops = LogProb(
-            *EMIT_MATCH // A A
-                + *T_MATCH_TO_MATCH
-                + *EMIT_MATCH // C C
-                + *T_MATCH_TO_HOP_Y
-                + *EMIT_MATCH // CC C
-                + *T_HOP_Y_TO_HOP_Y
-                + *EMIT_MATCH // CCC C
-                + *T_HOP_Y_TO_HOP_Y
-                + *EMIT_MATCH // CCCC C
-                + (1. - 0.1f64).ln()
-                + *EMIT_MATCH // G G
-                + *T_MATCH_TO_MATCH
-                + *EMIT_MATCH, // T T
-        );
-        assert!(*p <= 0.0);
-        assert_relative_eq!(*p_most_likely_path_with_hops, *p, epsilon = 0.001);
+        for i in 1..5 {
+            let x = format!("AC{}GT", repeat("C").take(i).join(""))
+                .as_bytes()
+                .to_vec();
+
+            let y = b"ACGT".to_vec();
+
+            let emission_params = TestEmissionParams { x, y };
+
+            let p = pair_hmm.prob_related(&emission_params, &Global, None);
+            let p_most_likely_path_with_hops = LogProb(
+                *EMIT_MATCH // A A
+                            + *T_MATCH_TO_MATCH
+                            + *EMIT_MATCH // C C
+                            + *T_MATCH_TO_HOP_Y // CC C
+                            + *T_HOP_Y_TO_HOP_Y * ((i - 1) as f64)
+                            + (1. - 0.1f64).ln()
+                            + *EMIT_MATCH // G G
+                            + *T_MATCH_TO_MATCH
+                            + *EMIT_MATCH, // T T
+            );
+            assert!(*p <= 0.0);
+            assert!(*p >= *p_most_likely_path_with_hops);
+            assert!(*p < *p_most_likely_path_with_hops + 1.);
+        }
     }
 
     #[test]
     fn test_interleave_gaps_x() {
-        let x = b"AGAGAG";
-        let y = b"ACGTACGTACGT";
+        let x = b"AGAGAG".to_vec();
+        let y = b"ACGTACGTACGT".to_vec();
 
         let emission_params = TestEmissionParams { x, y };
 
@@ -865,8 +790,8 @@ mod tests {
 
     #[test]
     fn test_interleave_gaps_y() {
-        let x = b"ACGTACGTACGT";
-        let y = b"AGAGAG";
+        let x = b"ACGTACGTACGT".to_vec();
+        let y = b"AGAGAG".to_vec();
 
         let emission_params = TestEmissionParams { x, y };
 
@@ -898,13 +823,13 @@ mod tests {
 
     #[test]
     fn test_same() {
-        let x = b"AGCTCGATCGATCGATC";
-        let y = b"AGCTCGATCGATCGATC";
+        let x = b"AGCTCGATCGATCGATC".to_vec();
+        let y = b"AGCTCGATCGATCGATC".to_vec();
         let emission_params = TestEmissionParams { x, y };
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Global, None);
-        let n = x.len() as f64;
+        let n = 17.;
         let p_most_likely_path = LogProb(*EMIT_MATCH * n + *T_MATCH_TO_MATCH * (n - 1.));
         let p_max = LogProb(*EMIT_MATCH * n);
         assert!(*p <= 0.0);
@@ -915,8 +840,8 @@ mod tests {
 
     #[test]
     fn test_gap_x() {
-        let x = b"AGCTCGATCGATCGATC";
-        let y = b"AGCTCGATCTGATCGATCT";
+        let x = b"AGCTCGATCGATCGATC".to_vec();
+        let y = b"AGCTCGATCTGATCGATCT".to_vec();
         let emission_params = TestEmissionParams { x, y };
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
@@ -942,8 +867,8 @@ mod tests {
 
     #[test]
     fn test_gap_x_2() {
-        let x = b"ACAGTA";
-        let y = b"ACAGTCA";
+        let x = b"ACAGTA".to_vec();
+        let y = b"ACAGTCA".to_vec();
         let emission_params = TestEmissionParams { x, y };
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
@@ -969,8 +894,8 @@ mod tests {
 
     #[test]
     fn test_gap_y() {
-        let x = b"AGCTCGATCTGATCGATCT";
-        let y = b"AGCTCGATCGATCGATC";
+        let x = b"AGCTCGATCTGATCGATCT".to_vec();
+        let y = b"AGCTCGATCGATCGATC".to_vec();
         let emission_params = TestEmissionParams { x, y };
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
@@ -997,8 +922,8 @@ mod tests {
 
     #[test]
     fn test_multigap_y() {
-        let x = b"AGCTCGATCTGATCGATCT";
-        let y = b"AGCTTCTGATCGATCT";
+        let x = b"AGCTCGATCTGATCGATCT".to_vec();
+        let y = b"AGCTTCTGATCGATCT".to_vec();
         let emission_params = TestEmissionParams { x, y };
 
         let pair_hmm = &EXTEND_GAPS_NO_HOPS_PHMM;
@@ -1020,14 +945,14 @@ mod tests {
 
     #[test]
     fn test_mismatch() {
-        let x = b"AGCTCGAGCGATCGATC";
-        let y = b"TGCTCGATCGATCGATC";
+        let x = b"AGCTCGAGCGATCGATC".to_vec();
+        let y = b"TGCTCGATCGATCGATC".to_vec();
         let emission_params = TestEmissionParams { x, y };
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Global, None);
 
-        let n = x.len() as f64;
+        let n = 17.;
         let p_most_likely_path = LogProb(
             *EMIT_MATCH * (n - 2.)
                 + *T_MATCH_TO_MATCH * (n - 1.)
@@ -1044,9 +969,10 @@ mod tests {
     fn test_banded() {
         let x = b"GATCACAGGTCTATCACCCTATTAACCACTCACGGGAGCTCTCCATGC\
 ATTTGGTATTTTCGTCTGGGGGGTATGCACGCGATAGCATTGCGAGACGCTGGAGCCGGAGCACCCTATGTCGCAGTAT\
-CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT";
+CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
+            .to_vec();
 
-        let y = b"GGGTATGCACGCGATAGCATTGCGAGATGCTGGAGCTGGAGCACCCTATGTCGC";
+        let y = b"GGGTATGCACGCGATAGCATTGCGAGATGCTGGAGCTGGAGCACCCTATGTCGC".to_vec();
 
         let emission_params = TestEmissionParams { x, y };
 
@@ -1059,8 +985,8 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
 
     #[test]
     fn test_phmm_vs_phhmm() {
-        let x = b"AGAGC";
-        let y = b"ACGTACGTC";
+        let x = b"AGAGC".to_vec();
+        let y = b"ACGTACGTC".to_vec();
         let emission_params = TestEmissionParams { x, y };
 
         let pair_hhmm = &SINGLE_GAPS_NO_HOPS_PHMM;
@@ -1135,6 +1061,8 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
             }
         }
 
+        let x = b"AGAGC";
+        let y = b"ACGTACGTC";
         let p2 = pair_hmm.prob_related(
             &TestSingleGapParamsPairHMM,
             &TestEmissionParamsPairHMM { x, y },
