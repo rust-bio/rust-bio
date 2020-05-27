@@ -9,7 +9,6 @@ pub mod annot_map;
 pub mod bit_tree;
 pub mod bitenc;
 pub mod bwt;
-pub mod cgranges;
 pub mod fmindex;
 pub mod interpolation_table;
 pub mod interval_tree;
