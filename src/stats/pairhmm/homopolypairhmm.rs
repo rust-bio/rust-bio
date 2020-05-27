@@ -22,7 +22,7 @@ use itertools::Itertools;
 use num_traits::Zero;
 
 use crate::stats::pairhmm::homopolypairhmm::State::*;
-use crate::stats::pairhmm::{GapParameters, StartEndGapParameters, XYEmission};
+use crate::stats::pairhmm::{EmissionParameters, GapParameters, StartEndGapParameters, XYEmission};
 use crate::stats::probs::LogProb;
 use crate::stats::Prob;
 
@@ -87,6 +87,18 @@ pub enum State {
     HopTY = 13,
 }
 
+impl State {
+    fn supports(&self, x: u8, y: u8) -> bool {
+        match self {
+            MatchA if x == b'A' || y == b'A' => true,
+            MatchC if x == b'C' || y == b'C' => true,
+            MatchG if x == b'G' || y == b'G' => true,
+            MatchT if x == b'T' || y == b'T' => true,
+            _ => false,
+        }
+    }
+}
+
 const STATES: [State; 14] = [
     MatchA, MatchC, MatchG, MatchT, GapX, GapY, HopAX, HopAY, HopCX, HopCY, HopGX, HopGY, HopTX,
     HopTY,
@@ -138,116 +150,6 @@ pub trait HopParameters {
     fn prob_hop_y_extend(&self) -> LogProb;
 }
 
-/// Trait for parametrization of `HomopolyPairHMM` emission behavior.
-/// Note that this trait is re-exported as `ExtendedEmissionParameters`.
-///
-/// # Example
-///
-/// ```
-/// use bio::stats::pairhmm::{XYEmission, ExtendedEmissionParameters};
-/// use bio::stats::{LogProb, Prob};
-/// use num_traits::Zero;
-///
-/// // A struct with access to the two sequences we wish to give a probability of relatedness for.
-/// // The sequences may be of any type, as long as you can properly define the
-/// // `ExtendedEmissionParameters` trait methods - i.e. they should be indexable and the values
-/// // obtained by indexing should be comparable.
-/// struct TestEmissionParams {
-///     x: Vec<u8>,
-///     y: Vec<u8>,
-/// }
-///
-/// // Probability to have a base substituted, around 0.0021.
-/// const PROB_SUBSTITUTION: Prob = Prob(0.0021);
-/// const LOGPROB_SUBSTITUTION: LogProb = LogProb(-6.16581793425276);
-///
-/// impl ExtendedEmissionParameters for TestEmissionParams {
-///     fn prob_emit_x_and_y(&self, s: State, i: usize, j: usize) -> XYEmission {
-///         let (a, b) = (self.x[i], self.y[j]);
-///         let p = match s {
-///             // If we are in state `MatchA`
-///             State::MatchA => match (a, b) {
-///                 // emitting two 'A's is very likely (`1. - *PROB_SUBSTITUTION`)
-///                 (b'A', b'A') => LOGPROB_SUBSTITUTION.ln_one_minus_exp(),
-///                 // Since we only handle 4 bases, this leaves us with the following 6 cases:
-///                 // ('A', 'C'), ('A', 'G'), ('A', 'T') and ('C', 'A'), ('G', 'A'), ('T', 'A')
-///                 // All of these cases are therefore assigned a probability of
-///                 // `*PROB_SUBSTITUTION / 6.`.
-///                 (b'A', _y) => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
-///                 (_x, b'A') => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
-///                 // All remaining cases have a probability of zero.
-///                 _ => LogProb::zero(),
-///             },
-///             State::MatchC => match (a, b) {
-///                 (b'C', b'C') => LOGPROB_SUBSTITUTION.ln_one_minus_exp(),
-///                 (b'C', _y) => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
-///                 (_x, b'C') => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
-///                 _ => LogProb::zero(),
-///             },
-///             State::MatchG => match (a, b) {
-///                 (b'G', b'G') => LOGPROB_SUBSTITUTION.ln_one_minus_exp(),
-///                 (b'G', _y) => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
-///                 (_x, b'G') => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
-///                 _ => LogProb::zero(),
-///             },
-///             State::MatchT => match (a, b) {
-///                 (b'T', b'T') => LOGPROB_SUBSTITUTION.ln_one_minus_exp(),
-///                 (b'T', _y) => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
-///                 (_x, b'T') => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
-///                 _ => LogProb::zero(),
-///             },
-///             _ => LogProb::zero(),
-///         };
-///         // If the bases we're comparing happen to be identical, emit a `Match`
-///         // (this is used for keeping track of the edit distance, which allows us to do
-///         // banded alignment)
-///         if self.x[i] == self.y[j] {
-///             XYEmission::Match(p)
-///         } else {
-///             // otherwise emit a `Mismatch`
-///             XYEmission::Mismatch(p)
-///         }
-///     }
-///
-///     // Emitting a base by itself in either x or y is - in this example - as likely as a substitution.
-///     // In other applications, you might e.g. want to consider base qualities aswell.
-///     fn prob_emit_x_and_gap(&self, _s: State, _i: usize) -> LogProb {
-///         LOGPROB_SUBSTITUTION.ln_one_minus_exp()
-///     }
-///
-///     fn prob_emit_gap_and_y(&self, _s: State, _j: usize) -> LogProb {
-///         LOGPROB_SUBSTITUTION.ln_one_minus_exp()
-///     }
-///
-///     // Length of the target sequence, in this case `self.x`.
-///     fn len_x(&self) -> usize {
-///         self.x.len()
-///     }
-///
-///     // Length of the read sequence, in this case `self.y`
-///     fn len_y(&self) -> usize {
-///         self.y.len()
-///     }
-/// }
-/// ```
-pub trait EmissionParameters {
-    /// Emission probability for (x[i], y[j]).
-    /// Returns one of the enum variants `XYEmission::Match(prob)` or `XYEmission::Mismatch(prob)`
-    fn prob_emit_x_and_y(&self, s: State, i: usize, j: usize) -> XYEmission;
-
-    /// Emission probability for (x[i], -).
-    fn prob_emit_x_and_gap(&self, s: State, i: usize) -> LogProb;
-
-    /// Emission probability for (-, y[j]).
-    fn prob_emit_gap_and_y(&self, s: State, j: usize) -> LogProb;
-
-    /// Length of the target sequence.
-    fn len_x(&self) -> usize;
-
-    /// Length of the read sequence.
-    fn len_y(&self) -> usize;
-}
-
 /// A pair Hidden Markov Model for comparing sequences x and y as described by
 /// Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence Analysis.
 /// Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
@@ -288,7 +190,7 @@ impl HomopolyPairHMM {
         max_edit_dist: Option<usize>,
     ) -> LogProb
     where
-        E: EmissionParameters,
+        E: EmissionParameters + Emission,
         A: StartEndGapParameters,
     {
         let mut prev = 0;
@@ -325,7 +227,8 @@ impl HomopolyPairHMM {
             }
 
             // cache probs for x[i]
-            let prob_emit_x_and_gap = emission_params.prob_emit_x_and_gap(GapY, i);
+            let prob_emit_x_and_gap = emission_params.prob_emit_x(i);
+            let emission_x = emission_params.emission_x(i);
 
             for j in 0..len_y {
                 let j_ = j + 1;
@@ -344,17 +247,28 @@ impl HomopolyPairHMM {
                     }
                 }
 
+                let emission_y = emission_params.emission_y(j);
                 let mut any_match = false;
                 for &m in &MATCH_STATES {
-                    let emission = emission_params.prob_emit_x_and_y(m, i, j);
-                    any_match |= emission.is_match();
-                    v[curr][m][j_] = emission.prob()
-                        + LogProb::ln_sum_exp(
-                            &STATES
-                                .iter()
-                                .map(|&s| transition_probs[s >> m] + v[prev][s][j_minus_one])
-                                .collect_vec(),
-                        );
+                    if m.supports(emission_x, emission_y) {
+                        let emission = emission_params.prob_emit_xy(i, j);
+                        let emission_prob = match emission {
+                            XYEmission::Match(p) => p,
+                            // since we have separate match states, we need to halve mismatch probs
+                            // (since e.g. ('A', _) and (_, 'A') are distinct cases)
+                            XYEmission::Mismatch(p) => LogProb::from(*p - 2f64.ln()),
+                        };
+                        any_match |= emission.is_match();
+                        v[curr][m][j_] = emission_prob
+                            + LogProb::ln_sum_exp(
+                                &STATES
+                                    .iter()
+                                    .map(|&s| transition_probs[s >> m] + v[prev][s][j_minus_one])
+                                    .collect_vec(),
+                            );
+                    } else {
+                        v[curr][m][j_] = LogProb::zero();
+                    }
                 }
 
                 v[curr][GapY][j_] = prob_emit_x_and_gap
@@ -371,7 +285,7 @@ impl HomopolyPairHMM {
                         .ln_add_exp(transition_probs[h >> h] + v[prev][h][j_])
                 });
 
-                v[curr][GapX][j_] = emission_params.prob_emit_gap_and_y(GapX, j)
+                v[curr][GapX][j_] = emission_params.prob_emit_y(j)
                     + LogProb::ln_sum_exp(
                         &MATCH_STATES
                             .iter()
@@ -607,12 +521,13 @@ fn min3<T: Ord>(a: T, b: T, c: T) -> T {
 
 #[cfg(test)]
 mod tests {
+    use std::iter::repeat;
+
+    use crate::stats::pairhmm::homopolypairhmm::tests::AlignmentMode::{Global, Semiglobal};
     use crate::stats::pairhmm::PairHMM;
     use crate::stats::{LogProb, Prob};
 
     use super::*;
-    use crate::stats::pairhmm::homopolypairhmm::tests::AlignmentMode::{Global, Semiglobal};
-    use std::iter::repeat;
 
     // Single base insertion and deletion rates for R1 according to Schirmer et al.
     // BMC Bioinformatics 2016, 10.1186/s12859-016-0976-y
@@ -668,47 +583,19 @@ mod tests {
     }
 
     impl EmissionParameters for TestEmissionParams {
-        fn prob_emit_x_and_y(&self, s: State, i: usize, j: usize) -> XYEmission {
-            let (a, b) = (self.x[i], self.y[j]);
-            let p = match s {
-                State::MatchA => match (a, b) {
-                    (b'A', b'A') => PROB_SUBSTITUTION.ln_one_minus_exp(),
-                    (b'A', _y) => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
-                    (_x, b'A') => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
-                    _ => LogProb::zero(),
-                },
-                State::MatchC => match (a, b) {
-                    (b'C', b'C') => PROB_SUBSTITUTION.ln_one_minus_exp(),
-                    (b'C', _y) => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
-                    (_x, b'C') => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
-                    _ => LogProb::zero(),
-                },
-                State::MatchG => match (a, b) {
-                    (b'G', b'G') => PROB_SUBSTITUTION.ln_one_minus_exp(),
-                    (b'G', _y) => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
-                    (_x, b'G') => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
-                    _ => LogProb::zero(),
-                },
-                State::MatchT => match (a, b) {
-                    (b'T', b'T') => PROB_SUBSTITUTION.ln_one_minus_exp(),
-                    (b'T', _y) => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
-                    (_x, b'T') => LogProb(*PROB_SUBSTITUTION - 6f64.ln()),
-                    _ => LogProb::zero(),
-                },
-                _ => LogProb::zero(),
-            };
+        fn prob_emit_xy(&self, i: usize, j: usize) -> XYEmission {
             if self.x[i] == self.y[j] {
-                XYEmission::Match(p)
+                XYEmission::Match(PROB_SUBSTITUTION.ln_one_minus_exp())
             } else {
-                XYEmission::Mismatch(p)
+                XYEmission::Mismatch(LogProb::from(PROB_ILLUMINA_SUBST / Prob(3.)))
             }
         }
 
-        fn prob_emit_x_and_gap(&self, _s: State, _i: usize) -> LogProb {
+        fn prob_emit_x(&self, _i: usize) -> LogProb {
             PROB_SUBSTITUTION.ln_one_minus_exp()
         }
 
-        fn prob_emit_gap_and_y(&self, _s: State, _j: usize) -> LogProb {
+        fn prob_emit_y(&self, _j: usize) -> LogProb {
             PROB_SUBSTITUTION.ln_one_minus_exp()
         }
 
@@ -718,6 +605,16 @@ mod tests {
 
         fn len_y(&self) -> usize {
             self.y.len()
+        }
+    }
+
+    impl Emission for TestEmissionParams {
+        fn emission_x(&self, i: usize) -> u8 {
+            self.x[i]
+        }
+
+        fn emission_y(&self, j: usize) -> u8 {
+            self.y[j]
         }
     }
 
@@ -782,6 +679,7 @@ mod tests {
     }
 
     struct TestNoHopParams;
+
     impl HopParameters for TestNoHopParams {
         fn prob_hop_x(&self) -> LogProb {
             LogProb::zero()
@@ -883,14 +781,14 @@ mod tests {
             let p = pair_hmm.prob_related(&emission_params, &Global, None);
             let p_most_likely_path_with_hops = LogProb(
                 *EMIT_MATCH // A A
-                            + *T_MATCH_TO_MATCH
-                            + *EMIT_MATCH // C C
-                            + *T_MATCH_TO_HOP_Y // CC C
-                            + *T_HOP_Y_TO_HOP_Y * ((i - 1) as f64)
-                            + (1. - 0.1f64).ln()
-                            + *EMIT_MATCH // G G
-                            + *T_MATCH_TO_MATCH
-                            + *EMIT_MATCH, // T T
+                    + *T_MATCH_TO_MATCH
+                    + *EMIT_MATCH // C C
+                    + *T_MATCH_TO_HOP_Y // CC C
+                    + *T_HOP_Y_TO_HOP_Y * ((i - 1) as f64)
+                    + (1. - 0.1f64).ln()
+                    + *EMIT_MATCH // G G
+                    + *T_MATCH_TO_MATCH
+                    + *EMIT_MATCH, // T T
             );
             assert!(*p <= 0.0);
             assert!(*p >= *p_most_likely_path_with_hops);
@@ -955,6 +853,7 @@ mod tests {
         assert_relative_eq!(*p, *p_max, epsilon = 0.1);
         assert!(*p <= *p_max);
     }
+
     static SINGLE_GAP_PARAMS: TestSingleGapParams = TestSingleGapParams;
     static EXTEND_GAP_PARAMS: TestExtendGapParams = TestExtendGapParams;
     static NO_GAP_PARAMS: NoGapParams = NoGapParams;
@@ -1124,8 +1023,8 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
 
     #[test]
     fn test_phmm_vs_phhmm() {
-        let x = b"AGAGC".to_vec();
-        let y = b"ACGTACGTC".to_vec();
+        let x = b"AGAGAGC".to_vec();
+        let y = b"ATACGTACGTC".to_vec();
         let emission_params = TestEmissionParams { x, y };
 
         let pair_hhmm = &SINGLE_GAPS_NO_HOPS_PHMM;

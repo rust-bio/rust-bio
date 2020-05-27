@@ -1,12 +1,40 @@
-use crate::stats::LogProb;
-pub use homopolypairhmm::EmissionParameters as ExtendedEmissionParameters;
 pub use homopolypairhmm::{HomopolyPairHMM, HopParameters};
-pub use pairhmm::{EmissionParameters, PairHMM};
+pub use pairhmm::PairHMM;
+
+use crate::stats::LogProb;
 
 mod homopolypairhmm;
 mod pairhmm;
 
 // traits common to pairhmm implementations
+
+/// Trait for parametrization of `PairHMM` emission behavior.
+pub trait EmissionParameters {
+    /// Emission probability for (x[i], y[j]).
+    /// Returns a tuple with probability and a boolean indicating whether emissions match
+    /// (e.g., are the same DNA alphabet letter).
+    fn prob_emit_xy(&self, i: usize, j: usize) -> XYEmission;
+
+    /// Emission probability for (x[i], -).
+    fn prob_emit_x(&self, i: usize) -> LogProb;
+
+    /// Emission probability for (-, y[j]).
+    fn prob_emit_y(&self, j: usize) -> LogProb;
+
+    fn len_x(&self) -> usize;
+
+    fn len_y(&self) -> usize;
+}
+/// Trait needed for the `HomopolyPairHMM`, because its implementation details
+/// depend on the actual bases to distinguish between Match states.
+pub trait Emission {
+    /// Base emitted at `i` in sequence `x`.
+    /// Should be one of b'A', b'C', b'G' or b'T'.
+    fn emission_x(&self, i: usize) -> u8;
+    /// Base emitted at `i` in sequence `y`.
+    /// Should be one of b'A', b'C', b'G' or b'T'.
+    fn emission_y(&self, j: usize) -> u8;
+}
 
 /// Trait for parametrization of `PairHMM` gap behavior.
 pub trait GapParameters {
@@ -49,6 +77,7 @@ pub trait StartEndGapParameters {
     fn free_end_gap_x(&self) -> bool;
 }
 
+#[derive(Debug)]
 pub enum XYEmission {
     Match(LogProb),
     Mismatch(LogProb),

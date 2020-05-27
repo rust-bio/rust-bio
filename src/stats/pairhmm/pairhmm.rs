@@ -11,26 +11,8 @@ use std::cmp;
 use std::mem;
 use std::usize;
 
-use crate::stats::pairhmm::{GapParameters, StartEndGapParameters, XYEmission};
+use crate::stats::pairhmm::{EmissionParameters, GapParameters, StartEndGapParameters, XYEmission};
 use crate::stats::LogProb;
-
-/// Trait for parametrization of `PairHMM` emission behavior.
-pub trait EmissionParameters {
-    /// Emission probability for (x[i], y[j]).
-    /// Returns a tuple with probability and a boolean indicating whether emissions match
-    /// (e.g., are the same DNA alphabet letter).
-    fn prob_emit_xy(&self, i: usize, j: usize) -> XYEmission;
-
-    /// Emission probability for (x[i], -).
-    fn prob_emit_x(&self, i: usize) -> LogProb;
-
-    /// Emission probability for (-, y[j]).
-    fn prob_emit_y(&self, j: usize) -> LogProb;
-
-    fn len_x(&self) -> usize;
-
-    fn len_y(&self) -> usize;
-}
 
 /// Fast approximation of sum over the three given proabilities. If the largest is sufficiently
 /// large compared to the others, we just return that instead of computing the full (expensive)
