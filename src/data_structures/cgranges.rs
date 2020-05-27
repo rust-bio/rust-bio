@@ -176,7 +176,11 @@ impl<N: Ord + Clone + Copy, D: Clone> IITree<N, D> {
     /// # Panics
     ///
     /// Panics if this `IITree` instance has not been indexed yet.
-    pub fn find_into<'b, 'a: 'b, I: Into<Interval<N>>>(&'a self, interval: I, results: &mut Vec<&'b Entry<N, D>>) {
+    pub fn find_into<'b, 'a: 'b, I: Into<Interval<N>>>(
+        &'a self,
+        interval: I,
+        results: &mut Vec<&'b Entry<N, D>>,
+    ) {
         if !self.indexed {
             panic!("This IITree has not been indexed yet. Call `index()` first.")
         }
