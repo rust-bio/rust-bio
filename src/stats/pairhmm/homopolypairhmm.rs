@@ -22,7 +22,7 @@ use itertools::Itertools;
 use num_traits::Zero;
 
 use crate::stats::pairhmm::homopolypairhmm::State::*;
-use crate::stats::pairhmm::{EmissionParameters, GapParameters, StartEndGapParameters, XYEmission};
+use crate::stats::pairhmm::{EmissionParameters, Emission, GapParameters, StartEndGapParameters, XYEmission};
 use crate::stats::probs::LogProb;
 use crate::stats::Prob;
 
@@ -1069,7 +1069,7 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
             y: &'static [u8],
         }
 
-        impl crate::stats::pairhmm::pairhmm::EmissionParameters for TestEmissionParamsPairHMM {
+        impl crate::stats::pairhmm::EmissionParameters for TestEmissionParamsPairHMM {
             fn prob_emit_xy(&self, i: usize, j: usize) -> crate::stats::pairhmm::XYEmission {
                 if self.x[i] == self.y[j] {
                     crate::stats::pairhmm::XYEmission::Match(LogProb::from(
