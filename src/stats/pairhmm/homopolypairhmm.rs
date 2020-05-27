@@ -421,7 +421,7 @@ impl HomopolyPairHMM {
                 v[curr][s].reset(LogProb::zero());
             }
         }
-        if free_end_gap_x {
+        let p = if free_end_gap_x {
             LogProb::ln_sum_exp(&prob_cols.iter().cloned().collect_vec())
         } else {
             LogProb::ln_sum_exp(
@@ -430,6 +430,14 @@ impl HomopolyPairHMM {
                     .map(|&state| v[prev][state][len_y])
                     .collect_vec(),
             )
+        };
+        // take the minimum with 1.0, because sum of paths can exceed probability 1.0
+        // especially in case of repeats
+        assert!(!p.is_nan());
+        if p > LogProb::ln_one() {
+            LogProb::ln_one()
+        } else {
+            p
         }
     }
 }
