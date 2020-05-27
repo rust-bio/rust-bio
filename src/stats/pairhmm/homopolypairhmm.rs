@@ -30,6 +30,44 @@ use crate::stats::Prob;
 /// for each of those Match states two corresponding Hop (homopolymer run) states
 /// (one for a run in sequence `x`, one for a run in `y`),
 /// as well as the usual GapX and GapY states.
+///
+/// In states `MatchV` (where `V` ∈ `{A, C, G, T}`), the probability to emit anything other than
+/// `(V, V)`, `(V, y != V)`, `(x != V, y)` should be zero.
+///
+/// State `HopVZ` (where `V` ∈ `{A, C, G, T}`, `Z` ∈ `{X, Y}`) can only be transitioned to from
+/// corresponding state `MatchV`.
+///
+/// The transition matrix is given below:
+///     | MA | MC | MG | MT | HAX | HAY | HCX | HCY | HGX | HGY | HTX | HTY | GX | GY
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// MA  |  x |  x |  x |  x |  x  |  x  |     |     |     |     |     |     |  x |  x
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// MC  |  x |  x |  x |  x |     |     |  x  |  x  |     |     |     |     |  x |  x
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// MG  |  x |  x |  x |  x |     |     |     |     |  x  |  x  |     |     |  x |  x
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// MT  |  x |  x |  x |  x |     |     |     |     |     |     |  x  |  x  |  x |  x
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// HAX |  x |  x |  x |  x |  x  |     |     |     |     |     |     |     |    |
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// HAY |  x |  x |  x |  x |     |  x  |     |     |     |     |     |     |    |
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// HCX |  x |  x |  x |  x |     |     |  x  |     |     |     |     |     |    |
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// HCY |  x |  x |  x |  x |     |     |     |  x  |     |     |     |     |    |
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// HGX |  x |  x |  x |  x |     |     |     |     |  x  |     |     |     |    |
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// HGY |  x |  x |  x |  x |     |     |     |     |     |  x  |     |     |    |
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// HTX |  x |  x |  x |  x |     |     |     |     |     |     |  x  |     |    |
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// HTY |  x |  x |  x |  x |     |     |     |     |     |     |     |  x  |    |
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// GX  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |  x |
+/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+/// GY  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |    |  x
+///
 #[derive(Eq, PartialEq, Debug, Enum, Clone, Copy)]
 #[repr(usize)]
 pub enum State {
@@ -101,9 +139,100 @@ pub trait HopParameters {
 }
 
 /// Trait for parametrization of `HomopolyPairHMM` emission behavior.
+/// Note that this trait is re-exported as `ExtendedEmissionParameters`.
+///
+/// # Example
+///
+/// ```
+/// use bio::stats::pairhmm::{XYEmission, ExtendedEmissionParameters};
+/// use bio::stats::{LogProb, Prob};
+/// use num_traits::Zero;
+///
+/// // A struct with access to the two sequences we wish to give a probability of relatedness for.
+/// // The sequences may be of any type, as long as you can properly define the
+/// // `ExtendedEmissionParameters` trait methods - i.e. they should be indexable and the values
+/// // obtained by indexing should be comparable.
+/// struct TestEmissionParams {
+///     x: Vec<u8>,
+///     y: Vec<u8>,
+/// }
+///
+/// // Probability to have a base substituted, around 0.0021.
+/// const PROB_SUBSTITUTION: Prob = Prob(0.0021);
+/// const LOGPROB_SUBSTITUTION: LogProb = LogProb(-6.16581793425276);
+///
+/// impl ExtendedEmissionParameters for TestEmissionParams {
+///     fn prob_emit_x_and_y(&self, s: State, i: usize, j: usize) -> XYEmission {
+///         let (a, b) = (self.x[i], self.y[j]);
+///         let p = match s {
+///             // If we are in state `MatchA`
+///             State::MatchA => match (a, b) {
+///                 // emitting two 'A's is very likely (`1. - *PROB_SUBSTITUTION`)
+///                 (b'A', b'A') => LOGPROB_SUBSTITUTION.ln_one_minus_exp(),
+///                 // Since we only handle 4 bases, this leaves us with the following 6 cases:
+///                 // ('A', 'C'), ('A', 'G'), ('A', 'T') and ('C', 'A'), ('G', 'A'), ('T', 'A')
+///                 // All of these cases are therefore assigned a probability of
+///                 // `*PROB_SUBSTITUTION / 6.`.
+///                 (b'A', _y) => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
+///                 (_x, b'A') => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
+///                 // All remaining cases have a probability of zero.
+///                 _ => LogProb::zero(),
+///             },
+///             State::MatchC => match (a, b) {
+///                 (b'C', b'C') => LOGPROB_SUBSTITUTION.ln_one_minus_exp(),
+///                 (b'C', _y) => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
+///                 (_x, b'C') => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
+///                 _ => LogProb::zero(),
+///             },
+///             State::MatchG => match (a, b) {
+///                 (b'G', b'G') => LOGPROB_SUBSTITUTION.ln_one_minus_exp(),
+///                 (b'G', _y) => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
+///                 (_x, b'G') => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
+///                 _ => LogProb::zero(),
+///             },
+///             State::MatchT => match (a, b) {
+///                 (b'T', b'T') => LOGPROB_SUBSTITUTION.ln_one_minus_exp(),
+///                 (b'T', _y) => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
+///                 (_x, b'T') => LogProb(*LOGPROB_SUBSTITUTION - 6f64.ln()),
+///                 _ => LogProb::zero(),
+///             },
+///             _ => LogProb::zero(),
+///         };
+///         // If the bases we're comparing happen to be identical, emit a `Match`
+///         // (this is used for keeping track of the edit distance, which allows us to do
+///         // banded alignment)
+///         if self.x[i] == self.y[j] {
+///             XYEmission::Match(p)
+///         } else {
+///             // otherwise emit a `Mismatch`
+///             XYEmission::Mismatch(p)
+///         }
+///     }
+///
+///     // Emitting a base by itself in either x or y is - in this example - as likely as a substitution.
+///     // In other applications, you might e.g. want to consider base qualities aswell.
+///     fn prob_emit_x_and_gap(&self, _s: State, _i: usize) -> LogProb {
+///         LOGPROB_SUBSTITUTION.ln_one_minus_exp()
+///     }
+///
+///     fn prob_emit_gap_and_y(&self, _s: State, _j: usize) -> LogProb {
+///         LOGPROB_SUBSTITUTION.ln_one_minus_exp()
+///     }
+///
+///     // Length of the target sequence, in this case `self.x`.
+///     fn len_x(&self) -> usize {
+///         self.x.len()
+///     }
+///
+///     // Length of the read sequence, in this case `self.y`
+///     fn len_y(&self) -> usize {
+///         self.y.len()
+///     }
+/// }
+/// ```
 pub trait EmissionParameters {
     /// Emission probability for (x[i], y[j]).
-    /// Returns one of the enum variants Match(prob) or Mismatch(prob)
+    /// Returns one of the enum variants `XYEmission::Match(prob)` or `XYEmission::Mismatch(prob)`
     fn prob_emit_x_and_y(&self, s: State, i: usize, j: usize) -> XYEmission;
 
     /// Emission probability for (x[i], -).
@@ -112,8 +241,10 @@ pub trait EmissionParameters {
     /// Emission probability for (-, y[j]).
     fn prob_emit_gap_and_y(&self, s: State, j: usize) -> LogProb;
 
+    /// Length of the target sequence.
     fn len_x(&self) -> usize;
 
+    /// Length of the read sequence.
     fn len_y(&self) -> usize;
 }
 
