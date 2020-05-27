@@ -11,7 +11,7 @@ use std::cmp;
 use std::mem;
 use std::usize;
 
-use crate::stats::pairhmm::{EmissionParameters, GapParameters, StartEndGapParameters, XYEmission};
+pub use crate::stats::pairhmm::{EmissionParameters, GapParameters, StartEndGapParameters, XYEmission};
 use crate::stats::LogProb;
 
 /// Fast approximation of sum over the three given proabilities. If the largest is sufficiently
