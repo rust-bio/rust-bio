@@ -1,9 +1,46 @@
+//! Interval tree, a data structure for efficiently storing and searching intervals.
+//!
+//! This implementation is based on the sorted array version as described/given in
+//! https://github.com/lh3/cgranges / https://github.com/lh3/cgranges/blob/master/cpp/IITree.h
+//!
+//! It uses the same conventions as `crate::data_structures::interval_tree::IntervalTree`.
+//! Note that if you do not use the `IITree::from_iter` constructor, you have to call `index(&mut self)`
+//! first before `find()`-ing overlaps.
+//!
+//! # Example
+//! ```
+//! use bio::data_structures::cgranges::{IITree, Entry};
+//! use bio::utils::Interval;
+//!
+//! let mut tree = IITree::new();
+//! tree.insert(12..34, 0);
+//! tree.insert(0..23, 1);
+//! tree.insert(34..56, 2);
+//! // since we did at least one manual insert, we have to index the tree
+//! tree.index();
+//! let i1 = tree.find(22..25)[0];
+//! assert_eq!(i1.interval().start(), 0);
+//! assert_eq!(i1.interval().end(), 23);
+//! assert_eq!(i1.data(), 1);
+//!
+//! let tree = IITree::from_iter(vec![(12..34, 0), (0..23, 1), (34..56, 2)]);
+//! // no call to `index` needed here, since that happens in `from_iter` already
+//! let i2 = tree.find(22..25)[1];
+//! assert_eq!(i1.interval().start(), 12);
+//! assert_eq!(i1.interval().end(), 34);
+//! assert_eq!(i1.data(), 0);
+//!
+//! ```
+//!
+
 use std::cmp::min;
 
 use itertools::Itertools;
 
 use crate::utils::Interval;
 
+/// A `find` query on the interval tree does not directly return references to the intervals in the
+/// tree but wraps the fields `interval` and `data` in an `Entry`.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Entry<N: Ord + Clone + Copy, D> {
     data: D,
@@ -44,29 +81,12 @@ impl<N: Ord + Clone + Copy, D: Clone> IITree<N, D> {
         Default::default()
     }
 
-    pub fn from<I: Iterator<Item = (V, D)>, V>(iter: I) -> Self
+    pub fn from_iter<I: Iterator<Item = (V, D)>, V>(iter: I) -> Self
     where
         V: Into<Interval<N>>,
     {
         let mut tree = Self::new();
         iter.for_each(|(interval, data)| tree.insert(interval, data));
-        tree.index();
-        tree
-    }
-
-    pub fn from_entries(entries: &[(Interval<N>, D)]) -> Self {
-        let mut tree = Self {
-            entries: entries
-                .iter()
-                .map(|(interval, data)| Entry {
-                    interval: interval.clone(),
-                    data: data.clone(),
-                    max: interval.end,
-                })
-                .collect_vec(),
-            max_level: 0,
-            indexed: false,
-        };
         tree.index();
         tree
     }
@@ -77,7 +97,7 @@ impl<N: Ord + Clone + Copy, D: Clone> IITree<N, D> {
         self.entries.push(Entry {
             interval,
             data,
-            max: max,
+            max,
         });
         self.indexed = false;
     }
@@ -130,19 +150,42 @@ impl<N: Ord + Clone + Copy, D: Clone> IITree<N, D> {
         self.max_level = k - 1;
     }
 
-    pub fn overlap(&self, start: N, end: N) -> Vec<&Entry<N, D>> {
+    /// Find overlapping intervals in the index.
+    /// Returns a vector of entries, consisting of the interval and its associated data.
+    ///
+    /// # Arguments
+    ///
+    /// * `interval` - The interval for which overlaps are to be found in the index. Can also be a `Range`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if this `IITree` instance has not been indexed yet.
+    pub fn find<I: Into<Interval<N>>>(&self, interval: I) -> Vec<&Entry<N, D>> {
         let mut buf = Vec::with_capacity(512);
-        self.overlap_into(start, end, &mut buf);
+        self.find_into(interval, &mut buf);
         buf
     }
 
-    pub fn overlap_into<'b, 'a: 'b>(&'a self, start: N, end: N, out: &mut Vec<&'b Entry<N, D>>) {
+    /// Find overlapping intervals in the index
+    ///
+    /// # Arguments
+    ///
+    /// * `interval` - The interval for which overlaps are to be found in the index. Can also be a `Range`.
+    /// * `results` - A reusable buffer vector for storing the results.
+    ///
+    /// # Panics
+    ///
+    /// Panics if this `IITree` instance has not been indexed yet.
+    pub fn find_into<'b, 'a: 'b, I: Into<Interval<N>>>(&'a self, interval: I, results: &mut Vec<&'b Entry<N, D>>) {
         if !self.indexed {
             panic!("This IITree has not been indexed yet. Call `index()` first.")
         }
+
+        let interval = interval.into();
+        let (start, end) = (interval.start, interval.end);
         let n = self.entries.len() as usize;
         let a = &self.entries;
-        out.clear();
+        results.clear();
         let mut stack = [StackCell::empty(); 64];
         // push the root; this is a top down traversal
         stack[0].k = self.max_level;
@@ -161,8 +204,8 @@ impl<N: Ord + Clone + Copy, D: Clone> IITree<N, D> {
                         break;
                     }
                     if start < a[i].interval.end {
-                        // if overlap, append to out[]
-                        out.push(&self.entries[i]);
+                        // if overlap, append to `results`
+                        results.push(&self.entries[i]);
                     }
                 }
             } else if w == false {
@@ -182,7 +225,7 @@ impl<N: Ord + Clone + Copy, D: Clone> IITree<N, D> {
             } else if x < n && a[x].interval.start < end {
                 // need to push the right child
                 if start < a[x].interval.end {
-                    out.push(&self.entries[x]);
+                    results.push(&self.entries[x]);
                 }
                 stack[t].k = k - 1;
                 stack[t].x = x + (1 << (k - 1));
@@ -228,7 +271,7 @@ mod tests {
         tree.insert(0..23, 1);
         tree.insert(34..56, 2);
         tree.index();
-        let overlap = tree.overlap(22, 25);
+        let overlap = tree.find(22..25);
 
         let e1 = Entry {
             interval: (0..23).into(),
