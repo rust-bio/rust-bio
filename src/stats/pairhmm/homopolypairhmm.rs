@@ -219,7 +219,7 @@ impl HomopolyPairHMM {
 
         for i in 0..len_x {
             if free_start_gap_x {
-                let prob_start_gap_x = LogProb(*alignment_mode.prob_start_gap_x(i) - 4.);
+                let prob_start_gap_x = LogProb(*alignment_mode.prob_start_gap_x(i) - 4f64.ln());
                 for &m in &MATCH_STATES {
                     v[prev][m][0] = v[prev][m][0].ln_add_exp(prob_start_gap_x);
                 }
