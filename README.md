@@ -1,7 +1,7 @@
 [![Crates.io](https://img.shields.io/crates/d/bio.svg)](https://crates.io/crates/bio)
 [![Crates.io](https://img.shields.io/crates/v/bio.svg)](https://crates.io/crates/bio)
 [![Crates.io](https://img.shields.io/crates/l/bio.svg)](https://crates.io/crates/bio)
-[![Travis](https://img.shields.io/travis/rust-bio/rust-bio/master.svg)](https://travis-ci.org/rust-bio/rust-bio)
+![GitHub Workflow Status (branch)](https://img.shields.io/github/workflow/status/rust-bio/rust-bio/CI/master?label=tests)
 [![Coveralls](https://img.shields.io/coveralls/rust-bio/rust-bio.svg)](https://coveralls.io/github/rust-bio/rust-bio)
 [![DOI](https://zenodo.org/badge/29821195.svg)](https://zenodo.org/badge/latestdoi/29821195)
 
