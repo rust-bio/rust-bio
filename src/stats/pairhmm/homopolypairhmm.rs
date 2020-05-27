@@ -1099,8 +1099,8 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
             }
         }
 
-        let x = b"AGAGC";
-        let y = b"ACGTACGTC";
+        let x = b"AGAGAGC";
+        let y = b"ATACGTACGTC";
         let p2 = pair_hmm.prob_related(
             &TestSingleGapParamsPairHMM,
             &TestEmissionParamsPairHMM { x, y },
