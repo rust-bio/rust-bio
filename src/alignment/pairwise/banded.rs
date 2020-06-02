@@ -82,8 +82,7 @@
 
 use crate::alignment::{Alignment, AlignmentOperation};
 use crate::utils::TextSlice;
-use std::cmp::max;
-use std::cmp::min;
+use std::cmp::{max, min, Ordering};
 use std::i32;
 use std::ops::Range;
 
@@ -724,7 +723,7 @@ impl<F: MatchFunc> Aligner<F> {
             }
         }
 
-        for j in 1..n + 1 {
+        for j in 1..=n {
             let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
             if d_score > self.scoring.yclip_prefix {
                 self.traceback.get_mut(0, j).set_s_bits(TB_DEL);
@@ -745,7 +744,7 @@ impl<F: MatchFunc> Aligner<F> {
             }
         }
 
-        for i in 1..m + 1 {
+        for i in 1..=m {
             let c_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
             if c_score > self.scoring.xclip_prefix {
                 self.traceback.get_mut(i, 0).set_s_bits(TB_INS);
@@ -1194,16 +1193,13 @@ impl Band {
                 // we need to find a zero cost cell
 
                 // First try the diagonal
-                let diagonal_score;
-                if r > c {
+                let diagonal_score = match r.cmp(&c) {
                     // We will hit (r-c, 0)
-                    diagonal_score = scoring.xclip_prefix;
-                } else if c > r {
+                    Ordering::Greater => scoring.xclip_prefix,
                     // We will hit (0, c-r)
-                    diagonal_score = scoring.yclip_prefix;
-                } else {
-                    diagonal_score = 0;
-                }
+                    Ordering::Less => scoring.yclip_prefix,
+                    Ordering::Equal => 0,
+                };
 
                 if diagonal_score == 0 {
                     let d = min(r, c);
@@ -1259,17 +1255,14 @@ impl Band {
                 // First try the diagonal
                 let dr = self.rows - r;
                 let dc = self.cols - c;
-                let diagonal_score;
-                if dr > dc {
+                let diagonal_score = match dr.cmp(&dc) {
                     // We will hit (r+dc, self.cols)
-                    diagonal_score = scoring.xclip_suffix;
-                } else if dc > dr {
+                    Ordering::Greater => scoring.xclip_suffix,
                     // We will hit (self.rows, c+dr)
-                    diagonal_score = scoring.yclip_suffix;
-                } else {
+                    Ordering::Less => scoring.yclip_suffix,
                     // We will hit the corner
-                    diagonal_score = 0;
-                }
+                    Ordering::Equal => 0,
+                };
 
                 if diagonal_score == 0 {
                     let d = min(dr, dc);
