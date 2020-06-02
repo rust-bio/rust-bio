@@ -48,6 +48,7 @@ strum = ">= 0.16, <= 0.18"
 strum_macros = ">= 0.16, <= 0.18"
 snafu = ">= 0.5, <= 0.6"
 getset = "0.0.9"
+enum-map = "0.6"
 
 [dependencies.vec_map]
 version = "0.8"

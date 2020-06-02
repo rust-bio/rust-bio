@@ -11,87 +11,10 @@ use std::cmp;
 use std::mem;
 use std::usize;
 
+pub use crate::stats::pairhmm::{
+    EmissionParameters, GapParameters, StartEndGapParameters, XYEmission,
+};
 use crate::stats::LogProb;
-
-/// Trait for parametrization of `PairHMM` gap behavior.
-pub trait GapParameters {
-    /// Probability to open gap in x.
-    fn prob_gap_x(&self) -> LogProb;
-
-    /// Probability to open gap in y.
-    fn prob_gap_y(&self) -> LogProb;
-
-    /// Probability to extend gap in x.
-    fn prob_gap_x_extend(&self) -> LogProb;
-
-    /// Probability to extend gap in y.
-    fn prob_gap_y_extend(&self) -> LogProb;
-}
-
-/// Trait for parametrization of `PairHMM` start and end gap behavior.
-/// This trait can be used to implement global and semiglobal alignments.
-///
-/// * global: methods return `false` and `LogProb::ln_zero()`.
-/// * semiglobal: methods return `true` and `LogProb::ln_one()`.
-pub trait StartEndGapParameters {
-    /// Probability to start at x[i]. This can be left unchanged if you use `free_start_gap_x` and
-    /// `free_end_gap_x`.
-    #[inline]
-    #[allow(unused_variables)]
-    fn prob_start_gap_x(&self, i: usize) -> LogProb {
-        if self.free_start_gap_x() {
-            LogProb::ln_one()
-        } else {
-            // For global alignment, this has to return 0.0.
-            LogProb::ln_zero()
-        }
-    }
-
-    /// Allow free start gap in x.
-    fn free_start_gap_x(&self) -> bool;
-
-    /// Allow free end gap in x.
-    fn free_end_gap_x(&self) -> bool;
-}
-
-pub enum XYEmission {
-    Match(LogProb),
-    Mismatch(LogProb),
-}
-
-impl XYEmission {
-    pub fn prob(&self) -> LogProb {
-        match self {
-            &XYEmission::Match(p) => p,
-            &XYEmission::Mismatch(p) => p,
-        }
-    }
-
-    pub fn is_match(&self) -> bool {
-        match self {
-            &XYEmission::Match(_) => true,
-            &XYEmission::Mismatch(_) => false,
-        }
-    }
-}
-
-/// Trait for parametrization of `PairHMM` emission behavior.
-pub trait EmissionParameters {
-    /// Emission probability for (x[i], y[j]).
-    /// Returns a tuple with probability and a boolean indicating whether emissions match
-    /// (e.g., are the same DNA alphabet letter).
-    fn prob_emit_xy(&self, i: usize, j: usize) -> XYEmission;
-
-    /// Emission probability for (x[i], -).
-    fn prob_emit_x(&self, i: usize) -> LogProb;
-
-    /// Emission probability for (-, y[j]).
-    fn prob_emit_y(&self, j: usize) -> LogProb;
-
-    fn len_x(&self) -> usize;
-
-    fn len_y(&self) -> usize;
-}
 
 /// Fast approximation of sum over the three given proabilities. If the largest is sufficiently
 /// large compared to the others, we just return that instead of computing the full (expensive)
@@ -344,8 +267,9 @@ impl PairHMM {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::stats::{LogProb, Prob};
+
+    use super::*;
 
     // Single base insertion and deletion rates for R1 according to Schirmer et al.
     // BMC Bioinformatics 2016, 10.1186/s12859-016-0976-y
@@ -456,7 +380,48 @@ mod tests {
     const T_GAP_Y: LogProb = LogProb(-12.186270018233994);
 
     #[test]
-    fn test_interleave_gaps() {
+    fn impossible_global_alignment() {
+        let x = b"AAA";
+        let y = b"A";
+        let emission_params = TestEmissionParams { x, y };
+
+        let mut pair_hmm = PairHMM::new();
+        let p = pair_hmm.prob_related(&TestSingleGapParams, &emission_params, None);
+        assert_eq!(p, LogProb::ln_zero());
+    }
+
+    #[test]
+    fn test_interleave_gaps_y() {
+        let x = b"ACGTACGTACGT";
+        let y = b"AGAGAG";
+
+        let emission_params = TestEmissionParams { x, y };
+        let gap_params = TestSingleGapParams;
+
+        let mut pair_hmm = PairHMM::new();
+        let p = pair_hmm.prob_related(&gap_params, &emission_params, None);
+
+        let n_matches = 6.;
+        let n_insertions = 6.;
+
+        let p_most_likely_path = LogProb(
+            *EMIT_MATCH * n_matches
+                + *T_MATCH * (n_matches - n_insertions)
+                + *EMIT_GAP_Y * n_insertions
+                + *T_GAP_Y * n_insertions
+                + (1. - *PROB_ILLUMINA_DEL).ln() * n_insertions,
+        );
+
+        let p_max = LogProb(*T_GAP_Y * n_insertions);
+
+        assert!(*p <= 0.0);
+        assert_relative_eq!(*p_most_likely_path, *p, epsilon = 0.01);
+        assert_relative_eq!(*p, *p_max, epsilon = 0.1);
+        assert!(*p <= *p_max);
+    }
+
+    #[test]
+    fn test_interleave_gaps_x() {
         let x = b"AGAGAG";
         let y = b"ACGTACGTACGT";
 
