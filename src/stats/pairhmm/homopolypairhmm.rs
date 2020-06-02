@@ -22,7 +22,9 @@ use itertools::Itertools;
 use num_traits::Zero;
 
 use crate::stats::pairhmm::homopolypairhmm::State::*;
-use crate::stats::pairhmm::{EmissionParameters, Emission, GapParameters, StartEndGapParameters, XYEmission};
+use crate::stats::pairhmm::{
+    Emission, EmissionParameters, GapParameters, StartEndGapParameters, XYEmission,
+};
 use crate::stats::probs::LogProb;
 use crate::stats::Prob;
 
