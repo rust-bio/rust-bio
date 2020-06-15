@@ -3,6 +3,7 @@
 extern crate test;
 
 use test::Bencher;
+use test::black_box;
 
 use bio::alignment::distance::*;
 
@@ -273,7 +274,7 @@ GCCGCGCGCGCGGGGCCGGGCCGCGCGCGCGCCGGGCCGCCGGCGGGGCGCGGCC";
 fn bench_hamming_dist_equal_str_1000iter(b: &mut Bencher) {
     b.iter(|| {
         for _ in 0..1000 {
-            hamming(STR_1, STR_1);
+            black_box(hamming(STR_1, STR_1));
         }
     });
 }
@@ -282,7 +283,7 @@ fn bench_hamming_dist_equal_str_1000iter(b: &mut Bencher) {
 fn bench_hamming_dist_diverse_str_1000iter(b: &mut Bencher) {
     b.iter(|| {
         for _ in 0..1000 {
-            hamming(STR_1, STR_2);
+            black_box(hamming(STR_1, STR_2));
         }
     });
 }
@@ -308,7 +309,7 @@ fn bench_levenshtein_dist_worst_str(b: &mut Bencher) {
 fn bench_simd_hamming_dist_equal_str_1000iter(b: &mut Bencher) {
     b.iter(|| {
         for _ in 0..1000 {
-            simd::hamming(STR_1, STR_1);
+            black_box(simd::hamming(STR_1, STR_1));
         }
     });
 }
@@ -317,7 +318,7 @@ fn bench_simd_hamming_dist_equal_str_1000iter(b: &mut Bencher) {
 fn bench_simd_hamming_dist_diverse_str_1000iter(b: &mut Bencher) {
     b.iter(|| {
         for _ in 0..1000 {
-            simd::hamming(STR_1, STR_2);
+            black_box(simd::hamming(STR_1, STR_2));
         }
     });
 }

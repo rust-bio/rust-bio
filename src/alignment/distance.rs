@@ -91,6 +91,15 @@ pub mod simd {
     //!
     //! These routines will automatically fallback to scalar versions if AVX2 or SSE4.1 is
     //! not supported by the CPU.
+    //!
+    //! With AVX2, SIMD-accelerated Hamming distance can reach up to 40 times faster than
+    //! the scalar version on strings that are long enough.
+    //! The performance of SIMD-accelerated Levenshtein distance depends on the number of
+    //! edits between two strings, so it can perform anywhere from 2 times to nearly 1000
+    //! times faster than the scalar version. When the two strings are completely different,
+    //! there could be no speedup at all.
+    //! If AVX2 support is not available, there is a speed penalty for using SSE4.1 with
+    //! smaller vectors.
 
     use crate::utils::TextSlice;
 
@@ -130,7 +139,8 @@ pub mod simd {
     ///
     /// Uses exponential search, which is approximately two times slower than the usual
     /// O(n * m) implementation if the number of edits between the two strings is very large,
-    /// but much faster for cases where the edit distance is low.
+    /// but much faster for cases where the edit distance is low (when less than half of the
+    /// characters in the strings differ).
     ///
     /// # Example
     ///
