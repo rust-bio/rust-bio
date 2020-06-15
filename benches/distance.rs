@@ -2,8 +2,7 @@
 
 extern crate test;
 
-use test::Bencher;
-use test::black_box;
+use test::{black_box, Bencher};
 
 use bio::alignment::distance::*;
 
