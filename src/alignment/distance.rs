@@ -259,8 +259,17 @@ mod tests {
         //     ||||| |||
         // AAAAACCGTTGAT
         assert_eq!(simd::bounded_levenshtein(x, y, u32::MAX), Some(5));
-        assert_eq!(simd::bounded_levenshtein(x, y, u32::MAX), simd::bounded_levenshtein(y, x, u32::MAX));
-        assert_eq!(simd::bounded_levenshtein(b"AAA", b"TTTT", u32::MAX), Some(4));
-        assert_eq!(simd::bounded_levenshtein(b"TTTT", b"AAA", u32::MAX), Some(4));
+        assert_eq!(
+            simd::bounded_levenshtein(x, y, u32::MAX),
+            simd::bounded_levenshtein(y, x, u32::MAX)
+        );
+        assert_eq!(
+            simd::bounded_levenshtein(b"AAA", b"TTTT", u32::MAX),
+            Some(4)
+        );
+        assert_eq!(
+            simd::bounded_levenshtein(b"TTTT", b"AAA", u32::MAX),
+            Some(4)
+        );
     }
 }
