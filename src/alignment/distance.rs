@@ -3,7 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Various subroutines for computing a distance between sequences.
+//! Various subroutines for computing a distance between sequences. Features
+//! both scalar and efficient vectorized distance functions with SIMD.
 
 use std::cmp::min;
 
@@ -86,7 +87,8 @@ pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
 
 pub mod simd {
     //! String distance routines accelerated with Single Instruction Multiple Data (SIMD)
-    //! features.
+    //! intrinsics.
+    //!
     //! These routines will automatically fallback to scalar versions if AVX2 or SSE4.1 is
     //! not supported by the CPU.
 
@@ -181,6 +183,8 @@ pub mod simd {
 mod tests {
     use super::*;
 
+    use std::u32;
+
     #[test]
     fn test_hamming_dist_good() {
         let x = b"GTCTGCATGCG";
@@ -245,5 +249,18 @@ mod tests {
         assert_eq!(simd::levenshtein(x, y), simd::levenshtein(y, x));
         assert_eq!(simd::levenshtein(b"AAA", b"TTTT"), 4);
         assert_eq!(simd::levenshtein(b"TTTT", b"AAA"), 4);
+    }
+
+    #[test]
+    fn test_simd_bounded_levenshtein_dist() {
+        let x = b"ACCGTGGAT";
+        let y = b"AAAAACCGTTGAT";
+        // ----ACCGTGGAT
+        //     ||||| |||
+        // AAAAACCGTTGAT
+        assert_eq!(simd::bounded_levenshtein(x, y, u32::MAX), Some(5));
+        assert_eq!(simd::bounded_levenshtein(x, y, u32::MAX), simd::bounded_levenshtein(y, x, u32::MAX));
+        assert_eq!(simd::bounded_levenshtein(b"AAA", b"TTTT", u32::MAX), Some(4));
+        assert_eq!(simd::bounded_levenshtein(b"TTTT", b"AAA", u32::MAX), Some(4));
     }
 }
