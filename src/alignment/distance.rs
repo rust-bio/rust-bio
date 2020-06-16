@@ -94,10 +94,14 @@ pub mod simd {
     //!
     //! With AVX2, SIMD-accelerated Hamming distance can reach up to 40 times faster than
     //! the scalar version on strings that are long enough.
+    //!
     //! The performance of SIMD-accelerated Levenshtein distance depends on the number of
     //! edits between two strings, so it can perform anywhere from 2 times to nearly 1000
     //! times faster than the scalar version. When the two strings are completely different,
-    //! there could be no speedup at all.
+    //! there could be no speedup at all. It is important to note that the algorithms work
+    //! best when the number of edits is known to be small compared to the length of the
+    //! strings (for example, 10% difference). This should be applicable in many situations.
+    //!
     //! If AVX2 support is not available, there is a speed penalty for using SSE4.1 with
     //! smaller vectors.
 
