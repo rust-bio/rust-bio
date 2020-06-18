@@ -252,17 +252,29 @@ impl<W: io::Write> Writer<W> {
 }
 
 /// A GFF record
-#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
+///
+#[derive(
+    Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq, Getters, Setters, MutGetters,
+)]
 pub struct Record {
-    pub seqname: String,
-    pub source: String,
-    pub feature_type: String,
-    pub start: u64,
-    pub end: u64,
-    pub score: String,
-    pub strand: String,
-    pub frame: String,
-    pub attributes: MultiMap<String, String>,
+    #[getset(get, set, get_mut)]
+    seqname: String,
+    #[getset(get, set, get_mut)]
+    source: String,
+    #[getset(get, set, get_mut)]
+    feature_type: String,
+    #[getset(get, set, get_mut)]
+    start: u64,
+    #[getset(get, set, get_mut)]
+    end: u64,
+    #[getset(set, get_mut)]
+    score: String,
+    #[getset(set, get_mut)]
+    strand: String,
+    #[getset(get, set, get_mut)]
+    frame: String,
+    #[getset(get, set, get_mut)]
+    attributes: MultiMap<String, String>,
 }
 
 impl Record {
@@ -281,31 +293,6 @@ impl Record {
         }
     }
 
-    /// Sequence name of the feature.
-    pub fn seqname(&self) -> &str {
-        &self.seqname
-    }
-
-    /// Source of the feature.
-    pub fn source(&self) -> &str {
-        &self.source
-    }
-
-    /// Type of the feature.
-    pub fn feature_type(&self) -> &str {
-        &self.feature_type
-    }
-
-    /// Start position of feature (1-based).
-    pub fn start(&self) -> &u64 {
-        &self.start
-    }
-
-    /// End position of feature (1-based, not included).
-    pub fn end(&self) -> &u64 {
-        &self.end
-    }
-
     /// Score of feature
     pub fn score(&self) -> Option<u64> {
         match self.score.as_ref() {
@@ -321,61 +308,6 @@ impl Record {
             "-" => Some(Strand::Reverse),
             _ => None,
         }
-    }
-
-    /// Frame of the feature.
-    pub fn frame(&self) -> &str {
-        &self.frame
-    }
-
-    /// Attribute of feature
-    pub fn attributes(&self) -> &MultiMap<String, String> {
-        &self.attributes
-    }
-
-    /// Get mutable reference on seqname of feature.
-    pub fn seqname_mut(&mut self) -> &mut String {
-        &mut self.seqname
-    }
-
-    /// Get mutable reference on source of feature.
-    pub fn source_mut(&mut self) -> &mut String {
-        &mut self.source
-    }
-
-    /// Get mutable reference on type of feature.
-    pub fn feature_type_mut(&mut self) -> &mut String {
-        &mut self.feature_type
-    }
-
-    /// Get mutable reference on start of feature.
-    pub fn start_mut(&mut self) -> &mut u64 {
-        &mut self.start
-    }
-
-    /// Get mutable reference on end of feature.
-    pub fn end_mut(&mut self) -> &mut u64 {
-        &mut self.end
-    }
-
-    /// Get mutable reference on score of feature.
-    pub fn score_mut(&mut self) -> &mut String {
-        &mut self.score
-    }
-
-    /// Get mutable reference on strand of feature.
-    pub fn strand_mut(&mut self) -> &mut String {
-        &mut self.strand
-    }
-
-    /// Get mutable reference on frame of feature.
-    pub fn frame_mut(&mut self) -> &mut String {
-        &mut self.frame
-    }
-
-    /// Get mutable reference on attributes of feature.
-    pub fn attributes_mut(&mut self) -> &mut MultiMap<String, String> {
-        &mut self.attributes
     }
 }
 
