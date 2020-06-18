@@ -1032,8 +1032,6 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         let pair_hhmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p1 = pair_hhmm.prob_related(&emission_params, &Global, None);
 
-        let mut pair_hmm = PairHMM::new();
-
         struct TestSingleGapParamsPairHMM;
         impl crate::stats::pairhmm::StartEndGapParameters for TestSingleGapParamsPairHMM {
             fn free_start_gap_x(&self) -> bool {
@@ -1101,11 +1099,13 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
             }
         }
 
+        let mut pair_hmm = PairHMM::new(&TestSingleGapParamsPairHMM);
+
         let x = b"AGAGAGC";
         let y = b"ATACGTACGTC";
         let p2 = pair_hmm.prob_related(
-            &TestSingleGapParamsPairHMM,
             &TestEmissionParamsPairHMM { x, y },
+            &AlignmentMode::Global,
             None,
         );
         assert_relative_eq!(*p1, *p2, epsilon = 1e-4)
