@@ -230,6 +230,9 @@ extern crate snafu;
 #[macro_use]
 extern crate getset;
 
+#[macro_use]
+extern crate derive_builder;
+
 pub mod alignment;
 pub mod alphabets;
 pub mod data_structures;

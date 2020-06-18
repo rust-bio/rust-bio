@@ -254,43 +254,52 @@ impl<W: io::Write> Writer<W> {
 /// A GFF record
 ///
 #[derive(
-    Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq, Getters, Setters, MutGetters,
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    Clone,
+    PartialEq,
+    Eq,
+    Getters,
+    Setters,
+    MutGetters,
+    Builder,
 )]
 pub struct Record {
     #[getset(get, set, get_mut)]
+    #[builder(default)]
     seqname: String,
     #[getset(get, set, get_mut)]
+    #[builder(default)]
     source: String,
     #[getset(get, set, get_mut)]
+    #[builder(default)]
     feature_type: String,
     #[getset(get, set, get_mut)]
+    #[builder(default)]
     start: u64,
     #[getset(get, set, get_mut)]
+    #[builder(default)]
     end: u64,
     #[getset(set, get_mut)]
+    #[builder(default = "\".\".to_owned()")]
     score: String,
     #[getset(set, get_mut)]
+    #[builder(default = "\".\".to_owned()")]
     strand: String,
-    #[getset(get, set, get_mut)]
+    #[getset(set, get_mut)]
+    #[builder(default)]
     frame: String,
     #[getset(get, set, get_mut)]
+    #[builder(default = "MultiMap::<String, String>::new()")]
     attributes: MultiMap<String, String>,
 }
 
 impl Record {
     /// Create a new GFF record.
     pub fn new() -> Self {
-        Record {
-            seqname: "".to_owned(),
-            source: "".to_owned(),
-            feature_type: "".to_owned(),
-            start: 0,
-            end: 0,
-            score: ".".to_owned(),
-            strand: ".".to_owned(),
-            frame: "".to_owned(),
-            attributes: MultiMap::<String, String>::new(),
-        }
+        RecordBuilder::default().build().unwrap()
     }
 
     /// Score of feature
@@ -314,7 +323,7 @@ impl Record {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use multimap::MultiMap;
+    use multimap::multimap;
 
     const GFF_FILE: &[u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t\
 Note=Removed,Obsolete;ID=test
@@ -358,48 +367,59 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 ";
 
     #[test]
-    fn test_reader_gff3() {
-        let mut gffs = vec![
-            Record {
-                seqname: "P0A7B8".to_string(),
-                source: "UniProtKB".to_string(),
-                feature_type: "Initiator methionine".to_string(),
-                start: 1,
-                end: 1,
-                score: ".".to_string(),
-                strand: ".".to_string(),
-                frame: ".".to_string(),
-                attributes: MultiMap::new(),
-            },
-            Record {
-                seqname: "P0A7B8".to_string(),
-                source: "UniProtKB".to_string(),
-                feature_type: "Chain".to_string(),
-                start: 2,
-                end: 176,
-                score: "50".to_string(),
-                strand: "+".to_string(),
-                frame: ".".to_string(),
-                attributes: MultiMap::new(),
-            },
-        ];
+    fn test_default() {
+        let gff = RecordBuilder::default()
+            .seqname("".to_owned())
+            .source("".to_owned())
+            .feature_type("".to_owned())
+            .start(0)
+            .end(0)
+            .score(".".to_owned())
+            .strand(".".to_owned())
+            .frame("".to_owned())
+            .attributes(multimap!())
+            .build()
+            .unwrap();
 
-        gffs[0]
-            .attributes
-            .insert("ID".to_owned(), "test".to_owned());
-        gffs[0]
-            .attributes
-            .insert("Note".to_owned(), "Removed".to_owned());
-        gffs[0]
-            .attributes
-            .insert("Note".to_owned(), "Obsolete".to_owned());
-        gffs[1]
-            .attributes
-            .insert("ID".to_owned(), "PRO_0000148105".to_owned());
-        gffs[1].attributes.insert(
-            "Note".to_owned(),
-            "ATP-dependent protease subunit HslV".to_owned(),
-        );
+        let gff_def = Record::new();
+        assert_eq!(gff, gff_def);
+    }
+
+    #[test]
+    fn test_reader_gff3() {
+        let gffs = vec![
+            RecordBuilder::default()
+                .seqname("P0A7B8".to_owned())
+                .source("UniProtKB".to_owned())
+                .feature_type("Initiator methionine".to_owned())
+                .start(1)
+                .end(1)
+                .score(".".to_owned())
+                .strand(".".to_owned())
+                .frame(".".to_owned())
+                .attributes(multimap!(
+                    "ID".to_owned() => "test".to_owned(),
+                    "Note".to_owned() => "Removed".to_owned(),
+                    "Note".to_owned() => "Obsolete".to_owned()
+                ))
+                .build()
+                .unwrap(),
+            RecordBuilder::default()
+                .seqname("P0A7B8".to_owned())
+                .source("UniProtKB".to_owned())
+                .feature_type("Chain".to_owned())
+                .start(2)
+                .end(176)
+                .score("50".to_owned())
+                .strand("+".to_owned())
+                .frame(".".to_owned())
+                .attributes(multimap!(
+                    "ID".to_owned() => "PRO_0000148105".to_owned(),
+                    "Note".to_owned() => "ATP-dependent protease subunit HslV".to_owned()
+                ))
+                .build()
+                .unwrap(),
+        ];
 
         let mut reader = Reader::new(GFF_FILE, GffType::GFF3);
         for (i, r) in reader.records().enumerate() {
@@ -434,43 +454,38 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 
     #[test]
     fn test_reader_gtf2() {
-        let mut gffs = vec![
-            Record {
-                seqname: "P0A7B8".to_string(),
-                source: "UniProtKB".to_string(),
-                feature_type: "Initiator methionine".to_string(),
-                start: 1,
-                end: 1,
-                score: ".".to_string(),
-                strand: ".".to_string(),
-                frame: ".".to_string(),
-                attributes: MultiMap::new(),
-            },
-            Record {
-                seqname: "P0A7B8".to_string(),
-                source: "UniProtKB".to_string(),
-                feature_type: "Chain".to_string(),
-                start: 2,
-                end: 176,
-                score: "50".to_string(),
-                strand: "+".to_string(),
-                frame: ".".to_string(),
-                attributes: MultiMap::new(),
-            },
+        let gffs = vec![
+            RecordBuilder::default()
+                .seqname("P0A7B8".to_owned())
+                .source("UniProtKB".to_owned())
+                .feature_type("Initiator methionine".to_owned())
+                .start(1)
+                .end(1)
+                .score(".".to_owned())
+                .strand(".".to_owned())
+                .frame(".".to_owned())
+                .attributes(multimap!(
+                    "ID".to_owned() => "test".to_owned(),
+                    "Note".to_owned() => "Removed".to_owned()
+                ))
+                .build()
+                .unwrap(),
+            RecordBuilder::default()
+                .seqname("P0A7B8".to_owned())
+                .source("UniProtKB".to_owned())
+                .feature_type("Chain".to_owned())
+                .start(2)
+                .end(176)
+                .score("50".to_owned())
+                .strand("+".to_owned())
+                .frame(".".to_owned())
+                .attributes(multimap!(
+                    "ID".to_owned() => "PRO_0000148105".to_owned(),
+                    "Note".to_owned() => "ATP-dependent".to_owned()
+                ))
+                .build()
+                .unwrap(),
         ];
-
-        gffs[0]
-            .attributes
-            .insert("ID".to_owned(), "test".to_owned());
-        gffs[0]
-            .attributes
-            .insert("Note".to_owned(), "Removed".to_owned());
-        gffs[1]
-            .attributes
-            .insert("ID".to_owned(), "PRO_0000148105".to_owned());
-        gffs[1]
-            .attributes
-            .insert("Note".to_owned(), "ATP-dependent".to_owned());
 
         let mut reader = Reader::new(GTF_FILE, GffType::GTF2);
         for (i, r) in reader.records().enumerate() {
@@ -481,48 +496,39 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 
     #[test]
     fn test_reader_gtf2_2() {
-        let mut gffs = vec![
-            Record {
-                seqname: "chr1".to_string(),
-                source: "HAVANA".to_string(),
-                feature_type: "gene".to_string(),
-                start: 11869,
-                end: 14409,
-                score: ".".to_string(),
-                strand: "+".to_string(),
-                frame: ".".to_string(),
-                attributes: MultiMap::new(),
-            },
-            Record {
-                seqname: "chr1".to_string(),
-                source: "HAVANA".to_string(),
-                feature_type: "transcript".to_string(),
-                start: 11869,
-                end: 14409,
-                score: ".".to_string(),
-                strand: "+".to_string(),
-                frame: ".".to_string(),
-                attributes: MultiMap::new(),
-            },
+        let gffs = vec![
+            RecordBuilder::default()
+                .seqname("chr1".to_owned())
+                .source("HAVANA".to_owned())
+                .feature_type("gene".to_owned())
+                .start(11869)
+                .end(14409)
+                .score(".".to_owned())
+                .strand("+".to_owned())
+                .frame(".".to_owned())
+                .attributes(multimap!(
+                    "gene_id".to_owned() => "ENSG00000223972.5".to_owned(),
+                    "gene_type".to_owned() => "transcribed_unprocessed_pseudogene".to_owned()
+                ))
+                .build()
+                .unwrap(),
+            RecordBuilder::default()
+                .seqname("chr1".to_owned())
+                .source("HAVANA".to_owned())
+                .feature_type("transcript".to_owned())
+                .start(11869)
+                .end(14409)
+                .score(".".to_owned())
+                .strand("+".to_owned())
+                .frame(".".to_owned())
+                .attributes(multimap!(
+                    "gene_id".to_owned() => "ENSG00000223972.5".to_owned(),
+                    "transcript_id".to_owned() => "ENST00000456328.2".to_owned(),
+                    "gene_type".to_owned() => "transcribed_unprocessed_pseudogene".to_owned()
+                ))
+                .build()
+                .unwrap(),
         ];
-
-        gffs[0]
-            .attributes
-            .insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
-        gffs[0].attributes.insert(
-            "gene_type".to_owned(),
-            "transcribed_unprocessed_pseudogene".to_owned(),
-        );
-        gffs[1]
-            .attributes
-            .insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
-        gffs[1]
-            .attributes
-            .insert("transcript_id".to_owned(), "ENST00000456328.2".to_owned());
-        gffs[1].attributes.insert(
-            "gene_type".to_owned(),
-            "transcribed_unprocessed_pseudogene".to_owned(),
-        );
 
         let mut reader = Reader::new(GTF_FILE_2, GffType::GTF2);
         for (i, r) in reader.records().enumerate() {
