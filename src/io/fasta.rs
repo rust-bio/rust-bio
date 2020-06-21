@@ -1546,9 +1546,11 @@ ATTGTTGTTTTA
 
         assert_eq!(actual.kind(), expected.kind());
 
-        #[cfg(target_os="windows")]
-        assert!(actual.to_string().starts_with("The system cannot find the path specified."));
-        #[cfg(not(target_os="windows"))]
+        #[cfg(target_os = "windows")]
+        assert!(actual
+            .to_string()
+            .starts_with("The system cannot find the path specified."));
+        #[cfg(not(target_os = "windows"))]
         assert!(actual.to_string().starts_with("No such file or directory"))
     }
 
