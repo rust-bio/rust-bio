@@ -102,6 +102,7 @@
 //! ```
 
 use std::convert::AsRef;
+use std::env;
 use std::fmt;
 use std::fs;
 use std::io;
