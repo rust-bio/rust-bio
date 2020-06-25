@@ -11,6 +11,7 @@
 //!
 //! For **getting started** with using `rust-bio`, see [the `Getting started` section below](#getting-started).
 //! For navigating the documentation of the available modules, see [the `Modules` section below](#modules).
+//! If you want to contribute to `rust-bio`, see [the `Contribute` section in the repo](https://github.com/rust-bio/rust-bio#contribute).
 //!
 //! Currently, rust-bio provides
 //!
