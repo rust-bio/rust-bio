@@ -12,8 +12,8 @@
 //! use bio::io::fastq;
 //! let mut reader = fastq::Reader::new(io::stdin());
 //! let mut record = fastq::Record::new();
-//! loop{
-//!   reader.read(&mut record).expect("Failed to parse record");
+//! reader.read(&mut record).expect("Failed to parse record");
+//! while !record.is_empty() {
 //!   if record.is_empty() {
 //!     break;
 //!   }
@@ -22,6 +22,7 @@
 //!       panic!("I got a rubbish record!")
 //!   }
 //!   // your record is ok - do something with it...
+//!   reader.read(&mut record).expect("Failed to parse record");
 //! }
 //! ```
 

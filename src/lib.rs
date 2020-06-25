@@ -126,13 +126,8 @@
 //! // create FASTQ reader
 //! let mut reader = fastq::Reader::new(io::stdin());
 //! let mut record = fastq::Record::new();
-//! loop{
-//!   // obtain record or fail with error
-//!   reader.read(&mut record).expect("Failed to parse record");
-//!   if record.is_empty() {
-//!     // out of records
-//!     break;
-//!   }
+//! reader.read(&mut record).expect("Failed to parse record");
+//! while !record.is_empty() {
 //!   let check = record.check();
 //!   if check.is_err() {
 //!       panic!("I got a rubbish record!")
@@ -144,6 +139,7 @@
 //!     let interval = fmindex.backward_search(seq.iter());
 //!     let positions = interval.occ(&pos);
 //!   }
+//!   reader.read(&mut record).expect("Failed to parse record");
 //! }
 //! ```
 //!

@@ -59,6 +59,7 @@ Other contributors:
 * [Jeff Knaggs](https://github.com/jeff-k)
 * [David Lähnemann](https://github.com/dlaehnemann)
 * [Till Hartmann](https://github.com/tedil)
+* [Michael Hall](https://github.com/mbhall88)
 
 ## License
 
