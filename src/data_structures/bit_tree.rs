@@ -30,7 +30,7 @@ use std::ops::Add;
 
 /// Fenwick tree prefix operator
 pub trait PrefixOp<T> {
-    fn operation(t: T, t: T) -> T;
+    fn operation(t1: T, t2: T) -> T;
 }
 
 /// Max Bit Tree. get(i) will return the largest element e that has been added

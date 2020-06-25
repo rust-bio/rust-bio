@@ -101,8 +101,8 @@ use std::cmp::max;
 use std::i32;
 use std::iter::repeat;
 
-use alignment::{Alignment, AlignmentMode, AlignmentOperation};
-use utils::TextSlice;
+use crate::alignment::{Alignment, AlignmentMode, AlignmentOperation};
+use crate::utils::TextSlice;
 
 pub mod banded;
 
@@ -244,18 +244,60 @@ impl<F: MatchFunc> Scoring<F> {
     ///
     /// * `penalty` - Clipping penalty for x (both prefix and suffix, should not be positive)
     ///
-    pub fn xclip(self, penalty: i32) -> Self {
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).xclip(-5);
+    /// assert!(scoring.xclip_prefix==-5);
+    /// assert!(scoring.yclip_prefix==MIN_SCORE);
+    /// assert!(scoring.xclip_suffix==-5);
+    /// assert!(scoring.yclip_suffix==MIN_SCORE);
+    /// ```
+    pub fn xclip(mut self, penalty: i32) -> Self {
         assert!(penalty <= 0, "Clipping penalty can't be positive");
-        Scoring {
-            gap_open: self.gap_open,
-            gap_extend: self.gap_extend,
-            match_fn: self.match_fn,
-            match_scores: None,
-            xclip_prefix: penalty,
-            xclip_suffix: penalty,
-            yclip_prefix: self.yclip_prefix,
-            yclip_suffix: self.yclip_suffix,
-        }
+        self.xclip_prefix = penalty;
+        self.xclip_suffix = penalty;
+        self
+    }
+
+    /// Sets the prefix clipping penalty for x to the input value
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - Prefix clipping penalty for x (should not be positive)
+    ///
+    /// # Example
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).xclip_prefix(-5);
+    /// assert!(scoring.xclip_prefix==-5);
+    /// assert!(scoring.yclip_prefix==MIN_SCORE);
+    /// assert!(scoring.xclip_suffix==MIN_SCORE);
+    /// assert!(scoring.yclip_suffix==MIN_SCORE);
+    /// ```
+    pub fn xclip_prefix(mut self, penalty: i32) -> Self {
+        assert!(penalty <= 0, "Clipping penalty can't be positive");
+        self.xclip_prefix = penalty;
+        self
+    }
+
+    /// Sets the suffix clipping penalty for x to the input value
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - Suffix clipping penalty for x (should not be positive)
+    ///
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).xclip_suffix(-5);
+    /// assert!(scoring.xclip_prefix==MIN_SCORE);
+    /// assert!(scoring.yclip_prefix==MIN_SCORE);
+    /// assert!(scoring.xclip_suffix==-5);
+    /// assert!(scoring.yclip_suffix==MIN_SCORE);
+    /// ```
+    pub fn xclip_suffix(mut self, penalty: i32) -> Self {
+        assert!(penalty <= 0, "Clipping penalty can't be positive");
+        self.xclip_suffix = penalty;
+        self
     }
 
     /// Sets the prefix and suffix clipping penalties for y to the input value
@@ -264,18 +306,59 @@ impl<F: MatchFunc> Scoring<F> {
     ///
     /// * `penalty` - Clipping penalty for y (both prefix and suffix, should not be positive)
     ///
-    pub fn yclip(self, penalty: i32) -> Self {
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).yclip(-5);
+    /// assert!(scoring.xclip_prefix==MIN_SCORE);
+    /// assert!(scoring.yclip_prefix==-5);
+    /// assert!(scoring.xclip_suffix==MIN_SCORE);
+    /// assert!(scoring.yclip_suffix==-5);
+    /// ```
+    pub fn yclip(mut self, penalty: i32) -> Self {
         assert!(penalty <= 0, "Clipping penalty can't be positive");
-        Scoring {
-            gap_open: self.gap_open,
-            gap_extend: self.gap_extend,
-            match_fn: self.match_fn,
-            match_scores: None,
-            xclip_prefix: self.xclip_prefix,
-            xclip_suffix: self.xclip_suffix,
-            yclip_prefix: penalty,
-            yclip_suffix: penalty,
-        }
+        self.yclip_prefix = penalty;
+        self.yclip_suffix = penalty;
+        self
+    }
+
+    /// Sets the prefix clipping penalty for y to the input value
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - Prefix clipping penalty for y (should not be positive)
+    ///
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).yclip_prefix(-5);
+    /// assert!(scoring.xclip_prefix==MIN_SCORE);
+    /// assert!(scoring.yclip_prefix==-5);
+    /// assert!(scoring.xclip_suffix==MIN_SCORE);
+    /// assert!(scoring.yclip_suffix==MIN_SCORE);
+    /// ```
+    pub fn yclip_prefix(mut self, penalty: i32) -> Self {
+        assert!(penalty <= 0, "Clipping penalty can't be positive");
+        self.yclip_prefix = penalty;
+        self
+    }
+
+    /// Sets the suffix clipping penalty for y to the input value
+    ///
+    /// # Arguments
+    ///
+    /// * `penalty` - Suffix clipping penalty for y (should not be positive)
+    ///
+    /// ```rust
+    /// use bio::alignment::pairwise::{MIN_SCORE, Scoring};
+    /// let scoring = Scoring::from_scores(0, -2, 1, -2).yclip_suffix(-5);
+    /// assert!(scoring.xclip_prefix==MIN_SCORE);
+    /// assert!(scoring.yclip_prefix==MIN_SCORE);
+    /// assert!(scoring.xclip_suffix==MIN_SCORE);
+    /// assert!(scoring.yclip_suffix==-5);
+    /// ```
+    pub fn yclip_suffix(mut self, penalty: i32) -> Self {
+        assert!(penalty <= 0, "Clipping penalty can't be positive");
+        self.yclip_suffix = penalty;
+        self
     }
 }
 
@@ -433,7 +516,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `x` - Textslice
     /// * `y` - Textslice
     ///
-    pub fn custom(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn custom(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         let (m, n) = (x.len(), y.len());
         self.traceback.init(m, n);
 
@@ -460,9 +543,11 @@ impl<F: MatchFunc> Aligner<F> {
                 self.Ly.extend(repeat(0usize).take(m + 1));
                 self.Sn.clear();
                 self.Sn.extend(repeat(MIN_SCORE).take(m + 1));
+                self.Sn[0] = self.scoring.yclip_suffix;
+                self.Ly[0] = n;
             }
 
-            for i in 1..m + 1 {
+            for i in 1..=m {
                 let mut tb = TracebackCell::new();
                 tb.set_all(TB_START);
                 if i == 1 {
@@ -507,10 +592,15 @@ impl<F: MatchFunc> Aligner<F> {
                 if k == 0 {
                     self.traceback.set(i, 0, tb);
                 }
+                // Track the score if we do suffix clip (y) from here
+                if self.S[k][i] + self.scoring.yclip_suffix > self.Sn[i] {
+                    self.Sn[i] = self.S[k][i] + self.scoring.yclip_suffix;
+                    self.Ly[i] = n;
+                }
             }
         }
 
-        for j in 1..n + 1 {
+        for j in 1..=n {
             let curr = j % 2;
             let prev = 1 - curr;
 
@@ -556,7 +646,7 @@ impl<F: MatchFunc> Aligner<F> {
                 self.traceback.set(0, j, tb);
             }
 
-            for i in 1..m + 1 {
+            for i in 1..=m {
                 self.S[curr][i] = MIN_SCORE;
             }
 
@@ -646,7 +736,7 @@ impl<F: MatchFunc> Aligner<F> {
         }
 
         // Handle suffix clipping in the j=n case
-        for i in 0..m + 1 {
+        for i in 0..=m {
             let j = n;
             let curr = j % 2;
             if self.Sn[i] > self.S[curr][i] {
@@ -662,7 +752,7 @@ impl<F: MatchFunc> Aligner<F> {
 
         // Since there could be a change in the last column of S,
         // recompute the last column of I as this could also change
-        for i in 1..m + 1 {
+        for i in 1..=m {
             let j = n;
             let curr = j % 2;
             let s_score = self.S[curr][i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
@@ -762,7 +852,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Calculate global alignment of x against y.
-    pub fn global(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn global(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         // Store the current clip penalties
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -791,7 +881,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Calculate semiglobal alignment of x against y (x is global, y is local).
-    pub fn semiglobal(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn semiglobal(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         // Store the current clip penalties
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -823,7 +913,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Calculate local alignment of x against y.
-    pub fn local(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn local(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         // Store the current clip penalties
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -930,22 +1020,22 @@ impl TracebackCell {
 
     // Gets 4 bits [pos, pos+4) of v
     #[inline(always)]
-    fn get_bits(&self, pos: u8) -> u16 {
+    fn get_bits(self, pos: u8) -> u16 {
         (self.v >> pos) & (0b1111)
     }
 
     #[inline(always)]
-    pub fn get_i_bits(&self) -> u16 {
+    pub fn get_i_bits(self) -> u16 {
         self.get_bits(I_POS)
     }
 
     #[inline(always)]
-    pub fn get_d_bits(&self) -> u16 {
+    pub fn get_d_bits(self) -> u16 {
         self.get_bits(D_POS)
     }
 
     #[inline(always)]
-    pub fn get_s_bits(&self) -> u16 {
+    pub fn get_s_bits(self) -> u16 {
         self.get_bits(S_POS)
     }
 
@@ -980,7 +1070,7 @@ impl Traceback {
         let mut start = TracebackCell::new();
         start.set_all(TB_START);
         // set every cell to start
-        self.resize(m, n, &start);
+        self.resize(m, n, start);
     }
 
     #[inline(always)]
@@ -1003,18 +1093,18 @@ impl Traceback {
         &mut self.matrix[i * self.cols + j]
     }
 
-    fn resize(&mut self, m: usize, n: usize, v: &TracebackCell) {
+    fn resize(&mut self, m: usize, n: usize, v: TracebackCell) {
         self.rows = m + 1;
         self.cols = n + 1;
-        self.matrix.resize(self.rows * self.cols, *v);
+        self.matrix.resize(self.rows * self.cols, v);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alignment::AlignmentOperation::*;
-    use scores::blosum62;
+    use crate::alignment::AlignmentOperation::*;
+    use crate::scores::blosum62;
 
     #[test]
     fn traceback_cell() {
@@ -1459,4 +1549,69 @@ mod tests {
         assert_eq!(alignment.operations, [Yclip(6), Match, Match, Match]);
     }
 
+    #[test]
+    fn test_only_clips() {
+        let x = b"GGAAAAAAAAAAAAA";
+        let y = b"TTTTAATTTGTGTAAAAAATAATA";
+        let base_score = Scoring::from_scores(-4, -4, 4, -7);
+        let scoring = Scoring {
+            xclip_prefix: 0,
+            xclip_suffix: 0,
+            yclip_suffix: 0,
+            ..base_score
+        };
+        let mut al = Aligner::with_scoring(scoring);
+        let alignment = al.custom(x, y);
+        assert_eq!(alignment.score, 0);
+    }
+
+    #[test]
+    fn test_zero_score_clips() {
+        let x = b"AA";
+        let y = b"CC";
+        let base_score = Scoring::from_scores(-1, -1, 1, -1);
+        {
+            let scoring = Scoring {
+                xclip_prefix: 0,
+                yclip_prefix: 0,
+                ..base_score.clone()
+            };
+            let mut al = Aligner::with_scoring(scoring);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+
+        {
+            let scoring = Scoring {
+                xclip_prefix: 0,
+                yclip_suffix: 0,
+                ..base_score.clone()
+            };
+            let mut al = Aligner::with_scoring(scoring);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+
+        {
+            let scoring = Scoring {
+                xclip_suffix: 0,
+                yclip_prefix: 0,
+                ..base_score.clone()
+            };
+            let mut al = Aligner::with_scoring(scoring);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+
+        {
+            let scoring = Scoring {
+                xclip_suffix: 0,
+                yclip_suffix: 0,
+                ..base_score.clone()
+            };
+            let mut al = Aligner::with_scoring(scoring);
+            let alignment = al.custom(x, y);
+            assert_eq!(alignment.score, 0);
+        }
+    }
 }

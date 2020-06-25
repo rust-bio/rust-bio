@@ -29,7 +29,7 @@ use std::cmp::min;
 use std::iter;
 use std::iter::repeat;
 
-use utils::TextSlice;
+use crate::utils::TextSlice;
 
 /// Default cost function (unit costs).
 pub fn unit_cost(a: u8, b: u8) -> u32 {
@@ -66,7 +66,7 @@ where
         pattern: TextSlice<'a>,
         text: T,
         k: usize,
-    ) -> Matches<F, C, T::IntoIter>
+    ) -> Matches<'_, F, C, T::IntoIter>
     where
         C: Borrow<u8>,
         T: IntoIterator<Item = C>,
@@ -75,7 +75,7 @@ where
         self.D[0].clear();
         self.D[0].extend(repeat(k + 1).take(m + 1));
         self.D[1].clear();
-        self.D[1].extend(0..m + 1);
+        self.D[1].extend(0..=m);
         Matches {
             ukkonen: self,
             pattern,
@@ -90,7 +90,7 @@ where
 /// Iterator over pairs of end positions and distance of matches.
 pub struct Matches<'a, F, C, T>
 where
-    F: 'a + Fn(u8, u8) -> u32,
+    F: Fn(u8, u8) -> u32,
     C: Borrow<u8>,
     T: Iterator<Item = C>,
 {
@@ -121,7 +121,7 @@ where
             self.lastk = min(self.lastk + 1, self.m);
             // in each column, go at most one cell further than before
             // do not look at cells with too big k
-            for j in 1..self.lastk + 1 {
+            for j in 1..=self.lastk {
                 self.ukkonen.D[col][j] = min(
                     min(self.ukkonen.D[prev][j] + 1, self.ukkonen.D[col][j - 1] + 1),
                     self.ukkonen.D[prev][j - 1] + (cost)(self.pattern[j - 1], *c.borrow()) as usize,

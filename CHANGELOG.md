@@ -2,7 +2,44 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.25.0] - Unreleased
+# [0.31.0] - 2020-06-02
+- Bugfix for pHMM implementation (thanks to @tedil).
+- Sorted array-backed interval trees (thanks to @tedil).
+
+
+# [0.30.1] - 2020-05-13
+- Improved occ counting speed for FM index (thanks to @thomasmulvaney)
+- Various small bug fixes and code cleanups and linter fixes.
+
+# [0.30.0] - 2019-11-14
+- Bayesian models now allow to access internals.
+- Various small bug fixes.
+
+# [0.29.0] - 2019-09-27
+- Migrate error handling to the snafu crate (this is an API breaking change).
+- Fix edge cases in pairwise alignment.
+- Fix error in backward search if symbol isn't found.
+
+# [0.28.1] - 2019-06-28
+- Fix select in RankSelect in cases where many superblocks have the same rank.
+
+# [0.28.0] - 2019-06-19
+- Myers bit-parallel pattern matching now supports arbitrarily long patterns via bit vectors (thanks to @markschl).
+- Minor documentation updates (thanks to @anders-was-here).
+
+# [0.27.0] - 2019-05-31
+- Implement sequence-read-trait for FASTQ records.
+- Cleanup dependencies.
+
+# [0.26.1] - 2019-05-10
+- Fix a bug in `select_1` and `select_0` that would lead to too large answers.
+
+# [0.26.0] - 2019-05-09
+- Added a trait system for computing Bayesian statistical models.
+- Added an implementation of MSA via partial order alignment.
+- Performance improvements to FASTQ reader.
+
+# [0.25.0] - 2018-12-12
 - Added `FQRead` and `FARead` traits to `FastaReader` and `FastqReader` to be more flexible with input types. This allows to use readers on gzipped and on plain text input interchangeably.
 - Added an implementation of Bayes Factors and evidence scoring using the method of Kass and Raftery.
 

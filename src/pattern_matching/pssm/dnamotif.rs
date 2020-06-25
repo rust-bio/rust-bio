@@ -29,7 +29,7 @@ impl DNAMotif {
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently impossible - see
     /// https://github.com/rust-lang/rust/issues/42863
-    pub fn from_seqs(seqs: &Vec<Vec<u8>>, pseudos: Option<&[f32]>) -> Result<Self, PSSMError> {
+    pub fn from_seqs(seqs: &[Vec<u8>], pseudos: Option<&[f32]>) -> Result<Self> {
         let w = Self::seqs_to_weights(seqs, pseudos)?;
         let mut m = DNAMotif {
             scores: w,
@@ -171,7 +171,7 @@ impl Motif for DNAMotif {
 impl From<Array2<f32>> for DNAMotif {
     fn from(scores: Array2<f32>) -> Self {
         let mut m = DNAMotif {
-            scores: scores,
+            scores,
             min_score: 0.0,
             max_score: 0.0,
         };
@@ -184,7 +184,7 @@ impl From<Array2<f32>> for DNAMotif {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pattern_matching::pssm::ScoredPos;
+    use crate::pattern_matching::pssm::ScoredPos;
     #[test]
     fn simple_pssm() {
         let pssm: DNAMotif = DNAMotif::from_seqs(
@@ -230,7 +230,7 @@ mod tests {
         let pssm = DNAMotif::from_seqs(vec![b"ATGC".to_vec()].as_ref(), None).unwrap();
         assert_eq!(
             pssm.score(b"AAAAXAAAAAAAAA"),
-            Err(PSSMError::InvalidMonomer(b'X'))
+            Err(Error::InvalidMonomer { mono: b'X' })
         );
     }
 
@@ -241,7 +241,7 @@ mod tests {
                 vec![b"AAAA".to_vec(), b"TTTT".to_vec(), b"C".to_vec()].as_ref(),
                 Some(&[0.0; 4])
             ),
-            Err(PSSMError::InconsistentLen)
+            Err(Error::InconsistentLen)
         );
     }
 }

@@ -7,6 +7,7 @@
 
 pub mod distance;
 pub mod pairwise;
+pub mod poa;
 pub mod sparse;
 
 // Re-export the alignment types.

@@ -53,8 +53,8 @@ impl GffType {
     /// First field is key value separator.
     /// Second field terminates a key value pair.
     /// Third field
-    fn separator(&self) -> (u8, u8, u8) {
-        match *self {
+    fn separator(self) -> (u8, u8, u8) {
+        match self {
             GffType::GFF3 => (b'=', b';', b','),
             GffType::GFF2 => (b' ', b';', 0u8),
             GffType::GTF2 => (b' ', b';', 0u8),
@@ -91,7 +91,7 @@ impl<R: io::Read> Reader<R> {
     }
 
     /// Iterate over all records.
-    pub fn records(&mut self) -> Records<R> {
+    pub fn records(&mut self) -> Records<'_, R> {
         let (delim, term, vdelim) = self.gff_type.separator();
         let r = format!(
             r" *(?P<key>[^{delim}{term}\t]+){delim}(?P<value>[^{delim}{term}\t]+){term}?",
@@ -119,8 +119,8 @@ type GffRecordInner = (
     String,
 );
 
-/// A GFF record.
-pub struct Records<'a, R: 'a + io::Read> {
+/// An iterator over the records of a GFF file.
+pub struct Records<'a, R: io::Read> {
     inner: csv::DeserializeRecordsIter<'a, R, GffRecordInner>,
     attribute_re: Regex,
     value_delim: char,

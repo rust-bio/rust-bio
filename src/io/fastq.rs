@@ -11,6 +11,14 @@
 //! use std::io;
 //! use bio::io::fastq;
 //! let reader = fastq::Reader::new(io::stdin());
+//! let records = reader.records().map(|r| r.unwrap());
+//! for record in records {
+//!     let check = record.check();
+//!     if check.is_err() {
+//!         panic!("I got a rubbish record!")
+//!     }
+//!     // your record is ok - do something with it...
+//! }
 //! ```
 
 use std::convert::AsRef;
@@ -20,9 +28,11 @@ use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 
-use utils::TextSlice;
+use bio_types::sequence::SequenceRead;
 
-/// Trait for FASTQ readers.
+use crate::utils::TextSlice;
+
+/// Trait for FastQ readers.
 pub trait FastqRead {
     fn read(&mut self, record: &mut Record) -> io::Result<()>;
 }
@@ -31,7 +41,7 @@ pub trait FastqRead {
 #[derive(Debug)]
 pub struct Reader<R: io::Read> {
     reader: io::BufReader<R>,
-    sep_line: String,
+    line_buffer: String,
 }
 
 impl Reader<fs::File> {
@@ -42,15 +52,32 @@ impl Reader<fs::File> {
 }
 
 impl<R: io::Read> Reader<R> {
-    /// Read from a given `io::Read`.
+    /// Read from a given [`io::Read`](https://doc.rust-lang.org/std/io/trait.Read.html).
     pub fn new(reader: R) -> Self {
         Reader {
             reader: io::BufReader::new(reader),
-            sep_line: String::new(),
+            line_buffer: String::new(),
         }
     }
 
     /// Return an iterator over the records of this FastQ file.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if a record is incomplete
+    /// or syntax is violated.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use bio::io::fastq;
+    ///
+    /// let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+    /// let records = fastq::Reader::new(fq).records().map(|record| record.unwrap());
+    /// for record in records {
+    ///     assert!(record.check().is_ok())
+    /// }
+    /// ```
     pub fn records(self) -> Records<R> {
         Records { reader: self }
     }
@@ -60,36 +87,78 @@ impl<R> FastqRead for Reader<R>
 where
     R: io::Read,
 {
-    /// Read into a given record.
-    /// Returns an error if the record in incomplete or syntax is violated.
-    /// The content of the record can be checked via the record object.
+    /// Read the next FastQ entry into the given [`Record`](#Record).
+    /// An empty record indicates that no more records can be read.
+    ///
+    /// This method is useful when you want to read records as fast as
+    /// possible because it allows the reuse of a `Record` allocation.
+    ///
+    /// A more ergonomic approach to reading FastQ records is the
+    /// [records](Reader::records) iterator.
+    ///
+    /// FastQ files with wrapped sequence and quality strings are allowed.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the record is incomplete,
+    /// syntax is violated or any form of I/O error is encountered.
+    /// Additionally, if the FastQ file has line-wrapped records, and the wrapping is not
+    /// consistent between the sequence and quality string for a record, parsing will fail.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use bio::io::fastq::{Reader, FastqRead};
+    /// use bio::io::fastq::Record;
+    /// const FASTQ_FILE: &'static [u8] = b"@id desc
+    /// AAAA
+    /// +
+    /// IIII
+    /// ";
+    /// let mut reader = Reader::new(FASTQ_FILE);
+    /// let mut record = Record::new();
+    ///
+    /// reader.read(&mut record).unwrap();
+    ///
+    /// assert_eq!(record.id(), "id");
+    /// assert_eq!(record.desc().unwrap(), "desc");
+    /// assert_eq!(record.seq().to_vec(), b"AAAA");
+    /// assert_eq!(record.qual().to_vec(), b"IIII");
+    /// ```
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
+        self.line_buffer.clear();
 
-        let mut header = String::new();
-        try!(self.reader.read_line(&mut header));
+        self.reader.read_line(&mut self.line_buffer)?;
 
-        if !header.is_empty() {
-            if !header.starts_with('@') {
+        if !self.line_buffer.is_empty() {
+            if !self.line_buffer.starts_with('@') {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
                     "Expected @ at record start.",
                 ));
             }
-            record.id = header[1..]
-                .trim_right()
-                .splitn(2, ' ')
-                .nth(0)
-                .unwrap_or_default()
-                .to_owned();
-            record.desc = header[1..]
-                .trim_right()
-                .splitn(2, ' ')
-                .nth(1)
-                .map(|s| s.to_owned());
-            try!(self.reader.read_line(&mut record.seq));
-            try!(self.reader.read_line(&mut self.sep_line));
-            try!(self.reader.read_line(&mut record.qual));
+            let mut header_fields = self.line_buffer[1..].trim_end().splitn(2, ' ');
+            record.id = header_fields.next().unwrap_or_default().to_owned();
+            record.desc = header_fields.next().map(|s| s.to_owned());
+            self.line_buffer.clear();
+
+            self.reader.read_line(&mut self.line_buffer)?;
+
+            let mut lines_read = 0;
+            while !self.line_buffer.starts_with('+') {
+                record.seq.push_str(&self.line_buffer.trim_end());
+                self.line_buffer.clear();
+                self.reader.read_line(&mut self.line_buffer)?;
+                lines_read += 1;
+            }
+
+            for _ in 0..lines_read {
+                self.line_buffer.clear();
+                self.reader.read_line(&mut self.line_buffer)?;
+                record.qual.push_str(self.line_buffer.trim_end());
+            }
+
             if record.qual.is_empty() {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
@@ -105,7 +174,7 @@ where
 }
 
 /// A FastQ record.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct Record {
     id: String,
     desc: Option<String>,
@@ -125,7 +194,19 @@ impl Record {
     }
 
     /// Create a new FastQ record from given attributes.
-    pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice, qual: &[u8]) -> Self {
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use bio::io::fastq::Record;
+    ///
+    /// let record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG", b"QQQQQQQ");
+    /// assert_eq!(record.id(), "id_str");
+    /// assert_eq!(record.desc(), Some("desc"));
+    /// assert_eq!(record.seq(), b"ATGCGGG");
+    /// assert_eq!(record.qual(), b"QQQQQQQ");
+    /// ```
+    pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice<'_>, qual: &[u8]) -> Self {
         let desc = match desc {
             Some(desc) => Some(desc.to_owned()),
             _ => None,
@@ -138,12 +219,45 @@ impl Record {
         }
     }
 
-    /// Check if record is empty.
+    /// Check if a record is empty.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use bio::io::fastq::Record;
+    ///
+    /// let mut record = Record::new();
+    /// assert!(record.is_empty());
+    ///
+    /// record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG", b"QQQQQQQ");
+    /// assert!(!record.is_empty());
+    /// ```
     pub fn is_empty(&self) -> bool {
         self.id.is_empty() && self.desc.is_none() && self.seq.is_empty() && self.qual.is_empty()
     }
 
-    /// Check validity of FastQ record.
+    /// Check the validity of a FastQ record.
+    ///
+    /// # Errors
+    /// This function will return an `Err` if one of the following conditions is met:
+    /// -   The record identifier is empty.
+    /// -   There is a non-ASCII character found in either the sequence or quality strings.
+    /// -   The sequence and quality strings do not have the same length.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use bio::io::fastq::Record;
+    ///
+    /// let mut record = Record::with_attrs("id", None, "Prüfung".as_ref(), b"!!!!!!!");
+    /// let actual = record.check().unwrap_err();
+    /// let expected = "Non-ascii character found in sequence.";
+    /// assert_eq!(actual, expected);
+    ///
+    /// record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG", b"QQQQQQQ");
+    /// assert!(record.check().is_ok());
+    /// ```
+    ///
     pub fn check(&self) -> Result<(), &str> {
         if self.id().is_empty() {
             return Err("Expecting id for FastQ record.");
@@ -175,13 +289,13 @@ impl Record {
     }
 
     /// Return the sequence of the record.
-    pub fn seq(&self) -> TextSlice {
-        self.seq.trim_right().as_bytes()
+    pub fn seq(&self) -> TextSlice<'_> {
+        self.seq.trim_end().as_bytes()
     }
 
     /// Return the base qualities of the record.
     pub fn qual(&self) -> &[u8] {
-        self.qual.trim_right().as_bytes()
+        self.qual.trim_end().as_bytes()
     }
 
     /// Clear the record.
@@ -194,15 +308,64 @@ impl Record {
 }
 
 impl fmt::Display for Record {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    /// Allows for using `Record` in a given formatter `f`. In general this is for
+    /// creating a `String` representation of a `Record` and, optionally, writing it to
+    /// a file.
+    ///
+    /// # Errors
+    /// Returns [`std::fmt::Error`](https://doc.rust-lang.org/std/fmt/struct.Error.html)
+    /// if there is an issue formatting to the stream.
+    ///
+    /// # Examples
+    ///
+    /// Read in a Fastq `Record` and create a `String` representation of it.
+    ///
+    /// ```rust
+    /// use bio::io::fastq::Reader;
+    /// use std::fmt::Write;
+    /// // create a "fake" fastq file
+    /// let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+    /// let mut records = Reader::new(fq).records().map(|r| r.unwrap());
+    /// let record = records.next().unwrap();
+    ///
+    /// let mut actual = String::new();
+    /// // populate `actual` with a string representation of our record
+    /// write!(actual, "{}", record).unwrap();
+    ///
+    /// let expected = std::str::from_utf8(fq).unwrap();
+    ///
+    /// assert_eq!(actual, expected)
+    /// ```
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        let header = match self.desc() {
+            Some(d) => format!("{} {}", self.id().to_owned(), d),
+            None => self.id().to_owned(),
+        };
         write!(
             f,
-            "@{} {}\n{}\n+\n{}",
-            self.id,
-            self.desc().unwrap_or_default(),
-            self.seq,
-            self.qual
+            "@{}\n{}\n+\n{}\n",
+            header,
+            std::str::from_utf8(self.seq()).unwrap(),
+            std::str::from_utf8(self.qual()).unwrap()
         )
+    }
+}
+
+impl SequenceRead for Record {
+    fn name(&self) -> &[u8] {
+        self.id.as_bytes()
+    }
+
+    fn base(&self, i: usize) -> u8 {
+        self.seq()[i]
+    }
+
+    fn base_qual(&self, i: usize) -> u8 {
+        self.qual()[i]
+    }
+
+    fn len(&self) -> usize {
+        self.seq().len()
     }
 }
 
@@ -256,20 +419,20 @@ impl<W: io::Write> Writer<W> {
         &mut self,
         id: &str,
         desc: Option<&str>,
-        seq: TextSlice,
+        seq: TextSlice<'_>,
         qual: &[u8],
     ) -> io::Result<()> {
-        try!(self.writer.write_all(b"@"));
-        try!(self.writer.write_all(id.as_bytes()));
-        if desc.is_some() {
-            try!(self.writer.write_all(b" "));
-            try!(self.writer.write_all(desc.unwrap().as_bytes()));
+        self.writer.write_all(b"@")?;
+        self.writer.write_all(id.as_bytes())?;
+        if let Some(desc) = desc {
+            self.writer.write_all(b" ")?;
+            self.writer.write_all(desc.as_bytes())?;
         }
-        try!(self.writer.write_all(b"\n"));
-        try!(self.writer.write_all(seq));
-        try!(self.writer.write_all(b"\n+\n"));
-        try!(self.writer.write_all(qual));
-        try!(self.writer.write_all(b"\n"));
+        self.writer.write_all(b"\n")?;
+        self.writer.write_all(seq)?;
+        self.writer.write_all(b"\n+\n")?;
+        self.writer.write_all(qual)?;
+        self.writer.write_all(b"\n")?;
 
         Ok(())
     }
@@ -283,6 +446,7 @@ impl<W: io::Write> Writer<W> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fmt::Write as FmtWrite;
     use std::io;
 
     const FASTQ_FILE: &'static [u8] = b"@id desc
@@ -295,7 +459,7 @@ IIIIIIJJJJJJ
     fn test_reader() {
         let reader = Reader::new(FASTQ_FILE);
         let records: Vec<io::Result<Record>> = reader.records().collect();
-        assert!(records.len() == 1);
+        assert_eq!(records.len(), 1);
         for res in records {
             let record = res.ok().unwrap();
             assert_eq!(record.check(), Ok(()));
@@ -307,9 +471,35 @@ IIIIIIJJJJJJ
     }
 
     #[test]
+    fn test_display_record_no_desc_id_without_space_after() {
+        let fq: &'static [u8] = b"@id\nACGT\n+\n!!!!\n";
+        let mut records = Reader::new(fq).records().map(|r| r.unwrap());
+        let record = records.next().unwrap();
+        let mut actual = String::new();
+        write!(actual, "{}", record).unwrap();
+
+        let expected = std::str::from_utf8(fq).unwrap();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_display_record_with_desc_id_has_space_between_id_and_desc() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+        let mut records = Reader::new(fq).records().map(|r| r.unwrap());
+        let record = records.next().unwrap();
+        let mut actual = String::new();
+        write!(actual, "{}", record).unwrap();
+
+        let expected = std::str::from_utf8(fq).unwrap();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
     fn test_fqread_trait() {
         let path = "reads.fq.gz";
-        let mut fq_reader: Box<FastqRead> = match path.ends_with(".gz") {
+        let mut fq_reader: Box<dyn FastqRead> = match path.ends_with(".gz") {
             true => Box::new(Reader::new(io::BufReader::new(FASTQ_FILE))),
             false => Box::new(Reader::new(FASTQ_FILE)),
         };
@@ -343,5 +533,271 @@ IIIIIIJJJJJJ
             .expect("Expected successful write");
         writer.flush().ok().expect("Expected successful write");
         assert_eq!(writer.writer.get_ref(), &FASTQ_FILE);
+    }
+
+    #[test]
+    fn test_check_record_id_is_empty_raises_err() {
+        let record = Record::with_attrs("", None, b"ACGT", b"!!!!");
+
+        let actual = record.check().unwrap_err();
+        let expected = "Expecting id for FastQ record.";
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_check_record_seq_is_not_ascii_raises_err() {
+        let record = Record::with_attrs("id", None, "Prüfung".as_ref(), b"!!!!");
+
+        let actual = record.check().unwrap_err();
+        let expected = "Non-ascii character found in sequence.";
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_check_record_quality_is_not_ascii_raises_err() {
+        let record = Record::with_attrs("id", None, b"ACGT", "Qualität".as_ref());
+
+        let actual = record.check().unwrap_err();
+        let expected = "Non-ascii character found in qualities.";
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_check_record_quality_and_seq_diff_len_raises_err() {
+        let record = Record::with_attrs("id", None, b"ACGT", b"!!!");
+
+        let actual = record.check().unwrap_err();
+        let expected = "Unequal length of sequence an qualities.";
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_check_valid_record() {
+        let record = Record::with_attrs("id", None, b"ACGT", b"!!!!");
+
+        assert!(record.check().is_ok())
+    }
+
+    #[test]
+    fn test_read_header_does_not_start_with_correct_char_raises_err() {
+        let fq: &'static [u8] = b">id description\nACGT\n+\n!!!!\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+
+        let actual = reader.read(&mut record).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::Other, "Expected @ at record start.");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert_eq!(actual.to_string(), expected.to_string())
+    }
+
+    #[test]
+    fn test_read_quality_is_empty_raises_err() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+
+        let actual = reader.read(&mut record).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::Other, "Incomplete record. Each FastQ record has to consist of 4 lines: header, sequence, separator and qualities.");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert_eq!(actual.to_string(), expected.to_string())
+    }
+
+    #[test]
+    fn test_read_sequence_and_quality_are_wrapped_is_handled_with_one_sequence() {
+        let fq: &'static [u8] = b"@id description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!\n$\n";
+        let mut reader = Reader::new(fq);
+
+        let mut actual = Record::new();
+        reader.read(&mut actual).unwrap();
+        let expected = Record::with_attrs("id", Some("description"), b"ACGTGGGGC", b"@@@@!!!!$");
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_read_sequence_and_quality_are_wrapped_is_handled_with_three_sequences() {
+        let fq: &'static [u8] = b"@id description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!\n$\n@id2 description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!\n$\n@id3 desc1 desc2\nAAA\nAAA\nAA\n+\n^^^\n^^^\n^^\n";
+        let mut reader = Reader::new(fq);
+
+        let mut actual = Record::new();
+        reader.read(&mut actual).unwrap();
+        let expected = Record::with_attrs("id", Some("description"), b"ACGTGGGGC", b"@@@@!!!!$");
+
+        assert_eq!(actual, expected);
+
+        reader.read(&mut actual).unwrap();
+        let expected = Record::with_attrs("id2", Some("description"), b"ACGTGGGGC", b"@@@@!!!!$");
+
+        assert_eq!(actual, expected);
+
+        reader.read(&mut actual).unwrap();
+        let expected = Record::with_attrs("id3", Some("desc1 desc2"), b"AAAAAAAA", b"^^^^^^^^");
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_read_wrapped_record_with_inconsistent_wrapping_errors() {
+        let fq: &'static [u8] = b"@id description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!$\n@id2 description\nACGT\nGGGG\nC\n+\n@@@@\n!!!!\n$\n@id3 desc1 desc2\nAAA\nAAA\nAA\n+\n^^^\n^^^\n^^\n";
+        let mut reader = Reader::new(fq);
+
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+        let actual = reader.read(&mut record).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::Other, "Expected @ at record start.");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert_eq!(actual.to_string(), expected.to_string())
+    }
+
+    #[test]
+    fn test_record_iterator_next_read_returns_err_causes_next_to_return_some_err() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n";
+        let mut records = Reader::new(fq).records();
+
+        let actual = records.next().unwrap().unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::Other, "Incomplete record. Each FastQ record has to consist of 4 lines: header, sequence, separator and qualities.");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert_eq!(actual.to_string(), expected.to_string())
+    }
+
+    #[test]
+    fn test_reader_from_file_path_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.fq");
+
+        let actual = Reader::from_file(path).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert!(actual.to_string().starts_with("No such file or directory"))
+    }
+
+    #[test]
+    fn test_reader_from_file_path_exists_returns_ok() {
+        let path = Path::new("Cargo.toml");
+
+        assert!(Reader::from_file(path).is_ok())
+    }
+
+    #[test]
+    fn test_sequence_read_for_record_trait_method_name() {
+        let record = Record::with_attrs("id", None, b"ACGT", b"!!!!");
+
+        let actual = record.name();
+        let expected = b"id";
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_sequence_read_for_record_trait_method_base_idx_in_range() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+        let idx = 2;
+
+        let actual = record.base(idx);
+        let expected = b'G';
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_sequence_read_for_record_trait_method_base_idx_out_of_range() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+        // idx 4 is where the newline character would be - we dont want that included
+        let idx = 4;
+
+        record.base(idx);
+    }
+
+    #[test]
+    fn test_sequence_read_for_record_trait_method_base_qual_idx_in_range() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+        let idx = 2;
+
+        let actual = record.base_qual(idx);
+        let expected = b'!';
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_sequence_read_for_record_trait_method_base_qual_idx_out_of_range() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+        // idx 4 is where the newline character would be - we dont want that included
+        let idx = 4;
+
+        record.base_qual(idx);
+    }
+
+    #[test]
+    fn test_sequence_read_for_record_trait_method_len() {
+        let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+
+        let actual = record.len();
+        let expected = 4;
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_writer_to_file_dir_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.fq");
+
+        let actual = Writer::to_file(path).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert!(actual.to_string().starts_with("No such file or directory"))
+    }
+
+    #[test]
+    fn test_writer_to_file_dir_exists_returns_ok() {
+        let path = Path::new("/tmp/out.fq");
+
+        assert!(Writer::to_file(path).is_ok())
+    }
+
+    #[test]
+    fn test_write_record() {
+        let path = Path::new("test.fq");
+        let file = fs::File::create(path).unwrap();
+        {
+            let handle = io::BufWriter::new(file);
+            let mut writer = Writer { writer: handle };
+            let record = Record::with_attrs("id", Some("desc"), b"ACGT", b"!!!!");
+
+            let write_result = writer.write_record(&record);
+            assert!(write_result.is_ok());
+        }
+
+        let actual = fs::read_to_string(path).unwrap();
+        let expected = "@id desc\nACGT\n+\n!!!!\n";
+
+        assert!(fs::remove_file(path).is_ok());
+        assert_eq!(actual, expected)
     }
 }

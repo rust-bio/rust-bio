@@ -12,7 +12,7 @@ mod text;
 pub use self::text::{trim_newline, Text, TextSlice};
 
 mod interval;
-pub use self::interval::{Interval, IntervalError};
+pub use self::interval::Interval;
 
 /// In place implementation of scan over a slice.
 pub fn scan<T: Copy, F: Fn(T, T) -> T>(a: &mut [T], op: F) {

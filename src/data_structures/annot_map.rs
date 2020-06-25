@@ -3,10 +3,10 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
+use crate::data_structures::interval_tree;
+use crate::data_structures::interval_tree::{IntervalTree, IntervalTreeIterator};
+use crate::utils::Interval;
 use bio_types::annot::loc::Loc;
-use data_structures::interval_tree;
-use data_structures::interval_tree::{IntervalTree, IntervalTreeIterator};
-use utils::Interval;
 
 /// Efficient container for querying annotations, using `HashMap` and
 /// `IntervalTree`.
@@ -75,7 +75,7 @@ where
         let itree = self
             .refid_itrees
             .entry(location.refid().clone())
-            .or_insert_with(|| IntervalTree::new());
+            .or_insert_with(IntervalTree::new);
         let rng = location.start()..(location.start() + (location.length() as isize));
         itree.insert(rng, data);
     }
@@ -144,7 +144,7 @@ where
         let itree = self
             .refid_itrees
             .entry(data.refid().clone())
-            .or_insert_with(|| IntervalTree::new());
+            .or_insert_with(IntervalTree::new);
         let rng = data.start()..(data.start() + (data.length() as isize));
         itree.insert(rng, data);
     }
@@ -154,8 +154,7 @@ where
 #[derive(Debug, Clone)]
 pub struct Entry<'a, R, T>
 where
-    R: 'a + Eq + Hash,
-    T: 'a,
+    R: Eq + Hash,
 {
     itree_entry: interval_tree::Entry<'a, isize, T>,
     refid: &'a R,
@@ -163,8 +162,7 @@ where
 
 impl<'a, R, T> Entry<'a, R, T>
 where
-    R: 'a + Eq + Hash,
-    T: 'a,
+    R: Eq + Hash,
 {
     /// Returns a reference to the data value in the `AnnotMap`.
     pub fn data(&self) -> &'a T {
@@ -188,8 +186,7 @@ where
 /// This struct is created by the `find` function on `AnnotMap`.
 pub struct AnnotMapIterator<'a, R, T>
 where
-    R: 'a + Eq + Hash,
-    T: 'a,
+    R: Eq + Hash,
 {
     itree_iter: Option<IntervalTreeIterator<'a, isize, T>>,
     refid: &'a R,
@@ -262,6 +259,10 @@ mod tests {
         assert!(hits.is_empty());
 
         let query = Contig::new("chrXI".to_owned(), 462400, 100, ReqStrand::Forward);
+        let hits: Vec<&String> = genes.find(&query).map(|e| e.data()).collect();
+        assert!(hits.is_empty());
+
+        let query = Contig::new("NotFound".to_owned(), 0, 0, ReqStrand::Forward);
         let hits: Vec<&String> = genes.find(&query).map(|e| e.data()).collect();
         assert!(hits.is_empty());
     }

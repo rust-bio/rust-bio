@@ -1,7 +1,7 @@
 [![Crates.io](https://img.shields.io/crates/d/bio.svg)](https://crates.io/crates/bio)
 [![Crates.io](https://img.shields.io/crates/v/bio.svg)](https://crates.io/crates/bio)
 [![Crates.io](https://img.shields.io/crates/l/bio.svg)](https://crates.io/crates/bio)
-[![Travis](https://img.shields.io/travis/rust-bio/rust-bio/master.svg)](https://travis-ci.org/rust-bio/rust-bio)
+![GitHub Workflow Status (branch)](https://img.shields.io/github/workflow/status/rust-bio/rust-bio/CI/master?label=tests)
 [![Coveralls](https://img.shields.io/coveralls/rust-bio/rust-bio.svg)](https://coveralls.io/github/rust-bio/rust-bio)
 [![DOI](https://zenodo.org/badge/29821195.svg)](https://zenodo.org/badge/latestdoi/29821195)
 
@@ -57,6 +57,8 @@ For reading and writing BAM and BCF files, have a look at https://github.com/chr
 * [Patrick Marks](https://github.com/pmarks)
 * [Henning Timm](https://github.com/HenningTimm)
 * [Kieran Hervold](https://github.com/hervold)
+* [Brett Bowman](https://github.com/bnbowman)
+* [Jeff Knaggs](https://github.com/jeff-k)
 
 The next name in this list could be you! If you are interested in joining the effort to build a general purpose Rust bioinformatics library, just introduce yourself [here](https://github.com/rust-bio/rust-bio/issues/3), or issue a pull request with your first contribution.
 

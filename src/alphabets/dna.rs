@@ -17,7 +17,7 @@
 
 use std::borrow::Borrow;
 
-use alphabets::Alphabet;
+use crate::alphabets::Alphabet;
 
 /// The DNA alphabet (uppercase and lowercase).
 pub fn alphabet() -> Alphabet {
@@ -35,9 +35,8 @@ pub fn iupac_alphabet() -> Alphabet {
 }
 
 lazy_static! {
-    static ref COMPLEMENT: Vec<u8> = {
-        let mut comp = Vec::new();
-        comp.resize(256, 0);
+    static ref COMPLEMENT: [u8; 256] = {
+        let mut comp = [0; 256];
         for (v, a) in comp.iter_mut().enumerate() {
             *a = v as u8;
         }

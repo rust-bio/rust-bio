@@ -19,8 +19,8 @@ use num_traits::{cast, NumCast, Unsigned};
 use bv::{BitVec, Bits, BitsMut};
 use vec_map::VecMap;
 
-use alphabets::{Alphabet, RankTransform};
-use data_structures::smallints::SmallInts;
+use crate::alphabets::{Alphabet, RankTransform};
+use crate::data_structures::smallints::SmallInts;
 
 pub type LCPArray = SmallInts<i8, isize>;
 pub type RawSuffixArray = Vec<usize>;
@@ -664,7 +664,7 @@ mod tests {
     // See issue #70
     use super::*;
     use super::{transform_text, PosTypes, SAIS};
-    use alphabets::Alphabet;
+    use crate::alphabets::Alphabet;
     use bv::{BitVec, BitsPush};
     //use data_structures::bwt::{bwt, less, Occ};
     use std::str;
@@ -777,7 +777,7 @@ mod tests {
                 "complex with revcomps"),
              ];
 
-        for &(text, test_name) in test_cases.into_iter() {
+        for &(text, test_name) in test_cases.iter() {
             let pos = suffix_array(text);
             for i in 0..(pos.len() - 2) {
                 // Check that every element in the suffix array is lexically <= the next elem

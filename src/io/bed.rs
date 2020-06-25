@@ -58,7 +58,7 @@ impl<R: io::Read> Reader<R> {
     }
 
     /// Iterate over all records.
-    pub fn records(&mut self) -> Records<R> {
+    pub fn records(&mut self) -> Records<'_, R> {
         Records {
             inner: self.inner.deserialize(),
         }
@@ -67,8 +67,8 @@ impl<R: io::Read> Reader<R> {
 
 type BedRecordCsv = (String, u64, u64, Option<Vec<String>>);
 
-/// A BED record.
-pub struct Records<'a, R: 'a + io::Read> {
+/// An iterator over the records of a BED file.
+pub struct Records<'a, R: io::Read> {
     inner: csv::DeserializeRecordsIter<'a, R, BedRecordCsv>,
 }
 
@@ -206,7 +206,7 @@ impl Record {
 
     /// Set name.
     pub fn set_name(&mut self, name: &str) {
-        if self.aux.len() < 1 {
+        if self.aux.is_empty() {
             self.aux.push(name.to_owned());
         } else {
             self.aux[0] = name.to_owned();
@@ -215,7 +215,7 @@ impl Record {
 
     /// Set score.
     pub fn set_score(&mut self, score: &str) {
-        if self.aux.len() < 1 {
+        if self.aux.is_empty() {
             self.aux.push("".to_owned());
         }
         if self.aux.len() < 2 {

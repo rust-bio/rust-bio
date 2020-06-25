@@ -1,14 +1,15 @@
 [package]
 name = "bio-fuzz"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Automatically generated"]
 publish = false
+metadata = { cargo-fuzz = true }
+edition = "2018"
 
-[package.metadata]
-cargo-fuzz = true
+[dependencies]
+bio = {path = ".."}
+itertools = "0.8"
 
-[dependencies.bio]
-path = ".."
 [dependencies.libfuzzer-sys]
 git = "https://github.com/rust-fuzz/libfuzzer-sys.git"
 
@@ -23,3 +24,7 @@ debug-assertions = true
 [[bin]]
 name = "myers_matching"
 path = "fuzz_targets/myers_matching.rs"
+
+[[bin]]
+name = "banded_aligner"
+path = "fuzz_targets/banded_aligner.rs"

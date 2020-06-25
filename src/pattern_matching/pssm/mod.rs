@@ -33,16 +33,17 @@
 //!        ].as_ref(), None).unwrap();
 
 use std::borrow::Borrow;
-use std::char;
 use std::f32::NEG_INFINITY;
 
 use itertools::Itertools;
 use ndarray::prelude::Array2;
 
 mod dnamotif;
+pub mod errors;
 mod protmotif;
 
 pub use self::dnamotif::DNAMotif;
+pub use self::errors::{Error, Result};
 pub use self::protmotif::ProtMotif;
 
 /// default pseudocount - used to prevent 0 tallies
@@ -51,37 +52,6 @@ pub const DEF_PSEUDO: f32 = 0.5;
 pub const EPSILON: f32 = 1e-5;
 /// value representing an invalid monomer in lookup table
 pub const INVALID_MONO: u8 = 255;
-
-/// Errors
-quick_error! {
-    #[derive(Debug, PartialEq)]
-    pub enum PSSMError {
-        QueryTooShort(motif_len: usize, query_len: usize) {
-            description("query cannot be shorter than motif")
-            display("query length {} is shorter than motif length {}", query_len, motif_len)
-        }
-        InconsistentLen {
-            description("attempted to build a motif from sequences with mismatched lengths")
-            display("mismatched sequence lengths")
-        }
-        InvalidMonomer(mono: u8) {
-            description("unknown monomer, eg, DNA base other than ATGC")
-            display("monomer '{}' is invalid", char::from(*mono))
-        }
-        NullMotif {
-            description("a motif in which every monomer is equally likely at every position will result in a divide-by-zero exception")
-            display("information-free motif")
-        }
-        EmptyMotif {
-            description("attempted to create a motif from zero sequences")
-            display("motif cannot be created from zero sequences")
-        }
-        InvalidPseudos(expected: u8, received: u8) {
-            description("pseudo-score array should have on entry per monomer")
-            display("expected pseudo-score array of length {}; got {}", expected, received)
-        }
-    }
-}
 
 /// Represents motif score & location of match
 #[derive(Debug, Clone, PartialEq)]
@@ -120,10 +90,7 @@ pub trait Motif {
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently unsupported
-    fn seqs_to_weights(
-        seqs: &Vec<Vec<u8>>,
-        _pseudos: Option<&[f32]>,
-    ) -> Result<Array2<f32>, PSSMError> {
+    fn seqs_to_weights(seqs: &[Vec<u8>], _pseudos: Option<&[f32]>) -> Result<Array2<f32>> {
         let p1 = vec![DEF_PSEUDO; Self::MONO_CT];
         let pseudos = match _pseudos {
             Some(ref p2) => p2,
@@ -131,14 +98,14 @@ pub trait Motif {
         };
 
         if pseudos.len() != Self::MONO_CT {
-            return Err(PSSMError::InvalidPseudos(
-                Self::MONO_CT as u8,
-                pseudos.len() as u8,
-            ));
+            return Err(Error::InvalidPseudos {
+                expected: Self::MONO_CT as u8,
+                received: pseudos.len() as u8,
+            });
         }
 
-        if seqs.len() == 0 {
-            return Err(PSSMError::EmptyMotif);
+        if seqs.is_empty() {
+            return Err(Error::EmptyMotif);
         }
 
         let seqlen = seqs[0].len();
@@ -151,7 +118,7 @@ pub trait Motif {
 
         for seq in seqs.iter() {
             if seq.len() != seqlen {
-                return Err(PSSMError::InconsistentLen);
+                return Err(Error::InconsistentLen);
             }
 
             for (idx, base) in seq.iter().enumerate() {
@@ -168,14 +135,14 @@ pub trait Motif {
     /// # Arguments
     /// * `mono` - monomer, eg, b'A' for DNA or b'R' for protein
     /// # Errors
-    /// * `PSSMError::InvalidMonomer(mono)` - `mono` wasn't found in the lookup table
-    fn lookup(mono: u8) -> Result<usize, PSSMError> {
+    /// * `Error::InvalidMonomer(mono)` - `mono` wasn't found in the lookup table
+    fn lookup(mono: u8) -> Result<usize> {
         if mono >= 127 {
-            Err(PSSMError::InvalidMonomer(mono))
+            Err(Error::InvalidMonomer { mono })
         } else {
             let idx = Self::LK[mono as usize];
             if idx == INVALID_MONO {
-                Err(PSSMError::InvalidMonomer(mono))
+                Err(Error::InvalidMonomer { mono })
             } else {
                 Ok(idx as usize)
             }
@@ -218,8 +185,8 @@ pub trait Motif {
     /// * `seq_it` - iterator representing the query sequence
     ///
     /// # Errors
-    /// * `PSSMError::InvalidMonomer(mono)` - sequence `seq_it` contained invalid monomer `mono`
-    fn raw_score<C, T>(&self, seq_it: T) -> Result<(usize, f32, Vec<f32>), PSSMError>
+    /// * `Error::InvalidMonomer(mono)` - sequence `seq_it` contained invalid monomer `mono`
+    fn raw_score<C, T>(&self, seq_it: T) -> Result<(usize, f32, Vec<f32>)>
     where
         C: Borrow<u8>,
         T: IntoIterator<Item = C>,
@@ -232,7 +199,7 @@ pub trait Motif {
         // we have to look at slices, so a simple iterator won't do
         let seq = seq_it.into_iter().map(|c| *c.borrow()).collect_vec();
         let scores = self.get_scores();
-        for start in 0..seq.len() - pssm_len + 1 {
+        for start in 0..=seq.len() - pssm_len {
             let m: Vec<f32> = match (0..pssm_len)
                 .map(|i| match Self::lookup(seq[start + i]) {
                     Err(e) => Err(e),
@@ -263,8 +230,8 @@ pub trait Motif {
     /// * `seq_it` - iterator representing the query sequence
     ///
     /// # Errors
-    /// * `PSSMError::InvalidMonomer(mono)` - sequence `seq_it` contained invalid monomer `mono`
-    /// * `PSSMError::QueryTooShort` - sequence `seq_id` was too short
+    /// * `Error::InvalidMonomer(mono)` - sequence `seq_it` contained invalid monomer `mono`
+    /// * `Error::QueryTooShort` - sequence `seq_id` was too short
     ///
     /// # Example
     /// let pssm = DNAMotif::from_seqs(vec![
@@ -274,7 +241,7 @@ pub trait Motif {
     ///            b"AAAA".to_vec(),
     ///        ].as_ref(), None).unwrap();
     /// let start_pos = pssm.score(b"CCCCCAATA").unwrap().loc;
-    fn score<C, T>(&self, seq_it: T) -> Result<ScoredPos, PSSMError>
+    fn score<C, T>(&self, seq_it: T) -> Result<ScoredPos>
     where
         C: Borrow<u8>,
         T: IntoIterator<Item = C>,
@@ -282,13 +249,16 @@ pub trait Motif {
         let pssm_len = self.len();
         let seq = seq_it.into_iter().map(|c| *c.borrow()).collect_vec();
         if seq.len() < pssm_len {
-            return Err(PSSMError::QueryTooShort(pssm_len, seq.len()));
+            return Err(Error::QueryTooShort {
+                motif_len: pssm_len,
+                query_len: seq.len(),
+            });
         }
         let min_score = self.get_min_score();
         let max_score = self.get_max_score();
 
-        if max_score == min_score {
-            return Err(PSSMError::NullMotif);
+        if abs_diff_eq!(max_score, min_score) {
+            return Err(Error::NullMotif);
         }
 
         let (best_start, best_score, best_m) = self.raw_score(&seq)?;
