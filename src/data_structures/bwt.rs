@@ -12,7 +12,6 @@ use std::iter::repeat;
 use crate::alphabets::Alphabet;
 use crate::data_structures::suffix_array::RawSuffixArray;
 use crate::utils::prescan;
-use bytecount;
 
 pub type BWT = Vec<u8>;
 pub type BWTSlice = [u8];
@@ -164,7 +163,7 @@ impl Occ {
 
         // Otherwise the default case is to count from the low checkpoint.
         let lo_idx = lo_checkpoint * self.k as usize;
-        return lo_occ + bytecount::count(&bwt[lo_idx + 1..=r], a) as usize;
+        bytecount::count(&bwt[lo_idx + 1..=r], a) as usize + lo_occ
     }
 }
 

@@ -27,7 +27,6 @@
 //! ]);
 //! ```
 
-use std;
 use std::cmp;
 use std::collections;
 use std::collections::hash_map::Entry;

@@ -85,16 +85,16 @@ pub enum XYEmission {
 
 impl XYEmission {
     pub fn prob(&self) -> LogProb {
-        match self {
-            &XYEmission::Match(p) => p,
-            &XYEmission::Mismatch(p) => p,
+        match *self {
+            XYEmission::Match(p) => p,
+            XYEmission::Mismatch(p) => p,
         }
     }
 
     pub fn is_match(&self) -> bool {
-        match self {
-            &XYEmission::Match(_) => true,
-            &XYEmission::Mismatch(_) => false,
+        match *self {
+            XYEmission::Match(_) => true,
+            XYEmission::Mismatch(_) => false,
         }
     }
 }
