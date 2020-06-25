@@ -27,7 +27,7 @@
 //! assert_eq!(match_path, vec![(0,2), (1,3), (2,4), (3,5), (4,6), (5,7), (6,8)]);
 //! assert_eq!(sparse_al.score, 14);
 
-use self::fxhash::FxHasher;
+use fxhash::FxHasher;
 use crate::data_structures::bit_tree::MaxBitTree;
 use std::cmp::{max, min};
 use std::collections::HashMap;
