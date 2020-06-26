@@ -14,9 +14,6 @@
 //! let mut record = fastq::Record::new();
 //! reader.read(&mut record).expect("Failed to parse record");
 //! while !record.is_empty() {
-//!   if record.is_empty() {
-//!     break;
-//!   }
 //!   let check = record.check();
 //!   if check.is_err() {
 //!       panic!("I got a rubbish record!")
