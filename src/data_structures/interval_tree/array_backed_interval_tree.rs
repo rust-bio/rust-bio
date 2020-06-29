@@ -220,7 +220,7 @@ impl<N: Ord + Clone + Copy, D: Clone> ArrayBackedIntervalTree<N, D> {
                         });
                     }
                 }
-            } else if w == false {
+            } else if !w {
                 // if left child not processed
                 let y = x - (1 << (k - 1)); // the left child of x; NB: y may be out of range (i.e. y>=n)
                 stack[t].k = k;

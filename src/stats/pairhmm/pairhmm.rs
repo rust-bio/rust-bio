@@ -243,10 +243,10 @@ impl PairHMM {
                 // Cache column probabilities or simply record the last probability.
                 // We can put all of them in one array since we simply have to sum in the end.
                 // This is also good for numerical stability.
-                self.prob_cols.push(self.fm[curr].last().unwrap().clone());
-                self.prob_cols.push(self.fx[curr].last().unwrap().clone());
+                self.prob_cols.push(*self.fm[curr].last().unwrap());
+                self.prob_cols.push(*self.fx[curr].last().unwrap());
                 // TODO check removing this (we don't want open gaps in x):
-                self.prob_cols.push(self.fy[curr].last().unwrap().clone());
+                self.prob_cols.push(*self.fy[curr].last().unwrap());
             }
 
             // next column

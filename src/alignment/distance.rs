@@ -107,8 +107,6 @@ pub mod simd {
 
     use crate::utils::TextSlice;
 
-    use triple_accel;
-
     /// SIMD-accelerated Hamming distance between two strings. Complexity: O(n / w), for
     /// SIMD vectors of length w (usually w = 16 or w = 32).
     ///
