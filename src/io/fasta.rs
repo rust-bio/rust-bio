@@ -15,7 +15,6 @@
 
 use crate::utils::{Text, TextSlice};
 use csv;
-use flate2::read::MultiGzDecoder;
 use niffler;
 use std::cmp::min;
 use std::collections;
@@ -71,28 +70,6 @@ impl Reader<fs::File> {
         let (reader, _compression) = niffler::from_path(&path)?;
         Ok(Reader::new(reader))
     }
-    /*
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        let rfile = fs::File::open(&path)?;
-        let p = ffi::CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
-        let c_str = ffi::CString::new(p).unwrap();
-        let c_mode = ffi::CString::new("r").unwrap();
-
-        let fp = unsafe { hts_open(c_str.as_ptr(), c_mode.as_ptr()) };
-        let format = unsafe { (*fp).format };
-
-        match format.compression {
-            0 => Ok(Reader::new(Compression::PlainText(rfile))),
-            1 => Ok(Reader::new(Compression::GzCompressed(MultiGzDecoder::new(
-                rfile,
-            )))),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Format not supported yet.",
-            )),
-        }
-    }
-    */
 }
 
 impl<R: io::Read> Reader<R> {
