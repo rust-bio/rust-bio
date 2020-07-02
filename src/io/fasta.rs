@@ -25,9 +25,6 @@ use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 
-use crate::utils::{Text, TextSlice};
-use std::fmt;
-
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
 
