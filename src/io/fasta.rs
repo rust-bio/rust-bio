@@ -13,22 +13,18 @@
 //! let reader = fasta::Reader::new(io::stdin());
 //! ```
 
+use crate::utils::{Text, TextSlice};
+use csv;
 use flate2::read::MultiGzDecoder;
-use rust_htslib::htslib::hts_open;
+use niffler;
 use std::cmp::min;
 use std::collections;
 use std::convert::AsRef;
-use std::ffi;
+use std::fmt;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
-use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
-
-use csv;
-
-use crate::utils::{Text, TextSlice};
-use std::fmt;
 
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
@@ -38,20 +34,6 @@ pub trait FastaRead {
     fn read(&mut self, record: &mut Record) -> io::Result<()>;
 }
 
-/// An enum to cover different compression cases for Reader
-pub enum Compression {
-    PlainText(fs::File),
-    GzCompressed(MultiGzDecoder<fs::File>),
-}
-impl io::Read for Compression {
-    fn read(&mut self, b: &mut [u8]) -> std::result::Result<usize, std::io::Error> {
-        match self {
-            Compression::PlainText(f) => f.read(b),
-            Compression::GzCompressed(g) => g.read(b),
-        }
-    }
-}
-
 /// A FASTA reader.
 #[derive(Debug)]
 pub struct Reader<R: io::Read> {
@@ -59,7 +41,7 @@ pub struct Reader<R: io::Read> {
     line: String,
 }
 
-impl Reader<Compression> {
+impl Reader<fs::File> {
     /// Read plain-text or gzip-compressed FASTA from the given path.
     ///
     /// # Errors
@@ -85,6 +67,11 @@ impl Reader<Compression> {
     ///     Ok(())
     /// }
     /// ```
+    pub fn from_file<'a, P: AsRef<Path>>(path: P) -> Result<Reader<Box<dyn Read>>, niffler::Error> {
+        let (reader, _compression) = niffler::from_path(&path)?;
+        Ok(Reader::new(reader))
+    }
+    /*
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         let rfile = fs::File::open(&path)?;
         let p = ffi::CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
@@ -105,6 +92,7 @@ impl Reader<Compression> {
             )),
         }
     }
+    */
 }
 
 impl<R: io::Read> Reader<R> {
