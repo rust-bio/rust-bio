@@ -1460,12 +1460,20 @@ ATTGTTGTTTTA
         let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
 
         assert_eq!(actual.kind(), expected.kind());
-        assert!(actual.to_string().starts_with("No such file or directory"))
+
+        #[cfg(unix)]
+        assert!(actual.to_string().starts_with("No such file or directory"));
+
+        #[cfg(windows)]
+        assert!(actual
+            .to_string()
+            .starts_with("The system cannot find the path specified"));
     }
 
     #[test]
     fn test_writer_to_file_dir_exists_returns_ok() {
-        let path = Path::new("/tmp/out.fa");
+        let file = tempfile::NamedTempFile::new().expect("Could not create temp file");
+        let path = file.path();
 
         assert!(Writer::to_file(path).is_ok())
     }
