@@ -196,7 +196,7 @@ impl RankTransform {
     /// Complexity: O(1)
     ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use bio::alphabets;
     ///
