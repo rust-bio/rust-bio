@@ -17,8 +17,8 @@
 //! ```
 //! use bio::utils::Interval;
 //! match Interval::new(7..1) {
-//!     Ok (interval) => println!("{:?}", interval),
-//!     Err (error) => eprintln!("interval start > end"),
+//!     Ok(interval) => println!("{:?}", interval),
+//!     Err(error) => eprintln!("interval start > end"),
 //! }
 //! ```
 
