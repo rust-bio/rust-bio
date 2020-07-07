@@ -133,10 +133,10 @@ impl Alphabet {
 ///
 /// Lexicographical rank is computed using `u8` representations,
 /// i.e. ASCII codes, of the input characters.
-/// For example, assuming that the alphabet consists of the symbols `A`, `C`, `G`, and `T`, this 
+/// For example, assuming that the alphabet consists of the symbols `A`, `C`, `G`, and `T`, this
 /// will yield ranks `0`, `1`, `2`, `3` for them, respectively.
 ///
-/// `RankTransform` can be used in to perform bit encoding for texts over a 
+/// `RankTransform` can be used in to perform bit encoding for texts over a
 /// given alphabet via `bio::data_structures::bitenc`.
 #[derive(Serialize, Deserialize)]
 pub struct RankTransform {

@@ -113,5 +113,4 @@ mod tests {
     fn number_is_no_word() {
         assert!(!alphabet().is_word(b"42"));
     }
-
 }
