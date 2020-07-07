@@ -35,6 +35,7 @@
 
 use crate::utils::Interval;
 use std::cmp::min;
+use std::iter::FromIterator;
 
 /// A `find` query on the interval tree does not directly return references to the intervals in the
 /// tree but wraps the fields `interval` and `data` in an `Entry`.
@@ -81,19 +82,21 @@ pub struct ArrayBackedIntervalTree<N: Ord + Clone + Copy, D> {
     indexed: bool,
 }
 
+impl<N, D, V> FromIterator<(V, D)> for ArrayBackedIntervalTree<N, D>
+where
+    V: Into<Interval<N>>, N: Ord + Clone + Copy, D: Clone
+{
+    fn from_iter<T: IntoIterator<Item = (V, D)>>(iter: T) -> Self {
+        let mut tree = Self::new();
+        iter.into_iter().for_each(|(interval, data)| tree.insert(interval, data));
+        tree.index();
+        tree
+    }
+}
+
 impl<N: Ord + Clone + Copy, D: Clone> ArrayBackedIntervalTree<N, D> {
     pub fn new() -> Self {
         Default::default()
-    }
-
-    pub fn from_iter<I: Iterator<Item = (V, D)>, V>(iter: I) -> Self
-    where
-        V: Into<Interval<N>>,
-    {
-        let mut tree = Self::new();
-        iter.for_each(|(interval, data)| tree.insert(interval, data));
-        tree.index();
-        tree
     }
 
     pub fn insert<I: Into<Interval<N>>>(&mut self, interval: I, data: D) {
@@ -208,11 +211,11 @@ impl<N: Ord + Clone + Copy, D: Clone> ArrayBackedIntervalTree<N, D> {
                 // we are in a small subtree; traverse every node in this subtree
                 let i0 = x >> k << k;
                 let i1 = min(i0 + (1 << (k + 1)) - 1, n);
-                for i in i0..i1 {
-                    if a[i].interval.start >= end {
+                for (i, node) in a.iter().enumerate().take(i1).skip(i0) {
+                    if node.interval.start >= end {
                         break;
                     }
-                    if start < a[i].interval.end {
+                    if start < node.interval.end {
                         // if overlap, append to `results`
                         results.push(Entry {
                             interval: &self.entries[i].interval,
@@ -220,7 +223,7 @@ impl<N: Ord + Clone + Copy, D: Clone> ArrayBackedIntervalTree<N, D> {
                         });
                     }
                 }
-            } else if w == false {
+            } else if !w {
                 // if left child not processed
                 let y = x - (1 << (k - 1)); // the left child of x; NB: y may be out of range (i.e. y>=n)
                 stack[t].k = k;

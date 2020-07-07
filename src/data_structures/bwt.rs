@@ -10,9 +10,8 @@
 use std::iter::repeat;
 
 use crate::alphabets::Alphabet;
-use crate::data_structures::suffix_array::RawSuffixArray;
+use crate::data_structures::suffix_array::RawSuffixArraySlice;
 use crate::utils::prescan;
-use bytecount;
 
 pub type BWT = Vec<u8>;
 pub type BWTSlice = [u8];
@@ -37,7 +36,7 @@ pub type BWTFind = Vec<usize>;
 /// let bwt = bwt(text, &pos);
 /// assert_eq!(bwt, b"ATTATTCAGGACCC$CTTTCAA");
 /// ```
-pub fn bwt(text: &[u8], pos: &RawSuffixArray) -> BWT {
+pub fn bwt(text: &[u8], pos: RawSuffixArraySlice) -> BWT {
     assert_eq!(text.len(), pos.len());
     let n = text.len();
     let mut bwt: BWT = repeat(0).take(n).collect();
@@ -164,7 +163,7 @@ impl Occ {
 
         // Otherwise the default case is to count from the low checkpoint.
         let lo_idx = lo_checkpoint * self.k as usize;
-        return lo_occ + bytecount::count(&bwt[lo_idx + 1..=r], a) as usize;
+        lo_occ + bytecount::count(&bwt[lo_idx + 1..=r], a) as usize
     }
 }
 
