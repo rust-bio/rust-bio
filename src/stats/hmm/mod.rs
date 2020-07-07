@@ -565,7 +565,6 @@ pub mod discrete_emission {
 pub mod univariate_continuous_emission {
     use super::super::{LogProb, Prob};
     use super::*;
-    use statrs;
 
     /// Implementation of a `hmm::Model` with emission values from univariate continuous distributions.
     ///

@@ -12,7 +12,7 @@
 //!
 //! # Example
 //! ```
-//! use bio::data_structures::interval_tree::{IntervalTree};
+//! use bio::data_structures::interval_tree::IntervalTree;
 //! use bio::utils::Interval;
 //!
 //! let mut tree = IntervalTree::new();
@@ -31,7 +31,6 @@ use crate::utils::Interval;
 use std::cmp;
 use std::iter::FromIterator;
 use std::mem;
-
 /// An interval tree for storing intervals with data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntervalTree<N: Ord + Clone, D> {

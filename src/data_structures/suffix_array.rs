@@ -7,7 +7,6 @@
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
-use std;
 use std::cmp;
 use std::fmt::Debug;
 use std::iter;
@@ -24,6 +23,7 @@ use crate::data_structures::smallints::SmallInts;
 
 pub type LCPArray = SmallInts<i8, isize>;
 pub type RawSuffixArray = Vec<usize>;
+pub type RawSuffixArraySlice<'a> = &'a [usize];
 
 /// A trait exposing general functionality of suffix arrays.
 pub trait SuffixArray {
