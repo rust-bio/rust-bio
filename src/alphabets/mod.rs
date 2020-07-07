@@ -138,6 +138,15 @@ pub struct RankTransform {
 
 impl RankTransform {
     /// Construct a new `RankTransform`.
+    ///
+    /// ```
+    /// use bio::alphabets;
+    ///
+    /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
+    /// let dna_ranks = alphabets::RankTransform::new(&dna_alphabet);
+    /// assert_eq!(dna_ranks.get(65), 0);  // "A"
+    /// assert_eq!(dna_ranks.get(116), 7); // "t"
+    /// ```
     pub fn new(alphabet: &Alphabet) -> Self {
         let mut ranks = VecMap::new();
         for (r, c) in alphabet.symbols.iter().enumerate() {
@@ -148,11 +157,31 @@ impl RankTransform {
     }
 
     /// Get the rank of symbol `a`.
+    ///
+    /// This method panics for characters not contained in the alphabet.
+    ///
+    /// ```
+    /// use bio::alphabets;
+    ///
+    /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
+    /// let dna_ranks = alphabets::RankTransform::new(&dna_alphabet);
+    /// assert_eq!(dna_ranks.get(65), 0);  // "A"
+    /// assert_eq!(dna_ranks.get(116), 7); // "t"
+    /// ```
     pub fn get(&self, a: u8) -> u8 {
         *self.ranks.get(a as usize).expect("Unexpected character.")
     }
 
     /// Transform a given `text`.
+    ///
+    /// ```
+    /// use bio::alphabets;
+    ///
+    /// let dna_alphabet = alphabets::Alphabet::new(b"ACGTacgt");
+    /// let dna_ranks = alphabets::RankTransform::new(&dna_alphabet);
+    /// let text = b"aAcCgGtT";
+    /// assert_eq!(dna_ranks.transform(text), vec![4, 0, 5, 1, 6, 2, 7, 3]);
+    /// ```
     pub fn transform<C, T>(&self, text: T) -> Vec<u8>
     where
         C: Borrow<u8>,
@@ -172,6 +201,16 @@ impl RankTransform {
     /// as `usize` by storing the symbol ranks in log2(|A|) bits (with |A| being the alphabet size).
     ///
     /// If q is larger than usize::BITS / log2(|A|), this method fails with an assertion.
+    ///
+    /// ```
+    /// use bio::alphabets;
+    ///
+    /// let dna_alphabet = alphabets::Alphabet::new(b"ACGTacgt");
+    /// let dna_ranks = alphabets::RankTransform::new(&dna_alphabet);
+    ///
+    /// let q_grams: Vec<usize> = dna_ranks.qgrams(2, b"ACGT").collect();
+    /// assert_eq!(q_grams, vec![1, 10, 19]);
+    /// ```
     pub fn qgrams<C, T>(&self, q: u32, text: T) -> QGrams<'_, C, T::IntoIter>
     where
         C: Borrow<u8>,
@@ -199,6 +238,14 @@ impl RankTransform {
     }
 
     /// Restore alphabet from transform.
+    ///
+    /// ```
+    /// use bio::alphabets;
+    ///
+    /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
+    /// let dna_ranks = alphabets::RankTransform::new(&dna_alphabet);
+    /// assert_eq!(dna_ranks.alphabet().symbols, dna_alphabet.symbols);
+    /// ```
     pub fn alphabet(&self) -> Alphabet {
         let mut symbols = BitSet::with_capacity(self.ranks.len());
         symbols.extend(self.ranks.keys());
