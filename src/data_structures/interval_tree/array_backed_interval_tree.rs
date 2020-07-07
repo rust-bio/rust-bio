@@ -11,6 +11,7 @@
 //! ```
 //! use bio::data_structures::interval_tree::ArrayBackedIntervalTree;
 //! use bio::utils::Interval;
+//! use std::iter::FromIterator;
 //!
 //! let mut tree = ArrayBackedIntervalTree::new();
 //! tree.insert(12..34, 0);
@@ -21,14 +22,14 @@
 //! let i1 = &tree.find(22..25)[0];
 //! assert_eq!(i1.interval().start, 0);
 //! assert_eq!(i1.interval().end, 23);
-//! assert_eq!(i1.data(), 1);
+//! assert_eq!(i1.data(), &1);
 //!
-//! let tree = ArrayBackedIntervalTree::from_iter(&vec![(12..34, 0), (0..23, 1), (34..56, 2)]);
+//! let tree = ArrayBackedIntervalTree::from_iter(vec![(12..34, 0), (0..23, 1), (34..56, 2)].into_iter());
 //! // no call to `index` needed here, since that happens in `from_iter` already
 //! let i2 = &tree.find(22..25)[1];
-//! assert_eq!(i1.interval().start, 12);
-//! assert_eq!(i1.interval().end, 34);
-//! assert_eq!(i1.data(), 0);
+//! assert_eq!(i2.interval().start, 12);
+//! assert_eq!(i2.interval().end, 34);
+//! assert_eq!(i2.data(), &0);
 //!
 //! ```
 //!
