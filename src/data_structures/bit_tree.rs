@@ -64,7 +64,7 @@ impl<T: Ord + Default + Copy, Op: PrefixOp<T>> FenwickTree<T, Op> {
         }
     }
 
-    /// Max bit tree: get(i) returns the largest element e that has been added
+    /// Returns the largest element e that has been added
     /// to the bit tree with set(j, e), where j <= i.
     pub fn get(&self, idx: usize) -> T {
         let mut idx = idx + 1;
