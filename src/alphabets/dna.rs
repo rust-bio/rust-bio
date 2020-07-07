@@ -55,6 +55,7 @@ lazy_static! {
 ///
 /// ```
 /// use bio::alphabets::dna::complement;
+///
 /// assert_eq!(complement(65), 84);   // A → T
 /// assert_eq!(complement(99), 103);  // c → g
 /// assert_eq!(complement(78), 78);   // N → N
@@ -72,6 +73,7 @@ pub fn complement(a: u8) -> u8 {
 ///
 /// ```
 /// use bio::alphabets::dna::revcomp;
+///
 /// assert_eq!(revcomp(b"ACGTN"), b"NACGT");
 /// assert_eq!(revcomp(b"GaTtaCA"), b"TGtaAtC");
 /// assert_eq!(revcomp(b"AGCTYRWSKMDVHBN"), b"NVDBHKMSWYRAGCT");

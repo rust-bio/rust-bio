@@ -69,6 +69,7 @@ impl Alphabet {
     ///
     /// ```
     /// use bio::alphabets;
+    ///
     /// let dna_alphabet = alphabets::Alphabet::new(b"ACGTacgt");
     /// assert!(dna_alphabet.is_word(b"GAttACA"));
     /// assert!(!dna_alphabet.is_word(b"42"));
@@ -86,6 +87,7 @@ impl Alphabet {
     ///
     /// ```
     /// use bio::alphabets;
+    ///
     /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
     /// assert_eq!(dna_alphabet.max_symbol(), Some(116));  // max symbol is "t"
     /// let empty_alphabet = alphabets::Alphabet::new(b"");
@@ -102,6 +104,7 @@ impl Alphabet {
     ///
     /// ```
     /// use bio::alphabets;
+    ///
     /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
     /// assert_eq!(dna_alphabet.len(), 8);
     /// ```
@@ -113,6 +116,7 @@ impl Alphabet {
     ///
     /// ```
     /// use bio::alphabets;
+    ///
     /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
     /// assert!(!dna_alphabet.is_empty());
     /// let empty_alphabet = alphabets::Alphabet::new(b"");
@@ -124,6 +128,9 @@ impl Alphabet {
 }
 
 /// Tools based on transforming the alphabet symbols to their lexicographical ranks.
+///
+/// Lexicographical rank is computed using `u8` representations,
+/// i.e. ASCII codes, of the input characters.
 #[derive(Serialize, Deserialize)]
 pub struct RankTransform {
     pub ranks: SymbolRanks,
@@ -217,6 +224,7 @@ where
     C: Borrow<u8>,
     T: Iterator<Item = C>,
 {
+    /// Push a new character into the current qgram.
     fn qgram_push(&mut self, a: u8) {
         self.qgram <<= self.bits;
         self.qgram |= a as usize;
