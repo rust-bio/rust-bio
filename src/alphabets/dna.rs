@@ -87,3 +87,29 @@ where
         .map(|a| complement(*a.borrow()))
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_word() {
+        assert!(alphabet().is_word(b"GATTACA"));
+    }
+
+    #[test]
+    fn is_no_word() {
+        assert!(!alphabet().is_word(b"gaUUaca"));
+    }
+
+    #[test]
+    fn symbol_is_no_word() {
+        assert!(!alphabet().is_word(b"#"));
+    }
+
+    #[test]
+    fn number_is_no_word() {
+        assert!(!alphabet().is_word(b"42"));
+    }
+
+}
