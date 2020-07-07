@@ -33,6 +33,13 @@ pub struct Alphabet {
 
 impl Alphabet {
     /// Create new alphabet from given symbols.
+    ///
+    /// ```
+    /// use bio::alphabets;
+    ///
+    /// let dna_alphabet = alphabets::Alphabet::new(b"ACGTacgt");
+    /// assert!(dna_alphabet.is_word(b"GAttACA"));
+    /// ```
     pub fn new<C, T>(symbols: T) -> Self
     where
         C: Borrow<u8>,
@@ -45,11 +52,27 @@ impl Alphabet {
     }
 
     /// Insert symbol into alphabet.
+    ///
+    /// ```
+    /// use bio::alphabets;
+    ///
+    /// let mut dna_alphabet = alphabets::Alphabet::new(b"ACGTacgt");
+    /// assert!(!dna_alphabet.is_word(b"N"));
+    /// dna_alphabet.insert(78);
+    /// assert!(dna_alphabet.is_word(b"N"));
+    /// ```
     pub fn insert(&mut self, a: u8) {
         self.symbols.insert(a as usize);
     }
 
     /// Check if given text is a word over the alphabet.
+    ///
+    /// ```
+    /// use bio::alphabets;
+    /// let dna_alphabet = alphabets::Alphabet::new(b"ACGTacgt");
+    /// assert!(dna_alphabet.is_word(b"GAttACA"));
+    /// assert!(!dna_alphabet.is_word(b"42"));
+    /// ```
     pub fn is_word<C, T>(&self, text: T) -> bool
     where
         C: Borrow<u8>,
@@ -60,16 +83,41 @@ impl Alphabet {
     }
 
     /// Return lexicographically maximal symbol.
+    ///
+    /// ```
+    /// use bio::alphabets;
+    /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
+    /// assert_eq!(dna_alphabet.max_symbol(), Some(116));  // max symbol is "t"
+    /// let empty_alphabet = alphabets::Alphabet::new(b"");
+    /// assert_eq!(empty_alphabet.max_symbol(), None);
+    /// ```
     pub fn max_symbol(&self) -> Option<u8> {
         self.symbols.iter().max().map(|a| a as u8)
     }
 
     /// Return size of the alphabet.
+    ///
+    /// Upper and lower case representations of the same character
+    /// are counted as distinct characters.
+    ///
+    /// ```
+    /// use bio::alphabets;
+    /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
+    /// assert_eq!(dna_alphabet.len(), 8);
+    /// ```
     pub fn len(&self) -> usize {
         self.symbols.len()
     }
 
     /// Is this alphabet empty?
+    ///
+    /// ```
+    /// use bio::alphabets;
+    /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
+    /// assert!(!dna_alphabet.is_empty());
+    /// let empty_alphabet = alphabets::Alphabet::new(b"");
+    /// assert!(empty_alphabet.is_empty());
+    /// ```
     pub fn is_empty(&self) -> bool {
         self.symbols.is_empty()
     }
