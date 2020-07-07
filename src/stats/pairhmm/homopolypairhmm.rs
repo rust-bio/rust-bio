@@ -16,7 +16,7 @@
 //! these in both time and memory complexity above as an additional factor.
 //!
 //! The `HomopolyPairHMM` introduces the term "hop" for starting and extending homopolymer runs
-//! by analogy with "gap". Therefore, `prob_related` needs an additional parameter `hop_params`
+//! by analogy with "gap". Therefore, the constructor needs an additional parameter `hop_params`
 //! implementing `HopParameters`. Also, the emission parameter also needs to implement `Emission`,
 //! since this HMM model needs to be able to distinguish the four different match states for
 //! A, C, G and T (see Details below).
