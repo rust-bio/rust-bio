@@ -65,7 +65,7 @@ struct GapParamCache {
 impl PairHMM {
     pub fn new<G>(gap_params: &G) -> Self
     where
-        G: GapParameters + StartEndGapParameters,
+        G: GapParameters,
     {
         let gap_params = GapParamCache {
             prob_no_gap: gap_params
