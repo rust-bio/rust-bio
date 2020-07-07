@@ -144,8 +144,6 @@ impl RankTransform {
     ///
     /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
     /// let dna_ranks = alphabets::RankTransform::new(&dna_alphabet);
-    /// assert_eq!(dna_ranks.get(65), 0);  // "A"
-    /// assert_eq!(dna_ranks.get(116), 7); // "t"
     /// ```
     pub fn new(alphabet: &Alphabet) -> Self {
         let mut ranks = VecMap::new();

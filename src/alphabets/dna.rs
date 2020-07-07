@@ -54,13 +54,13 @@ lazy_static! {
 /// All `N`s remain as they are.
 ///
 /// ```
-/// use bio::alphabets::dna::complement;
+/// use bio::alphabets::dna;
 ///
-/// assert_eq!(complement(65), 84);   // A → T
-/// assert_eq!(complement(99), 103);  // c → g
-/// assert_eq!(complement(78), 78);   // N → N
-/// assert_eq!(complement(89), 82);   // Y → R
-/// assert_eq!(complement(115), 115); // s → s
+/// assert_eq!(dna::complement(65), 84);   // A → T
+/// assert_eq!(dna::complement(99), 103);  // c → g
+/// assert_eq!(dna::complement(78), 78);   // N → N
+/// assert_eq!(dna::complement(89), 82);   // Y → R
+/// assert_eq!(dna::complement(115), 115); // s → s
 /// ```
 pub fn complement(a: u8) -> u8 {
     COMPLEMENT[a as usize]
@@ -72,11 +72,11 @@ pub fn complement(a: u8) -> u8 {
 /// All `N`s remain as they are.
 ///
 /// ```
-/// use bio::alphabets::dna::revcomp;
+/// use bio::alphabets::dna;
 ///
-/// assert_eq!(revcomp(b"ACGTN"), b"NACGT");
-/// assert_eq!(revcomp(b"GaTtaCA"), b"TGtaAtC");
-/// assert_eq!(revcomp(b"AGCTYRWSKMDVHBN"), b"NVDBHKMSWYRAGCT");
+/// assert_eq!(dna::revcomp(b"ACGTN"), b"NACGT");
+/// assert_eq!(dna::revcomp(b"GaTtaCA"), b"TGtaAtC");
+/// assert_eq!(dna::revcomp(b"AGCTYRWSKMDVHBN"), b"NVDBHKMSWYRAGCT");
 /// ```
 pub fn revcomp<C, T>(text: T) -> Vec<u8>
 where
