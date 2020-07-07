@@ -1,5 +1,25 @@
 //! Efficient container for locations annotated across a set of named
 //! reference sequences.
+//!
+//! # Example
+//!
+//! ```
+//! extern crate bio_types;
+//! use bio_types::strand::ReqStrand;
+//! use bio_types::annot::contig::Contig;
+//! use bio::data_structures::annot_map::AnnotMap;
+//!
+//! let mut genes: AnnotMap<String,String> = AnnotMap::new();
+//! let tma19 = Contig::new("chrXI".to_owned(), 334412, (334916 - 334412), ReqStrand::Reverse);
+//! let tma22 = Contig::new("chrX".to_owned(), 461829, 462426 - 461829, ReqStrand::Forward);
+//! genes.insert_at("TMA19".to_owned(), &tma19);
+//! genes.insert_at("TMA22".to_owned(), &tma22);
+//!
+//! let query = Contig::new("chrX".to_owned(), 462400, 100, ReqStrand::Forward);
+//! let hits: Vec<&String> = genes.find(&query).map(|e| e.data()).collect();
+//! assert_eq!(hits, vec!["TMA22"]);
+//! ```
+
 use std::collections::HashMap;
 use std::hash::Hash;
 
@@ -45,10 +65,9 @@ impl<R, T> AnnotMap<R, T>
 where
     R: Eq + Hash,
 {
-    /// Creates a new, empty `AnnotMap`.
+    /// Create a new, empty `AnnotMap`.
     ///
     /// ```
-    /// extern crate bio;
     /// use bio::data_structures::annot_map::AnnotMap;
     /// let mut genes: AnnotMap<String,String> = AnnotMap::new();
     /// ```
@@ -56,25 +75,17 @@ where
         Default::default()
     }
 
-    /// Inserts an object into the container at a specified location.
-    ///
-    /// # Arguments
-    ///
-    /// `data` is the data item to be inserted into the annotation map
-    ///
-    /// `location` is the location associated with the data item.
+    /// Insert an object into the container at a specified location.
     ///
     /// ```
     /// extern crate bio_types;
-    /// extern crate bio;
     /// use bio_types::strand::ReqStrand;
     /// use bio_types::annot::contig::Contig;
     /// use bio::data_structures::annot_map::AnnotMap;
+    ///
     /// let mut genes: AnnotMap<String,String> = AnnotMap::new();
     /// let tma22 = Contig::new("chrX".to_owned(), 461829, 462426 - 461829, ReqStrand::Forward);
     /// genes.insert_at("TMA22".to_owned(), &tma22);
-    /// let tma19 = Contig::new("chrXI".to_owned(), 334412, (334916 - 334412), ReqStrand::Reverse);
-    /// genes.insert_at("TMA19".to_owned(), &tma19);
     /// ```
     pub fn insert_at<L>(&mut self, data: T, location: &L)
     where
@@ -89,33 +100,8 @@ where
         itree.insert(rng, data);
     }
 
-    /// Creates an `Iterator` that will visit all entries that overlap
+    /// Create an `Iterator` that will visit all entries that overlap
     /// a query location.
-    ///
-    ///
-    /// # Arguments
-    ///
-    /// `location` is the annotation location to be searched for
-    /// overlapping data items.
-    ///
-    /// ```
-    /// extern crate bio_types;
-    /// extern crate bio;
-    /// use bio_types::strand::ReqStrand;
-    /// use bio_types::annot::contig::Contig;
-    /// use bio::data_structures::annot_map::AnnotMap;
-    /// let mut genes: AnnotMap<String,String> = AnnotMap::new();
-    /// let tma22 = Contig::new("chrX".to_owned(), 461829, 462426 - 461829, ReqStrand::Forward);
-    /// genes.insert_at("TMA22".to_owned(), &tma22);
-    /// let tma19 = Contig::new("chrXI".to_owned(), 334412, (334916 - 334412), ReqStrand::Reverse);
-    /// genes.insert_at("TMA19".to_owned(), &tma19);
-    /// let query = Contig::new("chrX".to_owned(), 462400, 100, ReqStrand::Forward);
-    /// let hits: Vec<&String> = genes.find(&query).map(|e| e.data()).collect();
-    /// assert_eq!(hits, vec!["TMA22"]);
-    /// let query = Contig::new("chrXI".to_owned(), 334400, 100, ReqStrand::Forward);
-    /// let hits: Vec<&String> = genes.find(&query).map(|e| e.data()).collect();
-    /// assert_eq!(hits, vec!["TMA19"]);
-    /// ```
     pub fn find<'a, L>(&'a self, location: &'a L) -> AnnotMapIterator<'a, R, T>
     where
         L: Loc<RefID = R>,
@@ -141,13 +127,8 @@ where
     R: Eq + Hash + Clone,
     T: Loc<RefID = R>,
 {
-    /// Inserts an object with the `Loc` trait into the container at
+    /// Insert an object with the `Loc` trait into the container at
     /// its location.
-    ///
-    /// # Argument
-    ///
-    /// `data` is the data to be inserted based on its location.
-    ///
     /// Equivalent to inserting `data` at `data.contig()`.
     pub fn insert_loc(&mut self, data: T) {
         let itree = self
@@ -173,17 +154,17 @@ impl<'a, R, T> Entry<'a, R, T>
 where
     R: Eq + Hash,
 {
-    /// Returns a reference to the data value in the `AnnotMap`.
+    /// Return a reference to the data value in the `AnnotMap`.
     pub fn data(&self) -> &'a T {
         self.itree_entry.data()
     }
 
-    /// Returns a reference to the interval spanned by the annotation.
+    /// Return a reference to the interval spanned by the annotation.
     pub fn interval(&self) -> &'a Interval<isize> {
         self.itree_entry.interval()
     }
 
-    /// Returns a reference to the identifier of the annotated reference sequence.
+    /// Return a reference to the identifier of the annotated reference sequence.
     pub fn refid(&self) -> &'a R {
         self.refid
     }
