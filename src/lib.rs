@@ -98,6 +98,7 @@
 //! use bio::data_structures::bwt::{bwt, less, Occ};
 //! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
 //! use bio::io::fastq;
+//! use bio::io::fastq::FastqRead;
 //!
 //!
 //! // a given text
@@ -138,7 +139,7 @@
 //!   // check, whether seq is in the expected alphabet
 //!   if alphabet.is_word(seq) {
 //!     let interval = fmindex.backward_search(seq.iter());
-//!     let positions = interval.occ(&pos);
+//!     let positions = interval.occ(&sa);
 //!   }
 //!   reader.read(&mut record).expect("Failed to parse record");
 //! }
