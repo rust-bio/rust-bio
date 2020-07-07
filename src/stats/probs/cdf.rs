@@ -10,80 +10,100 @@
 //!
 //! Example usage of all CDF functions:
 //! ```
+//! use std::ops::Range;
 //! use ordered_float::NotNan;
 //! use bio::stats::probs::{LogProb, Prob};
 //! use bio::stats::probs::cdf::{CDF, Entry};
 //! use approx::assert_relative_eq;
-//! // pmf1 is an example PMF with `LogProb(0.0)` at `0.0`
-//! // and `LogProb(0.1)` at `{1.0, 2.0, ..., 10.0}`
+//! // pmf1 is an example PMF with `LogProb(0.0)` at `0`, with `LogProb(0.1)`
+//! // at `{1, 2, ..., 8}` and LogProb(0.2) at `10`
 //! let mut pmf1 = vec![
-//!     Entry::new( NotNan::new(0.0).unwrap(), LogProb(0.0f64.ln()) )
+//!     Entry::new( 0, LogProb( (0.0 as f64).ln() ) )
 //! ];
-//! for i in 1..=10 {
+//! for i in 1..=8 {
 //!     pmf1.push(
-//!         Entry::new( NotNan::new(i as f64).unwrap(), LogProb(0.1f64.ln()) )
+//!         Entry::new( i, LogProb( (0.1 as f64).ln() ) )
 //!     );
 //! }
+//! pmf1.push( Entry::new( 10, LogProb( (0.2 as f64).ln() ) ) );
 //!
 //! // create the cumulative distribution function from the probability mass function
-//! let mut cdf = CDF::from_pmf(pmf1.clone());
+//! let cdf = CDF::from_pmf(pmf1.clone());
 //! assert_relative_eq!(
-//!     *cdf.get(&NotNan::new(0.0).unwrap()).unwrap(),
-//!     LogProb::ln_zero(),
+//!     *cdf.get(&0).unwrap(),
+//!     (0.0 as f64).ln(),
 //!     epsilon = 0.0
 //! );
 //! assert_relative_eq!(
-//!     *cdf.get(&NotNan::new(3.0).unwrap()).unwrap(),
-//!     LogProb::from(Prob(0.3)),
+//!     *cdf.get(&3).unwrap(),
+//!     (0.3 as f64).ln(),
 //!     epsilon = 0.0000000001
 //! );
 //!
-//! // get back the original probability mass value at 7.0
+//! // get back the original probability mass value at 7
 //! assert_relative_eq!(
-//!     *cdf.get_pmf(&NotNan::new(7.0).unwrap()).unwrap(),
-//!     LogProb::from(Prob(0.1)),
+//!     *cdf.get_pmf(&7).unwrap(),
+//!     (0.1 as f64).ln(),
 //!     epsilon = 0.00001
 //! );
 //!
-//! // cdf_vec is an example Entry vector with `LogProb(0.0)` at `{0.0, 1.0, 2.0}` and
-//! // increasing by `LogProb(0.2)` at each step in `{3.0, 4.0, ..., 7.0}`
+//! // Check that cdf sums up to 1.0
+//! assert_relative_eq!(
+//!     f64::from(cdf.total_prob()),
+//!     (1.0 as f64).ln(),
+//!     epsilon = 0.0
+//! );
+//!
+//! // copy a CDF via its iter() function
+//! let mut cdf_copy = CDF::from_cdf(cdf.iter().cloned());
+//! assert_eq!(cdf.len(), cdf_copy.len());
+//!
+//! // get the maximum a posteriori probability estimate
+//! assert_eq!( cdf_copy.map().unwrap(), &10 );
+//!
+//! // get the 50% credible interval
+//! assert_eq!( cdf_copy.credible_interval(0.5).unwrap(), &2..&8 );
+//!
+//! // cdf_vec is an example Entry vector with `LogProb(0.0)` at `ordered_float::NotNan`
+//! // values `{0.0, 1.0, 2.0}` and increasing by `LogProb(0.2)` at each to `{3.0, 4.0, ..., 7.0}`
 //! let mut cdf_vec = Vec::new();
 //! for i in 0..=2 {
 //!     cdf_vec.push(
-//!         Entry::new( NotNan::new(i as f64).unwrap(), LogProb(0.0f64.ln()) )
+//!         Entry::new(
+//!             NotNan::new(i as f64).unwrap(),
+//!             LogProb::ln_zero()
+//!         )
 //!     )
 //! }
 //! for i in 3..=7 {
 //!     cdf_vec.push(
-//!         Entry::new( NotNan::new(i as f64).unwrap(), LogProb(( (i-2) as f64 * 0.2f64).ln()) )
+//!         Entry::new(
+//!             NotNan::new(i as f64).unwrap(),
+//!             LogProb( ((i-2) as f64 * 0.2f64).ln() )
+//!         )
 //!     );
 //! }
 //!
-//! // overwrite cdf by using an iterator over
-//! cdf = CDF::from_cdf(cdf_vec.into_iter());
+//! // create cdf from vector of `Entry`s
+//! let mut cdf_from_vec = CDF::from_cdf(cdf_vec.into_iter());
 //!
 //! assert_relative_eq!(
-//!     *cdf.get(&NotNan::new(2.0).unwrap()).unwrap(),
+//!     *cdf_from_vec.get(&NotNan::new(2.0).unwrap()).unwrap(),
 //!     LogProb::ln_zero(),
 //!     epsilon = 0.0
 //! );
 //! assert_relative_eq!(
-//!     *cdf.get(&NotNan::new(4.0).unwrap()).unwrap(),
-//!     LogProb::from(Prob(0.4)),
+//!     *cdf_from_vec.get(&NotNan::new(4.0).unwrap()).unwrap(),
+//!     LogProb( (0.4 as f64).ln() ),
 //!     epsilon = 0.0
 //! );
 //!
-//! // get the number of `Entry`s in cdf
-//! assert_eq!(cdf.len(), 8);
+//! // get the number of `Entry`s in cdf_from_vec
+//! assert_eq!(cdf_from_vec.len(), 8);
 //!
-//! let cdf_copy = CDF::from_cdf(cdf.clone().iter());
-//!
-//! // remove all zero values with CDF::reduce()
-//! CDF::reduce(cdf_copy);
-//! assert_eq!(cdf_copy.len(), 5);
-//!
-//! assert_eq!(cdf.len(), 8);
-//!
+//! // remove three zero values at `{0.0, 1.0, 2.0}` with `CDF::reduce()`
+//! cdf_from_vec = CDF::reduce(cdf_from_vec);
+//! assert_eq!(cdf_from_vec.len(), 5);
 //! ```
 
 use std::f64;
@@ -96,23 +116,34 @@ use ordered_float::OrderedFloat;
 
 use crate::stats::LogProb;
 
-/// An `Entry` associates a `LogProb` with a value on an ordered x-axis. It can for example be
+/// An `Entry` associates a `LogProb` with a value on an ordered axis. It can for example be
 /// used to set up probability mass functions or cumulative distribution functions ([CDF](struct.CDF)).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entry<T: Ord> {
-    /// A `value` on the x-axis, which has to have the Trait [`std::cmp::Ord`](https://doc.rust-lang.org/std/cmp/trait.Ord.html) implemented.
+    /// A `value` on the ordered axis, which has to have the Trait [`std::cmp::Ord`](https://doc.rust-lang.org/std/cmp/trait.Ord.html) implemented.
     pub value: T,
     /// A probability at that `value` / point x on the x-axis.
     pub prob: LogProb,
 }
 
 impl<T: Ord> Entry<T> {
+    /// Create a new `Entry` for `prob` at `value`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::stats::probs::cdf::Entry;
+    /// use bio::stats::LogProb;
+    /// let entry = Entry::new(5, LogProb(0.6));
+    /// assert_eq!(entry.value, 5);
+    /// assert_eq!(entry.prob, LogProb(0.6));
+    /// ```
     pub fn new(value: T, prob: LogProb) -> Self {
         Entry { value, prob }
     }
 }
 
-/// Implementation of a cumulative distribution function as a vector of `Entry`.
+/// Implementation of a cumulative distribution function as a vector of `Entry`s.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CDF<T: Ord> {
     inner: Vec<Entry<T>>,
@@ -272,7 +303,7 @@ impl<T: Ord> CDF<T> {
         }
     }
 
-    /// Return total probability.
+    /// Return total probability of the `CDF`.
     pub fn total_prob(&self) -> LogProb {
         self.inner.last().map_or(LogProb::ln_zero(), |e| e.prob)
     }
