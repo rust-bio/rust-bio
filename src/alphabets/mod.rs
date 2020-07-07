@@ -37,6 +37,7 @@ impl Alphabet {
     /// ```
     /// use bio::alphabets;
     ///
+    /// // Create an alphabet (note that a DNA alphabet is already available in bio::alphabets::dna).
     /// let dna_alphabet = alphabets::Alphabet::new(b"ACGTacgt");
     /// assert!(dna_alphabet.is_word(b"GAttACA"));
     /// ```
