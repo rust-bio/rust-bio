@@ -5,6 +5,86 @@
 
 //! Support for discrete probability distributions in terms of cumulative distribution
 //! functions (CDF).
+//!
+//! # Examples
+//!
+//! Example usage of all CDF functions:
+//! ```
+//! use ordered_float::NotNan;
+//! use bio::stats::probs::{LogProb, Prob};
+//! use bio::stats::probs::cdf::{CDF, Entry};
+//! use approx::assert_relative_eq;
+//! // pmf1 is an example PMF with `LogProb(0.0)` at `0.0`
+//! // and `LogProb(0.1)` at `{1.0, 2.0, ..., 10.0}`
+//! let mut pmf1 = vec![
+//!     Entry::new( NotNan::new(0.0).unwrap(), LogProb(0.0f64.ln()) )
+//! ];
+//! for i in 1..=10 {
+//!     pmf1.push(
+//!         Entry::new( NotNan::new(i as f64).unwrap(), LogProb(0.1f64.ln()) )
+//!     );
+//! }
+//!
+//! // create the cumulative distribution function from the probability mass function
+//! let mut cdf = CDF::from_pmf(pmf1.clone());
+//! assert_relative_eq!(
+//!     *cdf.get(&NotNan::new(0.0).unwrap()).unwrap(),
+//!     LogProb::ln_zero(),
+//!     epsilon = 0.0
+//! );
+//! assert_relative_eq!(
+//!     *cdf.get(&NotNan::new(3.0).unwrap()).unwrap(),
+//!     LogProb::from(Prob(0.3)),
+//!     epsilon = 0.0000000001
+//! );
+//!
+//! // get back the original probability mass value at 7.0
+//! assert_relative_eq!(
+//!     *cdf.get_pmf(&NotNan::new(7.0).unwrap()).unwrap(),
+//!     LogProb::from(Prob(0.1)),
+//!     epsilon = 0.00001
+//! );
+//!
+//! // cdf_vec is an example Entry vector with `LogProb(0.0)` at `{0.0, 1.0, 2.0}` and
+//! // increasing by `LogProb(0.2)` at each step in `{3.0, 4.0, ..., 7.0}`
+//! let mut cdf_vec = Vec::new();
+//! for i in 0..=2 {
+//!     cdf_vec.push(
+//!         Entry::new( NotNan::new(i as f64).unwrap(), LogProb(0.0f64.ln()) )
+//!     )
+//! }
+//! for i in 3..=7 {
+//!     cdf_vec.push(
+//!         Entry::new( NotNan::new(i as f64).unwrap(), LogProb(( (i-2) as f64 * 0.2f64).ln()) )
+//!     );
+//! }
+//!
+//! // overwrite cdf by using an iterator over
+//! cdf = CDF::from_cdf(cdf_vec.into_iter());
+//!
+//! assert_relative_eq!(
+//!     *cdf.get(&NotNan::new(2.0).unwrap()).unwrap(),
+//!     LogProb::ln_zero(),
+//!     epsilon = 0.0
+//! );
+//! assert_relative_eq!(
+//!     *cdf.get(&NotNan::new(4.0).unwrap()).unwrap(),
+//!     LogProb::from(Prob(0.4)),
+//!     epsilon = 0.0
+//! );
+//!
+//! // get the number of `Entry`s in cdf
+//! assert_eq!(cdf.len(), 8);
+//!
+//! let cdf_copy = CDF::from_cdf(cdf.clone().iter());
+//!
+//! // remove all zero values with CDF::reduce()
+//! CDF::reduce(cdf_copy);
+//! assert_eq!(cdf_copy.len(), 5);
+//!
+//! assert_eq!(cdf.len(), 8);
+//!
+//! ```
 
 use std::f64;
 use std::iter;
@@ -12,13 +92,17 @@ use std::ops::Range;
 use std::slice;
 
 use itertools::Itertools;
-use ordered_float::{OrderedFloat, NotNan};
+use ordered_float::OrderedFloat;
 
 use crate::stats::LogProb;
 
+/// An `Entry` associates a `LogProb` with a value on an ordered x-axis. It can for example be
+/// used to set up probability mass functions or cumulative distribution functions ([CDF](struct.CDF)).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entry<T: Ord> {
+    /// A `value` on the x-axis, which has to have the Trait [`std::cmp::Ord`](https://doc.rust-lang.org/std/cmp/trait.Ord.html) implemented.
     pub value: T,
+    /// A probability at that `value` / point x on the x-axis.
     pub prob: LogProb,
 }
 
@@ -28,7 +112,7 @@ impl<T: Ord> Entry<T> {
     }
 }
 
-/// Implementation of a cumulative distribution function.
+/// Implementation of a cumulative distribution function as a vector of `Entry`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CDF<T: Ord> {
     inner: Vec<Entry<T>>,
@@ -42,41 +126,6 @@ impl<T: Ord> CDF<T> {
     ///
     /// * `pmf` - The PMF as a vector of `Entry` objects (values with an associated `LogProb`).
     ///
-    /// # Example
-    ///
-    /// ```
-    /// # use itertools::Itertools;
-    /// # use ordered_float::{NotNan, OrderedFloat};
-    /// # use bio::stats::probs::LogProb;
-    /// # use bio::stats::probs::cdf::{CDF, Entry};
-    /// # use approx::assert_relative_eq;
-    /// // pmf is an example PMF with `LogProb(0.0)` at `0.0`
-    /// // and `LogProb(0.1)` at `{0.1, 0.2, ..., 1.0}`
-    /// # let mut pmf = vec![
-    /// #         Entry::new(
-    /// #             NotNan::new(0.0).unwrap(),
-    /// #             LogProb(0.0f64.ln())
-    /// #         )
-    /// #     ];
-    /// #     for i in 1..=10 {
-    /// #         pmf.push(Entry::new(
-    /// #             NotNan::new(i as f64).unwrap(),
-    /// #             LogProb(0.1f64.ln()),
-    /// #         ));
-    /// #     }
-    /// // create the cumulative distribution function from the probability mass function
-    /// let cdf = CDF::from_pmf(pmf.clone());
-    /// assert_relative_eq!(
-    ///     *cdf.get(&NotNan::new(0.0).unwrap()).unwrap(),
-    ///     0.0f64.ln(),
-    ///     epsilon = 0.00000001
-    /// );
-    /// assert_relative_eq!(
-    ///     *cdf.get(&NotNan::new(0.3).unwrap()).unwrap(),
-    ///     0.3f64.ln(),
-    ///     epsilon = 0.00000001
-    /// );
-    /// ```
     pub fn from_pmf(mut entries: Vec<Entry<T>>) -> Self {
         entries.sort_by(|a, b| a.value.cmp(&b.value));
         let mut inner: Vec<Entry<T>> = Vec::new();
@@ -107,6 +156,11 @@ impl<T: Ord> CDF<T> {
     }
 
     /// Create CDF from iterator. This can be used to replace the values of a CDF.
+    ///
+    /// # Arguments
+    ///
+    /// * `entries` - An iterator over `Entry<T>` values, where T requires
+    ///
     pub fn from_cdf<I: Iterator<Item = Entry<T>>>(entries: I) -> Self {
         CDF {
             inner: entries.collect_vec(),
@@ -176,11 +230,6 @@ impl<T: Ord> CDF<T> {
     ///
     /// * `value` - A value at which you're interested in the cumulative probability.
     ///
-    /// # Example
-    ///
-    /// ```
-    ///
-    /// ```
     pub fn get(&self, value: &T) -> Option<LogProb> {
         if self.inner.is_empty() {
             None
@@ -198,7 +247,8 @@ impl<T: Ord> CDF<T> {
         }
     }
 
-    /// Get probability (i.e. probability mass) for a given value. Complexity O(log n).
+    /// Get probability (i.e. probability mass) for a given value.
+    /// Time complexity: O(log n), where n is number of `Entries` in `CDF`.
     pub fn get_pmf(&self, value: &T) -> Option<LogProb> {
         if self.inner.is_empty() {
             None
