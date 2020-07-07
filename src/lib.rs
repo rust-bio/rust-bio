@@ -139,7 +139,7 @@
 //!   // check, whether seq is in the expected alphabet
 //!   if alphabet.is_word(seq) {
 //!     let interval = fmindex.backward_search(seq.iter());
-//!     let positions = interval.occ(&sa);
+//!     let positions = interval.occ(&positions);
 //!   }
 //!   reader.read(&mut record).expect("Failed to parse record");
 //! }
