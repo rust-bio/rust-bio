@@ -35,7 +35,7 @@ pub trait PrefixOp<T> {
     fn operation(t1: T, t2: T) -> T;
 }
 
-/// In a max bit tree, get(i) will return the largest element e that has been added
+/// In a max bit tree or Fenwick Tree, get(i) will return the largest element e that has been added
 /// to the bit tree with set(j, e), where j <= i. Initially all positions have
 /// the value T::default(). Note that a set cannot be 'undone' by inserting
 /// a smaller element at the same index.
