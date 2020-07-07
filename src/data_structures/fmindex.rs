@@ -3,7 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! FM-Index and FMD-Index for finding suffix array intervals matching a given pattern in linear time.
+//! The [Full-text index in Minute space index (FM-index)](https://doi.org/10.1109/SFCS.2000.892127) and
+//! the FMD-Index for finding suffix array intervals matching a given pattern in linear time.
 //!
 //! # Examples
 //!

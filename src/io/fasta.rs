@@ -21,8 +21,6 @@ use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 
-use csv;
-
 use crate::utils::{Text, TextSlice};
 use std::fmt;
 

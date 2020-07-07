@@ -27,8 +27,6 @@ use std::marker::Copy;
 use std::ops::Deref;
 use std::path::Path;
 
-use csv;
-
 use bio_types::annot;
 use bio_types::annot::loc::Loc;
 use bio_types::strand;
