@@ -41,7 +41,6 @@ pub trait PrefixOp<T> {
 /// a smaller element at the same index.
 /// Time Complexity: O(n) to build a new tree or O(log n) for get() and set() operations,
 /// where `n = tree.len()`.
-
 pub struct FenwickTree<T: Default + Ord, Op: PrefixOp<T>> {
     tree: Vec<T>,
     phantom: PhantomData<Op>,
