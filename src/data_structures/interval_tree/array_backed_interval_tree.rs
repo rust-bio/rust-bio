@@ -84,11 +84,14 @@ pub struct ArrayBackedIntervalTree<N: Ord + Clone + Copy, D> {
 
 impl<N, D, V> FromIterator<(V, D)> for ArrayBackedIntervalTree<N, D>
 where
-    V: Into<Interval<N>>, N: Ord + Clone + Copy, D: Clone
+    V: Into<Interval<N>>,
+    N: Ord + Clone + Copy,
+    D: Clone,
 {
     fn from_iter<T: IntoIterator<Item = (V, D)>>(iter: T) -> Self {
         let mut tree = Self::new();
-        iter.into_iter().for_each(|(interval, data)| tree.insert(interval, data));
+        iter.into_iter()
+            .for_each(|(interval, data)| tree.insert(interval, data));
         tree.index();
         tree
     }
