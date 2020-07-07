@@ -12,7 +12,7 @@ use std::ops::Range;
 use std::slice;
 
 use itertools::Itertools;
-use ordered_float::OrderedFloat;
+use ordered_float::{OrderedFloat, NotNan};
 
 use crate::stats::LogProb;
 
@@ -40,7 +40,43 @@ impl<T: Ord> CDF<T> {
     ///
     /// # Arguments
     ///
-    /// * `pmf` - the PMF as a vector of `Entry` objects
+    /// * `pmf` - The PMF as a vector of `Entry` objects (values with an associated `LogProb`).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use itertools::Itertools;
+    /// # use ordered_float::{NotNan, OrderedFloat};
+    /// # use bio::stats::probs::LogProb;
+    /// # use bio::stats::probs::cdf::{CDF, Entry};
+    /// # use approx::assert_relative_eq;
+    /// // pmf is an example PMF with `LogProb(0.0)` at `0.0`
+    /// // and `LogProb(0.1)` at `{0.1, 0.2, ..., 1.0}`
+    /// # let mut pmf = vec![
+    /// #         Entry::new(
+    /// #             NotNan::new(0.0).unwrap(),
+    /// #             LogProb(0.0f64.ln())
+    /// #         )
+    /// #     ];
+    /// #     for i in 1..=10 {
+    /// #         pmf.push(Entry::new(
+    /// #             NotNan::new(i as f64).unwrap(),
+    /// #             LogProb(0.1f64.ln()),
+    /// #         ));
+    /// #     }
+    /// // create the cumulative distribution function from the probability mass function
+    /// let cdf = CDF::from_pmf(pmf.clone());
+    /// assert_relative_eq!(
+    ///     *cdf.get(&NotNan::new(0.0).unwrap()).unwrap(),
+    ///     0.0f64.ln(),
+    ///     epsilon = 0.00000001
+    /// );
+    /// assert_relative_eq!(
+    ///     *cdf.get(&NotNan::new(0.3).unwrap()).unwrap(),
+    ///     0.3f64.ln(),
+    ///     epsilon = 0.00000001
+    /// );
+    /// ```
     pub fn from_pmf(mut entries: Vec<Entry<T>>) -> Self {
         entries.sort_by(|a, b| a.value.cmp(&b.value));
         let mut inner: Vec<Entry<T>> = Vec::new();
@@ -105,18 +141,20 @@ impl<T: Ord> CDF<T> {
         }
     }
 
-    /// Provide iterator.
+    /// Provide an iterator for the CDF.
     pub fn iter(&self) -> slice::Iter<'_, Entry<T>> {
         self.inner.iter()
     }
 
-    /// Mutable iterator over entries. This does not check for consistency. In other words, you
+    /// Provide a mutable iterator over entries.
+    ///
+    /// This does not check for consistency. In other words, you
     /// should not change the order of the entries, nor the probabilities!
     pub fn iter_mut(&mut self) -> slice::IterMut<'_, Entry<T>> {
         self.inner.iter_mut()
     }
 
-    /// Iterator over corresponding PMF.
+    /// Provide an iterator over the PMF corresponding to this CDF.
     pub fn iter_pmf(&self) -> CDFPMFIter<'_, T> {
         fn cdf_to_pmf<'a, G: Ord>(
             last_prob: &mut LogProb,
@@ -129,8 +167,20 @@ impl<T: Ord> CDF<T> {
         self.inner.iter().scan(LogProb::ln_zero(), cdf_to_pmf)
     }
 
-    /// Get cumulative probability for a given value. If the value is not present,
-    /// return the probability of the previous value. Complexity O(log n).
+    /// Get cumulative probability for a given value.
+    ///
+    /// If the value is not present, return the probability of the previous value.
+    /// Complexity: O(log n).
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - A value at which you're interested in the cumulative probability.
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///
+    /// ```
     pub fn get(&self, value: &T) -> Option<LogProb> {
         if self.inner.is_empty() {
             None
@@ -223,6 +273,7 @@ impl<T: Ord> CDF<T> {
         self.inner.len()
     }
 
+    /// Returns `true` if a CDF is empty, false otherwise.
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
