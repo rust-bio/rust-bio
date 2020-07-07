@@ -23,6 +23,7 @@ use crate::data_structures::smallints::SmallInts;
 
 pub type LCPArray = SmallInts<i8, isize>;
 pub type RawSuffixArray = Vec<usize>;
+pub type RawSuffixArraySlice<'a> = &'a [usize];
 
 /// A trait exposing general functionality of suffix arrays.
 pub trait SuffixArray {

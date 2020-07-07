@@ -10,7 +10,7 @@
 use std::iter::repeat;
 
 use crate::alphabets::Alphabet;
-use crate::data_structures::suffix_array::RawSuffixArray;
+use crate::data_structures::suffix_array::RawSuffixArraySlice;
 use crate::utils::prescan;
 
 pub type BWT = Vec<u8>;
@@ -36,7 +36,7 @@ pub type BWTFind = Vec<usize>;
 /// let bwt = bwt(text, &pos);
 /// assert_eq!(bwt, b"ATTATTCAGGACCC$CTTTCAA");
 /// ```
-pub fn bwt(text: &[u8], pos: &RawSuffixArray) -> BWT {
+pub fn bwt(text: &[u8], pos: RawSuffixArraySlice) -> BWT {
     assert_eq!(text.len(), pos.len());
     let n = text.len();
     let mut bwt: BWT = repeat(0).take(n).collect();
