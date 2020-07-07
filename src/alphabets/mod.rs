@@ -39,6 +39,7 @@ impl Alphabet {
     ///
     /// // Create an alphabet (note that a DNA alphabet is already available in bio::alphabets::dna).
     /// let dna_alphabet = alphabets::Alphabet::new(b"ACGTacgt");
+    /// // Check whether a given text is a word over the alphabet.
     /// assert!(dna_alphabet.is_word(b"GAttACA"));
     /// ```
     pub fn new<C, T>(symbols: T) -> Self
