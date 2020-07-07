@@ -7,7 +7,9 @@
 //! prefix-max that can be efficiently queried and updated. From: Peter M. Fenwick (1994). "A new data structure for cumulative frequency tables". Software: Practice and Experience. 24 (3): 327–336.
 //! Implementation outlined here: https://www.topcoder.com/community/data-science/data-science-tutorials/binary-indexed-trees/
 //!
-//! # Example
+//! Time Complexity: O(log n) where `n = tree.len()`.
+//! Memory Complexity: O(n) where `n = tree.len()`.
+//! # Example for a max bit tree
 //!
 //! ```
 //! use bio::data_structures::bit_tree::*;
@@ -24,6 +26,7 @@
 //! assert_eq!(bit.get(3), (4, 3));
 //! assert_eq!(bit.get(4), (4, 3));
 
+
 use std::cmp::max;
 use std::marker::PhantomData;
 use std::ops::Add;
@@ -33,10 +36,13 @@ pub trait PrefixOp<T> {
     fn operation(t1: T, t2: T) -> T;
 }
 
-/// Max Bit Tree. get(i) will return the largest element e that has been added
+/// In a max bit tree, get(i) will return the largest element e that has been added
 /// to the bit tree with set(j, e), where j <= i. Initially all positions have
 /// the value T::default(). Note that a set cannot be 'undone' by inserting
 /// a smaller element at the same index.
+/// Time Complexity: O(n) to build a new tree or O(log n) for get() and set() operations,
+/// where `n = tree.len()`.
+
 pub struct FenwickTree<T: Default + Ord, Op: PrefixOp<T>> {
     tree: Vec<T>,
     phantom: PhantomData<Op>,
@@ -59,7 +65,7 @@ impl<T: Ord + Default + Copy, Op: PrefixOp<T>> FenwickTree<T, Op> {
         }
     }
 
-    /// get(i) returns the largest element e that has been added
+    /// Max bit tree: get(i) returns the largest element e that has been added
     /// to the bit tree with set(j, e), where j <= i.
     pub fn get(&self, idx: usize) -> T {
         let mut idx = idx + 1;
@@ -72,15 +78,15 @@ impl<T: Ord + Default + Copy, Op: PrefixOp<T>> FenwickTree<T, Op> {
         sum
     }
 
-    /// Set the value val at position idx. val will
+    /// Set the value val at position idx. In max bit trees, val will
     /// be returned for any get(j) where j >= idx, if
     /// it is the maximum value inserted between 0 and j.
     /// Inserting a value val2 after inserting val1 where val1 > val2
-    // will have no effect.
+    /// will have no effect.
     pub fn set(&mut self, idx: usize, val: T) {
         let mut idx = idx + 1;
         while idx < self.tree.len() {
-            self.tree[idx] = max(self.tree[idx], val);
+            self.tree[idx] = Op::operation(self.tree[idx], val);
             idx += (idx as isize & -(idx as isize)) as usize;
         }
     }
