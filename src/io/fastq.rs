@@ -10,16 +10,18 @@
 //! ```
 //! use std::io;
 //! use bio::io::fastq;
-//! let mut reader = fastq::Reader::new(io::stdin());
-//! let mut record = fastq::Record::new();
-//! reader.read(&mut record).expect("Failed to parse record");
-//! while !record.is_empty() {
-//!   let check = record.check();
-//!   if check.is_err() {
-//!       panic!("I got a rubbish record!")
-//!   }
-//!   // your record is ok - do something with it...
-//!   reader.read(&mut record).expect("Failed to parse record");
+//! fn main(){  
+//!     let mut reader = fastq::Reader::new(io::stdin());
+//!     let mut record = fastq::Record::new();
+//!     reader.read(&mut record).expect("Failed to parse record");
+//!     while !record.is_empty() {
+//!       let check = record.check();
+//!       if check.is_err() {
+//!           panic!("I got a rubbish record!")
+//!       }
+//!       // your record is ok - do something with it...
+//!       reader.read(&mut record).expect("Failed to parse record");
+//!    }
 //! }
 //! ```
 
