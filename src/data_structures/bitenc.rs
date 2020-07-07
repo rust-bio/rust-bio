@@ -138,7 +138,7 @@ impl BitEnc {
     /// # Example
     ///
     /// ```
-    /// // use bio::data_structures::bitenc::BitEnc;
+    /// use bio::data_structures::bitenc::BitEnc;
     ///
     /// let mut bitenc = BitEnc::new(6);
     /// bitenc.push_values(4, 0b101010);
