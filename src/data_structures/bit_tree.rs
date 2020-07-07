@@ -77,7 +77,7 @@ impl<T: Ord + Default + Copy, Op: PrefixOp<T>> FenwickTree<T, Op> {
         sum
     }
 
-    /// Set the value val at position idx. In max bit trees, val will
+    /// Set the value `val` at position `idx`; `val` will
     /// be returned for any get(j) where j >= idx, if
     /// it is the maximum value inserted between 0 and j.
     /// Inserting a value val2 after inserting val1 where val1 > val2
