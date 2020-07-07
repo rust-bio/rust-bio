@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The Burrows-Wheeler-Transform and related data structures.
+//! The [Burrows-Wheeler-Transform](https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.37.6774) and related data structures.
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
@@ -163,7 +163,7 @@ impl Occ {
 
         // Otherwise the default case is to count from the low checkpoint.
         let lo_idx = lo_checkpoint * self.k as usize;
-        lo_occ + bytecount::count(&bwt[lo_idx + 1..=r], a) as usize
+        bytecount::count(&bwt[lo_idx + 1..=r], a) as usize + lo_occ
     }
 }
 
