@@ -6,7 +6,10 @@
 //! Suffix arrays and related algorithms.
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
-//! # Example
+//! The original algorithm desciption can be found in:
+//! Ge Nong, Sen Zhang, Wai Hong Chan: Two Efficient Algorithms for Linear Time Suffix Array Construction. IEEE Trans. Computers 60(10): 1471–1484 (2011)
+//!
+//! # Examples
 //!
 //! ```
 //! use bio::data_structures::suffix_array::suffix_array;
