@@ -10,6 +10,7 @@
 //! ```
 //! use std::io;
 //! use bio::io::fastq;
+//! use bio::io::fastq::FastqRead;
 //! let mut reader = fastq::Reader::new(io::stdin());
 //! let mut record = fastq::Record::new();
 //! reader.read(&mut record).expect("Failed to parse record");
@@ -678,7 +679,6 @@ IIIIIIJJJJJJ
         let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
 
         assert_eq!(actual.kind(), expected.kind());
-        assert!(actual.to_string().starts_with("No such file or directory"))
     }
 
     #[test]
@@ -773,12 +773,12 @@ IIIIIIJJJJJJ
         let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
 
         assert_eq!(actual.kind(), expected.kind());
-        assert!(actual.to_string().starts_with("No such file or directory"))
     }
 
     #[test]
     fn test_writer_to_file_dir_exists_returns_ok() {
-        let path = Path::new("/tmp/out.fq");
+        let file = tempfile::NamedTempFile::new().expect("Could not create temp file");
+        let path = file.path();
 
         assert!(Writer::to_file(path).is_ok())
     }
