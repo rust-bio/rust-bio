@@ -9,13 +9,15 @@
 //!
 //! ```
 //! use bio::io::bed;
-//! let example = b"1\t5\t5000\tname1\t0.5";
-//! let mut reader = bed::Reader::new(&example[..]);
-//! let mut writer = bed::Writer::new(vec![]);
-//! for record in reader.records() {
-//!     let rec = record.ok().expect("Error reading record.");
-//!     println!("{}", rec.chrom());
-//!     writer.write(&rec).ok().expect("Error writing record.");
+//! fn main(){
+//!     let example = b"1\t5\t5000\tname1\t0.5";
+//!     let mut reader = bed::Reader::new(&example[..]);
+//!     let mut writer = bed::Writer::new(vec![]);
+//!     for record in reader.records() {
+//!         let rec = record.ok().expect("Error reading record.");
+//!         println!("{}", rec.chrom());
+//!         writer.write(&rec).ok().expect("Error writing record.");
+//!     }
 //! }
 //! ```
 
