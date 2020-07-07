@@ -10,6 +10,11 @@
 //! In contrast to `PairHMM`, this `HomopolyPairHMM` takes into account homopolymer errors as
 //! often encountered e.g. in Oxford Nanopore Technologies sequencing.
 //!
+//! Time complexity: O(n * m) where `n = seq1.len()`, `m = seq2.len()` (or `m = min(seq2.len(), max_edit_dist)` with banding enabled).
+//! Memory complexity: O(m) where `m = seq2.len()`.
+//! Note that if the number of states weren't fixed in this implementation, we would have to include
+//! these in both time and memory complexity above as an additional factor.
+//!
 //! The `HomopolyPairHMM` introduces the term "hop" for starting and extending homopolymer runs
 //! by analogy with "gap". Therefore, `prob_related` needs an additional parameter `hop_params`
 //! implementing `HopParameters`. Also, the emission parameter also needs to implement `Emission`,
