@@ -3,8 +3,6 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ndarray;
-
 lazy_static! {
     // taken from https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h#L327
     static ref MAT: ndarray::Array2<i32> = ndarray::Array::from_shape_vec((27, 27), vec![

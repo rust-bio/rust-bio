@@ -25,8 +25,6 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-use csv;
-
 use bio_types::strand::Strand;
 
 /// `GffType`
