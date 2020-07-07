@@ -313,7 +313,7 @@ where
             m: myers.m,
             myers,
             traceback: tb,
-            state: state,
+            state,
             text_len: text_iter.len(),
             text: text_iter.enumerate(),
             max_dist,
