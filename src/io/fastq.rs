@@ -9,7 +9,8 @@
 //!
 //! ```
 //! use std::io;
-//! use bio::io::fastq::{self, FastqRead};
+//! use bio::io::fastq;
+//! use bio::io::fastq::FastqRead;
 //! let mut reader = fastq::Reader::new(io::stdin());
 //! let mut record = fastq::Record::new();
 //! reader.read(&mut record).expect("Failed to parse record");

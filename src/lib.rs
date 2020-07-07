@@ -97,7 +97,8 @@
 //! use bio::data_structures::suffix_array::suffix_array;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
 //! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
-//! use bio::io::fastq::{self, FastqRead};
+//! use bio::io::fastq;
+//! use bio::io::fastq::FastqRead;
 //!
 //!
 //! // a given text

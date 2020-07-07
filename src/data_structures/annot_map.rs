@@ -30,6 +30,17 @@ where
     refid_itrees: HashMap<R, IntervalTree<isize, T>>,
 }
 
+impl<R, T> Default for AnnotMap<R, T>
+where
+    R: Eq + Hash,
+{
+    fn default() -> Self {
+        AnnotMap {
+            refid_itrees: HashMap::new(),
+        }
+    }
+}
+
 impl<R, T> AnnotMap<R, T>
 where
     R: Eq + Hash,
@@ -42,9 +53,7 @@ where
     /// let mut genes: AnnotMap<String,String> = AnnotMap::new();
     /// ```
     pub fn new() -> Self {
-        AnnotMap {
-            refid_itrees: HashMap::new(),
-        }
+        Default::default()
     }
 
     /// Inserts an object into the container at a specified location.
