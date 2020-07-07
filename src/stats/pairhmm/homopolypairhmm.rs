@@ -9,6 +9,61 @@
 //! probability that a certain sequencing read comes from a given position in a reference genome.
 //! In contrast to `PairHMM`, this `HomopolyPairHMM` takes into account homopolymer errors as
 //! often encountered e.g. in Oxford Nanopore Technologies sequencing.
+//!
+//! Time complexity: O(n * m) where `n = seq1.len()`, `m = seq2.len()` (or `m = min(seq2.len(), max_edit_dist)` with banding enabled).
+//! Memory complexity: O(m) where `m = seq2.len()`.
+//! Note that if the number of states weren't fixed in this implementation, we would have to include
+//! these in both time and memory complexity above as an additional factor.
+//!
+//! The `HomopolyPairHMM` introduces the term "hop" for starting and extending homopolymer runs
+//! by analogy with "gap". Therefore, the constructor needs an additional parameter `hop_params`
+//! implementing `HopParameters`. Also, the emission parameter needs to implement `Emission`,
+//! since this HMM model needs to be able to distinguish the four different match states for
+//! A, C, G and T (see Details below).
+//!
+//! # Details
+//! The HomopolyPairHMM defined in this module has one Match state for each character from [A, C, G, T],
+//! for each of those Match states two corresponding Hop (homopolymer run) states
+//! (one for a run in sequence `x`, one for a run in `y`),
+//! as well as the usual GapX and GapY states.
+//!
+//! In states `MatchV` (where `V` ∈ `{A, C, G, T}`), the probability to emit anything other than
+//! `(V, V)`, `(V, y != V)`, `(x != V, y)` should be zero.
+//!
+//! State `HopVZ` (where `V` ∈ `{A, C, G, T}`, `Z` ∈ `{X, Y}`) can only be transitioned to from
+//! corresponding state `MatchV`.
+//!
+//! The transition matrix is given below:
+//!     | MA | MC | MG | MT | HAX | HAY | HCX | HCY | HGX | HGY | HTX | HTY | GX | GY
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! MA  |  x |  x |  x |  x |  x  |  x  |     |     |     |     |     |     |  x |  x
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! MC  |  x |  x |  x |  x |     |     |  x  |  x  |     |     |     |     |  x |  x
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! MG  |  x |  x |  x |  x |     |     |     |     |  x  |  x  |     |     |  x |  x
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! MT  |  x |  x |  x |  x |     |     |     |     |     |     |  x  |  x  |  x |  x
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! HAX |  x |  x |  x |  x |  x  |     |     |     |     |     |     |     |    |
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! HAY |  x |  x |  x |  x |     |  x  |     |     |     |     |     |     |    |
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! HCX |  x |  x |  x |  x |     |     |  x  |     |     |     |     |     |    |
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! HCY |  x |  x |  x |  x |     |     |     |  x  |     |     |     |     |    |
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! HGX |  x |  x |  x |  x |     |     |     |     |  x  |     |     |     |    |
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! HGY |  x |  x |  x |  x |     |     |     |     |     |  x  |     |     |    |
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! HTX |  x |  x |  x |  x |     |     |     |     |     |     |  x  |     |    |
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! HTY |  x |  x |  x |  x |     |     |     |     |     |     |     |  x  |    |
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! GX  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |  x |
+//! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
+//! GY  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |    |  x
+//!
 
 use std::cmp;
 use std::fmt::Debug;
@@ -28,48 +83,6 @@ use crate::stats::pairhmm::{
 use crate::stats::probs::LogProb;
 use crate::stats::Prob;
 
-/// The HomopolyPairHMM defined in this module has one Match state for each character from [A, C, G, T],
-/// for each of those Match states two corresponding Hop (homopolymer run) states
-/// (one for a run in sequence `x`, one for a run in `y`),
-/// as well as the usual GapX and GapY states.
-///
-/// In states `MatchV` (where `V` ∈ `{A, C, G, T}`), the probability to emit anything other than
-/// `(V, V)`, `(V, y != V)`, `(x != V, y)` should be zero.
-///
-/// State `HopVZ` (where `V` ∈ `{A, C, G, T}`, `Z` ∈ `{X, Y}`) can only be transitioned to from
-/// corresponding state `MatchV`.
-///
-/// The transition matrix is given below:
-///     | MA | MC | MG | MT | HAX | HAY | HCX | HCY | HGX | HGY | HTX | HTY | GX | GY
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// MA  |  x |  x |  x |  x |  x  |  x  |     |     |     |     |     |     |  x |  x
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// MC  |  x |  x |  x |  x |     |     |  x  |  x  |     |     |     |     |  x |  x
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// MG  |  x |  x |  x |  x |     |     |     |     |  x  |  x  |     |     |  x |  x
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// MT  |  x |  x |  x |  x |     |     |     |     |     |     |  x  |  x  |  x |  x
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// HAX |  x |  x |  x |  x |  x  |     |     |     |     |     |     |     |    |
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// HAY |  x |  x |  x |  x |     |  x  |     |     |     |     |     |     |    |
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// HCX |  x |  x |  x |  x |     |     |  x  |     |     |     |     |     |    |
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// HCY |  x |  x |  x |  x |     |     |     |  x  |     |     |     |     |    |
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// HGX |  x |  x |  x |  x |     |     |     |     |  x  |     |     |     |    |
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// HGY |  x |  x |  x |  x |     |     |     |     |     |  x  |     |     |    |
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// HTX |  x |  x |  x |  x |     |     |     |     |     |     |  x  |     |    |
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// HTY |  x |  x |  x |  x |     |     |     |     |     |     |     |  x  |    |
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// GX  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |  x |
-/// ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-/// GY  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |    |  x
-///
 #[derive(Eq, PartialEq, Debug, Enum, Clone, Copy)]
 #[repr(usize)]
 pub enum State {
