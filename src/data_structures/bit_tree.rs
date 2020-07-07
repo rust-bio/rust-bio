@@ -26,7 +26,6 @@
 //! assert_eq!(bit.get(3), (4, 3));
 //! assert_eq!(bit.get(4), (4, 3));
 
-
 use std::cmp::max;
 use std::marker::PhantomData;
 use std::ops::Add;
