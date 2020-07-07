@@ -7,6 +7,18 @@
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
+//! # Example
+//!
+//! ```
+//! use bio::data_structures::suffix_array::suffix_array;
+//! let text = b"GCCTTAACATTATTACGCCTA$";
+//! let pos = suffix_array(text);
+//! assert_eq!(pos, vec![
+//!     21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18,
+//!     2, 16, 0, 19, 4, 13, 10, 3, 12, 9
+//! ]);
+//! ```
+
 use std;
 use std::cmp;
 use std::fmt::Debug;
