@@ -17,23 +17,59 @@
 //! let values: Vec<u8> = bitenc.iter().collect();
 //! assert_eq!(values, [0, 2, 1]);
 //! ```
+//!
+//! BitEnc can be used in combination with `alphabets::RankTransform`
+//! to generate rank-encoded values, like 2-bit encoded DNA bases,
+//! and store these using `BitEnc`.
+//!
+//! ```
+//! use bio::alphabets;
+//! use bio::data_structures::bitenc::BitEnc;
+//!
+//! let dna_alphabet = alphabets::Alphabet::new(b"ACGT");
+//! let dna_ranks = alphabets::RankTransform::new(&dna_alphabet);
+//!
+//! // Compute the number of bits required for the largest rank
+//! let mut bit_enc = BitEnc::new(dna_ranks.get_width());
+//!
+//! let text = b"GATTACA";
+//! assert_eq!(dna_ranks.transform(text), [2, 0, 3, 3, 0, 1, 0]);
+//! ```
 
 /// A sequence of bitencoded values.
+///
+/// Space complexity: O(⌈(n * width) / k⌉) * 32 bit, where n is the length of the input
+/// sequence and `k = 32 - (32 % width)`  is the number of bits in each
+/// 32-bit block that can be used to store values.
+/// For values that are not a divider of 32, some bits will remain unused.
+/// For example for `width = 7` only `4 * 7 = 28` bits are used.
+/// Five 7-bit values are stored in 2 blocks.
 #[derive(Serialize, Deserialize)]
 pub struct BitEnc {
     storage: Vec<u32>,
     width: usize,
     mask: u32,
     len: usize,
-    bits: usize,
+    usable_bits_per_block: usize,
 }
 
+/// Create a mask with `width` 1-bits.
 fn mask(width: usize) -> u32 {
     (1 << width) - 1
 }
 
 impl BitEnc {
     /// Create a new instance with a given encoding width (e.g. width=2 for using two bits per value).
+    /// Supports widths up to 8 bits per character, i.e. `1 <= width <= 8`.
+    ///
+    /// Complexity: O(1)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::bitenc::BitEnc;
+    /// let bitenc = BitEnc::new(3);
+    /// ```
     pub fn new(width: usize) -> Self {
         assert!(width <= 8, "Only encoding widths up to 8 supported");
         BitEnc {
@@ -41,11 +77,23 @@ impl BitEnc {
             width,
             mask: mask(width),
             len: 0,
-            bits: 32 - 32 % width,
+            usable_bits_per_block: 32 - 32 % width,
         }
     }
 
-    /// Create a new instance with a given capacity and encoding width (e.g. width=2 for using two bits per value).
+    /// Create a new instance with a given capacity and encoding width
+    /// (e.g. width=2 for using two bits per value).
+    /// Supports widths up to 8 bits per character, i.e. `1 <= width <= 8`.
+    ///
+    /// Complexity: O(1)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::bitenc::BitEnc;
+    ///
+    /// let bitenc = BitEnc::with_capacity(3, 42);
+    /// ```
     pub fn with_capacity(width: usize, n: usize) -> Self {
         assert!(width <= 8, "Only encoding widths up to 8 supported");
         BitEnc {
@@ -53,11 +101,27 @@ impl BitEnc {
             width,
             mask: mask(width),
             len: 0,
-            bits: 32 - 32 % width,
+            usable_bits_per_block: 32 - 32 % width,
         }
     }
 
-    /// Append a value.
+    /// Append a character to the current bit-encoding.
+    ///
+    /// Complexity: O(1)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::bitenc::BitEnc;
+    ///
+    /// let mut bitenc = BitEnc::new(4);
+    /// bitenc.push(0b0000);
+    /// bitenc.push(0b1000);
+    /// bitenc.push(0b1010);
+    /// // The three characters added above are encoded into one u32 entry.
+    /// let values: Vec<u8> = bitenc.iter().collect();
+    /// assert_eq!(values, [0b0000, 0b1000, 0b1010]);
+    /// ```
     pub fn push(&mut self, value: u8) {
         let (block, bit) = self.addr(self.len);
         if bit == 0 {
@@ -67,7 +131,21 @@ impl BitEnc {
         self.len += 1;
     }
 
-    /// Append `n` times the given value.
+    /// Append the given value `n` times to the encoding.
+    ///
+    /// Complexity: O(n)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// // use bio::data_structures::bitenc::BitEnc;
+    ///
+    /// let mut bitenc = BitEnc::new(6);
+    /// bitenc.push_values(4, 0b101010);
+    /// let values: Vec<u8> = bitenc.iter().collect();
+    /// assert_eq!(values, [42, 42, 42, 42]);
+    /// ```
+    /// TODO This test does not run through.
     pub fn push_values(&mut self, mut n: usize, value: u8) {
         {
             // fill the last block
@@ -107,13 +185,40 @@ impl BitEnc {
         self.len = i;
     }
 
-    /// Set the value as position `i`.
+    /// Replace the current value as position `i` with the given value.
+    ///
+    /// Complexity: O(1)
+    ///
+    /// ```
+    /// use bio::data_structures::bitenc::BitEnc;
+    ///
+    /// let mut bitenc = BitEnc::new(4);
+    /// bitenc.push_values(4, 0b1111);
+    /// bitenc.set(2, 0b0000);
+    ///
+    /// let values: Vec<u8> = bitenc.iter().collect();
+    /// assert_eq!(values, [0b1111, 0b1111, 0b0000, 0b1111]);
+    /// ```
     pub fn set(&mut self, i: usize, value: u8) {
         let (block, bit) = self.addr(i);
         self.set_by_addr(block, bit, value);
     }
 
     /// Get the value at position `i`.
+    ///
+    /// Complexity: O(1)
+    ///
+    /// ```
+    /// use bio::data_structures::bitenc::BitEnc;
+    ///
+    /// let mut bitenc = BitEnc::new(4);
+    /// for value in 1..=4 {
+    ///     bitenc.push(value);
+    /// }
+    ///
+    /// let values: Vec<u8> = bitenc.iter().collect();
+    /// assert_eq!(values, [0b0001, 0b0010, 0b0011, 0b0100]);
+    /// ```
     pub fn get(&self, i: usize) -> Option<u8> {
         if i >= self.len {
             None
@@ -124,20 +229,54 @@ impl BitEnc {
     }
 
     /// Iterate over stored values (values will be unpacked into bytes).
+    ///
+    /// Complexity: O(n), where n is the number of encoded values
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::bitenc::BitEnc;
+    ///
+    /// // Fill bitenc with 1, 2, 3, and 4.
+    /// let mut bitenc = BitEnc::new(4);
+    /// for value in 1..=4 {
+    ///     bitenc.push(value);
+    /// }
+    ///
+    /// // Collect iterator for comparison
+    /// let values: Vec<u8> = bitenc.iter().collect();
+    /// assert_eq!(values, [0b0001, 0b0010, 0b0011, 0b0100]);
+    /// ```
     pub fn iter(&self) -> BitEncIter<'_> {
         BitEncIter { bitenc: self, i: 0 }
     }
 
     /// Clear the sequence.
+    ///
+    /// Complexity: O(1)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::bitenc::BitEnc;
+    ///
+    /// let mut bitenc = BitEnc::new(2);
+    /// bitenc.push(2);
+    /// assert_eq!(bitenc.len(), 1);
+    /// bitenc.clear();
+    /// assert_eq!(bitenc.len(), 0);
+    /// ```
     pub fn clear(&mut self) {
         self.storage.clear();
         self.len = 0;
     }
 
+    /// Get the value stored in the given `block` at `bit`.
     fn get_by_addr(&self, block: usize, bit: usize) -> u8 {
         ((self.storage[block] >> bit) & self.mask) as u8
     }
 
+    /// Replace the value in the given `block` at `bit` with the given `value`.
     fn set_by_addr(&mut self, block: usize, bit: usize, value: u8) {
         let mask = self.mask << bit;
         self.storage[block] |= mask;
@@ -145,21 +284,55 @@ impl BitEnc {
         self.storage[block] |= (u32::from(value) & self.mask) << bit;
     }
 
+    /// Get the block and start bit for the `i`th encoded value.
     fn addr(&self, i: usize) -> (usize, usize) {
         let k = i * self.width;
-        (k / self.bits, k % self.bits)
+        (
+            k / self.usable_bits_per_block,
+            k % self.usable_bits_per_block,
+        )
     }
 
+    /// Get the number of encoded symbols.
+    ///
+    /// Complexity: O(1)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::bitenc::BitEnc;
+    ///
+    /// let mut bitenc = BitEnc::new(2);
+    /// bitenc.push(2);
+    /// assert_eq!(bitenc.len(), 1);
+    /// ```
     pub fn len(&self) -> usize {
         self.len
     }
 
+    /// Is the encoded seqeunce empty?
+    ///
+    /// Complexity: O(1)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::bitenc::BitEnc;
+    ///
+    /// let mut bitenc = BitEnc::new(2);
+    /// assert!(bitenc.is_empty());
+    /// bitenc.push(2);
+    /// assert!(!bitenc.is_empty());
+    /// bitenc.clear();
+    /// assert!(bitenc.is_empty());
+    /// ```
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
 }
 
 /// Iterator over values of a bitencoded sequence (values will be unpacked into bytes).
+/// Used to implement the `iter` method of `BitEnc`.
 pub struct BitEncIter<'a> {
     bitenc: &'a BitEnc,
     i: usize,
