@@ -8,8 +8,10 @@
 //! # Example
 //!
 //! ```
+//! // import functions (at top of script)
 //! use std::io;
 //! use bio::io::fasta;
+//! // run within a function
 //! let mut reader = fastq::Reader::new(io::stdin());
 //! let mut writer = fasta::Writer::new(vec![]);
 //! for record in reader.records() {

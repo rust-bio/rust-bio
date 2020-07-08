@@ -8,8 +8,10 @@
 //! # Example
 //!
 //! ```
+//! // import functions (at top of script)
 //! use std::io;
 //! use bio::io::fastq;
+//! // run within a function
 //! let mut reader = fastq::Reader::new(io::stdin());
 //! let mut record = fastq::Record::new();
 //! reader.read(&mut record).expect("Failed to parse record");
