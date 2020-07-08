@@ -10,14 +10,12 @@
 //! ```
 //! use std::io;
 //! use bio::io::fasta;
-//! fn main() {
-//!     let mut reader = fastq::Reader::new(io::stdin());
-//!     let mut writer = fasta::Writer::new(vec![]);
-//!     for record in reader.records() {
-//!         let rec = record.ok().expect("Error reading record.");
-//!         println!("{}", rec.id:());
-//!         writer.write(&rec).ok().expect("Error writing record.");
-//!     }
+//! let mut reader = fastq::Reader::new(io::stdin());
+//! let mut writer = fasta::Writer::new(vec![]);
+//! for record in reader.records() {
+//!     let rec = record.ok().expect("Error reading record.");
+//!     println!("{}", rec.id:());
+//!     writer.write(&rec).ok().expect("Error writing record.");
 //! }
 //! ```
 
