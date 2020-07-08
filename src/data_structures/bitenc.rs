@@ -28,8 +28,6 @@ pub struct BitEnc {
     bits: usize,
 }
 
-impl Eq for BitEnc {}
-
 fn mask(width: usize) -> u32 {
     (1 << width) - 1
 }
