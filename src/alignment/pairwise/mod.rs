@@ -364,16 +364,16 @@ impl<F: MatchFunc> Scoring<F> {
 
 /// A generalized Smith-Waterman aligner.
 ///
-/// M(i,j) is the best score such that x[i] and y[j] ends in a match
+/// M(i,j) is the best score such that `x[i]` and `y[j]` ends in a match
 ///              .... A   G  x_i
 ///              .... C   G  y_j
 ///
-/// I(i,j) is the best score such that x[i] is aligned with a gap
+/// I(i,j) is the best score such that `x[i]` is aligned with a gap
 ///              .... A   G  x_i
 ///              .... G  y_j  -
 /// This is interpreted as an insertion into "x" w.r.t reference "y"
 ///
-/// D(i,j) is the best score such that y[j] is aligned with a gap
+/// D(i,j) is the best score such that `y[j]` is aligned with a gap
 ///              .... A  x_i  -
 ///              .... G   G  y_j
 /// This is interpreted as a deletion from "x" w.r.t reference "y"
@@ -381,7 +381,7 @@ impl<F: MatchFunc> Scoring<F> {
 /// S(i,j) is the best score for prefixes x[0..i], y[0..j]
 ///
 /// To save space, only two columns of these matrices are stored at
-/// any point - the current column and the previous one. Moreover
+/// any point - the current column and the previous one. Moreover,
 /// M(i,j) is not explicitly stored
 ///
 /// Lx is the optimal x suffix clipping lengths from each position of the
