@@ -19,7 +19,7 @@
 //! ```
 
 /// A sequence of bitencoded values.
-#[derive(Serialize, Deserialize, PartialEq, Hash)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct BitEnc {
     storage: Vec<u32>,
     width: usize,
