@@ -51,7 +51,7 @@ pub fn gc_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 
 /// ```
 /// use bio::seq_analysis::gc::gc3_content;
 /// const seq: &'static [u8] = b"GATATACA";
-/// //                           ^  ^  ^                  
+/// //                           ^  ^  ^
 /// assert_eq!(gc3_content(seq), 2. / 3.);
 /// ```
 pub fn gc3_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 {
