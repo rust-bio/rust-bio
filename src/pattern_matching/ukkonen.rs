@@ -15,7 +15,7 @@
 //! # Example
 //!
 //! ```
-//! use bio::pattern_matching::ukkonen::{Ukkonen, unit_cost};
+//! use bio::pattern_matching::ukkonen::{unit_cost, Ukkonen};
 //!
 //! let mut ukkonen = Ukkonen::with_capacity(10, unit_cost);
 //! let text = b"ACCGTGGATGAGCGCCATAG";

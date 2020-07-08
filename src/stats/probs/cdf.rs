@@ -10,30 +10,22 @@
 //!
 //! Example usage of all CDF functions:
 //! ```
-//! use std::ops::Range;
-//! use ordered_float::NotNan;
-//! use bio::stats::probs::{LogProb, Prob};
-//! use bio::stats::probs::cdf::{CDF, Entry};
 //! use approx::assert_relative_eq;
+//! use bio::stats::probs::cdf::{Entry, CDF};
+//! use bio::stats::probs::{LogProb, Prob};
+//! use ordered_float::NotNan;
+//! use std::ops::Range;
 //! // pmf1 is an example PMF with `LogProb(0.0)` at `0`, with `LogProb(0.1)`
 //! // at `{1, 2, ..., 8}` and LogProb(0.2) at `10`
-//! let mut pmf1 = vec![
-//!     Entry::new( 0, LogProb( (0.0 as f64).ln() ) )
-//! ];
+//! let mut pmf1 = vec![Entry::new(0, LogProb((0.0 as f64).ln()))];
 //! for i in 1..=8 {
-//!     pmf1.push(
-//!         Entry::new( i, LogProb( (0.1 as f64).ln() ) )
-//!     );
+//!     pmf1.push(Entry::new(i, LogProb((0.1 as f64).ln())));
 //! }
-//! pmf1.push( Entry::new( 10, LogProb( (0.2 as f64).ln() ) ) );
+//! pmf1.push(Entry::new(10, LogProb((0.2 as f64).ln())));
 //!
 //! // create the cumulative distribution function from the probability mass function
 //! let cdf = CDF::from_pmf(pmf1.clone());
-//! assert_relative_eq!(
-//!     *cdf.get(&0).unwrap(),
-//!     (0.0 as f64).ln(),
-//!     epsilon = 0.0
-//! );
+//! assert_relative_eq!(*cdf.get(&0).unwrap(), (0.0 as f64).ln(), epsilon = 0.0);
 //! assert_relative_eq!(
 //!     *cdf.get(&3).unwrap(),
 //!     (0.3 as f64).ln(),
@@ -59,29 +51,25 @@
 //! assert_eq!(cdf.len(), cdf_copy.len());
 //!
 //! // get the maximum a posteriori probability estimate
-//! assert_eq!( cdf_copy.map().unwrap(), &10 );
+//! assert_eq!(cdf_copy.map().unwrap(), &10);
 //!
 //! // get the 50% credible interval
-//! assert_eq!( cdf_copy.credible_interval(0.5).unwrap(), &2..&8 );
+//! assert_eq!(cdf_copy.credible_interval(0.5).unwrap(), &2..&8);
 //!
 //! // cdf_vec is an example Entry vector with `LogProb(0.0)` at `ordered_float::NotNan`
 //! // values `{0.0, 1.0, 2.0}` and increasing by `LogProb(0.2)` at each to `{3.0, 4.0, ..., 7.0}`
 //! let mut cdf_vec = Vec::new();
 //! for i in 0..=2 {
-//!     cdf_vec.push(
-//!         Entry::new(
-//!             NotNan::new(i as f64).unwrap(),
-//!             LogProb::ln_zero()
-//!         )
-//!     )
+//!     cdf_vec.push(Entry::new(
+//!         NotNan::new(i as f64).unwrap(),
+//!         LogProb::ln_zero(),
+//!     ))
 //! }
 //! for i in 3..=7 {
-//!     cdf_vec.push(
-//!         Entry::new(
-//!             NotNan::new(i as f64).unwrap(),
-//!             LogProb( ((i-2) as f64 * 0.2f64).ln() )
-//!         )
-//!     );
+//!     cdf_vec.push(Entry::new(
+//!         NotNan::new(i as f64).unwrap(),
+//!         LogProb(((i - 2) as f64 * 0.2f64).ln()),
+//!     ));
 //! }
 //!
 //! // create cdf from vector of `Entry`s
@@ -94,7 +82,7 @@
 //! );
 //! assert_relative_eq!(
 //!     *cdf_from_vec.get(&NotNan::new(4.0).unwrap()).unwrap(),
-//!     LogProb( (0.4 as f64).ln() ),
+//!     LogProb((0.4 as f64).ln()),
 //!     epsilon = 0.0
 //! );
 //!
@@ -156,7 +144,6 @@ impl<T: Ord> CDF<T> {
     /// # Arguments
     ///
     /// * `pmf` - The PMF as a vector of `Entry` objects (values with an associated `LogProb`).
-    ///
     pub fn from_pmf(mut entries: Vec<Entry<T>>) -> Self {
         entries.sort_by(|a, b| a.value.cmp(&b.value));
         let mut inner: Vec<Entry<T>> = Vec::new();
@@ -191,7 +178,6 @@ impl<T: Ord> CDF<T> {
     /// # Arguments
     ///
     /// * `entries` - An iterator over `Entry<T>` values, where T requires
-    ///
     pub fn from_cdf<I: Iterator<Item = Entry<T>>>(entries: I) -> Self {
         CDF {
             inner: entries.collect_vec(),
@@ -260,7 +246,6 @@ impl<T: Ord> CDF<T> {
     /// # Arguments
     ///
     /// * `value` - A value at which you're interested in the cumulative probability.
-    ///
     pub fn get(&self, value: &T) -> Option<LogProb> {
         if self.inner.is_empty() {
             None

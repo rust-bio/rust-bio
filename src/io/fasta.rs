@@ -8,8 +8,8 @@
 //! # Example
 //!
 //! ```
-//! use std::io;
 //! use bio::io::fasta;
+//! use std::io;
 //! let reader = fasta::Reader::new(io::stdin());
 //! ```
 
@@ -583,9 +583,9 @@ impl<W: io::Write> Writer<W> {
     ///
     /// # Examples
     /// ```rust
-    /// use std::io;
+    /// use bio::io::fasta::{Record, Writer};
     /// use std::fs;
-    /// use bio::io::fasta::{Writer, Record};
+    /// use std::io;
     /// use std::path::Path;
     ///
     /// let path = Path::new("test.fa");

@@ -92,14 +92,13 @@
 //!
 //! ```rust
 //! // Import some modules
-//! use std::io;
 //! use bio::alphabets;
-//! use bio::data_structures::suffix_array::suffix_array;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
 //! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
+//! use bio::data_structures::suffix_array::suffix_array;
 //! use bio::io::fastq;
 //! use bio::io::fastq::FastqRead;
-//!
+//! use std::io;
 //!
 //! // a given text
 //! let text = b"ACAGCTCGATCGGTA";
@@ -130,18 +129,18 @@
 //! let mut record = fastq::Record::new();
 //! reader.read(&mut record).expect("Failed to parse record");
 //! while !record.is_empty() {
-//!   let check = record.check();
-//!   if check.is_err() {
-//!       panic!("I got a rubbish record!")
-//!   }
-//!   // obtain sequence
-//!   let seq = record.seq();
-//!   // check, whether seq is in the expected alphabet
-//!   if alphabet.is_word(seq) {
-//!     let interval = fmindex.backward_search(seq.iter());
-//!     let positions = interval.occ(&positions);
-//!   }
-//!   reader.read(&mut record).expect("Failed to parse record");
+//!     let check = record.check();
+//!     if check.is_err() {
+//!         panic!("I got a rubbish record!")
+//!     }
+//!     // obtain sequence
+//!     let seq = record.seq();
+//!     // check, whether seq is in the expected alphabet
+//!     if alphabet.is_word(seq) {
+//!         let interval = fmindex.backward_search(seq.iter());
+//!         let positions = interval.occ(&positions);
+//!     }
+//!     reader.read(&mut record).expect("Failed to parse record");
 //! }
 //! ```
 //!
@@ -152,9 +151,9 @@
 //!
 //! ```rust
 //! use bio::alphabets;
-//! use bio::data_structures::suffix_array::suffix_array;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
 //! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
+//! use bio::data_structures::suffix_array::suffix_array;
 //! use std::sync::Arc;
 //! use std::thread;
 //!
@@ -170,12 +169,13 @@
 //! let fmindex = Arc::new(FMIndex::new(bwt, less, occ));
 //!
 //! // Spawn threads to perform backward searches for each interval
-//! let interval_calculators = patterns.into_iter().map(|pattern| {
-//!     let fmindex = fmindex.clone();
-//!     thread::spawn(move ||
-//!         fmindex.backward_search(pattern.iter())
-//!     )
-//! }).collect::<Vec<_>>();
+//! let interval_calculators = patterns
+//!     .into_iter()
+//!     .map(|pattern| {
+//!         let fmindex = fmindex.clone();
+//!         thread::spawn(move || fmindex.backward_search(pattern.iter()))
+//!     })
+//!     .collect::<Vec<_>>();
 //!
 //! // Loop through the results, extracting the positions array for each pattern
 //! for interval_calculator in interval_calculators {
@@ -200,7 +200,6 @@
 //! Initialization time of each algorithm for the given pattern was included in each iteration. Benchmarks were conducted with *Cargo bench* for Rust-Bio and *Python timeit* for Seqan on an Intel Core i5-3427U CPU.
 //! Benchmarking Seqan from *Python timeit* entails an overhead of 1.46ms for calling a C++ binary. This overhead was subtracted from above Seqan run times.
 //! Note that this benchmark only compares the two libraries to exemplify that Rust-Bio has comparable speed to C++ libraries: all used algorithms have their advantages for specific text and pattern structures and lengths (see [the pattern matching section in the documentation](https://docs.rs/bio/0.28.2/bio/pattern_matching/index.html))./!
-//!
 
 #[macro_use]
 extern crate approx;
