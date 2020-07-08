@@ -8,8 +8,8 @@
 //! # Example
 //!
 //! ```
-//! use std::io;
 //! use bio::io::fasta;
+//! use std::io;
 //! let reader = fasta::Reader::new(io::stdin());
 //! ```
 
@@ -20,8 +20,6 @@ use std::fs;
 use std::io;
 use std::io::prelude::*;
 use std::path::Path;
-
-use csv;
 
 use crate::utils::{Text, TextSlice};
 use std::fmt;
@@ -585,9 +583,9 @@ impl<W: io::Write> Writer<W> {
     ///
     /// # Examples
     /// ```rust
-    /// use std::io;
+    /// use bio::io::fasta::{Record, Writer};
     /// use std::fs;
-    /// use bio::io::fasta::{Writer, Record};
+    /// use std::io;
     /// use std::path::Path;
     ///
     /// let path = Path::new("test.fa");
@@ -1462,12 +1460,12 @@ ATTGTTGTTTTA
         let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
 
         assert_eq!(actual.kind(), expected.kind());
-        assert!(actual.to_string().starts_with("No such file or directory"))
     }
 
     #[test]
     fn test_writer_to_file_dir_exists_returns_ok() {
-        let path = Path::new("/tmp/out.fa");
+        let file = tempfile::NamedTempFile::new().expect("Could not create temp file");
+        let path = file.path();
 
         assert!(Writer::to_file(path).is_ok())
     }

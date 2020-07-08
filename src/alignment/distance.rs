@@ -54,7 +54,7 @@ pub fn hamming(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u64 {
 /// // ----ACCGTGGAT
 /// //     ||||| |||
 /// // AAAAACCGTTGAT
-/// let ldist = levenshtein(x, y);  // Distance is 5
+/// let ldist = levenshtein(x, y); // Distance is 5
 /// assert_eq!(ldist, 5);
 /// ```
 #[allow(unused_assignments)]
@@ -107,8 +107,6 @@ pub mod simd {
 
     use crate::utils::TextSlice;
 
-    use triple_accel;
-
     /// SIMD-accelerated Hamming distance between two strings. Complexity: O(n / w), for
     /// SIMD vectors of length w (usually w = 16 or w = 32).
     ///
@@ -156,7 +154,7 @@ pub mod simd {
     /// // ----ACCGTGGAT
     /// //     ||||| |||
     /// // AAAAACCGTTGAT
-    /// let ldist = levenshtein(x, y);  // Distance is 5
+    /// let ldist = levenshtein(x, y); // Distance is 5
     /// assert_eq!(ldist, 5);
     /// ```
     pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
@@ -182,10 +180,10 @@ pub mod simd {
     /// // ----ACCGTGGAT
     /// //     ||||| |||
     /// // AAAAACCGTTGAT
-    /// let ldist = bounded_levenshtein(x, y, 5);  // Distance is 5
+    /// let ldist = bounded_levenshtein(x, y, 5); // Distance is 5
     /// assert_eq!(ldist, Some(5));
     ///
-    /// let ldist = bounded_levenshtein(x, y, 4);  // Threshold too low!
+    /// let ldist = bounded_levenshtein(x, y, 4); // Threshold too low!
     /// assert_eq!(ldist, None);
     /// ```
     pub fn bounded_levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>, k: u32) -> Option<u32> {

@@ -12,8 +12,8 @@
 //! # Example
 //!
 //! ```
-//! use std::io;
 //! use bio::io::gff;
+//! use std::io;
 //! let reader = gff::Reader::new(io::stdin(), gff::GffType::GFF3);
 //! ```
 
@@ -24,8 +24,6 @@ use std::convert::AsRef;
 use std::fs;
 use std::io;
 use std::path::Path;
-
-use csv;
 
 use bio_types::strand::Strand;
 

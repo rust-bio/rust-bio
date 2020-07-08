@@ -62,3 +62,4 @@ features = ["stable_graph"]
 
 [dev-dependencies]
 proptest = "0.9.4"
+tempfile = "3.1.0"

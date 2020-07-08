@@ -6,6 +6,11 @@
 //! A pair Hidden Markov Model for calculating the probability that two sequences are related to
 //! each other. Depending on the used parameters, this can, e.g., be used to calculate the
 //! probability that a certain sequencing read comes from a given position in a reference genome.
+//!
+//! Time complexity: O(n * m) where `n = seq1.len()`, `m = seq2.len()` (or `m = min(seq2.len(), max_edit_dist)` with banding enabled).
+//! Memory complexity: O(m) where `m = seq2.len()`.
+//! Note that if the number of states weren't fixed in this implementation, we would have to include
+//! these in both time and memory complexity above as an additional factor.
 
 use std::cmp;
 use std::mem;
@@ -65,7 +70,7 @@ struct GapParamCache {
 impl PairHMM {
     pub fn new<G>(gap_params: &G) -> Self
     where
-        G: GapParameters + StartEndGapParameters,
+        G: GapParameters,
     {
         let gap_params = GapParamCache {
             prob_no_gap: gap_params
@@ -243,10 +248,10 @@ impl PairHMM {
                 // Cache column probabilities or simply record the last probability.
                 // We can put all of them in one array since we simply have to sum in the end.
                 // This is also good for numerical stability.
-                self.prob_cols.push(self.fm[curr].last().unwrap().clone());
-                self.prob_cols.push(self.fx[curr].last().unwrap().clone());
+                self.prob_cols.push(*self.fm[curr].last().unwrap());
+                self.prob_cols.push(*self.fx[curr].last().unwrap());
                 // TODO check removing this (we don't want open gaps in x):
-                self.prob_cols.push(self.fy[curr].last().unwrap().clone());
+                self.prob_cols.push(*self.fy[curr].last().unwrap());
             }
 
             // next column

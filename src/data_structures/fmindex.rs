@@ -3,17 +3,18 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! FM-Index and FMD-Index for finding suffix array intervals matching a given pattern in linear time.
+//! The [Full-text index in Minute space index (FM-index)](https://doi.org/10.1109/SFCS.2000.892127) and
+//! the FMD-Index for finding suffix array intervals matching a given pattern in linear time.
 //!
 //! # Examples
 //!
 //! ## Generate
 //!
 //! ```
+//! use bio::alphabets::dna;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
 //! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
 //! use bio::data_structures::suffix_array::suffix_array;
-//! use bio::alphabets::dna;
 //!
 //! let text = b"GCCTTAACATTATTACGCCTA$";
 //! let alphabet = dna::n_alphabet();
@@ -30,14 +31,14 @@
 //! It can take a reference (`&`), owned structs or any of the more complex pointer types.
 //!
 //! ```
-//! use bio::data_structures::bwt::{BWT, Less, bwt, less, Occ};
+//! use bio::alphabets::dna;
+//! use bio::data_structures::bwt::{bwt, less, Less, Occ, BWT};
 //! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
 //! use bio::data_structures::suffix_array::suffix_array;
-//! use bio::alphabets::dna;
 //! use bio::utils::TextSlice;
 //!
 //! pub struct Example {
-//!     fmindex: FMIndex<BWT, Less, Occ>
+//!     fmindex: FMIndex<BWT, Less, Occ>,
 //! }
 //!
 //! impl Example {
@@ -94,10 +95,10 @@ pub trait FMIndexable {
     /// # Example
     ///
     /// ```
+    /// use bio::alphabets::dna;
     /// use bio::data_structures::bwt::{bwt, less, Occ};
     /// use bio::data_structures::fmindex::{FMIndex, FMIndexable};
     /// use bio::data_structures::suffix_array::suffix_array;
-    /// use bio::alphabets::dna;
     ///
     /// let text = b"GCCTTAACATTATTACGCCTA$";
     /// let alphabet = dna::n_alphabet();
@@ -242,7 +243,6 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> From<FMIndex<DBW
     /// I.e., let T be the original text and R be its reverse complement.
     /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
     /// T1$R1$T2$R2$T3$R3$.
-    ///
     fn from(fmindex: FMIndex<DBWT, DLess, DOcc>) -> FMDIndex<DBWT, DLess, DOcc> {
         let mut alphabet = dna::n_alphabet();
         alphabet.insert(b'$');
@@ -263,9 +263,9 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
     ///
     /// ```
     /// use bio::alphabets::dna;
-    /// use bio::data_structures::fmindex::{FMIndex, FMDIndex};
-    /// use bio::data_structures::suffix_array::suffix_array;
     /// use bio::data_structures::bwt::{bwt, less, Occ};
+    /// use bio::data_structures::fmindex::{FMDIndex, FMIndex};
+    /// use bio::data_structures::suffix_array::suffix_array;
     ///
     /// let text = b"ATTC$GAAT$";
     /// let alphabet = dna::n_alphabet();
