@@ -140,23 +140,6 @@ impl BitEnc {
     /// completely filled with the value and 0 to 1 blocks
     /// that are only partially filled.
     ///
-    /// ```text
-    /// Width: 8 → 4 values per block
-    /// | __ __ __ __ | Denotes one block with 4 empty slots
-    ///
-    /// push_values(5, 42);
-    /// This adds one full and one partial block.
-    /// | 42 42 42 42 | 42 __ __ __ |
-    ///
-    /// push_values(1, 23);
-    /// This only fills up an existing block;
-    /// | 42 42 42 42 | 42 23 __ __ |
-    ///
-    /// push_values(6, 17);
-    /// Fills up the current block, adds a whole new one but does not create a partial block.
-    /// | 42 42 42 42 | 42 23 17 17 | 17 17 17 17 |
-    /// ```
-    ///
     /// Complexity: O(n)
     ///
     /// # Example
@@ -164,13 +147,31 @@ impl BitEnc {
     /// ```
     /// use bio::data_structures::bitenc::BitEnc;
     ///
-    /// let mut bitenc = BitEnc::new(6);
-    /// bitenc.push_values(4, 0b101010);
+    /// let mut bitenc = BitEnc::new(8);
+    /// // Width: 8 → 4 values per block
+    /// // | __ __ __ __ | Denotes one block with 4 empty slots
+    ///
+    /// bitenc.push_values(5, 0b101010);
+    /// // This adds one full and one partial block.
+    /// // | 42 42 42 42 | __ __ __ 42 |
+    ///
     /// let values: Vec<u8> = bitenc.iter().collect();
-    /// assert_eq!(values, [42, 42, 42, 42]);
+    /// assert_eq!(values, [42, 42, 42, 42, 42]);
+    ///
+    /// bitenc.push_values(1, 23);
+    /// // This only fills up an existing block;
+    /// // | 42 42 42 42 | __ __ 23 42 |
+    ///
+    /// let values: Vec<u8> = bitenc.iter().collect();
+    /// assert_eq!(values, [42, 42, 42, 42, 42, 23]);
+    ///
+    /// bitenc.push_values(6, 17);
+    /// // Fills up the current block, adds a whole new one but does not create a partial block.
+    /// // | 42 42 42 42 | 17 17 42 23 | 17 17 17 17 |
+    ///
+    /// let values: Vec<u8> = bitenc.iter().collect();
+    /// assert_eq!(values, [42, 42, 42, 42, 42, 23, 17, 17, 17, 17, 17, 17]);
     /// ```
-    /// TODO This test does not run through.
-    /// TODO Test a version with preinserted items
     pub fn push_values(&mut self, mut n: usize, value: u8) {
         // Fill up the previous block.
         // Example: After adding 3 values with a width
@@ -329,7 +330,7 @@ impl BitEnc {
         )
     }
 
-    /// Get the number of encoded symbols.
+    /// Get the number of blocks used by the encoding.
     ///
     /// Complexity: O(1)
     ///
@@ -338,15 +339,23 @@ impl BitEnc {
     /// ```
     /// use bio::data_structures::bitenc::BitEnc;
     ///
-    /// let mut bitenc = BitEnc::new(2);
+    /// let mut bitenc = BitEnc::new(8);
     /// bitenc.push(2);
     /// assert_eq!(bitenc.len(), 1);
+    /// // Add enough 2s to completely fill the first block
+    /// bitenc.push(2);
+    /// bitenc.push(2);
+    /// bitenc.push(2);
+    /// assert_eq!(bitenc.len(), 1);
+    /// // Add another 2 to create a second block
+    /// bitenc.push(2);
+    /// assert_eq!(bitenc.len(), 2);
     /// ```
     pub fn len(&self) -> usize {
         self.len
     }
 
-    /// Is the encoded seqeunce empty?
+    /// Is the encoded sequence empty?
     ///
     /// Complexity: O(1)
     ///
