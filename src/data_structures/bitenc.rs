@@ -6,6 +6,8 @@
 //! A fixed-width bit encoding implementation. This allows to store a sequence of values over
 //! a reduced alphabet by packing them bit-encoded into a sequence of bytes.
 //!
+//! Similar behaviour can be achieved using a `PackedVec` from the [packedvec](https://docs.rs/packedvec) crate.
+//!
 //! # Example
 //!
 //! ```
