@@ -53,7 +53,7 @@
 //!
 //! ```
 //! # extern crate bio;
-//! use bio::pattern_matching::myers::{Myers, long};
+//! use bio::pattern_matching::myers::{long, Myers};
 //!
 //! # fn main() {
 //! let text = b"CGGTCCTGAGGGATTAGCAC";
@@ -108,8 +108,8 @@
 //!
 //! ```
 //! # extern crate bio;
-//! use bio::pattern_matching::myers::Myers;
 //! use bio::alignment::Alignment;
+//! use bio::pattern_matching::myers::Myers;
 //!
 //! # fn main() {
 //! let text = b"CGGTCCTGAGGGATTAGCAC";
@@ -171,8 +171,8 @@
 //!
 //! ```
 //! # extern crate bio;
-//! use bio::pattern_matching::myers::Myers;
 //! use bio::alignment::Alignment;
+//! use bio::pattern_matching::myers::Myers;
 //!
 //! # fn main() {
 //! let text = b"CGGTCCTGAGGGATTAGCAC";
@@ -184,14 +184,14 @@
 //! let mut matches = myers.find_all_lazy(text, 2);
 //!
 //! // first, find the best hit
-//! let (best_end, _) = matches
-//!     .by_ref()
-//!     .min_by_key(|&(_, dist)| dist)
-//!     .unwrap();
+//! let (best_end, _) = matches.by_ref().min_by_key(|&(_, dist)| dist).unwrap();
 //!
 //! // now calculate the alignment
 //! matches.alignment_at(best_end, &mut aln);
-//! println!("Best alignment at {}..{} (distance: {})", aln.ystart, aln.yend, aln.score);
+//! println!(
+//!     "Best alignment at {}..{} (distance: {})",
+//!     aln.ystart, aln.yend, aln.score
+//! );
 //! println!("{}", aln.pretty(pattern, text));
 //! # }
 //! ```
@@ -221,9 +221,7 @@
 //! let text = b"GTCTGATCTTACC";
 //! let pattern = b"TGATCNT";
 //!
-//! let myers = MyersBuilder::new()
-//!     .ambig(b'N', b"ACGT")
-//!     .build_64(pattern);
+//! let myers = MyersBuilder::new().ambig(b'N', b"ACGT").build_64(pattern);
 //! assert_eq!(myers.distance(text), 0);
 //! # }
 //! ```
