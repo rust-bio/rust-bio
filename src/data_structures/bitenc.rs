@@ -135,6 +135,28 @@ impl BitEnc {
 
     /// Append the given value `n` times to the encoding.
     ///
+    /// The added values comprise 0 to 1 blocks that need to be filled up
+    /// from previous steps, 0 to m blocks that are
+    /// completely filled with the value and 0 to 1 blocks
+    /// that are only partially filled.
+    ///
+    /// ```text
+    /// Width: 8 → 4 values per block
+    /// | __ __ __ __ | Denotes one block with 4 empty slots
+    ///
+    /// push_values(5, 42);
+    /// This adds one full and one partial block.
+    /// | 42 42 42 42 | 42 __ __ __ |
+    ///
+    /// push_values(1, 23);
+    /// This only fills up an existing block;
+    /// | 42 42 42 42 | 42 23 __ __ |
+    ///
+    /// push_values(6, 17);
+    /// Fills up the current block, adds a whole new one but does not create a partial block.
+    /// | 42 42 42 42 | 42 23 17 17 | 17 17 17 17 |
+    /// ```
+    ///
     /// Complexity: O(n)
     ///
     /// # Example
@@ -148,21 +170,30 @@ impl BitEnc {
     /// assert_eq!(values, [42, 42, 42, 42]);
     /// ```
     /// TODO This test does not run through.
+    /// TODO Test a version with preinserted items
     pub fn push_values(&mut self, mut n: usize, value: u8) {
+        // Fill up the previous block.
+        // Example: After adding 3 values with a width
+        // of 8, 8 out out 32 bits in the first block
+        // can still be used.
         {
-            // fill the last block
-            let (block, mut bit) = self.addr(self.len);
+            // Check if there are remaining free slots
+            // in the current block, i.e. if the bit offset
+            // within the block is non-zero
+            let (block, bit) = self.addr(self.len);
             if bit > 0 {
-                // TODO use step_by once it has been stabilized: for bit in (bit..32).step_by(self.width) {
-                while bit <= 32 {
+                // insert as many values as required to fill
+                // up the previous block and decrese the number
+                // left to insert accordingly
+                for bit in (bit..32).step_by(self.width) {
                     self.set_by_addr(block, bit, value);
                     n -= 1;
-                    bit += self.width
                 }
             }
         }
 
-        // pack the value into a block
+        // Create a full value block containing
+        // as many copies of value as possible.
         let mut value_block = 0;
         {
             let mut v = u32::from(value);
@@ -172,7 +203,8 @@ impl BitEnc {
             }
         }
 
-        // push as many value blocks as needed
+        // Append as many full value blocks as needed
+        // to reach the last block
         let i = self.len + n;
         let (block, bit) = self.addr(i);
         for _ in self.storage.len()..block {
@@ -180,8 +212,10 @@ impl BitEnc {
         }
 
         if bit > 0 {
+            // TODO
             // add the remaining values to a final block
-            self.storage.push(value_block >> (32 - bit));
+            let shifted_block = value_block >> (32 - bit);
+            self.storage.push(shifted_block);
         }
 
         self.len = i;
