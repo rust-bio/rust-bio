@@ -11,16 +11,16 @@
 //!
 //! ```
 //! use bio::seq_analysis::orf::{Finder, Orf};
-//! let start_codons = vec!(b"ATG");
-//! let stop_codons  = vec!(b"TGA", b"TAG", b"TAA");
+//! let start_codons = vec![b"ATG"];
+//! let stop_codons = vec![b"TGA", b"TAG", b"TAA"];
 //! let min_len = 50;
 //! let finder = Finder::new(start_codons, stop_codons, min_len);
 //!
 //! let sequence = b"ACGGCTAGAAAAGGCTAGAAAA";
 //!
-//! for Orf{start, end, offset} in finder.find_all(sequence) {
-//!    let orf = &sequence[start..end];
-//!    //...do something with orf sequence...
+//! for Orf { start, end, offset } in finder.find_all(sequence) {
+//!     let orf = &sequence[start..end];
+//!     //...do something with orf sequence...
 //! }
 //! ```
 //!

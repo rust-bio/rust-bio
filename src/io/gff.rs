@@ -12,8 +12,8 @@
 //! # Example
 //!
 //! ```
-//! use std::io;
 //! use bio::io::gff;
+//! use std::io;
 //! let reader = gff::Reader::new(io::stdin(), gff::GffType::GFF3);
 //! ```
 

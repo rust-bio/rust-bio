@@ -19,16 +19,16 @@
 //!
 //! ```
 //! use bio::alignment::pairwise::banded::*;
+//! use bio::alignment::pairwise::{Scoring, MIN_SCORE};
 //! use bio::alignment::sparse::hash_kmers;
-//! use bio::alignment::pairwise::{MIN_SCORE, Scoring};
 //! use bio::alignment::AlignmentOperation::*;
 //! use std::iter::repeat;
 //!
 //! let x = b"AGCACACGTGTGCGCTATACAGTAAGTAGTAGTACACGTGTCACAGTTGTACTAGCATGAC";
 //! let y = b"AGCACACGTGTGCGCTATACAGTACACGTGTCACAGTTGTACTAGCATGAC";
-//! let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
-//! let k = 8;  // kmer match length
-//! let w = 6;  // Window size for creating the band
+//! let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+//! let k = 8; // kmer match length
+//! let w = 6; // Window size for creating the band
 //! let mut aligner = Aligner::new(-5, -1, score, k, w);
 //! let alignment = aligner.local(x, y);
 //! // aligner.global(x, y), aligner.semiglobal(x, y) are also supported
@@ -57,18 +57,18 @@
 //! let scoring = Scoring {
 //!     gap_open: -5,
 //!     gap_extend: -1,
-//!     match_fn: |a: u8, b: u8| if a == b {1i32} else {-3i32},
+//!     match_fn: |a: u8, b: u8| if a == b { 1i32 } else { -3i32 },
 //!     match_scores: Some((1, -3)),
 //!     xclip_prefix: -10,
 //!     xclip_suffix: MIN_SCORE,
 //!     yclip_prefix: 0,
-//!     yclip_suffix: 0
+//!     yclip_suffix: 0,
 //! };
 //! let x = b"GGGGGGACGTACGTACGTGTGCATCATCATGTGCGTATCATAGATAGATGTAGATGATCCACAGT";
 //! let y = b"AAAAACGTACGTACGTGTGCATCATCATGTGCGTATCATAGATAGATGTAGATGATCCACAGTAAAA";
 //! let mut aligner = Aligner::with_capacity_and_scoring(x.len(), y.len(), scoring, k, w);
 //! let alignment = aligner.custom(x, y);
-//! println!("{}", alignment.pretty(x,y));
+//! println!("{}", alignment.pretty(x, y));
 //! assert_eq!(alignment.score, 49);
 //! let mut correct_ops = Vec::new();
 //! correct_ops.push(Yclip(4));
@@ -136,7 +136,6 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `match_fn` - function that returns the score for substitutions (also see bio::scores)
     /// * `k` - kmer length used in constructing the band
     /// * `w` - width of the band
-    ///
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F, k: usize, w: usize) -> Self {
         Aligner::with_capacity(
             DEFAULT_ALIGNER_CAPACITY,
@@ -161,7 +160,6 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `match_fn` - function that returns the score for substitutions (also see bio::scores)
     /// * `k` - kmer length used in constructing the band
     /// * `w` - width of the band
-    ///
     pub fn with_capacity(
         m: usize,
         n: usize,
@@ -196,7 +194,6 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `scoring` - the scoring struct
     /// * `k` - kmer length used in constructing the band
     /// * `w` - width of the band
-    ///
     pub fn with_capacity_and_scoring(
         m: usize,
         n: usize,
@@ -248,7 +245,6 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `scoring` - the scoring struct
     /// * `k` - kmer length used in constructing the band
     /// * `w` - width of the band
-    ///
     pub fn with_scoring(scoring: Scoring<F>, k: usize, w: usize) -> Self {
         Aligner::with_capacity_and_scoring(
             DEFAULT_ALIGNER_CAPACITY,
@@ -272,7 +268,6 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     /// * `x` - Textslice
     /// * `y` - Textslice
-    ///
     pub fn custom(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         self.band = Band::create(x, y, self.k, self.w, &self.scoring);
         self.compute_alignment(x, y)
@@ -285,7 +280,6 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     /// * `x` - Textslice
     /// * `y` - Textslice
-    ///
     pub fn custom_with_prehash(
         &mut self,
         x: TextSlice<'_>,
@@ -305,7 +299,6 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `x` - Textslice
     /// * `y` - Textslice
     /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
-    ///
     pub fn custom_with_matches(
         &mut self,
         x: TextSlice<'_>,
@@ -331,7 +324,6 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `allowed_mismatches` - Extend the matches diagonally allowing upto
     /// the specified number of mismatches (Option<usize>)
     /// * `use_lcskpp_union` - Extend the results from sdpkpp using lcskpp
-    ///
     pub fn custom_with_expanded_matches(
         &mut self,
         x: TextSlice<'_>,
@@ -385,7 +377,6 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
     /// * `path` - Vector of indices pointing to `matches` vector
     /// which defines a path. The validity of the path is not checked.
-    ///
     pub fn custom_with_match_path(
         &mut self,
         x: TextSlice,

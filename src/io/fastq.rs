@@ -8,19 +8,19 @@
 //! # Example
 //!
 //! ```
-//! use std::io;
 //! use bio::io::fastq;
 //! use bio::io::fastq::FastqRead;
+//! use std::io;
 //! let mut reader = fastq::Reader::new(io::stdin());
 //! let mut record = fastq::Record::new();
 //! reader.read(&mut record).expect("Failed to parse record");
 //! while !record.is_empty() {
-//!   let check = record.check();
-//!   if check.is_err() {
-//!       panic!("I got a rubbish record!")
-//!   }
-//!   // your record is ok - do something with it...
-//!   reader.read(&mut record).expect("Failed to parse record");
+//!     let check = record.check();
+//!     if check.is_err() {
+//!         panic!("I got a rubbish record!")
+//!     }
+//!     // your record is ok - do something with it...
+//!     reader.read(&mut record).expect("Failed to parse record");
 //! }
 //! ```
 
@@ -76,7 +76,9 @@ impl<R: io::Read> Reader<R> {
     /// use bio::io::fastq;
     ///
     /// let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
-    /// let records = fastq::Reader::new(fq).records().map(|record| record.unwrap());
+    /// let records = fastq::Reader::new(fq)
+    ///     .records()
+    ///     .map(|record| record.unwrap());
     /// for record in records {
     ///     assert!(record.check().is_ok())
     /// }
@@ -111,8 +113,8 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use bio::io::fastq::{Reader, FastqRead};
     /// use bio::io::fastq::Record;
+    /// use bio::io::fastq::{FastqRead, Reader};
     /// const FASTQ_FILE: &'static [u8] = b"@id desc
     /// AAAA
     /// +
@@ -260,7 +262,6 @@ impl Record {
     /// record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG", b"QQQQQQQ");
     /// assert!(record.check().is_ok());
     /// ```
-    ///
     pub fn check(&self) -> Result<(), &str> {
         if self.id().is_empty() {
             return Err("Expecting id for FastQ record.");
