@@ -3,7 +3,9 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! # Easy Example
+//! Fast lookup table for arbitrary floating point functions.
+//! # Examples
+//! ## Easy:
 //! ```
 //! use bio::data_structures::interpolation_table::*;
 //!
@@ -11,7 +13,7 @@
 //! assert_eq!(table.get(3.0), 9.0);
 //! assert_eq!(table.get(5.0), 25.0);
 //! ```
-//! # More complicated
+//! ## More complicated:
 //! ```
 //! extern crate approx;
 //! fn main() {
