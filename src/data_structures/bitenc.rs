@@ -19,7 +19,7 @@
 //! ```
 
 /// A sequence of bitencoded values.
-#[derive(Serialize, Deserialize, PartialEq, PartialOrd)]
+#[derive(Serialize, Deserialize, PartialEq, Hash)]
 pub struct BitEnc {
     storage: Vec<u32>,
     width: usize,
@@ -27,6 +27,8 @@ pub struct BitEnc {
     len: usize,
     bits: usize,
 }
+
+impl Eq for BitEnc {}
 
 fn mask(width: usize) -> u32 {
     (1 << width) - 1
