@@ -266,27 +266,26 @@ impl<W: io::Write> Writer<W> {
     MutGetters,
     Builder,
 )]
+#[getset(get_mut = "pub", set = "pub")]
 #[builder(default)]
 pub struct Record {
-    #[getset(get, set, get_mut)]
+    #[getset(get = "pub")]
     seqname: String,
-    #[getset(get, set, get_mut)]
+    #[getset(get = "pub")]
     source: String,
-    #[getset(get, set, get_mut)]
+    #[getset(get = "pub")]
     feature_type: String,
-    #[getset(get, set, get_mut)]
+    #[getset(get = "pub")]
     start: u64,
-    #[getset(get, set, get_mut)]
+    #[getset(get = "pub")]
     end: u64,
-    #[getset(set, get_mut)]
     #[builder(default = "\".\".to_owned()")]
     score: String,
-    #[getset(set, get_mut)]
     #[builder(default = "\".\".to_owned()")]
     strand: String,
-    #[getset(set, get_mut)]
+    #[getset(get = "pub")]
     frame: String,
-    #[getset(get, set, get_mut)]
+    #[getset(get = "pub")]
     attributes: MultiMap<String, String>,
 }
 
