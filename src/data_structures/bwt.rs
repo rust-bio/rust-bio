@@ -10,7 +10,7 @@
 use std::iter::repeat;
 
 use crate::alphabets::Alphabet;
-use crate::data_structures::suffix_array::RawSuffixArray;
+use crate::data_structures::suffix_array::RawSuffixArraySlice;
 use crate::utils::prescan;
 
 pub type BWT = Vec<u8>;
@@ -29,14 +29,14 @@ pub type BWTFind = Vec<usize>;
 /// # Example
 ///
 /// ```
-/// use bio::data_structures::suffix_array::suffix_array;
 /// use bio::data_structures::bwt::bwt;
+/// use bio::data_structures::suffix_array::suffix_array;
 /// let text = b"GCCTTAACATTATTACGCCTA$";
 /// let pos = suffix_array(text);
 /// let bwt = bwt(text, &pos);
 /// assert_eq!(bwt, b"ATTATTCAGGACCC$CTTTCAA");
 /// ```
-pub fn bwt(text: &[u8], pos: &RawSuffixArray) -> BWT {
+pub fn bwt(text: &[u8], pos: RawSuffixArraySlice) -> BWT {
     assert_eq!(text.len(), pos.len());
     let n = text.len();
     let mut bwt: BWT = repeat(0).take(n).collect();
@@ -118,7 +118,10 @@ impl Occ {
         //
         // The below manual count code is roughly equivalent to:
         // ```
-        // let count = bwt[(i * self.k) + 1..r + 1].iter().filter(|&&c| c == a).count();
+        // let count = bwt[(i * self.k) + 1..r + 1]
+        //     .iter()
+        //     .filter(|&&c| c == a)
+        //     .count();
         // self.occ[i][a as usize] + count
         // ```
         //

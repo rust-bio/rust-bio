@@ -11,8 +11,9 @@
 //! // import functions (at top of script)
 //! use std::io;
 //! use bio::io::fasta;
+//! use std::io;
 //! // run within a function
-//! let mut reader = fastq::Reader::new(io::stdin());
+//! let mut reader = fasta::Reader::new(io::stdin());
 //! let mut writer = fasta::Writer::new(vec![]);
 //! for record in reader.records() {
 //!     let rec = record.ok().expect("Error reading record.");
@@ -591,9 +592,9 @@ impl<W: io::Write> Writer<W> {
     ///
     /// # Examples
     /// ```rust
-    /// use std::io;
+    /// use bio::io::fasta::{Record, Writer};
     /// use std::fs;
-    /// use bio::io::fasta::{Writer, Record};
+    /// use std::io;
     /// use std::path::Path;
     ///
     /// let path = Path::new("test.fa");
@@ -1468,12 +1469,12 @@ ATTGTTGTTTTA
         let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
 
         assert_eq!(actual.kind(), expected.kind());
-        assert!(actual.to_string().starts_with("No such file or directory"))
     }
 
     #[test]
     fn test_writer_to_file_dir_exists_returns_ok() {
-        let path = Path::new("/tmp/out.fa");
+        let file = tempfile::NamedTempFile::new().expect("Could not create temp file");
+        let path = file.path();
 
         assert!(Writer::to_file(path).is_ok())
     }

@@ -13,13 +13,11 @@
 //! [these slides](http://cecas.clemson.edu/~ahoover/ece854/refs/Gonze-ViterbiAlgorithm.pdf).
 //!
 //! ```rust
-//! # extern crate bio;
-//! #[macro_use] extern crate approx;
-//! #[macro_use] extern crate ndarray;
-//!
-//! use bio::stats::Prob;
+//! use approx::assert_relative_eq;
 //! use bio::stats::hmm::discrete_emission::Model as DiscreteEmissionHMM;
 //! use bio::stats::hmm::viterbi;
+//! use bio::stats::Prob;
+//! use ndarray::array;
 //!
 //! let transition = array![[0.5, 0.5], [0.4, 0.6]];
 //! let observation = array![[0.2, 0.3, 0.3, 0.2], [0.3, 0.2, 0.2, 0.3]];
@@ -35,15 +33,12 @@
 //! ### Continuous (Gaussian) Emission Distribution
 //!
 //! ```rust
-//! # extern crate bio;
-//! #[macro_use] extern crate approx;
-//! #[macro_use] extern crate ndarray;
-//! # extern crate statrs;
-//!
-//! use bio::stats::Prob;
+//! use approx::assert_relative_eq;
 //! use bio::stats::hmm::univariate_continuous_emission::GaussianModel as GaussianHMM;
-//! use statrs::distribution::Normal;
 //! use bio::stats::hmm::viterbi;
+//! use bio::stats::Prob;
+//! use ndarray::array;
+//! use statrs::distribution::Normal;
 //!
 //! let transition = array![[0.5, 0.5], [0.4, 0.6]];
 //! let observation = vec![

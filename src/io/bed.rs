@@ -238,8 +238,8 @@ impl<'a> From<&'a Record> for annot::contig::Contig<String, strand::Strand> {
     /// # extern crate bio;
     /// # extern crate bio_types;
     /// use bio::io::bed;
-    /// use bio_types::strand::Strand;
     /// use bio_types::annot::contig::Contig;
+    /// use bio_types::strand::Strand;
     /// # use std::error::Error;
     /// # fn try_main() -> Result<(), Box<Error>> {
     /// let example = b"chr1\t5\t5000\tname1\t0.5";
@@ -314,15 +314,22 @@ where
 /// ```
 /// # extern crate bio;
 /// # extern crate bio_types;
-/// use bio_types::strand::ReqStrand;
-/// use bio_types::annot::AnnotError;
-/// use bio_types::annot::spliced::{Spliced,SplicingError};
 /// use bio::io::bed;
+/// use bio_types::annot::spliced::{Spliced, SplicingError};
+/// use bio_types::annot::AnnotError;
+/// use bio_types::strand::ReqStrand;
 /// # fn try_main() -> Result<(), Box<SplicingError>> {
-/// let tad3 = Spliced::with_lengths_starts("chrXII".to_owned(), 765265,
-///                                         &vec![808,52,109], &vec![0,864,984],
-///                                         ReqStrand::Reverse)?;
-/// assert_eq!(tad3.to_string(), "chrXII:765265-766073;766129-766181;766249-766358(-)");
+/// let tad3 = Spliced::with_lengths_starts(
+///     "chrXII".to_owned(),
+///     765265,
+///     &vec![808, 52, 109],
+///     &vec![0, 864, 984],
+///     ReqStrand::Reverse,
+/// )?;
+/// assert_eq!(
+///     tad3.to_string(),
+///     "chrXII:765265-766073;766129-766181;766249-766358(-)"
+/// );
 /// let tad3_exons = tad3.exon_contigs();
 /// assert_eq!(tad3_exons.len(), 3);
 /// assert_eq!(tad3_exons[0].to_string(), "chrXII:766249-766358(-)");
@@ -335,8 +342,12 @@ where
 ///     tad3_bed.set_name("YLR316C");
 ///     writer.write(&tad3_bed).ok().unwrap();
 /// }
-/// assert_eq!("chrXII\t765265\t766358\tYLR316C\t0\t-\t765265\t766358\t0\t3\t808,52,109,\t0,864,984,\n",
-///            String::from_utf8(buf).unwrap_or_else(|_| "???".to_owned()).as_str());
+/// assert_eq!(
+///     "chrXII\t765265\t766358\tYLR316C\t0\t-\t765265\t766358\t0\t3\t808,52,109,\t0,864,984,\n",
+///     String::from_utf8(buf)
+///         .unwrap_or_else(|_| "???".to_owned())
+///         .as_str()
+/// );
 /// # Ok(())
 /// # }
 /// # fn main() { try_main().unwrap(); }

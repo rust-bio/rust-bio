@@ -9,8 +9,9 @@
 //!
 //! ```
 //! // import functions (at top of script)
-//! use std::io;
 //! use bio::io::fastq;
+//! use bio::io::fastq::FastqRead;
+//! use std::io;
 //! // run within a function
 //! let mut reader = fastq::Reader::new(io::stdin());
 //! let mut record = fastq::Record::new();
@@ -19,9 +20,9 @@
 //!     let check = record.check();
 //!     if check.is_err() {
 //!         panic!("I got a rubbish record!")
-//!      }
-//!  // your record is ok - do something with it...
-//!  reader.read(&mut record).expect("Failed to parse record");
+//!     }
+//!     // your record is ok - do something with it...
+//!     reader.read(&mut record).expect("Failed to parse record");
 //! }
 //! ```
 
@@ -77,7 +78,9 @@ impl<R: io::Read> Reader<R> {
     /// use bio::io::fastq;
     ///
     /// let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
-    /// let records = fastq::Reader::new(fq).records().map(|record| record.unwrap());
+    /// let records = fastq::Reader::new(fq)
+    ///     .records()
+    ///     .map(|record| record.unwrap());
     /// for record in records {
     ///     assert!(record.check().is_ok())
     /// }
@@ -112,8 +115,8 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use bio::io::fastq::{Reader, FastqRead};
     /// use bio::io::fastq::Record;
+    /// use bio::io::fastq::{FastqRead, Reader};
     /// const FASTQ_FILE: &'static [u8] = b"@id desc
     /// AAAA
     /// +
@@ -261,7 +264,6 @@ impl Record {
     /// record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG", b"QQQQQQQ");
     /// assert!(record.check().is_ok());
     /// ```
-    ///
     pub fn check(&self) -> Result<(), &str> {
         if self.id().is_empty() {
             return Err("Expecting id for FastQ record.");
@@ -680,7 +682,6 @@ IIIIIIJJJJJJ
         let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
 
         assert_eq!(actual.kind(), expected.kind());
-        assert!(actual.to_string().starts_with("No such file or directory"))
     }
 
     #[test]
@@ -775,12 +776,12 @@ IIIIIIJJJJJJ
         let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
 
         assert_eq!(actual.kind(), expected.kind());
-        assert!(actual.to_string().starts_with("No such file or directory"))
     }
 
     #[test]
     fn test_writer_to_file_dir_exists_returns_ok() {
-        let path = Path::new("/tmp/out.fq");
+        let file = tempfile::NamedTempFile::new().expect("Could not create temp file");
+        let path = file.path();
 
         assert!(Writer::to_file(path).is_ok())
     }

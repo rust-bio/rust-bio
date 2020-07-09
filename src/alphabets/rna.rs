@@ -49,11 +49,34 @@ lazy_static! {
 }
 
 /// Return complement of given RNA alphabet character (IUPAC alphabet supported).
+///
+/// Casing of input character is preserved, e.g. `u` → `a`, but `U` → `A`.
+/// All `N`s and `Z`s remain as they are.
+///
+/// ```
+/// use bio::alphabets::rna;
+///
+/// assert_eq!(rna::complement(65), 85); // A → U
+/// assert_eq!(rna::complement(103), 99); // g → c
+/// assert_eq!(rna::complement(89), 82); // Y → R
+/// assert_eq!(rna::complement(115), 115); // s → s
+/// assert_eq!(rna::complement(78), 78); // N → N
+/// ```
 pub fn complement(a: u8) -> u8 {
     COMPLEMENT[a as usize]
 }
 
 /// Calculate reverse complement of given text (IUPAC alphabet supported).
+///
+/// Casing of characters is preserved, e.g. `b"uAGg"` → `b"cCUa"`.
+/// All `N`s and `Z`s remain as they are.
+///
+/// ```
+/// use bio::alphabets::rna;
+///
+/// assert_eq!(rna::revcomp(b"ACGUN"), b"NACGU");
+/// assert_eq!(rna::revcomp(b"GaUuaCA"), b"UGuaAuC");
+/// assert_eq!(rna::revcomp(b"AGCUYRWSKMDVHBNZ"), b"ZNVDBHKMSWYRAGCU");
 pub fn revcomp<C, T>(text: T) -> Vec<u8>
 where
     C: Borrow<u8>,
