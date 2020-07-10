@@ -117,6 +117,10 @@ pub struct Entry<T: Ord> {
 impl<T: Ord> Entry<T> {
     /// Create a new `Entry` for `prob` at `value`.
     ///
+    /// `value` needs to have the Trait [`std::cmp::Ord`](https://doc.rust-lang.org/std/cmp/trait.Ord.html)
+    /// implemented. As `f64` only has PartialOrd, use something like the [`ordered_float` crate](https://docs.rs/ordered-float/1.0.2/ordered_float/)
+    /// if you want to use floating point numbers.
+    ///
     /// # Example
     ///
     /// ```
@@ -138,12 +142,15 @@ pub struct CDF<T: Ord> {
 }
 
 impl<T: Ord> CDF<T> {
-    /// Create CDF from given probability mass function (PMF). The PMF may contain duplicate values
-    /// the probabilities of which are summed during generation of the CDF.
+    /// Create CDF from a vector representing a probability mass function (PMF).
+    /// The PMF may contain duplicate values the probabilities of which are summed
+    /// during generation of the CDF.
+    ///
+    /// Runtime complexity: O(n), where n is the number of `entries`.
     ///
     /// # Arguments
     ///
-    /// * `pmf` - The PMF as a vector of `Entry` objects (values with an associated `LogProb`).
+    /// * `entries` - The PMF as a vector of `Entry` objects (values with an associated `LogProb`).
     pub fn from_pmf(mut entries: Vec<Entry<T>>) -> Self {
         entries.sort_by(|a, b| a.value.cmp(&b.value));
         let mut inner: Vec<Entry<T>> = Vec::new();
@@ -163,17 +170,15 @@ impl<T: Ord> CDF<T> {
 
         // cap at prob=1.0 if there are slightly exceeding values due to numerical issues.
         for e in &mut cdf.inner {
-            if relative_eq!(*e.prob, *LogProb::ln_one(), epsilon = 0.00001)
-                && *e.prob > *LogProb::ln_one()
-            {
-                e.prob = LogProb::ln_one();
-            }
+            e.prob = e.prob.cap_numerical_overshoot(0.00001);
         }
 
         cdf
     }
 
     /// Create CDF from iterator. This can be used to replace the values of a CDF.
+    ///
+    /// Runtime complexity: O(n), where n is the number of `entries`.
     ///
     /// # Arguments
     ///
@@ -185,6 +190,8 @@ impl<T: Ord> CDF<T> {
     }
 
     /// Reduce CDF by omitting values with zero probability.
+    ///
+    /// Runtime complexity: O(n), where n is the number of `value`s with `prob` of zero.
     pub fn reduce(self) -> Self {
         let mut inner = Vec::new();
         let mut last = LogProb::ln_zero();
@@ -199,6 +206,12 @@ impl<T: Ord> CDF<T> {
 
     /// Downsample CDF to n entries. Panics if n <= 1 and returns identity if n is greater
     /// than the number of entries.
+    ///
+    /// Runtime complexity: O(x), where x is the original number of `Entry`s in `CDF`.
+    ///
+    /// # Arguments
+    ///
+    /// * `n` - Number of wanted entries after downsampling.
     pub fn sample(mut self, n: usize) -> Self {
         assert!(n > 1);
         if self.inner.len() <= n {
@@ -226,6 +239,8 @@ impl<T: Ord> CDF<T> {
     }
 
     /// Provide an iterator over the PMF corresponding to this CDF.
+    ///
+    /// Runtime complexity: O(n), where n is the number of `Entry`s in `CDF`.
     pub fn iter_pmf(&self) -> CDFPMFIter<'_, T> {
         fn cdf_to_pmf<'a, G: Ord>(
             last_prob: &mut LogProb,
@@ -241,7 +256,7 @@ impl<T: Ord> CDF<T> {
     /// Get cumulative probability for a given value.
     ///
     /// If the value is not present, return the probability of the previous value.
-    /// Complexity: O(log n).
+    /// Time complexity: O(log n), where n is the number of `Entry`s in `CDF`.
     ///
     /// # Arguments
     ///
@@ -263,8 +278,9 @@ impl<T: Ord> CDF<T> {
         }
     }
 
-    /// Get probability (i.e. probability mass) for a given value.
-    /// Time complexity: O(log n), where n is number of `Entries` in `CDF`.
+    /// Get probability (i.e. probability mass) for a given `value`.
+    ///
+    /// Time complexity: O(log n), where n is the number of `Entry`s in `CDF`.
     pub fn get_pmf(&self, value: &T) -> Option<LogProb> {
         if self.inner.is_empty() {
             None
@@ -289,11 +305,15 @@ impl<T: Ord> CDF<T> {
     }
 
     /// Return total probability of the `CDF`.
+    ///
+    /// Time complexity: O(n), where n is the number of `Entry`s in `CDF`.
     pub fn total_prob(&self) -> LogProb {
         self.inner.last().map_or(LogProb::ln_zero(), |e| e.prob)
     }
 
     /// Return maximum a posteriori probability estimate (MAP).
+    ///
+    /// Time complexity: O(n), where n is the number of `Entry`s in `CDF`.
     pub fn map(&self) -> Option<&T> {
         if let Some(mut max) = self.iter_pmf().next() {
             for e in self.iter_pmf() {
@@ -309,6 +329,12 @@ impl<T: Ord> CDF<T> {
 
     /// Return w%-credible interval. The width w is a float between 0 and 1. Panics otherwise.
     /// E.g. provide `width=0.95` for the 95% credible interval.
+    ///
+    /// Runtime complexity: O(log n), where n is the number of `Entry`s in `CDF`.
+    ///
+    /// # Arguments
+    ///
+    /// * `width` - wanted width of the credible interval in percent
     pub fn credible_interval(&self, width: f64) -> Option<Range<&T>> {
         assert!(width >= 0.0 && width <= 1.0);
 
@@ -334,12 +360,16 @@ impl<T: Ord> CDF<T> {
         Some(&self.inner[lower].value..&self.inner[upper].value)
     }
 
-    /// Number of entries in the CDF.
+    /// Number of `Entry`s in the `CDF`.
+    ///
+    /// Time complexity: O(1)
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
     /// Returns `true` if a CDF is empty, false otherwise.
+    ///
+    /// Time complexity: O(1)
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
@@ -350,6 +380,8 @@ where
     f64: From<T>,
 {
     /// Calculate expected value.
+    ///
+    /// Runtime complexity: O(n), where n is the number of `Entry`s in `CDF`.
     pub fn expected_value(&self) -> f64 {
         self.iter_pmf()
             .map(|e| f64::from(e.value.clone()) * e.prob.exp())
@@ -357,6 +389,8 @@ where
     }
 
     /// Calculate variance.
+    ///
+    /// Runtime complexity: O(n), where n is the number of `Entry`s in `CDF`.
     pub fn variance(&self) -> f64 {
         let ev = self.expected_value();
         self.iter_pmf()
@@ -365,6 +399,8 @@ where
     }
 
     /// Calculate standard deviation.
+    ///
+    /// Runtime complexity: O(n), where n is the number of `Entry`s in `CDF`.
     pub fn standard_deviation(&self) -> f64 {
         self.variance().sqrt()
     }
