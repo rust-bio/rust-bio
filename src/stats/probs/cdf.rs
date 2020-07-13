@@ -304,7 +304,7 @@ impl<T: Ord> CDF<T> {
 
     /// Return total probability of the `CDF`.
     ///
-    /// Time complexity: O(n), where n is the number of `Entry`s in `CDF`.
+    /// Time complexity: O(1).
     pub fn total_prob(&self) -> LogProb {
         self.inner.last().map_or(LogProb::ln_zero(), |e| e.prob)
     }
