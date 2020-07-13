@@ -146,7 +146,7 @@ impl<T: Ord> CDF<T> {
     /// The PMF may contain duplicate values the probabilities of which are summed
     /// during generation of the CDF.
     ///
-    /// Runtime complexity: O(n), where n is the number of `entries`.
+    /// Runtime complexity: O(n log n), where n is the number of `entries`.
     ///
     /// # Arguments
     ///
