@@ -207,11 +207,11 @@ impl<T: Ord> CDF<T> {
     /// Downsample CDF to n entries. Panics if n <= 1 and returns identity if n is greater
     /// than the number of entries.
     ///
-    /// Runtime complexity: O(x), where x is the original number of `Entry`s in `CDF`.
+    /// Runtime complexity: O(m), where m is the original number of `Entry`s in `CDF`.
     ///
     /// # Arguments
     ///
-    /// * `n` - Number of wanted entries after downsampling.
+    /// * `n` - Number of entries after downsampling.
     pub fn sample(mut self, n: usize) -> Self {
         assert!(n > 1);
         if self.inner.len() <= n {
@@ -239,8 +239,6 @@ impl<T: Ord> CDF<T> {
     }
 
     /// Provide an iterator over the PMF corresponding to this CDF.
-    ///
-    /// Runtime complexity: O(n), where n is the number of `Entry`s in `CDF`.
     pub fn iter_pmf(&self) -> CDFPMFIter<'_, T> {
         fn cdf_to_pmf<'a, G: Ord>(
             last_prob: &mut LogProb,
