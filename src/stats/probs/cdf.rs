@@ -334,7 +334,7 @@ impl<T: Ord> CDF<T> {
     ///
     /// # Arguments
     ///
-    /// * `width` - wanted width of the credible interval in percent
+    /// * `width` - wanted width of the credible interval as a fraction of 1.
     pub fn credible_interval(&self, width: f64) -> Option<Range<&T>> {
         assert!(width >= 0.0 && width <= 1.0);
 
