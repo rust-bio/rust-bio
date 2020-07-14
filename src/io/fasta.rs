@@ -3,22 +3,99 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! FASTA format reading and writing.
+//! Structs and trait to read and write file in FASTA format.
 //!
 //! # Example
+//!
+//! ## Read
+//!
+//! In this example we parse fasta file from stdin and compute some statistics
 //!
 //! ```
 //! // import functions (at top of script)
 //! use std::io;
 //! use bio::io::fasta;
-//! use std::io;
-//! // run within a function
+//! // call within functions
 //! let mut reader = fasta::Reader::new(io::stdin());
-//! let mut writer = fasta::Writer::new(vec![]);
-//! for record in reader.records() {
-//!     let rec = record.ok().expect("Error reading record.");
-//!     println!("{}", rec.id:());
-//!     writer.write(&rec).ok().expect("Error writing record.");
+//!
+//! let mut nb_reads = 0;
+//! let mut nb_bases = 0;
+//!
+//! for result in reader.records() {
+//!     let record = result.expect("Error durring fasta record parsing");
+//!     println!("{}", record.id:());     
+//!
+//!     nb_reads += 1;
+//!     nb_bases += record.seq().len();
+//! }
+//!
+//! println!("Number of reads: {}", nb_reads);
+//! println!("Number of bases: {}", nb_bases);
+//! ```
+//!
+//! We can also use a `while` loop to iterate over record
+//! ```
+//! use std::io;
+//! use bio::io::fasta;
+//! let mut records = fasta::Reader::new(io::stdin()).records();
+//!
+//! let mut nb_reads = 0;
+//! let mut nb_bases = 0;
+//!
+//! while let Some(Ok(record)) = records.next() {
+//!     nb_reads += 1;
+//!     nb_bases += record.seq().len();
+//! }
+//!
+//! println!("Number of reads: {}", nb_reads);
+//! println!("Number of bases: {}", nb_bases);
+//! ```
+//!
+//! ## Write
+//!
+//! In this example we generate 10 random sequence with length 100 and write it in stdout.
+//!
+//! ```
+//! use std::io;
+//! use bio::io::fasta;
+//!
+//! let mut seed = 42;
+//!
+//! let nucleotides = [b'A', b'C', b'G', b'T'];
+//!
+//! let mut writer = fasta::Writer::new(io::stdout());
+//!
+//! for _ in 0..10 {
+//!     let seq = (0..100).map(|_| {
+//!         seed = ((seed ^ seed << 13) ^ seed >> 7) ^ seed << 17; // don't use this random generator
+//!         nucleotides[seed % 4]
+//!     }).collect::<Vec<u8>>();
+//!
+//!    writer.write("random", None, seq.as_slice()).ok().expect("Error writing record.");
+//! }
+//! ```
+//!
+//! ## Read and Write
+//!
+//! In this example we filter reads from stdin on sequence length and write it in stdout
+//!
+//! ```
+//! use std::io;
+//! use bio::io::fasta;
+//! use bio::io::fasta::FastaRead;
+//!
+//! let mut reader = fasta::Reader::new(io::stdin());
+//! let mut writer = fasta::Writer::new(io::stdout());
+//! let mut record = fasta::Record::new();
+//!
+//! while let Ok(()) = reader.read(&mut record) {
+//!     if record.is_empty() {
+//!         break;
+//!     }
+//!
+//!     if record.seq().len() > 100 {
+//!         writer.write_record(&record).ok().expect("Error writing record.");
+//!     }
 //! }
 //! ```
 
