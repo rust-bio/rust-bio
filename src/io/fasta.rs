@@ -23,7 +23,7 @@
 //!
 //! for result in reader.records() {
 //!     let record = result.expect("Error durring fasta record parsing");
-//!     println!("{}", record.id:());     
+//!     println!("{}", record.id:());
 //!
 //!     nb_reads += 1;
 //!     nb_bases += record.seq().len();
