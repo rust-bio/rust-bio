@@ -9,7 +9,7 @@
 //!
 //! ## Read
 //!
-//! In this example we parse fasta file from stdin and compute some statistics
+//! In this example, we parse a fastq file from stdin and compute some statistics
 //!
 //! ```
 //! use std::io;
