@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Structs and trait to read and write file in FASTA format.
+//! Structs and trait to read and write file in FASTQ format.
 //!
 //! # Example
 //!
@@ -20,7 +20,7 @@
 //! let mut nb_bases = 0;
 //!
 //! for result in reader.records() {
-//!     let record = result.expect("Error durring fasta record parsing");
+//!     let record = result.expect("Error during fastq record parsing");
 //!
 //!     nb_reads += 1;
 //!     nb_bases += record.seq().len();
@@ -30,7 +30,7 @@
 //! println!("Number of bases: {}", nb_bases);
 //! ```
 //!
-//! We can also use a `while` loop to iterate over record
+//! We can also use a `while` loop to iterate over records
 //! ```
 //! use std::io;
 //! use bio::io::fastq;
@@ -50,7 +50,7 @@
 //!
 //! ## Write
 //!
-//! In this example we generate 10 random sequence with length 100 and write it in stdout.
+//! In this example we generate 10 random sequences with length 100 and write them to sdtout.
 //!
 //! ```
 //! use std::io;
@@ -76,7 +76,7 @@
 //!
 //! ## Read and Write
 //!
-//! In this example we filter reads from stdin on mean quality (Phred + 33) and write it in stdout
+//! In this example we filter reads from stdin on mean quality (Phred + 33) and write them to sdtout
 //!
 //! ```
 //! // import functions (at top of script)

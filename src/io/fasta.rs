@@ -54,7 +54,7 @@
 //!
 //! ## Write
 //!
-//! In this example we generate 10 random sequence with length 100 and write it in stdout.
+//! In this example we generate 10 random sequence with length 100 and write them to sdtout.
 //!
 //! ```
 //! use std::io;
@@ -78,7 +78,7 @@
 //!
 //! ## Read and Write
 //!
-//! In this example we filter reads from stdin on sequence length and write it in stdout
+//! In this example we filter reads from stdin on sequence length and write them to sdtout
 //!
 //! ```
 //! use std::io;
