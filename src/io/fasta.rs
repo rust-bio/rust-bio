@@ -9,7 +9,7 @@
 //!
 //! ## Read
 //!
-//! In this example we parse fasta file from stdin and compute some statistics
+//! In this example, we parse a fasta file from stdin and compute some statistics
 //!
 //! ```
 //! // import functions (at top of script)
