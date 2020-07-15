@@ -92,9 +92,6 @@
 //! while let Ok(()) = reader.read(&mut record) {
 //!     if record.is_empty() {
 //!         let check = record.check();
-//!         if check.is_err() {
-//!             panic!("I got a rubbish record!");
-//!         }
 //!         break;
 //!     }
 //!
