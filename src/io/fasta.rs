@@ -33,7 +33,8 @@
 //! println!("Number of bases: {}", nb_bases);
 //! ```
 //!
-//! We can also use a `while` loop to iterate over record
+//! We can also use a `while` loop to iterate over records.
+//! This is slightly faster than the `for` loop.
 //! ```
 //! use std::io;
 //! use bio::io::fasta;
