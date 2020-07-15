@@ -89,7 +89,7 @@
 //! let mut writer = fastq::Writer::new(io::stdout());
 //! let mut record = fastq::Record::new();
 //!
-//! while let Ok(()) = reader.read(&mut record).expect("Failed to parse record") {
+//! while let Ok(()) = reader.read(&mut record) {
 //!     if record.is_empty() {
 //!         let check = record.check();
 //!         if check.is_err() {
