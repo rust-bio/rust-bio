@@ -12,7 +12,6 @@
 //! # Example
 //!
 //! ```
-//! // import functions (at top of script)
 //! use bio::io::gff;
 //! use std::io;
 //! // run within a function
