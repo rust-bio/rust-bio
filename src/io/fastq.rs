@@ -83,7 +83,6 @@
 //! use bio::io::fastq;
 //! use bio::io::fastq::FastqRead;
 //!
-//! // call within functions
 //! let mut reader = fastq::Reader::new(io::stdin());
 //! let mut writer = fastq::Writer::new(io::stdout());
 //! let mut record = fastq::Record::new();
