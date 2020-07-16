@@ -54,7 +54,7 @@
 //!
 //! ## Write
 //!
-//! In this example we generate 10 random sequence with length 100 and write them to sdtout.
+//! In this example we generate 10 random sequences with length 100 and write them to stdout.
 //!
 //! ```
 //! use std::io;
