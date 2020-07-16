@@ -79,7 +79,6 @@
 //! In this example we filter reads from stdin on mean quality (Phred + 33) and write them to stdout
 //!
 //! ```
-//! // import functions (at top of script)
 //! use std::io;
 //! use bio::io::fastq;
 //! use bio::io::fastq::FastqRead;
