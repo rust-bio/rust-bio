@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Structs and trait to read and write file in FASTA format.
+//! Structs and trait to read and write files in FASTA format.
 //!
 //! # Example
 //!
