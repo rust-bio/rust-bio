@@ -9,17 +9,7 @@
 //! use bio_types::annot::contig::Contig;
 //! use bio_types::strand::ReqStrand;
 //!
-//! // Insert an object with the `Loc` trait into the container at its location.
-//! let mut gene_locs = AnnotMap::new();
-//! let tma19 = Contig::new(
-//!     "chrXI".to_owned(),
-//!     334412,
-//!     (334916 - 334412),
-//!     ReqStrand::Reverse,
-//! );
-//! gene_locs.insert_loc(tma19);
-//!
-//! // Alternatively, insert an object into the container at a specified location.
+//! // Insert a String annotation into the annotation map at a specified location.
 //! let mut genes: AnnotMap<String, String> = AnnotMap::new();
 //! let tma22 = Contig::new(
 //!     "chrX".to_owned(),
@@ -90,7 +80,15 @@ where
         Default::default()
     }
 
-    /// Insert an object into the container at a specified location.
+    /// Insert an object into the container at a specified location (`Loc`).
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - any type of data the inserted location / region
+    /// * `location` - any object with the `Loc` trait implemented, determining
+    ///   the Range at which to insert the `data`
+    ///
+    /// # Example
     ///
     /// ```
     /// extern crate bio_types;
@@ -149,7 +147,32 @@ where
 {
     /// Insert an object with the `Loc` trait into the container at
     /// its location.
-    /// Equivalent to inserting `data` at `data.contig()`.
+    ///
+    /// This inserts all of `data` at the Range of length `data.length()`
+    /// that starts at `data.start()`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// extern crate bio_types;
+    /// use bio::data_structures::annot_map::AnnotMap;
+    /// use bio_types::annot::contig::Contig;
+    /// use bio_types::strand::ReqStrand;
+    ///
+    /// let mut gene_locs = AnnotMap::new();
+    /// let tma19 = Contig::new(
+    ///     String::from("chrXI"),
+    ///     334412,
+    ///     (334916 - 334412),
+    ///     ReqStrand::Reverse,
+    /// );
+    /// let assert_copy = tma19.clone();
+    /// gene_locs.insert_loc(tma19);
+    /// // Find annotations that overlap a specific query
+    /// let query = Contig::new(String::from("chrXI"), 334400, 100, ReqStrand::Reverse);
+    /// let hits: Vec<&Contig<String,ReqStrand>> = gene_locs.find(&query).map(|e| e.data()).collect();
+    /// assert_eq!(hits, vec![&assert_copy]);
+    /// ```
     pub fn insert_loc(&mut self, data: T) {
         let itree = self
             .refid_itrees
