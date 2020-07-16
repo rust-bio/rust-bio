@@ -9,22 +9,27 @@
 //! use bio_types::annot::contig::Contig;
 //! use bio_types::strand::ReqStrand;
 //!
-//! let mut genes: AnnotMap<String, String> = AnnotMap::new();
+//! // Insert an object with the `Loc` trait into the container at its location.
+//! let mut gene_locs = AnnotMap::new();
 //! let tma19 = Contig::new(
 //!     "chrXI".to_owned(),
 //!     334412,
 //!     (334916 - 334412),
 //!     ReqStrand::Reverse,
 //! );
+//! gene_locs.insert_loc(tma19);
+//!
+//! // Alternatively, insert an object into the container at a specified location.
+//! let mut genes: AnnotMap<String, String> = AnnotMap::new();
 //! let tma22 = Contig::new(
 //!     "chrX".to_owned(),
 //!     461829,
 //!     462426 - 461829,
 //!     ReqStrand::Forward,
 //! );
-//! genes.insert_at("TMA19".to_owned(), &tma19);
 //! genes.insert_at("TMA22".to_owned(), &tma22);
 //!
+//! // Find annotations that overlap a specific query
 //! let query = Contig::new("chrX".to_owned(), 462400, 100, ReqStrand::Forward);
 //! let hits: Vec<&String> = genes.find(&query).map(|e| e.data()).collect();
 //! assert_eq!(hits, vec!["TMA22"]);
