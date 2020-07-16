@@ -78,7 +78,7 @@
 //!
 //! ## Read and Write
 //!
-//! In this example we filter reads from stdin on sequence length and write them to sdtout
+//! In this example we filter reads from stdin on sequence length and write them to stdout
 //!
 //! ```
 //! use std::io;
