@@ -15,7 +15,6 @@
 //! // import functions (at top of script)
 //! use std::io;
 //! use bio::io::fasta;
-//! // call within functions
 //! let mut reader = fasta::Reader::new(io::stdin());
 //!
 //! let mut nb_reads = 0;
