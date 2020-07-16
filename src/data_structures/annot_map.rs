@@ -5,13 +5,23 @@
 //!
 //! ```
 //! extern crate bio_types;
-//! use bio_types::strand::ReqStrand;
-//! use bio_types::annot::contig::Contig;
 //! use bio::data_structures::annot_map::AnnotMap;
+//! use bio_types::annot::contig::Contig;
+//! use bio_types::strand::ReqStrand;
 //!
-//! let mut genes: AnnotMap<String,String> = AnnotMap::new();
-//! let tma19 = Contig::new("chrXI".to_owned(), 334412, (334916 - 334412), ReqStrand::Reverse);
-//! let tma22 = Contig::new("chrX".to_owned(), 461829, 462426 - 461829, ReqStrand::Forward);
+//! let mut genes: AnnotMap<String, String> = AnnotMap::new();
+//! let tma19 = Contig::new(
+//!     "chrXI".to_owned(),
+//!     334412,
+//!     (334916 - 334412),
+//!     ReqStrand::Reverse,
+//! );
+//! let tma22 = Contig::new(
+//!     "chrX".to_owned(),
+//!     461829,
+//!     462426 - 461829,
+//!     ReqStrand::Forward,
+//! );
 //! genes.insert_at("TMA19".to_owned(), &tma19);
 //! genes.insert_at("TMA22".to_owned(), &tma22);
 //!
@@ -69,7 +79,7 @@ where
     ///
     /// ```
     /// use bio::data_structures::annot_map::AnnotMap;
-    /// let mut genes: AnnotMap<String,String> = AnnotMap::new();
+    /// let mut genes: AnnotMap<String, String> = AnnotMap::new();
     /// ```
     pub fn new() -> Self {
         Default::default()
@@ -79,12 +89,17 @@ where
     ///
     /// ```
     /// extern crate bio_types;
-    /// use bio_types::strand::ReqStrand;
-    /// use bio_types::annot::contig::Contig;
     /// use bio::data_structures::annot_map::AnnotMap;
+    /// use bio_types::annot::contig::Contig;
+    /// use bio_types::strand::ReqStrand;
     ///
-    /// let mut genes: AnnotMap<String,String> = AnnotMap::new();
-    /// let tma22 = Contig::new("chrX".to_owned(), 461829, 462426 - 461829, ReqStrand::Forward);
+    /// let mut genes: AnnotMap<String, String> = AnnotMap::new();
+    /// let tma22 = Contig::new(
+    ///     "chrX".to_owned(),
+    ///     461829,
+    ///     462426 - 461829,
+    ///     ReqStrand::Forward,
+    /// );
     /// genes.insert_at("TMA22".to_owned(), &tma22);
     /// ```
     pub fn insert_at<L>(&mut self, data: T, location: &L)

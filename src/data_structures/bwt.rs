@@ -29,8 +29,8 @@ pub type BWTFind = Vec<usize>;
 /// # Example
 ///
 /// ```
-/// use bio::data_structures::suffix_array::suffix_array;
 /// use bio::data_structures::bwt::bwt;
+/// use bio::data_structures::suffix_array::suffix_array;
 /// let text = b"GCCTTAACATTATTACGCCTA$";
 /// let pos = suffix_array(text);
 /// let bwt = bwt(text, &pos);
@@ -118,7 +118,10 @@ impl Occ {
         //
         // The below manual count code is roughly equivalent to:
         // ```
-        // let count = bwt[(i * self.k) + 1..r + 1].iter().filter(|&&c| c == a).count();
+        // let count = bwt[(i * self.k) + 1..r + 1]
+        //     .iter()
+        //     .filter(|&&c| c == a)
+        //     .count();
         // self.occ[i][a as usize] + count
         // ```
         //
