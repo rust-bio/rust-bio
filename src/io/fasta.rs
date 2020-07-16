@@ -12,7 +12,6 @@
 //! In this example, we parse a fasta file from stdin and compute some statistics
 //!
 //! ```
-//! // import functions (at top of script)
 //! use std::io;
 //! use bio::io::fasta;
 //! let mut reader = fasta::Reader::new(io::stdin());
