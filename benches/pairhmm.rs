@@ -73,7 +73,9 @@ impl GapParameters for SemiglobalGapParams {
     }
 }
 
-impl StartEndGapParameters for SemiglobalGapParams {
+pub struct SemiglobalAlignment;
+
+impl StartEndGapParameters for SemiglobalAlignment {
     fn free_start_gap_x(&self) -> bool {
         true
     }
@@ -91,11 +93,11 @@ fn pairhmm_semiglobal(b: &mut Bencher) {
     };
     let gap_params = SemiglobalGapParams;
 
-    let mut pair_hmm = PairHMM::new();
-    pair_hmm.prob_related(&gap_params, &emission_params, Some(4));
+    let mut pair_hmm = PairHMM::new(&gap_params);
+    pair_hmm.prob_related(&emission_params, &SemiglobalAlignment, Some(4));
 
     b.iter(|| {
-        let p = pair_hmm.prob_related(&gap_params, &emission_params, Some(4));
+        let p = pair_hmm.prob_related(&emission_params, &SemiglobalAlignment, Some(4));
         assert!(*p <= 0.0);
     });
 }
