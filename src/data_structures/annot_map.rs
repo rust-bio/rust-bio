@@ -70,12 +70,8 @@ impl<R, T> AnnotMap<R, T>
 where
     R: Eq + Hash,
 {
-    /// Create a new, empty `AnnotMap`.
-    ///
-    /// ```
-    /// use bio::data_structures::annot_map::AnnotMap;
-    /// let mut genes: AnnotMap<String, String> = AnnotMap::new();
-    /// ```
+    /// Create a new, empty `AnnotMap`. Used in conjunction with `insert_at`
+    /// or `insert_loc`.
     pub fn new() -> Self {
         Default::default()
     }
@@ -170,7 +166,7 @@ where
     /// gene_locs.insert_loc(tma19);
     /// // Find annotations that overlap a specific query
     /// let query = Contig::new(String::from("chrXI"), 334400, 100, ReqStrand::Reverse);
-    /// let hits: Vec<&Contig<String,ReqStrand>> = gene_locs.find(&query).map(|e| e.data()).collect();
+    /// let hits: Vec<&Contig<String, ReqStrand>> = gene_locs.find(&query).map(|e| e.data()).collect();
     /// assert_eq!(hits, vec![&assert_copy]);
     /// ```
     pub fn insert_loc(&mut self, data: T) {
