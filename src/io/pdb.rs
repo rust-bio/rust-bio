@@ -11,7 +11,7 @@ pub struct Pdb {
 impl Pdb {
     pub fn new(path: &'static str) -> Self {
         Self { 
-          pdb_file: Path::new(path).to_str().unwrap()
+            pdb_file: Path::new(path).to_str().unwrap()
         }
     }
 }
@@ -43,7 +43,7 @@ mod tests {
 
     #[test]
     fn test_new_aasequence() {
-        let test_pdb = Pdb { pdb_file: PDB };
+        let test_pdb = Pdb {pdb_file: PDB};
 
         let new_sequence = AASequence::from_pdb(test_pdb);
         assert_eq!(new_sequence.sequence, "GYDPETGTWG");
