@@ -24,7 +24,7 @@ pub struct AASequence {
 
 impl AASequence {
     // Creates a new AASequence from a pdb file from argument
-    pub fn new(pdb: Pdb) -> Self {
+    pub fn from_pdb(pdb: Pdb) -> Self {
         let my_structure = parser::read_pdb(pdb.pdb_file, &pdb.pdb_file[..]);
 
         let fasta = tools::fasta_seq(&my_structure);
@@ -45,7 +45,7 @@ mod tests {
     fn test_new_aasequence() {
         let test_pdb = Pdb { pdb_file: PDB };
 
-        let new_sequence = AASequence::new(test_pdb);
+        let new_sequence = AASequence::from_pdb(test_pdb);
         assert_eq!(new_sequence.sequence, "GYDPETGTWG");
     }
 }
