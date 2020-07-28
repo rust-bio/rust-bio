@@ -189,7 +189,6 @@ impl BitEnc {
                 for bit in (bit..32).step_by(self.width) {
                     self.set_by_addr(block, bit, value);
                     n -= 1;
-                    bit += self.width
                 }
             }
         }
