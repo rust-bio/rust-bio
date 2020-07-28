@@ -133,7 +133,7 @@ impl BitEnc {
         self.len += 1;
     }
 
-    /// Append the given value `n` times to the encoding.
+    /// Append the given `value` to the encoding `n` times.
     ///
     /// The added values comprise 0 to 1 blocks that need to be filled up
     /// from previous steps, 0 to m blocks that are
