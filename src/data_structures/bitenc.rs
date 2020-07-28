@@ -167,7 +167,7 @@ impl BitEnc {
     ///
     /// bitenc.push_values(6, 17);
     /// // Fills up the current block, adds a whole new one but does not create a partial block.
-    /// // | 42 42 42 42 | 17 17 42 23 | 17 17 17 17 |
+    /// // | 42 42 42 42 | 17 17 23 42 | 17 17 17 17 |
     ///
     /// let values: Vec<u8> = bitenc.iter().collect();
     /// assert_eq!(values, [42, 42, 42, 42, 42, 23, 17, 17, 17, 17, 17, 17]);
@@ -184,42 +184,51 @@ impl BitEnc {
             let (block, bit) = self.addr(self.len);
             if bit > 0 {
                 // insert as many values as required to fill
-                // up the previous block and decrese the number
+                // up the previous block and decrease the number
                 // left to insert accordingly
-                for bit in (bit..32).step_by(self.width) {
+                // The take(n) assures this iterator stops before 
+                // an overflow of n can occur, if less symbols are
+                // added than open slots in the block.
+                for bit in (bit..32).step_by(self.width).take(n) {
                     self.set_by_addr(block, bit, value);
                     n -= 1;
+                    self.len += 1;
                 }
             }
         }
 
-        // Create a full value block containing
-        // as many copies of value as possible.
-        let mut value_block = 0;
-        {
-            let mut v = u32::from(value);
-            for _ in 0..32 / self.width {
-                value_block |= v;
-                v <<= self.width;
+        // If symbols remain to be inserted after
+        // filling up the current block divide them into
+        // full and partial blocks to add them.
+        if n > 0 {
+            // Create a full value block containing
+            // as many copies of value as possible.
+            let mut value_block = 0;
+            {
+                let mut v = u32::from(value);
+                for _ in 0..32 / self.width {
+                    value_block |= v;
+                    v <<= self.width;
+                }
             }
-        }
 
-        // Append as many full value blocks as needed
-        // to reach the last block
-        let i = self.len + n;
-        let (block, bit) = self.addr(i);
-        for _ in self.storage.len()..block {
-            self.storage.push(value_block);
-        }
+            // Append as many full value blocks as needed
+            // to reach the last block
+            let i = self.len + n;
+            let (block, bit) = self.addr(i);
+            for _ in self.storage.len()..block {
+                self.storage.push(value_block);
+            }
 
-        if bit > 0 {
-            // TODO
-            // add the remaining values to a final block
-            let shifted_block = value_block >> (32 - bit);
-            self.storage.push(shifted_block);
+            if bit > 0 {
+                // add the remaining values to a final block
+                // let shifted_block = value_block >> (32 - bit);
+                let shifted_block = value_block >> (self.usable_bits_per_block - bit);
+                self.storage.push(shifted_block);
+            }
+        
+            self.len = i;
         }
-
-        self.len = i;
     }
 
     /// Replace the current value as position `i` with the given value.
@@ -469,6 +478,42 @@ mod tests {
         assert_eq!(bitenc.storage, [0, 0]);
     }
 
+    
+    #[test]
+    fn test_push_values_edge_cases() {
+        //! This is a slight variation of the methods doc test,
+        //! which also creates a new partial block in the last step
+        //! and an additonal full block of 17s.
+        //! As this bloats the result vectors, this was not included
+        //! in the doc test.
+        //! Additionally, this test uses a width of 7 bits, which leave
+        //! some bits unused.
+        
+        let mut bitenc = BitEnc::new(7);
+        // Width: 7 → 4 values per block
+        // | __ __ __ __ | Denotes one block with 4 empty slots and 4 leftover bits
+        
+        bitenc.push_values(5, 0b101010);
+        // This adds one full and one partial block.
+        // | 42 42 42 42 | __ __ __ 42 |
+        
+        let values: Vec<u8> = bitenc.iter().collect();
+        assert_eq!(values, [42, 42, 42, 42, 42]);
+        
+        bitenc.push_values(1, 23);
+        // This only fills up an existing block;
+        // | 42 42 42 42 | __ __ 23 42 |
+        let values: Vec<u8> = bitenc.iter().collect();
+        assert_eq!(values, [42, 42, 42, 42, 42, 23]);
+        
+        bitenc.push_values(12, 17);
+        // Fills up the current block, adds a whole new one AND create a partial block.
+        // | 42 42 42 42 | 17 17 23 42 | 17 17 17 17 | 17 17 17 17 | __ __ 17 17 |
+        
+        let values: Vec<u8> = bitenc.iter().collect();
+        assert_eq!(values, [42, 42, 42, 42, 42, 23, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17]);
+    }
+    
     #[test]
     fn test_issue29() {
         for w in 2..9 {
