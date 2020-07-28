@@ -330,7 +330,7 @@ impl BitEnc {
         )
     }
 
-    /// Get the number of blocks used by the encoding.
+    /// Get the number of symbols encoded.
     ///
     /// Complexity: O(1)
     ///
@@ -342,19 +342,71 @@ impl BitEnc {
     /// let mut bitenc = BitEnc::new(8);
     /// bitenc.push(2);
     /// assert_eq!(bitenc.len(), 1);
-    /// // Add enough 2s to completely fill the first block
     /// bitenc.push(2);
     /// bitenc.push(2);
     /// bitenc.push(2);
-    /// assert_eq!(bitenc.len(), 1);
+    /// assert_eq!(bitenc.len(), 4);
     /// // Add another 2 to create a second block
     /// bitenc.push(2);
-    /// assert_eq!(bitenc.len(), 2);
+    /// assert_eq!(bitenc.len(), 5);
     /// ```
+    #[deprecated(
+        since = "0.33.0",
+        note = "Please use the more specific `nr_blocks` and `nr_symbols` functions instead."
+    )]
     pub fn len(&self) -> usize {
         self.len
     }
 
+    /// Get the number of blocks used by the encoding.
+    ///
+    /// Complexity: O(1)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::bitenc::BitEnc;
+    ///
+    /// let mut bitenc = BitEnc::new(8);
+    /// bitenc.push(2);
+    /// assert_eq!(bitenc.nr_blocks(), 1);
+    /// // Add enough 2s to completely fill the first block
+    /// bitenc.push(2);
+    /// bitenc.push(2);
+    /// bitenc.push(2);
+    /// assert_eq!(bitenc.nr_blocks(), 1);
+    /// // Add another 2 to create a second block
+    /// bitenc.push(2);
+    /// assert_eq!(bitenc.nr_blocks(), 2);
+    /// ```    
+    pub fn nr_blocks(&self) -> usize {
+        self.storage.len()
+    }
+
+    /// Get the number of symbols encoded.
+    ///
+    /// Complexity: O(1)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::bitenc::BitEnc;
+    ///
+    /// let mut bitenc = BitEnc::new(8);
+    /// bitenc.push(2);
+    /// assert_eq!(bitenc.nr_symbols(), 1);
+    /// bitenc.push(2);
+    /// bitenc.push(2);
+    /// bitenc.push(2);
+    /// assert_eq!(bitenc.nr_symbols(), 4);
+    /// bitenc.push(2);
+    /// assert_eq!(bitenc.nr_symbols(), 5);
+    /// ```    
+    pub fn nr_symbols(&self) -> usize {
+        self.len
+    }
+    
+    
     /// Is the encoded sequence empty?
     ///
     /// Complexity: O(1)
