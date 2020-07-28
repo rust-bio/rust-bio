@@ -46,7 +46,7 @@
 /// For values that are not a divider of 32, some bits will remain unused.
 /// For example for `width = 7` only `4 * 7 = 28` bits are used.
 /// Five 7-bit values are stored in 2 blocks.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct BitEnc {
     storage: Vec<u32>,
     width: usize,
@@ -189,6 +189,7 @@ impl BitEnc {
                 for bit in (bit..32).step_by(self.width) {
                     self.set_by_addr(block, bit, value);
                     n -= 1;
+                    bit += self.width
                 }
             }
         }

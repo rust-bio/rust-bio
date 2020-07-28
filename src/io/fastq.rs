@@ -3,24 +3,101 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! FastQ reading.
+//! Structs and trait to read and write files in FASTQ format.
 //!
 //! # Example
+//!
+//! ## Read
+//!
+//! In this example, we parse a fastq file from stdin and compute some statistics
+//!
+//! ```
+//! use std::io;
+//! use bio::io::fastq;
+//! let mut reader = fastq::Reader::new(io::stdin());
+//!
+//! let mut nb_reads = 0;
+//! let mut nb_bases = 0;
+//!
+//! for result in reader.records() {
+//!     let record = result.expect("Error during fastq record parsing");
+//!
+//!     nb_reads += 1;
+//!     nb_bases += record.seq().len();
+//! }
+//!
+//! println!("Number of reads: {}", nb_reads);
+//! println!("Number of bases: {}", nb_bases);
+//! ```
+//!
+//! We can also use a `while` loop to iterate over records
+//! ```
+//! use std::io;
+//! use bio::io::fastq;
+//! let mut records = fastq::Reader::new(io::stdin()).records();
+//!
+//! let mut nb_reads = 0;
+//! let mut nb_bases = 0;
+//!
+//! while let Some(Ok(record)) = records.next() {
+//!     nb_reads += 1;
+//!     nb_bases += record.seq().len();
+//! }
+//!
+//! println!("Number of reads: {}", nb_reads);
+//! println!("Number of bases: {}", nb_bases);
+//! ```
+//!
+//! ## Write
+//!
+//! In this example we generate 10 random sequences with length 100 and write them to stdout.
+//!
+//! ```
+//! use std::io;
+//! use bio::io::fastq;
+//!
+//! let mut seed = 42;
+//!
+//! let nucleotides = [b'A', b'C', b'G', b'T'];
+//!
+//! let mut writer = fastq::Writer::new(io::stdout());
+//!
+//! for _ in 0..10 {
+//!     let seq = (0..100).map(|_| {
+//!         seed = ((seed ^ seed << 13) ^ seed >> 7) ^ seed << 17; // don't use this random generator
+//!         nucleotides[seed % 4]
+//!     }).collect::<Vec<u8>>();
+//!
+//!     let qual = (0..100).map(|_| b'!').collect::<Vec<u8>>();
+//!
+//!    writer.write("random", None, seq.as_slice(), qual.as_slice());
+//! }
+//! ```
+//!
+//! ## Read and Write
+//!
+//! In this example we filter reads from stdin on mean quality (Phred + 33) and write them to stdout
 //!
 //! ```
 //! use std::io;
 //! use bio::io::fastq;
 //! use bio::io::fastq::FastqRead;
+//!
 //! let mut reader = fastq::Reader::new(io::stdin());
+//! let mut writer = fastq::Writer::new(io::stdout());
 //! let mut record = fastq::Record::new();
-//! reader.read(&mut record).expect("Failed to parse record");
-//! while !record.is_empty() {
-//!   let check = record.check();
-//!   if check.is_err() {
-//!       panic!("I got a rubbish record!")
-//!   }
-//!   // your record is ok - do something with it...
-//!   reader.read(&mut record).expect("Failed to parse record");
+//!
+//! while let Ok(()) = reader.read(&mut record) {
+//!     if record.is_empty() {
+//!         let check = record.check();
+//!         break;
+//!     }
+//!
+//!     let mut sum_qual = record.qual().iter().sum::<u8>() as f64;
+//!
+//!     if (sum_qual / record.seq().len() as f64 - 33.0) > 30.0 {
+//!         writer.write_record(&record);
+//!     }
 //! }
 //! ```
 
@@ -76,7 +153,9 @@ impl<R: io::Read> Reader<R> {
     /// use bio::io::fastq;
     ///
     /// let fq: &'static [u8] = b"@id description\nACGT\n+\n!!!!\n";
-    /// let records = fastq::Reader::new(fq).records().map(|record| record.unwrap());
+    /// let records = fastq::Reader::new(fq)
+    ///     .records()
+    ///     .map(|record| record.unwrap());
     /// for record in records {
     ///     assert!(record.check().is_ok())
     /// }
@@ -111,8 +190,8 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use bio::io::fastq::{Reader, FastqRead};
     /// use bio::io::fastq::Record;
+    /// use bio::io::fastq::{FastqRead, Reader};
     /// const FASTQ_FILE: &'static [u8] = b"@id desc
     /// AAAA
     /// +
@@ -260,7 +339,6 @@ impl Record {
     /// record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG", b"QQQQQQQ");
     /// assert!(record.check().is_ok());
     /// ```
-    ///
     pub fn check(&self) -> Result<(), &str> {
         if self.id().is_empty() {
             return Err("Expecting id for FastQ record.");

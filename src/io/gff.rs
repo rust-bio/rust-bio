@@ -12,9 +12,15 @@
 //! # Example
 //!
 //! ```
-//! use std::io;
 //! use bio::io::gff;
-//! let reader = gff::Reader::new(io::stdin(), gff::GffType::GFF3);
+//! use std::io;
+//! let mut reader = gff::Reader::new(io::stdin(), gff::GffType::GFF3);
+//! let mut writer = gff::Writer::new(vec![], gff::GffType::GFF3);
+//! for record in reader.records() {
+//!     let rec = record.ok().expect("Error reading record.");
+//!     println!("{}", rec.seqname());
+//!     writer.write(&rec).ok().expect("Error writing record.");
+//! }
 //! ```
 
 use itertools::Itertools;

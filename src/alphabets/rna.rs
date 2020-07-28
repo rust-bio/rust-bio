@@ -56,11 +56,11 @@ lazy_static! {
 /// ```
 /// use bio::alphabets::rna;
 ///
-/// assert_eq!(rna::complement(65), 85);   // A → U
-/// assert_eq!(rna::complement(103), 99);  // g → c
-/// assert_eq!(rna::complement(89), 82);   // Y → R
+/// assert_eq!(rna::complement(65), 85); // A → U
+/// assert_eq!(rna::complement(103), 99); // g → c
+/// assert_eq!(rna::complement(89), 82); // Y → R
 /// assert_eq!(rna::complement(115), 115); // s → s
-/// assert_eq!(rna::complement(78), 78);   // N → N
+/// assert_eq!(rna::complement(78), 78); // N → N
 /// ```
 pub fn complement(a: u8) -> u8 {
     COMPLEMENT[a as usize]

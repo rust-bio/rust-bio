@@ -107,7 +107,7 @@ impl Alphabet {
     /// use bio::alphabets;
     ///
     /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
-    /// assert_eq!(dna_alphabet.max_symbol(), Some(116));  // max symbol is "t"
+    /// assert_eq!(dna_alphabet.max_symbol(), Some(116)); // max symbol is "t"
     /// let empty_alphabet = alphabets::Alphabet::new(b"");
     /// assert_eq!(empty_alphabet.max_symbol(), None);
     /// ```
@@ -202,7 +202,7 @@ impl RankTransform {
     ///
     /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
     /// let dna_ranks = alphabets::RankTransform::new(&dna_alphabet);
-    /// assert_eq!(dna_ranks.get(65), 0);  // "A"
+    /// assert_eq!(dna_ranks.get(65), 0); // "A"
     /// assert_eq!(dna_ranks.get(116), 7); // "t"
     /// ```
     pub fn get(&self, a: u8) -> u8 {

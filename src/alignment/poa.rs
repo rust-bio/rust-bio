@@ -17,8 +17,8 @@
 //! # Example
 //!
 //! ```
-//! use bio::alignment::poa::*;
 //! use bio::alignment::pairwise::Scoring;
+//! use bio::alignment::poa::*;
 //!
 //! let x = b"AAAAAAA";
 //! let y = b"AABBBAA";
@@ -110,7 +110,6 @@ impl Traceback {
     ///
     /// * `m` - the number of nodes in the DAG
     /// * `n` - the length of the query sequence
-    ///
     fn with_capacity(m: usize, n: usize) -> Self {
         let matrix = vec![
             vec![
@@ -278,7 +277,6 @@ impl<F: MatchFunc> Aligner<F> {
 ///
 /// A directed acyclic graph datastructure that represents the topology of a
 /// traceback matrix.
-///
 pub struct Poa<F: MatchFunc> {
     scoring: Scoring<F>,
     pub graph: POAGraph,
@@ -291,7 +289,6 @@ impl<F: MatchFunc> Poa<F> {
     ///
     /// * `scoring` - the score struct
     /// * `poa` - the partially ordered reference alignment
-    ///
     pub fn new(scoring: Scoring<F>, graph: POAGraph) -> Self {
         Poa { scoring, graph }
     }
@@ -302,7 +299,6 @@ impl<F: MatchFunc> Poa<F> {
     ///
     /// * `scoring` - the score struct
     /// * `reference` - a reference TextSlice to populate the initial reference graph
-    ///
     pub fn from_string(scoring: Scoring<F>, seq: TextSlice) -> Self {
         let mut graph: Graph<u8, i32, Directed, usize> =
             Graph::with_capacity(seq.len(), seq.len() - 1);
@@ -321,7 +317,6 @@ impl<F: MatchFunc> Poa<F> {
     ///
     /// # Arguments
     /// * `query` - the query TextSlice to align against the internal graph member
-    ///
     pub fn global(&self, query: TextSlice) -> Traceback {
         assert!(self.graph.node_count() != 0);
 
@@ -431,7 +426,6 @@ impl<F: MatchFunc> Poa<F> {
     ///
     /// * `aln` - The alignment of the new sequence to the graph
     /// * `seq` - The sequence being incorporated
-    ///
     pub fn add_alignment(&mut self, aln: &Alignment, seq: TextSlice) {
         let mut prev: NodeIndex<usize> = NodeIndex::new(0);
         let mut i: usize = 0;
