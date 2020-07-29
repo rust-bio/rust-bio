@@ -497,12 +497,16 @@ mod tests {
 
         let values: Vec<u8> = bitenc.iter().collect();
         assert_eq!(values, [42, 42, 42, 42, 42]);
+        assert_eq!(bitenc.nr_blocks(), 2);
+        assert_eq!(bitenc.nr_symbols(), 5);
 
         bitenc.push_values(1, 23);
         // This only fills up an existing block;
         // | 42 42 42 42 | __ __ 23 42 |
         let values: Vec<u8> = bitenc.iter().collect();
         assert_eq!(values, [42, 42, 42, 42, 42, 23]);
+        assert_eq!(bitenc.nr_blocks(), 2);
+        assert_eq!(bitenc.nr_symbols(), 6);
 
         bitenc.push_values(12, 17);
         // Fills up the current block, adds a whole new one AND create a partial block.
@@ -513,6 +517,8 @@ mod tests {
             values,
             [42, 42, 42, 42, 42, 23, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17]
         );
+        assert_eq!(bitenc.nr_blocks(), 5);
+        assert_eq!(bitenc.nr_symbols(), 18);
     }
 
     #[test]
