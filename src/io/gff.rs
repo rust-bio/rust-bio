@@ -15,7 +15,6 @@
 //! // import functions (at top of script)
 //! use bio::io::gff;
 //! use std::io;
-//! // run within a function
 //! let mut reader = gff::Reader::new(io::stdin(), gff::GffType::GFF3);
 //! let mut writer = gff::Writer::new(vec![], gff::GffType::GFF3);
 //! for record in reader.records() {

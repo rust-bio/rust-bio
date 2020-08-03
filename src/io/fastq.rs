@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Structs and trait to read and write file in FASTQ format.
+//! Structs and trait to read and write files in FASTQ format.
 //!
 //! # Example
 //!
@@ -79,12 +79,10 @@
 //! In this example we filter reads from stdin on mean quality (Phred + 33) and write them to stdout
 //!
 //! ```
-//! // import functions (at top of script)
 //! use std::io;
 //! use bio::io::fastq;
 //! use bio::io::fastq::FastqRead;
 //!
-//! // call within functions
 //! let mut reader = fastq::Reader::new(io::stdin());
 //! let mut writer = fastq::Writer::new(io::stdout());
 //! let mut record = fastq::Record::new();

@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Structs and trait to read and write file in FASTA format.
+//! Structs and trait to read and write files in FASTA format.
 //!
 //! # Example
 //!
@@ -12,10 +12,9 @@
 //! In this example, we parse a fasta file from stdin and compute some statistics
 //!
 //! ```
-//! // import functions (at top of script)
 //! use std::io;
 //! use bio::io::fasta;
-//! // call within functions
+//!
 //! let mut reader = fasta::Reader::new(io::stdin());
 //!
 //! let mut nb_reads = 0;
