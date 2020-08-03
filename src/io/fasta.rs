@@ -202,10 +202,9 @@ where
     /// # Example
     ///
     /// ```rust
-    /// # use std::error::Error;
-    /// # use bio::io::fasta::{Reader, FastaRead};
-    /// # use bio::io::fasta::Record;
-    /// # fn main() -> Result<(), Box<Error>> {
+    /// use bio::io::fasta::{Reader, FastaRead};
+    /// use bio::io::fasta::Record;
+    ///
     /// const fasta_file: &'static [u8] = b">id desc
     /// AAAA
     /// ";
@@ -213,13 +212,12 @@ where
     /// let mut record = Record::new();
     ///
     /// // Check for errors parsing the record
-    /// reader.read(&mut record)?;
+    /// reader.read(&mut record).expect("Error: broken record detected");
     ///
     /// assert_eq!(record.id(), "id");
     /// assert_eq!(record.desc().unwrap(), "desc");
     /// assert_eq!(record.seq().to_vec(), b"AAAA");
-    /// # Ok(())
-    /// # }
+    /// }
     /// ```
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
