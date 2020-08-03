@@ -217,7 +217,6 @@ where
     /// assert_eq!(record.id(), "id");
     /// assert_eq!(record.desc().unwrap(), "desc");
     /// assert_eq!(record.seq().to_vec(), b"AAAA");
-    /// }
     /// ```
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
