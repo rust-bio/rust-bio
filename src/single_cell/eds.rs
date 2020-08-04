@@ -56,7 +56,7 @@ pub fn reader(
     num_cols: usize,
 ) -> Result<CsMat<MatValT>, Box<dyn Error>> {
     // reading the matrix
-    let file_handle = File::open(file_path.clone())?;
+    let file_handle = File::open(file_path.to_owned())?;
     let buffered = BufReader::new(file_handle);
     let file = GzDecoder::new(buffered);
 
@@ -81,14 +81,11 @@ pub fn reader(
         for (j, flag) in bit_vec.iter().enumerate() {
             if *flag != 0 {
                 for (i, bit_id) in format!("{:8b}", flag).chars().enumerate() {
-                    match bit_id {
-                        '1' => {
-                            let offset = i + (8 * j);
-                            indices[global_pointer + one_validator] = offset;
+                    if let '1' = bit_id {
+                        let offset = i + (8 * j);
+                        indices[global_pointer + one_validator] = offset;
 
-                            one_validator += 1;
-                        }
-                        _ => (),
+                        one_validator += 1;
                     };
                 }
             }
@@ -102,8 +99,8 @@ pub fn reader(
         // NOTE: if we change MatValT, double check below line
         LittleEndian::read_f32_into(&expression, &mut float_buffer);
 
-        for i in 0..float_buffer.len() {
-            data[global_pointer] = float_buffer[i] as MatValT;
+        for value in float_buffer {
+            data[global_pointer] = value as MatValT;
             global_pointer += 1;
         }
     }

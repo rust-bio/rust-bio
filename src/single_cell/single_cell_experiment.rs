@@ -5,11 +5,11 @@ extern crate num;
 extern crate num_traits;
 extern crate sprs;
 
+use crate::single_cell::{csv, eds, mtx};
+
 use sprs::CsMat;
 use std::error::Error;
 use std::path::Path;
-
-use crate::single_cell::{csv, eds, mtx};
 
 #[derive(Debug, PartialEq)]
 pub struct SingleCellExperiment<T> {
@@ -20,40 +20,40 @@ pub struct SingleCellExperiment<T> {
 
 impl<T> SingleCellExperiment<T> {
     pub fn cols(&self) -> usize {
-        return self.counts.cols();
+        self.counts.cols()
     }
 
     pub fn rows(&self) -> usize {
-        return self.counts.rows();
+        self.counts.rows()
     }
 
     pub fn shape(&self) -> (usize, usize) {
-        return (self.counts.rows(), self.counts.cols());
+        (self.counts.rows(), self.counts.cols())
     }
 
     pub fn nnz(&self) -> usize {
-        return self.counts.nnz();
+        self.counts.nnz()
     }
 
     pub fn row_names(&self) -> &Vec<String> {
-        return &self.rows;
+        &self.rows
     }
 
     pub fn col_names(&self) -> &Vec<String> {
-        return &self.cols;
+        &self.cols
     }
 
     pub fn counts(&self) -> &CsMat<T> {
-        return &self.counts;
+        &self.counts
     }
 
     pub fn transpose_into(self) -> SingleCellExperiment<T> {
-        let row_names = self.row_names().to_owned();
-        let col_names = self.col_names().to_owned();
+        let rows = self.row_names().to_owned();
+        let cols = self.col_names().to_owned();
         SingleCellExperiment {
             counts: self.counts.transpose_into(),
-            rows: col_names,
-            cols: row_names,
+            rows,
+            cols,
         }
     }
 
@@ -72,11 +72,7 @@ impl<T> SingleCellExperiment<T> {
             );
         }
 
-        Ok(SingleCellExperiment {
-            counts: counts,
-            rows: rows,
-            cols: cols,
-        })
+        Ok(SingleCellExperiment { counts, rows, cols })
     }
 
     pub fn from_mtx(
@@ -88,13 +84,9 @@ impl<T> SingleCellExperiment<T> {
         T: Clone + num_traits::Num + num_traits::NumCast,
     {
         let file = Path::new(file_path);
-        let counts_matrix: CsMat<T> = mtx::reader(file)?;
+        let counts: CsMat<T> = mtx::reader(file)?;
 
-        Ok(SingleCellExperiment {
-            counts: counts_matrix,
-            rows: rows,
-            cols: cols,
-        })
+        Ok(SingleCellExperiment { counts, rows, cols })
     }
 
     pub fn from_csv(
@@ -106,13 +98,9 @@ impl<T> SingleCellExperiment<T> {
         T: std::str::FromStr + num::Num + Clone,
     {
         let file = Path::new(file_path);
-        let counts_matrix: CsMat<T> = csv::reader(file, rows.len(), cols.len())?;
+        let counts: CsMat<T> = csv::reader(file, rows.len(), cols.len())?;
 
-        Ok(SingleCellExperiment {
-            counts: counts_matrix,
-            rows: rows,
-            cols: cols,
-        })
+        Ok(SingleCellExperiment { counts, rows, cols })
     }
 
     pub fn to_mtx(&self, file_path: &str) -> Result<(), Box<dyn Error>>
@@ -139,13 +127,9 @@ impl SingleCellExperiment<f32> {
         cols: Vec<String>,
     ) -> Result<SingleCellExperiment<f32>, Box<dyn Error>> {
         let file = Path::new(file_path);
-        let counts_matrix: CsMat<f32> = eds::reader(file, rows.len(), cols.len())?;
+        let counts: CsMat<f32> = eds::reader(file, rows.len(), cols.len())?;
 
-        Ok(SingleCellExperiment {
-            counts: counts_matrix,
-            rows: rows,
-            cols: cols,
-        })
+        Ok(SingleCellExperiment { counts, rows, cols })
     }
 
     pub fn to_eds(&self, file_path: &str) -> Result<(), Box<dyn Error>> {
@@ -222,7 +206,7 @@ mod tests {
         assert_eq!(sce.nnz(), 5);
         assert_eq!(sce.counts().clone(), get_test_matrix_f32());
 
-        let sce_t = match SingleCellExperiment::from_csr(a.transpose_into(), c.clone(), b.clone()) {
+        let sce_t = match SingleCellExperiment::from_csr(a.transpose_into(), b.clone(), c.clone()) {
             Ok(x) => x,
             Err(y) => panic!("ERROR: {}", y),
         };

@@ -51,13 +51,8 @@ where
         columns.iter_mut().for_each(|x| *x = zero);
 
         let mut it = row_vec.iter();
-        loop {
-            match it.next() {
-                Some((col_idx, &val)) => {
-                    columns[col_idx] = val;
-                }
-                None => break,
-            }
+        while let Some((col_idx, &val)) = it.next() {
+            columns[col_idx] = val;
         }
 
         let record: Vec<String> = columns.iter().map(|x| x.to_string()).collect();
