@@ -39,7 +39,9 @@ Every public function and module should have [documentation comments](https://do
 Check out [which types of comments to use where](https://doc.rust-lang.org/stable/reference/comments.html#doc-comments).
 In `rust-bio`, documentation comments should:
 * [explain functionality](https://doc.rust-lang.org/rustdoc/how-to-write-documentation.html)
-* give at least one useful example of how to use it (best as [doctests](https://doc.rust-lang.org/rustdoc/documentation-tests.html), that run during testing)
+* give at least one useful example of how to use it (best as [doctests](https://doc.rust-lang.org/rustdoc/documentation-tests.html),
+  that run during testing, and using descriptive [`expect()`](https://doc.rust-lang.org/std/result/enum.Result.html#method.expect)
+  statements for handling any `Err()`s that might occur)
 * describe time and memory complexity listed (where applicable)
 * cite and link sources and explanations for data structures, algorithms or code (where applicable)
 
