@@ -316,7 +316,7 @@ where
 ///     &vec![808, 52, 109],
 ///     &vec![0, 864, 984],
 ///     ReqStrand::Reverse,
-/// ).expect("");
+/// ).expect("Encountered a bio_types::annot::spliced::SplicingError.");
 /// assert_eq!(
 ///     tad3.to_string(),
 ///     "chrXII:765265-766073;766129-766181;766249-766358(-)"
