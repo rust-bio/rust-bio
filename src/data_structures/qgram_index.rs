@@ -8,8 +8,8 @@
 //! # Example
 //!
 //! ```
-//! use bio::data_structures::qgram_index;
 //! use bio::alphabets;
+//! use bio::data_structures::qgram_index;
 //!
 //! let text = b"ACGGCTGAGATGAT";
 //! let alphabet = alphabets::dna::alphabet();
@@ -18,16 +18,16 @@
 //!
 //! let pattern = b"GCTG";
 //! let matches = qgram_index.matches(pattern, 1);
-//! assert_eq!(matches, [
-//!     qgram_index::Match {
+//! assert_eq!(
+//!     matches,
+//!     [qgram_index::Match {
 //!         pattern: qgram_index::Interval { start: 0, stop: 4 },
 //!         text: qgram_index::Interval { start: 3, stop: 7 },
 //!         count: 2
-//!     }
-//! ]);
+//!     }]
+//! );
 //! ```
 
-use std;
 use std::cmp;
 use std::collections;
 use std::collections::hash_map::Entry;

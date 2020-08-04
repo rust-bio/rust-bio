@@ -6,8 +6,21 @@
 //! Suffix arrays and related algorithms.
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
+//! The original algorithm desciption can be found in:
+//! [Ge Nong, Sen Zhang, Wai Hong Chan: Two Efficient Algorithms for Linear Time Suffix Array Construction. IEEE Trans. Computers 60(10): 1471–1484 (2011)](https://doi.org/10.1109/TC.2010.188)
+//!
+//! # Examples
+//!
+//! ```
+//! use bio::data_structures::suffix_array::suffix_array;
+//! let text = b"GCCTTAACATTATTACGCCTA$";
+//! let pos = suffix_array(text);
+//! assert_eq!(
+//!     pos,
+//!     vec![21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18, 2, 16, 0, 19, 4, 13, 10, 3, 12, 9]
+//! );
+//! ```
 
-use std;
 use std::cmp;
 use std::fmt::Debug;
 use std::iter;
@@ -24,6 +37,7 @@ use crate::data_structures::smallints::SmallInts;
 
 pub type LCPArray = SmallInts<i8, isize>;
 pub type RawSuffixArray = Vec<usize>;
+pub type RawSuffixArraySlice<'a> = &'a [usize];
 
 /// A trait exposing general functionality of suffix arrays.
 pub trait SuffixArray {
@@ -199,10 +213,10 @@ impl SuffixArray for RawSuffixArray {
 /// use bio::data_structures::suffix_array::suffix_array;
 /// let text = b"GCCTTAACATTATTACGCCTA$";
 /// let pos = suffix_array(text);
-/// assert_eq!(pos, vec![
-///     21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18,
-///     2, 16, 0, 19, 4, 13, 10, 3, 12, 9
-/// ]);
+/// assert_eq!(
+///     pos,
+///     vec![21, 20, 5, 6, 14, 11, 8, 7, 17, 1, 15, 18, 2, 16, 0, 19, 4, 13, 10, 3, 12, 9]
+/// );
 /// ```
 pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
     let n = text.len();
@@ -237,7 +251,7 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
 /// # Example
 ///
 /// ```
-/// use bio::data_structures::suffix_array::{suffix_array,lcp};
+/// use bio::data_structures::suffix_array::{lcp, suffix_array};
 /// let text = b"GCCTTAACATTATTACGCCTA$";
 /// let pos = suffix_array(text);
 ///
@@ -251,12 +265,7 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
 /// let uncompressed = lcp.decompress();
 /// assert_eq!(
 ///     uncompressed,
-///     [
-///         -1, 0, 1, 1, 2, 1, 4,
-///         0, 1, 3, 1, 1, 2, 0,
-///         4, 0, 2, 2, 2, 1, 3,
-///         3, -1
-///     ]
+///     [-1, 0, 1, 1, 2, 1, 4, 0, 1, 3, 1, 1, 2, 0, 4, 0, 2, 2, 2, 1, 3, 3, -1]
 /// )
 /// ```
 pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray {
@@ -302,7 +311,7 @@ pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray
 /// # Example
 ///
 /// ```
-/// use bio::data_structures::suffix_array::{suffix_array,lcp,shortest_unique_substrings};
+/// use bio::data_structures::suffix_array::{lcp, shortest_unique_substrings, suffix_array};
 /// let text = b"GCTGCTA$";
 /// let pos = suffix_array(text);
 ///
@@ -311,7 +320,19 @@ pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray
 ///
 /// // calculate shortest unique substrings
 /// let sus = shortest_unique_substrings(&pos, &lcp);
-/// assert_eq!(sus, [Some(4), Some(3), Some(2), Some(4), Some(3), Some(2), Some(1), Some(1)]);
+/// assert_eq!(
+///     sus,
+///     [
+///         Some(4),
+///         Some(3),
+///         Some(2),
+///         Some(4),
+///         Some(3),
+///         Some(2),
+///         Some(1),
+///         Some(1)
+///     ]
+/// );
 /// ```
 pub fn shortest_unique_substrings<SA: SuffixArray>(pos: &SA, lcp: &LCPArray) -> Vec<Option<usize>> {
     let n = pos.len();
@@ -777,7 +798,7 @@ mod tests {
                 "complex with revcomps"),
              ];
 
-        for &(text, test_name) in test_cases.into_iter() {
+        for &(text, test_name) in test_cases.iter() {
             let pos = suffix_array(text);
             for i in 0..(pos.len() - 2) {
                 // Check that every element in the suffix array is lexically <= the next elem

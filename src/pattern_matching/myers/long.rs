@@ -219,7 +219,7 @@ where
 
         let w = word_size::<T>();
         let last_dist = self.states[last_block].dist;
-        if (last_dist as i8 - carry as i8) as usize <= max_dist
+        if (last_dist as isize - carry as isize) as usize <= max_dist
             && last_block < self.max_block
             && (peq[last_block + 1].peq[a as usize] & T::one() == T::one() || carry < 0)
         {
@@ -491,5 +491,18 @@ impl_myers!(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     impl_tests!(super, u8, usize, build_64);
+
+    #[test]
+    fn test_myers_long_overflow() {
+        let pattern = b"AAGACGAGAAAAGAAAGTCTAAAGGACTTTTGTGGCAAGACCATCCCTGTTCCCAACCCGACCCCTGGACCTCCCGCCCCGGGCACTCCCGACCCCCCGACCCCCCGACTCCTGGACCAGGAGACTGA";
+        let text = b"GGCAAGGGGGACTGTAGATGGGTGAAAAGAGCAGTCAGGGACCAGGTCCTCAGCCCCCCAGCCCCCCAGCCCTCCAGGTCCCCAGCCCTCCAGGTCCCCAGCCCAACCCTTGTCCTTACCAGAACGTTGTTTTCAGGAAGTCTGAAAGACAAGAGCAGAAAGTCAGTCCCATGGAATTTTCGCTTCCCACAG".to_vec();
+
+        let myers: Myers<u64> = Myers::new(pattern.iter().cloned());
+
+        let hits: Vec<_> = myers.find_all_end(text, usize::max_value() - 64).collect();
+        dbg!(hits);
+    }
 }

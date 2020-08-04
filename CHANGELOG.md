@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.31.0] - 2020-06-02
+- Bugfix for pHMM implementation (thanks to @tedil).
+- Sorted array-backed interval trees (thanks to @tedil).
+
+
+# [0.30.1] - 2020-05-13
+- Improved occ counting speed for FM index (thanks to @thomasmulvaney)
+- Various small bug fixes and code cleanups and linter fixes.
+
+# [0.30.0] - 2019-11-14
+- Bayesian models now allow to access internals.
+- Various small bug fixes.
+
 # [0.29.0] - 2019-09-27
 - Migrate error handling to the snafu crate (this is an API breaking change).
 - Fix edge cases in pairwise alignment.

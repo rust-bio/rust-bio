@@ -29,7 +29,7 @@ impl DNAMotif {
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently impossible - see
     /// https://github.com/rust-lang/rust/issues/42863
-    pub fn from_seqs(seqs: &Vec<Vec<u8>>, pseudos: Option<&[f32]>) -> Result<Self> {
+    pub fn from_seqs(seqs: &[Vec<u8>], pseudos: Option<&[f32]>) -> Result<Self> {
         let w = Self::seqs_to_weights(seqs, pseudos)?;
         let mut m = DNAMotif {
             scores: w,

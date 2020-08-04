@@ -1,3 +1,27 @@
+//! This module defines a newtype `Interval` for `std::ops::Range`, which will panic if `end` < `start`.
+//!
+//! # Examples
+//! Create a new `Interval` given a `Range`.
+//! ```
+//! use bio::utils::Interval;
+//! assert_eq!(Interval::new(3..6).unwrap(), (3..6).into());
+//! ```
+//!
+//! Building an `Interval` from a `Range` with start > end should panic.
+//! ```should_panic
+//! use bio::utils::Interval;
+//! Interval::from(7..1);
+//! ```
+//!
+//! If you want to handle invalid ranges properly, use the `new` constructor
+//! ```
+//! use bio::utils::Interval;
+//! match Interval::new(7..1) {
+//!     Ok(interval) => println!("{:?}", interval),
+//!     Err(error) => eprintln!("interval start > end"),
+//! }
+//! ```
+
 pub mod errors;
 
 use std::ops::{Deref, Range};
