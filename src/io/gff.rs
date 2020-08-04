@@ -12,6 +12,7 @@
 //! # Example
 //!
 //! ```
+//! // import functions (at top of script)
 //! use bio::io::gff;
 //! use std::io;
 //! let mut reader = gff::Reader::new(io::stdin(), gff::GffType::GFF3);

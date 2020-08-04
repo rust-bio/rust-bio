@@ -233,21 +233,14 @@ impl<'a> From<&'a Record> for annot::contig::Contig<String, strand::Strand> {
     /// Returns a `Contig` annotation for the BED record.
     ///
     /// ```
-    /// # extern crate bio;
-    /// # extern crate bio_types;
     /// use bio::io::bed;
     /// use bio_types::annot::contig::Contig;
     /// use bio_types::strand::Strand;
-    /// # use std::error::Error;
-    /// # fn try_main() -> Result<(), Box<Error>> {
     /// let example = b"chr1\t5\t5000\tname1\t0.5";
     /// let mut reader = bed::Reader::new(&example[..]);
-    /// let rec = reader.records().next().ok_or("No record available!")??;
+    /// let rec = reader.records().next().expect("Found no bed record.").expect("Got a csv::Error");
     /// let loc = Contig::from(&rec);
     /// assert_eq!(loc.to_string(), "chr1:5-5000");
-    /// # Ok(())
-    /// # }
-    /// # fn main() { try_main().unwrap(); }
     /// ```
     fn from(rec: &Record) -> Self {
         annot::contig::Contig::new(
@@ -323,7 +316,7 @@ where
 ///     &vec![808, 52, 109],
 ///     &vec![0, 864, 984],
 ///     ReqStrand::Reverse,
-/// )?;
+/// ).expect("Encountered a bio_types::annot::spliced::SplicingError.");
 /// assert_eq!(
 ///     tad3.to_string(),
 ///     "chrXII:765265-766073;766129-766181;766249-766358(-)"
