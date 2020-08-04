@@ -47,7 +47,6 @@ num = "0.3.0"
 flate2 = "1.0.16"
 libmath = "0.2.1"
 byteorder = "1.3.4"
-num-traits = "0.2.12"
 sprs = { git = "https://github.com/k3yavi/sprs" } #"0.8.0"
 
 [dependencies.vec_map]

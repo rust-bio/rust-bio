@@ -1,18 +1,15 @@
 extern crate byteorder;
-extern crate csv as ext_csv;
 extern crate flate2;
 extern crate math;
 extern crate num;
 extern crate num_traits;
 extern crate sprs;
 
-pub mod csv;
-pub mod eds;
-pub mod mtx;
-
 use sprs::CsMat;
 use std::error::Error;
 use std::path::Path;
+
+use crate::single_cell::{csv, eds, mtx};
 
 #[derive(Debug, PartialEq)]
 pub struct SingleCellExperiment<T> {
