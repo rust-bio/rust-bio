@@ -3,16 +3,15 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The Burrows-Wheeler-Transform and related data structures.
+//! The [Burrows-Wheeler-Transform](https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.37.6774) and related data structures.
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
 use std::iter::repeat;
 
 use crate::alphabets::Alphabet;
-use crate::data_structures::suffix_array::RawSuffixArray;
+use crate::data_structures::suffix_array::RawSuffixArraySlice;
 use crate::utils::prescan;
-use bytecount;
 
 pub type BWT = Vec<u8>;
 pub type BWTSlice = [u8];
@@ -30,14 +29,14 @@ pub type BWTFind = Vec<usize>;
 /// # Example
 ///
 /// ```
-/// use bio::data_structures::suffix_array::suffix_array;
 /// use bio::data_structures::bwt::bwt;
+/// use bio::data_structures::suffix_array::suffix_array;
 /// let text = b"GCCTTAACATTATTACGCCTA$";
 /// let pos = suffix_array(text);
 /// let bwt = bwt(text, &pos);
 /// assert_eq!(bwt, b"ATTATTCAGGACCC$CTTTCAA");
 /// ```
-pub fn bwt(text: &[u8], pos: &RawSuffixArray) -> BWT {
+pub fn bwt(text: &[u8], pos: RawSuffixArraySlice) -> BWT {
     assert_eq!(text.len(), pos.len());
     let n = text.len();
     let mut bwt: BWT = repeat(0).take(n).collect();
@@ -119,7 +118,10 @@ impl Occ {
         //
         // The below manual count code is roughly equivalent to:
         // ```
-        // let count = bwt[(i * self.k) + 1..r + 1].iter().filter(|&&c| c == a).count();
+        // let count = bwt[(i * self.k) + 1..r + 1]
+        //     .iter()
+        //     .filter(|&&c| c == a)
+        //     .count();
         // self.occ[i][a as usize] + count
         // ```
         //
@@ -135,19 +137,36 @@ impl Occ {
         // https://github.com/rust-bio/rust-bio/pull/74
         // https://github.com/rust-bio/rust-bio/pull/76
 
-        // self.k is our sampling rate, so find our last sampled checkpoint
-        let i = r / self.k as usize;
-        let checkpoint = self.occ[i][a as usize];
+        // self.k is our sampling rate, so find the checkpoints either side of r.
+        let lo_checkpoint = r / self.k as usize;
+        // Get the occurences at the low checkpoint
+        let lo_occ = self.occ[lo_checkpoint][a as usize];
 
-        // find the portion of the BWT past the checkpoint which we need to count
-        let start = (i * self.k as usize) + 1;
-        let end = r + 1;
+        // If the sampling rate is infrequent it is worth checking if there is a closer
+        // hi checkpoint.
+        if self.k > 64 {
+            let hi_checkpoint = lo_checkpoint + 1;
+            if let Some(hi_occs) = self.occ.get(hi_checkpoint) {
+                let hi_occ = hi_occs[a as usize];
 
-        // count all the matching bytes b/t the closest checkpoint and our desired lookup
-        let count = bytecount::count(&bwt[start..end], a);
+                // Its possible that there are no occurences between the low and high
+                // checkpoint in which case we bail early.
+                if lo_occ == hi_occ {
+                    return lo_occ;
+                }
 
-        // return the sampled checkpoint for this character + the manual count we just did
-        checkpoint + (count as usize)
+                // If r is closer to the high checkpoint, count backwards from there.
+                let hi_idx = hi_checkpoint * self.k as usize;
+                if (hi_idx - r) < (self.k as usize / 2) {
+                    let hi_occ = hi_occs[a as usize];
+                    return hi_occ - bytecount::count(&bwt[r + 1..=hi_idx], a) as usize;
+                }
+            }
+        }
+
+        // Otherwise the default case is to count from the low checkpoint.
+        let lo_idx = lo_checkpoint * self.k as usize;
+        bytecount::count(&bwt[lo_idx + 1..=r], a) as usize + lo_occ
     }
 }
 

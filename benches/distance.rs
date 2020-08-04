@@ -2,9 +2,11 @@
 
 extern crate test;
 
-use test::Bencher;
+use test::{black_box, Bencher};
 
 use bio::alignment::distance::*;
+
+use std::u32;
 
 // 5,000 random nucleotides, GC content = .55
 static STR_1: &'static [u8] = b"ATCTAACTATTCCCTGTGCCTTATGGGGGCCTGCGCTATCTGCCTGT\
@@ -271,7 +273,7 @@ GCCGCGCGCGCGGGGCCGGGCCGCGCGCGCGCCGGGCCGCCGGCGGGGCGCGGCC";
 fn bench_hamming_dist_equal_str_1000iter(b: &mut Bencher) {
     b.iter(|| {
         for _ in 0..1000 {
-            hamming(STR_1, STR_1);
+            black_box(hamming(STR_1, STR_1));
         }
     });
 }
@@ -280,7 +282,7 @@ fn bench_hamming_dist_equal_str_1000iter(b: &mut Bencher) {
 fn bench_hamming_dist_diverse_str_1000iter(b: &mut Bencher) {
     b.iter(|| {
         for _ in 0..1000 {
-            hamming(STR_1, STR_2);
+            black_box(hamming(STR_1, STR_2));
         }
     });
 }
@@ -298,4 +300,54 @@ fn bench_levenshtein_dist_diverse_str(b: &mut Bencher) {
 #[bench]
 fn bench_levenshtein_dist_worst_str(b: &mut Bencher) {
     b.iter(|| levenshtein(STR_3, STR_4));
+}
+
+// SIMD-accelerated edit distance routines below
+
+#[bench]
+fn bench_simd_hamming_dist_equal_str_1000iter(b: &mut Bencher) {
+    b.iter(|| {
+        for _ in 0..1000 {
+            black_box(simd::hamming(STR_1, STR_1));
+        }
+    });
+}
+
+#[bench]
+fn bench_simd_hamming_dist_diverse_str_1000iter(b: &mut Bencher) {
+    b.iter(|| {
+        for _ in 0..1000 {
+            black_box(simd::hamming(STR_1, STR_2));
+        }
+    });
+}
+
+#[bench]
+fn bench_simd_levenshtein_dist_equal_str(b: &mut Bencher) {
+    b.iter(|| simd::levenshtein(STR_1, STR_1));
+}
+
+#[bench]
+fn bench_simd_levenshtein_dist_diverse_str(b: &mut Bencher) {
+    b.iter(|| simd::levenshtein(STR_1, STR_2));
+}
+
+#[bench]
+fn bench_simd_levenshtein_dist_worst_str(b: &mut Bencher) {
+    b.iter(|| simd::levenshtein(STR_3, STR_4));
+}
+
+#[bench]
+fn bench_simd_bounded_levenshtein_dist_equal_str(b: &mut Bencher) {
+    b.iter(|| simd::bounded_levenshtein(STR_1, STR_1, u32::MAX));
+}
+
+#[bench]
+fn bench_simd_bounded_levenshtein_dist_diverse_str(b: &mut Bencher) {
+    b.iter(|| simd::bounded_levenshtein(STR_1, STR_2, u32::MAX));
+}
+
+#[bench]
+fn bench_simd_bounded_levenshtein_dist_worst_str(b: &mut Bencher) {
+    b.iter(|| simd::bounded_levenshtein(STR_3, STR_4, u32::MAX));
 }

@@ -26,7 +26,7 @@ use super::{BitVec, Myers};
 ///     (b'H', &b"ACTMWY"[..]),
 ///     (b'D', &b"AGTRWK"[..]),
 ///     (b'B', &b"CGTSYK"[..]),
-///     (b'N', &b"ACGTMRWSYKVHDB"[..])
+///     (b'N', &b"ACGTMRWSYKVHDB"[..]),
 /// ];
 ///
 /// let mut builder = MyersBuilder::new();

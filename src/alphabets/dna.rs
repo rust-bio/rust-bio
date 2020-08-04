@@ -49,11 +49,35 @@ lazy_static! {
 }
 
 /// Return complement of given DNA alphabet character (IUPAC alphabet supported).
+///
+/// Casing of input character is preserved, e.g. `t` → `a`, but `T` → `A`.
+/// All `N`s remain as they are.
+///
+/// ```
+/// use bio::alphabets::dna;
+///
+/// assert_eq!(dna::complement(65), 84); // A → T
+/// assert_eq!(dna::complement(99), 103); // c → g
+/// assert_eq!(dna::complement(78), 78); // N → N
+/// assert_eq!(dna::complement(89), 82); // Y → R
+/// assert_eq!(dna::complement(115), 115); // s → s
+/// ```
 pub fn complement(a: u8) -> u8 {
     COMPLEMENT[a as usize]
 }
 
 /// Calculate reverse complement of given text (IUPAC alphabet supported).
+///
+/// Casing of characters is preserved, e.g. `b"NaCgT"` → `b"aCgTN"`.
+/// All `N`s remain as they are.
+///
+/// ```
+/// use bio::alphabets::dna;
+///
+/// assert_eq!(dna::revcomp(b"ACGTN"), b"NACGT");
+/// assert_eq!(dna::revcomp(b"GaTtaCA"), b"TGtaAtC");
+/// assert_eq!(dna::revcomp(b"AGCTYRWSKMDVHBN"), b"NVDBHKMSWYRAGCT");
+/// ```
 pub fn revcomp<C, T>(text: T) -> Vec<u8>
 where
     C: Borrow<u8>,
@@ -64,4 +88,29 @@ where
         .rev()
         .map(|a| complement(*a.borrow()))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_word() {
+        assert!(alphabet().is_word(b"GATTACA"));
+    }
+
+    #[test]
+    fn is_no_word() {
+        assert!(!alphabet().is_word(b"gaUUaca"));
+    }
+
+    #[test]
+    fn symbol_is_no_word() {
+        assert!(!alphabet().is_word(b"#"));
+    }
+
+    #[test]
+    fn number_is_no_word() {
+        assert!(!alphabet().is_word(b"42"));
+    }
 }

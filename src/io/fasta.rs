@@ -3,14 +3,100 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! FASTA format reading and writing.
+//! Structs and trait to read and write files in FASTA format.
 //!
 //! # Example
+//!
+//! ## Read
+//!
+//! In this example, we parse a fasta file from stdin and compute some statistics
 //!
 //! ```
 //! use std::io;
 //! use bio::io::fasta;
-//! let reader = fasta::Reader::new(io::stdin());
+//!
+//! let mut reader = fasta::Reader::new(io::stdin());
+//!
+//! let mut nb_reads = 0;
+//! let mut nb_bases = 0;
+//!
+//! for result in reader.records() {
+//!     let record = result.expect("Error during fasta record parsing");
+//!     println!("{}", record.id());
+//!
+//!     nb_reads += 1;
+//!     nb_bases += record.seq().len();
+//! }
+//!
+//! println!("Number of reads: {}", nb_reads);
+//! println!("Number of bases: {}", nb_bases);
+//! ```
+//!
+//! We can also use a `while` loop to iterate over records.
+//! This is slightly faster than the `for` loop.
+//! ```
+//! use std::io;
+//! use bio::io::fasta;
+//! let mut records = fasta::Reader::new(io::stdin()).records();
+//!
+//! let mut nb_reads = 0;
+//! let mut nb_bases = 0;
+//!
+//! while let Some(Ok(record)) = records.next() {
+//!     nb_reads += 1;
+//!     nb_bases += record.seq().len();
+//! }
+//!
+//! println!("Number of reads: {}", nb_reads);
+//! println!("Number of bases: {}", nb_bases);
+//! ```
+//!
+//! ## Write
+//!
+//! In this example we generate 10 random sequences with length 100 and write them to stdout.
+//!
+//! ```
+//! use std::io;
+//! use bio::io::fasta;
+//!
+//! let mut seed = 42;
+//!
+//! let nucleotides = [b'A', b'C', b'G', b'T'];
+//!
+//! let mut writer = fasta::Writer::new(io::stdout());
+//!
+//! for _ in 0..10 {
+//!     let seq = (0..100).map(|_| {
+//!         seed = ((seed ^ seed << 13) ^ seed >> 7) ^ seed << 17; // don't use this random generator
+//!         nucleotides[seed % 4]
+//!     }).collect::<Vec<u8>>();
+//!
+//!    writer.write("random", None, seq.as_slice()).ok().expect("Error writing record.");
+//! }
+//! ```
+//!
+//! ## Read and Write
+//!
+//! In this example we filter reads from stdin on sequence length and write them to stdout
+//!
+//! ```
+//! use std::io;
+//! use bio::io::fasta;
+//! use bio::io::fasta::FastaRead;
+//!
+//! let mut reader = fasta::Reader::new(io::stdin());
+//! let mut writer = fasta::Writer::new(io::stdout());
+//! let mut record = fasta::Record::new();
+//!
+//! while let Ok(()) = reader.read(&mut record) {
+//!     if record.is_empty() {
+//!         break;
+//!     }
+//!
+//!     if record.seq().len() > 100 {
+//!         writer.write_record(&record).ok().expect("Error writing record.");
+//!     }
+//! }
 //! ```
 
 use std::cmp::min;
@@ -21,9 +107,8 @@ use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 
-use csv;
-
 use crate::utils::{Text, TextSlice};
+use std::fmt;
 
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
@@ -117,10 +202,9 @@ where
     /// # Example
     ///
     /// ```rust
-    /// # use std::error::Error;
-    /// # use bio::io::fasta::{Reader, FastaRead};
-    /// # use bio::io::fasta::Record;
-    /// # fn main() -> Result<(), Box<Error>> {
+    /// use bio::io::fasta::{Reader, FastaRead};
+    /// use bio::io::fasta::Record;
+    ///
     /// const fasta_file: &'static [u8] = b">id desc
     /// AAAA
     /// ";
@@ -128,13 +212,11 @@ where
     /// let mut record = Record::new();
     ///
     /// // Check for errors parsing the record
-    /// reader.read(&mut record)?;
+    /// reader.read(&mut record).expect("fasta reader: got an io::Error or could not read_line()");
     ///
     /// assert_eq!(record.id(), "id");
     /// assert_eq!(record.desc().unwrap(), "desc");
     /// assert_eq!(record.seq().to_vec(), b"AAAA");
-    /// # Ok(())
-    /// # }
     /// ```
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
@@ -151,7 +233,7 @@ where
                 "Expected > at record start.",
             ));
         }
-        let mut header_fields = self.line[1..].trim_end().splitn(2, ' ');
+        let mut header_fields = self.line[1..].trim_end().splitn(2, char::is_whitespace);
         record.id = header_fields.next().map(|s| s.to_owned()).unwrap();
         record.desc = header_fields.next().map(|s| s.to_owned());
         loop {
@@ -479,7 +561,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 }
 
 /// Record of a FASTA index.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 struct IndexRecord {
     name: String,
     len: u64,
@@ -577,7 +659,35 @@ impl<W: io::Write> Writer<W> {
         }
     }
 
-    /// Directly write a Fasta record.
+    /// Directly write a [`fasta::Record`](struct.Record.html).
+    ///
+    /// # Errors
+    /// If there is an issue writing to the `Writer`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use bio::io::fasta::{Record, Writer};
+    /// use std::fs;
+    /// use std::io;
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("test.fa");
+    /// let file = fs::File::create(path).unwrap();
+    /// {
+    ///     let handle = io::BufWriter::new(file);
+    ///     let mut writer = Writer::new(handle);
+    ///     let record = Record::with_attrs("id", Some("desc"), b"ACGT");
+    ///
+    ///     let write_result = writer.write_record(&record);
+    ///     assert!(write_result.is_ok());
+    /// }
+    ///
+    /// let actual = fs::read_to_string(path).unwrap();
+    /// let expected = ">id desc\nACGT\n";
+    ///
+    /// assert!(fs::remove_file(path).is_ok());
+    /// assert_eq!(actual, expected)
+    /// ```
     pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
         self.write(record.id(), record.desc(), record.seq())
     }
@@ -586,9 +696,9 @@ impl<W: io::Write> Writer<W> {
     pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> io::Result<()> {
         self.writer.write_all(b">")?;
         self.writer.write_all(id.as_bytes())?;
-        if desc.is_some() {
+        if let Some(desc) = desc {
             self.writer.write_all(b" ")?;
-            self.writer.write_all(desc.unwrap().as_bytes())?;
+            self.writer.write_all(desc.as_bytes())?;
         }
         self.writer.write_all(b"\n")?;
         self.writer.write_all(seq)?;
@@ -621,7 +731,19 @@ impl Record {
         }
     }
 
-    /// Create a new Fasta record from given attributes.
+    /// Create a new `Record` from given attributes.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use bio::io::fasta::Record;
+    ///
+    /// let read_id = "read1";
+    /// let description = Some("sampleid=foobar");
+    /// let sequence = b"ACGT";
+    /// let record = Record::with_attrs(read_id, description, sequence);
+    ///
+    /// assert_eq!(">read1 sampleid=foobar\nACGT\n", record.to_string())
+    /// ```
     pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> Self {
         let desc = match desc {
             Some(desc) => Some(desc.to_owned()),
@@ -677,6 +799,49 @@ impl Record {
     }
 }
 
+impl fmt::Display for Record {
+    /// Allows for using `Record` in a given formatter `f`. In general this is for
+    /// creating a `String` representation of a `Record` and, optionally, writing it to
+    /// a file.
+    ///
+    /// # Errors
+    /// Returns [`std::fmt::Error`](https://doc.rust-lang.org/std/fmt/struct.Error.html)
+    /// if there is an issue formatting to the stream.
+    ///
+    /// # Examples
+    ///
+    /// Read in a Fasta `Record` and create a `String` representation of it.
+    ///
+    /// ```rust
+    /// use bio::io::fasta::Reader;
+    /// use std::fmt::Write;
+    /// // create a "fake" fasta file
+    /// let fasta: &'static [u8] = b">id comment1 comment2\nACGT\n";
+    /// let mut records = Reader::new(fasta).records().map(|r| r.unwrap());
+    /// let record = records.next().unwrap();
+    ///
+    /// let mut actual = String::new();
+    /// // populate `actual` with a string representation of our record
+    /// write!(actual, "{}", record).unwrap();
+    ///
+    /// let expected = std::str::from_utf8(fasta).unwrap();
+    ///
+    /// assert_eq!(actual, expected)
+    /// ```
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        let header = match self.desc() {
+            Some(d) => format!("{} {}", self.id().to_owned(), d),
+            None => self.id().to_owned(),
+        };
+        write!(
+            f,
+            ">{}\n{}\n",
+            header,
+            std::str::from_utf8(self.seq()).unwrap(),
+        )
+    }
+}
+
 /// An iterator over the records of a Fasta file.
 pub struct Records<R: io::Read> {
     reader: Reader<R>,
@@ -706,6 +871,7 @@ impl<R: io::Read> Iterator for Records<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fmt::Write as FmtWrite;
     use std::io;
 
     const FASTA_FILE: &'static [u8] = b">id desc
@@ -886,7 +1052,15 @@ ATTGTTGTTTTA
     }
 
     #[test]
-    fn test_record_with_attrs() {
+    fn test_record_with_attrs_without_description() {
+        let record = Record::with_attrs("id_str", None, b"ATGCGGG");
+        assert_eq!(record.id(), "id_str");
+        assert_eq!(record.desc(), None);
+        assert_eq!(record.seq(), b"ATGCGGG");
+    }
+
+    #[test]
+    fn test_record_with_attrs_with_description() {
         let record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG");
         assert_eq!(record.id(), "id_str");
         assert_eq!(record.desc(), Some("desc"));
@@ -1295,5 +1469,107 @@ ATTGTTGTTTTA
         writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
         writer.flush().unwrap();
         assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
+    }
+
+    #[test]
+    fn test_display_record_no_desc_id_without_space_after() {
+        let fasta: &'static [u8] = b">id\nACGT\n";
+        let mut records = Reader::new(fasta).records().map(|r| r.unwrap());
+        let record = records.next().unwrap();
+        let mut actual = String::new();
+        write!(actual, "{}", record).unwrap();
+
+        let expected = std::str::from_utf8(fasta).unwrap();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_display_record_with_desc_id_has_space_between_id_and_desc() {
+        let fasta: &'static [u8] = b">id comment1 comment2\nACGT\n";
+        let mut records = Reader::new(fasta).records().map(|r| r.unwrap());
+        let record = records.next().unwrap();
+        let mut actual = String::new();
+        write!(actual, "{}", record).unwrap();
+
+        let expected = std::str::from_utf8(fasta).unwrap();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_index_record_idx_by_rid_invalid_index_returns_error() {
+        let reader = ReaderMock {
+            seek_fails: false,
+            read_fails: false,
+        };
+        let index_reader = IndexedReader::new(reader, FAI_FILE).unwrap();
+
+        let actual = index_reader.idx_by_rid(99999).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::Other, "Invalid record index in fasta file.");
+
+        assert_eq!(actual.kind(), expected.kind());
+        assert_eq!(actual.to_string(), expected.to_string())
+    }
+
+    #[test]
+    fn test_index_record_fetch_by_rid_second_index_returns_second_record() {
+        let reader = ReaderMock {
+            seek_fails: false,
+            read_fails: false,
+        };
+        let mut index_reader = IndexedReader::new(reader, FAI_FILE).unwrap();
+
+        let actual = index_reader.fetch_by_rid(1, 1, 3);
+
+        assert!(actual.is_ok());
+        assert_eq!(
+            index_reader.fetched_idx,
+            Some(IndexRecord {
+                name: String::from("id2"),
+                len: 40,
+                offset: 71,
+                line_bases: 12,
+                line_bytes: 13
+            })
+        )
+    }
+
+    #[test]
+    fn test_writer_to_file_dir_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.fa");
+
+        let actual = Writer::to_file(path).unwrap_err();
+        let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
+
+        assert_eq!(actual.kind(), expected.kind());
+    }
+
+    #[test]
+    fn test_writer_to_file_dir_exists_returns_ok() {
+        let file = tempfile::NamedTempFile::new().expect("Could not create temp file");
+        let path = file.path();
+
+        assert!(Writer::to_file(path).is_ok())
+    }
+
+    #[test]
+    fn test_write_record() {
+        let path = Path::new("test.fa");
+        let file = fs::File::create(path).unwrap();
+        {
+            let handle = io::BufWriter::new(file);
+            let mut writer = Writer { writer: handle };
+            let record = Record::with_attrs("id", Some("desc"), b"ACGT");
+
+            let write_result = writer.write_record(&record);
+            assert!(write_result.is_ok());
+        }
+
+        let actual = fs::read_to_string(path).unwrap();
+        let expected = ">id desc\nACGT\n";
+
+        assert!(fs::remove_file(path).is_ok());
+        assert_eq!(actual, expected)
     }
 }

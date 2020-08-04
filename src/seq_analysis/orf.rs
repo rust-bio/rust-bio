@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! One-way orf finder algorithm.
+//! One-way open reading frame (ORF) finder algorithm.
 //!
 //! Complexity: O(n).
 //!
@@ -11,22 +11,22 @@
 //!
 //! ```
 //! use bio::seq_analysis::orf::{Finder, Orf};
-//! let start_codons = vec!(b"ATG");
-//! let stop_codons  = vec!(b"TGA", b"TAG", b"TAA");
+//! let start_codons = vec![b"ATG"];
+//! let stop_codons = vec![b"TGA", b"TAG", b"TAA"];
 //! let min_len = 50;
 //! let finder = Finder::new(start_codons, stop_codons, min_len);
 //!
 //! let sequence = b"ACGGCTAGAAAAGGCTAGAAAA";
 //!
-//! for Orf{start, end, offset} in finder.find_all(sequence) {
-//!    let orf = &sequence[start..end];
-//!    //...do something with orf sequence...
+//! for Orf { start, end, offset } in finder.find_all(sequence) {
+//!     let orf = &sequence[start..end];
+//!     //...do something with orf sequence...
 //! }
 //! ```
 //!
-//! Right now the only way to check the reverse strand for orf is to use
+//! Right now the only way to check the reverse strand for ORF is to use
 //! the `alphabet::dna::RevComp` struct and to check for both sequences.
-//! But that's not so performance friendly, as the reverse complementation and the orf research
+//! But that's not so performance friendly, as the reverse complementation and the ORF research
 //! could go on at the same time.
 
 use std::borrow::Borrow;
@@ -34,6 +34,12 @@ use std::collections::VecDeque;
 use std::iter;
 
 /// An implementation of a naive algorithm finder
+// Implementation note:
+//
+// VecDeque is used rather than the obvious [u8; 3] to represent
+// codons because a VecDeque<u8> is used to represent a sliding codon
+// (see: State.codon) window which unfortunately, cannot be compared
+// to [u8; 3].
 pub struct Finder {
     start_codons: Vec<VecDeque<u8>>,
     stop_codons: Vec<VecDeque<u8>>,
@@ -41,7 +47,8 @@ pub struct Finder {
 }
 
 impl Finder {
-    /// Create a new instance of a finder for the given start and stop codons and a particular length
+    /// Create a new instance of a finder for the given start and stop codons and the minimum
+    /// length of an ORF.
     pub fn new<'a>(
         start_codons: Vec<&'a [u8; 3]>,
         stop_codons: Vec<&'a [u8; 3]>,
@@ -49,26 +56,18 @@ impl Finder {
     ) -> Self {
         Finder {
             start_codons: start_codons
-                .iter() // Convert start_ and
-                .map(|x| {
-                    // stop_codons from
-                    x.iter() // Vec<&[u8;3]> to
-                        .map(|&x| x as u8) // Vec<VecDeque<u8>>
-                        .collect::<VecDeque<u8>>() // so they can be
-                }) // easily compared
-                .collect(), // with codon built
+                .iter()
+                .map(|x| x.iter().map(|&x| x as u8).collect::<VecDeque<u8>>())
+                .collect(),
             stop_codons: stop_codons
-                .iter() // from IntoTextIterator
-                .map(|x| {
-                    // object.
-                    x.iter().map(|&x| x as u8).collect::<VecDeque<u8>>()
-                })
+                .iter()
+                .map(|x| x.iter().map(|&x| x as u8).collect::<VecDeque<u8>>())
                 .collect(),
             min_len,
         }
     }
 
-    /// Find all orfs in the given sequence
+    /// Find all ORFs in the given sequence
     pub fn find_all<C, T>(&self, seq: T) -> Matches<'_, C, T::IntoIter>
     where
         C: Borrow<u8>,
@@ -82,9 +81,10 @@ impl Finder {
     }
 }
 
-/// An orf representation with start and end position of said orf,
+/// An ORF representation with start and end position of said ORF,
 /// as well as offset of the reading frame (1,2,3) and strand location
 // (current: +, reverse complementary: -).
+#[derive(Debug, PartialEq)]
 pub struct Orf {
     pub start: usize,
     pub end: usize,
@@ -107,7 +107,7 @@ impl State {
     }
 }
 
-/// Iterator over offset, start position, end position and sequence of matched orfs.
+/// Iterator over offset, start position, end position and sequence of matched ORFs.
 pub struct Matches<'a, C, T>
 where
     C: Borrow<u8>,
@@ -169,17 +169,60 @@ where
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_orf() {
+    fn basic_finder() -> Finder {
         let start_codons = vec![b"ATG"];
         let stop_codons = vec![b"TGA", b"TAG", b"TAA"];
-        let min_len = 50;
-        let finder = Finder::new(start_codons, stop_codons, min_len);
+        let min_len = 5;
+        Finder::new(start_codons, stop_codons, min_len)
+    }
 
+    #[test]
+    fn test_no_orf() {
+        let finder = basic_finder();
         let sequence = b"ACGGCTAGAAAAGGCTAGAAAA";
+        assert!(finder.find_all(sequence).collect::<Vec<Orf>>().is_empty());
+    }
 
-        for Orf { start, end, .. } in finder.find_all(sequence) {
-            let _ = &sequence[start..end];
-        }
+    #[test]
+    fn test_one_orf_no_offset() {
+        let finder = basic_finder();
+        let sequence = b"GGGATGGGGTGAGGG";
+        let expected = vec![Orf {
+            start: 3,
+            end: 12,
+            offset: 0,
+        }];
+        assert_eq!(expected, finder.find_all(sequence).collect::<Vec<Orf>>());
+    }
+
+    #[test]
+    fn test_one_orf_with_offset() {
+        let finder = basic_finder();
+        let sequence = b"AGGGATGGGGTGAGGG";
+        let expected = vec![Orf {
+            start: 4,
+            end: 13,
+            offset: 1,
+        }];
+        assert_eq!(expected, finder.find_all(sequence).collect::<Vec<Orf>>());
+    }
+
+    #[test]
+    fn test_two_orfs_different_offsets() {
+        let finder = basic_finder();
+        let sequence = b"ATGGGGTGAGGGGGATGGAAAAATAAG";
+        let expected = vec![
+            Orf {
+                start: 0,
+                end: 9,
+                offset: 0,
+            },
+            Orf {
+                start: 14,
+                end: 26,
+                offset: 2,
+            },
+        ];
+        assert_eq!(expected, finder.find_all(sequence).collect::<Vec<Orf>>());
     }
 }
