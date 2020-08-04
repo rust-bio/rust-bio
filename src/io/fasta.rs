@@ -212,7 +212,7 @@ where
     /// let mut record = Record::new();
     ///
     /// // Check for errors parsing the record
-    /// reader.read(&mut record).expect("Error: broken record detected");
+    /// reader.read(&mut record).expect("fasta reader: got an io::Error or could not read_line()");
     ///
     /// assert_eq!(record.id(), "id");
     /// assert_eq!(record.desc().unwrap(), "desc");
