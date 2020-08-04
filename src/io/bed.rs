@@ -238,7 +238,7 @@ impl<'a> From<&'a Record> for annot::contig::Contig<String, strand::Strand> {
     /// use bio_types::strand::Strand;
     /// let example = b"chr1\t5\t5000\tname1\t0.5";
     /// let mut reader = bed::Reader::new(&example[..]);
-    /// let rec = reader.records().next().expect("Error: No record available!");
+    /// let rec = reader.records().next().expect("Found no bed record.").expect("Got a csv::Error");
     /// let loc = Contig::from(&rec);
     /// assert_eq!(loc.to_string(), "chr1:5-5000");
     /// ```
