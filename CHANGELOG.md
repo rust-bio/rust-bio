@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.32.0] - 2020-07-28
+This release mostly comprises of the documentation improvements made
+by the recent Docathon. Lots of new doctests and a bunch of time and
+memory complexity annotations. Big thanks to @tedil, @dcroote,
+@TomKellyGenetics, @natir, @thomasmulvaney, @mbhall88, @jafors,
+@HenningTimm, @luizirber, @dlaehnemann, @johanneskoester.
+Further additions in this release are:
+- homopolymer-error-aware pairHMM implementation (thanks to @tedil).
+- SIMD-accelerated edit distance routines (thanks to @Daniel-Liu-c0deb0t).
+- BitEnc derives more traits (thanks to @FelixMoelder).
+- wider pinning of some dependencies' version numbers (thanks to @pmarks).
+
 # [0.31.0] - 2020-06-02
 - Bugfix for pHMM implementation (thanks to @tedil).
 - Sorted array-backed interval trees (thanks to @tedil).
