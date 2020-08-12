@@ -310,6 +310,16 @@ mod tests {
     }
 
     #[test]
+    fn test_iterator() {
+        let (text, alphabet) = setup();
+        let q = 3;
+        let qgram_index = QGramIndex::new(q, text.iter(), &alphabet);
+
+        let exact_matches = qgram_index.exact_matches(text);
+        assert!(exact_matches.len() >= 1);
+    }
+
+    #[test]
     #[cfg(feature = "nightly")]
     fn test_serde() {
         use serde::{Deserialize, Serialize};
