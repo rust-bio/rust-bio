@@ -7,7 +7,6 @@ use std::path::Path;
 
 use byteorder::{ByteOrder, LittleEndian};
 use flate2::read::GzDecoder;
-use math::round;
 
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -60,7 +59,7 @@ pub fn reader(
     let buffered = BufReader::new(file_handle);
     let file = GzDecoder::new(buffered);
 
-    let num_bit_vecs: usize = round::ceil(num_cols as f64 / 8.0, 0) as usize;
+    let num_bit_vecs: usize = (num_cols + 7) / 8;
     let bit_vector_lengths = get_reserved_spaces(num_bit_vecs, num_rows, file)?;
 
     let total_nnz = bit_vector_lengths[num_rows];
@@ -116,7 +115,7 @@ pub fn writer(file_path: &Path, matrix: &CsMat<MatValT>) -> Result<(), Box<dyn E
     let buffered = BufWriter::new(file_handle);
     let mut file = GzEncoder::new(buffered, Compression::default());
 
-    let num_bit_vecs: usize = round::ceil(matrix.cols() as f64 / 8.0, 0) as usize;
+    let num_bit_vecs: usize = (matrix.cols() + 7) / 8;
     let mut bit_vecs: Vec<u8> = vec![0; num_bit_vecs];
 
     for row_vec in matrix.outer_iterator() {
@@ -133,7 +132,7 @@ pub fn writer(file_path: &Path, matrix: &CsMat<MatValT>) -> Result<(), Box<dyn E
 
         // refilling bit vector
         for pos in positions {
-            let i = round::floor(pos as f64 / 8.0, 0) as usize;
+            let i = pos / 8;
             let j = pos % 8;
 
             bit_vecs[i] |= 128u8 >> j;
@@ -148,4 +147,95 @@ pub fn writer(file_path: &Path, matrix: &CsMat<MatValT>) -> Result<(), Box<dyn E
     }
 
     Ok(())
+}
+
+// writes the EDS format single cell matrix into the given path
+pub fn as_bytes(matrix_row: &[MatValT], num_cols: usize) -> Result<Vec<u8>, Box<dyn Error>> {
+    let num_bit_vecs: usize = (num_cols + 7) / 8;
+    let mut bit_vecs: Vec<u8> = vec![0_u8; num_bit_vecs];
+    let mut values = Vec::new();
+
+    let error = f32::EPSILON;
+    for (col_ind, &val) in matrix_row.iter().enumerate() {
+        let val = val as MatValT;
+
+        if (val - 0.0).abs() < error {
+            continue;
+        }
+        values.push(val);
+
+        let i = col_ind / 8;
+        let j = col_ind % 8;
+        bit_vecs[i] |= 128u8 >> j;
+    }
+
+    let mut bin_exp: Vec<u8> = vec![0_u8; values.len() * 4];
+    if std::any::TypeId::of::<MatValT>() == std::any::TypeId::of::<f32>() {
+        LittleEndian::write_f32_into(&values, &mut bin_exp);
+        bit_vecs.append(&mut bin_exp);
+    } else {
+        unreachable!("EDS not supported for non float objects");
+    }
+
+    Ok(bit_vecs)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::single_cell::single_cell_experiment::SingleCellExperiment;
+    use sprs::CsMat;
+
+    fn get_test_matrix_f32() -> CsMat<f32> {
+        CsMat::new(
+            (3, 3),
+            vec![0, 2, 4, 5],
+            vec![0, 1, 0, 2, 2],
+            vec![1.2, 2.3, 3.4, 4.5, 5.6],
+        )
+    }
+
+    fn get_test_sce_f32_data() -> (CsMat<f32>, Vec<String>, Vec<String>) {
+        let a = get_test_matrix_f32();
+        let b: Vec<String> = vec!["1", "2", "3"]
+            .into_iter()
+            .map(|x| x.to_string())
+            .collect();
+        let c: Vec<String> = vec!["4", "5", "6"]
+            .into_iter()
+            .map(|x| x.to_string())
+            .collect();
+
+        (a, b, c)
+    }
+
+    fn get_temp_file(ext: String) -> std::path::PathBuf {
+        let mut dir = std::env::temp_dir();
+        dir.push(format!("foo{}", ext));
+        dir
+    }
+
+    #[test]
+    fn test_eds_f32() {
+        let (a, b, c) = get_test_sce_f32_data();
+        let sce = match SingleCellExperiment::from_csr(a, b.clone(), c.clone()) {
+            Ok(x) => x,
+            Err(y) => panic!("ERROR: {}", y),
+        };
+
+        let file = get_temp_file(".eds.gz".to_owned());
+        let fname = file.to_str().unwrap();
+        match sce.to_eds(fname) {
+            Ok(_) => (),
+            Err(y) => panic!("ERROR: {}", y),
+        };
+        println!("{:?}", fname);
+
+        let sce_eds: SingleCellExperiment<f32> = match SingleCellExperiment::from_eds(fname, b, c) {
+            Ok(x) => x,
+            Err(y) => panic!("ERROR: {}", y),
+        };
+
+        assert_eq!(sce, sce_eds);
+        std::fs::remove_file(fname).expect("can't remove temp file");
+    }
 }

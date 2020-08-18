@@ -52,7 +52,6 @@ enum-map = "0.6"
 triple_accel = "0.3.2"
 num = "0.3.0"
 flate2 = "1.0.16"
-libmath = "0.2.1"
 byteorder = "1.3.4"
 sprs = "0.8.1"
 

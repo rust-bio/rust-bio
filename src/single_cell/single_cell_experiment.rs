@@ -1,15 +1,8 @@
-extern crate byteorder;
-extern crate flate2;
-extern crate math;
-extern crate num;
-extern crate num_traits;
-extern crate sprs;
-
-use crate::single_cell::{csv, eds, mtx};
-
 use sprs::CsMat;
 use std::error::Error;
 use std::path::Path;
+
+use crate::single_cell::{csv, eds, mtx};
 
 #[derive(Debug, PartialEq)]
 pub struct SingleCellExperiment<T> {
@@ -37,6 +30,13 @@ impl<T> SingleCellExperiment<T> {
 
     pub fn row_names(&self) -> &Vec<String> {
         &self.rows
+    }
+
+    pub fn get_row_name(&self, index: usize) -> Option<&String> {
+        if self.rows() <= index {
+            return None;
+        }
+        Some(&self.rows[index])
     }
 
     pub fn col_names(&self) -> &Vec<String> {
@@ -152,31 +152,8 @@ mod tests {
         )
     }
 
-    fn get_test_matrix_usize() -> CsMat<usize> {
-        CsMat::new(
-            (3, 3),
-            vec![0, 2, 4, 5],
-            vec![0, 1, 0, 2, 2],
-            vec![1, 2, 3, 4, 5],
-        )
-    }
-
     fn get_test_sce_f32_data() -> (CsMat<f32>, Vec<String>, Vec<String>) {
         let a = get_test_matrix_f32();
-        let b: Vec<String> = vec!["1", "2", "3"]
-            .into_iter()
-            .map(|x| x.to_string())
-            .collect();
-        let c: Vec<String> = vec!["4", "5", "6"]
-            .into_iter()
-            .map(|x| x.to_string())
-            .collect();
-
-        (a, b, c)
-    }
-
-    fn get_test_sce_usize_data() -> (CsMat<usize>, Vec<String>, Vec<String>) {
-        let a = get_test_matrix_usize();
         let b: Vec<String> = vec!["1", "2", "3"]
             .into_iter()
             .map(|x| x.to_string())
@@ -211,138 +188,5 @@ mod tests {
             Err(y) => panic!("ERROR: {}", y),
         };
         assert_eq!(sce.transpose_into(), sce_t);
-    }
-
-    fn get_temp_file(ext: String) -> std::path::PathBuf {
-        let mut dir = std::env::temp_dir();
-        dir.push(format!("foo{}", ext));
-        dir
-    }
-
-    #[test]
-    fn test_csv_f32() {
-        let (a, b, c) = get_test_sce_f32_data();
-        let sce = match SingleCellExperiment::from_csr(a, b.clone(), c.clone()) {
-            Ok(x) => x,
-            Err(y) => panic!("ERROR: {}", y),
-        };
-
-        let file = get_temp_file(".csv.gz".to_owned());
-        let fname = file.to_str().unwrap();
-        match sce.to_csv(fname) {
-            Ok(_) => (),
-            Err(y) => panic!("ERROR: {}", y),
-        };
-        println!("{:?}", fname);
-
-        let sce_csv: SingleCellExperiment<f32> = match SingleCellExperiment::from_csv(fname, b, c) {
-            Ok(x) => x,
-            Err(y) => panic!("ERROR: {}", y),
-        };
-
-        assert_eq!(sce, sce_csv);
-        std::fs::remove_file(fname).expect("can't remove temp file");
-    }
-
-    #[test]
-    fn test_csv_usize() {
-        let (a, b, c) = get_test_sce_usize_data();
-        let sce = match SingleCellExperiment::from_csr(a, b.clone(), c.clone()) {
-            Ok(x) => x,
-            Err(y) => panic!("ERROR: {}", y),
-        };
-
-        let file = get_temp_file(".csv.usize.gz".to_owned());
-        let fname = file.to_str().unwrap();
-        match sce.to_csv(fname) {
-            Ok(_) => (),
-            Err(y) => panic!("ERROR: {}", y),
-        };
-        println!("{:?}", fname);
-
-        let sce_csv: SingleCellExperiment<usize> = match SingleCellExperiment::from_csv(fname, b, c)
-        {
-            Ok(x) => x,
-            Err(y) => panic!("ERROR: {}", y),
-        };
-
-        assert_eq!(sce, sce_csv);
-        std::fs::remove_file(fname).expect("can't remove temp file");
-    }
-
-    #[test]
-    fn test_eds_f32() {
-        let (a, b, c) = get_test_sce_f32_data();
-        let sce = match SingleCellExperiment::from_csr(a, b.clone(), c.clone()) {
-            Ok(x) => x,
-            Err(y) => panic!("ERROR: {}", y),
-        };
-
-        let file = get_temp_file(".eds.gz".to_owned());
-        let fname = file.to_str().unwrap();
-        match sce.to_eds(fname) {
-            Ok(_) => (),
-            Err(y) => panic!("ERROR: {}", y),
-        };
-        println!("{:?}", fname);
-
-        let sce_eds: SingleCellExperiment<f32> = match SingleCellExperiment::from_eds(fname, b, c) {
-            Ok(x) => x,
-            Err(y) => panic!("ERROR: {}", y),
-        };
-
-        assert_eq!(sce, sce_eds);
-        std::fs::remove_file(fname).expect("can't remove temp file");
-    }
-
-    #[test]
-    fn test_mtx_f32() {
-        let (a, b, c) = get_test_sce_f32_data();
-        let sce = match SingleCellExperiment::from_csr(a, b.clone(), c.clone()) {
-            Ok(x) => x,
-            Err(y) => panic!("ERROR: {}", y),
-        };
-
-        let file = get_temp_file(".mtx".to_owned());
-        let fname = file.to_str().unwrap();
-        match sce.to_mtx(fname) {
-            Ok(_) => (),
-            Err(y) => panic!("ERROR: {}", y),
-        };
-        println!("{:?}", fname);
-
-        let sce_mtx: SingleCellExperiment<f32> = match SingleCellExperiment::from_mtx(fname, b, c) {
-            Ok(x) => x,
-            Err(y) => panic!("ERROR: {}", y),
-        };
-
-        assert_eq!(sce, sce_mtx);
-        std::fs::remove_file(fname).expect("can't remove temp file");
-    }
-
-    #[test]
-    fn test_mtx_usize() {
-        let (a, b, c) = get_test_sce_usize_data();
-        let sce = match SingleCellExperiment::from_csr(a, b.clone(), c.clone()) {
-            Ok(x) => x,
-            Err(_) => unreachable!(),
-        };
-
-        let file = get_temp_file("_usize.mtx".to_owned());
-        let fname = file.to_str().unwrap();
-        match sce.to_mtx(fname) {
-            Ok(_) => (),
-            Err(y) => panic!("ERROR: {}", y),
-        };
-        println!("{:?}", fname);
-
-        let sce_mtx: SingleCellExperiment<usize> = match SingleCellExperiment::from_mtx(fname, b, c)
-        {
-            Ok(x) => x,
-            Err(y) => panic!("ERROR: {}", y),
-        };
-
-        assert_eq!(sce, sce_mtx);
-        std::fs::remove_file(fname).expect("can't remove temp file");
     }
 }
