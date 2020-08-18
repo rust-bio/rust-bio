@@ -2,7 +2,7 @@ use sprs::CsMat;
 use std::error::Error;
 use std::path::Path;
 
-use crate::single_cell::{csv, eds, mtx};
+use crate::single_cell::{csv, eds, mtx, iter};
 
 #[derive(Debug, PartialEq)]
 pub struct SingleCellExperiment<T> {
