@@ -14,11 +14,11 @@ fn gcn_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T, step: usiz
     let (l, count) = sequence
         .into_iter()
         .step_by(step)
-        .fold((0.0, 0.0), |(l, count), n| match *n.borrow() {
-            b'c' | b'g' | b'G' | b'C' => (l + 1.0, count + 1.0),
-            _ => (l + 1.0, count),
+        .fold((0, 0), |(l, count), n| match *n.borrow() {
+            b'c' | b'g' | b'G' | b'C' => (l + 1, count + 1),
+            _ => (l + 1, count),
         });
-    count / l
+    count as f32 / l as f32
 }
 
 /// Returns the ratio of bases which are guanine or cytososine
@@ -70,5 +70,14 @@ mod tests {
         assert_eq!(gc_content(gc50), 0.5);
         let gc100 = b"GCGC";
         assert_eq!(gc_content(gc100), 1.0);
+    }
+
+    #[test]
+    fn test_gc_content_large() {
+        const LENGTH: usize = 10_000_000;
+        let mut s = vec![b'G'; LENGTH];
+        s.extend_from_slice(&[b'T'; LENGTH]);
+        let gc_content = gc_content(s);
+        assert_eq!(gc_content, 0.5);
     }
 }
