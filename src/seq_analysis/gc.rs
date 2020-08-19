@@ -14,7 +14,7 @@ fn gcn_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T, step: usiz
     let (l, count) = sequence
         .into_iter()
         .step_by(step)
-        .fold((0, 0), |(l, count), n| match *n.borrow() {
+        .fold((0usize, 0usize), |(l, count), n| match *n.borrow() {
             b'c' | b'g' | b'G' | b'C' => (l + 1, count + 1),
             _ => (l + 1, count),
         });
