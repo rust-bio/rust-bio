@@ -483,7 +483,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
             Some(rid) => self.idx_by_rid(*rid),
             None => Err(io::Error::new(
                 io::ErrorKind::Other,
-                "Unknown sequence name.",
+                format!("Unknown sequence name: {}.", seqname),
             )),
         }
     }
