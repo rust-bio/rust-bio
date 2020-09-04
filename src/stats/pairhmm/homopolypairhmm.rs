@@ -82,6 +82,7 @@ use crate::stats::pairhmm::{
 };
 use crate::stats::probs::LogProb;
 use crate::stats::Prob;
+use std::collections::HashMap;
 
 #[derive(Eq, PartialEq, Debug, Enum, Clone, Copy)]
 #[repr(usize)]
@@ -172,7 +173,7 @@ pub trait HopParameters {
 /// and transitions.
 #[derive(Debug, Clone)]
 pub struct HomopolyPairHMM {
-    transition_probs: Vec<LogProb>,
+    transition_probs: HashMap<usize, LogProb>,
 }
 
 impl HomopolyPairHMM {
@@ -278,7 +279,10 @@ impl HomopolyPairHMM {
                             + LogProb::ln_sum_exp(
                                 &STATES
                                     .iter()
-                                    .map(|&s| transition_probs[s >> m] + v[prev][s][j_minus_one])
+                                    .map(|&s| {
+                                        transition_probs.get(&(s >> m)).unwrap_or(&LogProb::zero())
+                                            + v[prev][s][j_minus_one]
+                                    })
                                     .collect_vec(),
                             );
                     } else {
@@ -290,30 +294,30 @@ impl HomopolyPairHMM {
                     + LogProb::ln_sum_exp(
                         &MATCH_STATES
                             .iter()
-                            .map(|&s| transition_probs[s >> GapY] + v[prev][s][j_])
-                            .chain(once(transition_probs[GapY >> GapY] + v[prev][GapY][j_]))
+                            .map(|&s| transition_probs[&(s >> GapY)] + v[prev][s][j_])
+                            .chain(once(transition_probs[&(GapY >> GapY)] + v[prev][GapY][j_]))
                             .collect_vec(),
                     );
 
                 MATCH_HOP_Y.iter().for_each(|&(m, h)| {
-                    v[curr][h][j_] = (transition_probs[m >> h] + v[prev][m][j_])
-                        .ln_add_exp(transition_probs[h >> h] + v[prev][h][j_])
+                    v[curr][h][j_] = (transition_probs[&(m >> h)] + v[prev][m][j_])
+                        .ln_add_exp(transition_probs[&(h >> h)] + v[prev][h][j_])
                 });
 
                 v[curr][GapX][j_] = emission_params.prob_emit_y(j)
                     + LogProb::ln_sum_exp(
                         &MATCH_STATES
                             .iter()
-                            .map(|&s| transition_probs[s >> GapX] + v[curr][s][j_minus_one])
+                            .map(|&s| transition_probs[&(s >> GapX)] + v[curr][s][j_minus_one])
                             .chain(once(
-                                transition_probs[GapX >> GapX] + v[curr][GapX][j_minus_one],
+                                transition_probs[&(GapX >> GapX)] + v[curr][GapX][j_minus_one],
                             ))
                             .collect_vec(),
                     );
 
                 MATCH_HOP_X.iter().for_each(|&(m, h)| {
-                    v[curr][h][j_] = (transition_probs[m >> h] + v[curr][m][j_minus_one])
-                        .ln_add_exp(transition_probs[h >> h] + v[curr][h][j_minus_one])
+                    v[curr][h][j_] = (transition_probs[&(m >> h)] + v[curr][m][j_minus_one])
+                        .ln_add_exp(transition_probs[&(h >> h)] + v[curr][h][j_minus_one])
                 });
 
                 // calculate minimal number of mismatches
@@ -456,10 +460,8 @@ const MATCH_OTHER: [(State, State); 12] = [
 fn build_transition_table<G: GapParameters, H: HopParameters>(
     gap_params: &G,
     hop_params: &H,
-) -> Vec<LogProb> {
-    let n = STATES.len();
-    let max_pair_label = (1 << (2 * n)) - 1;
-    let mut transition_probs = vec![LogProb::zero(); max_pair_label];
+) -> HashMap<usize, LogProb> {
+    let mut transition_probs = HashMap::new();
 
     let prob_hop_x = hop_params.prob_hop_x();
     let prob_hop_y = hop_params.prob_hop_y();
@@ -471,50 +473,50 @@ fn build_transition_table<G: GapParameters, H: HopParameters>(
     let prob_gap_x_extend = gap_params.prob_gap_x_extend();
     let prob_gap_y_extend = gap_params.prob_gap_y_extend();
 
-    MATCH_HOP_X
-        .iter()
-        .for_each(|(a, b)| transition_probs[*a >> *b] = prob_hop_x);
-    MATCH_HOP_Y
-        .iter()
-        .for_each(|(a, b)| transition_probs[*a >> *b] = prob_hop_y);
-    HOP_X_HOP_X
-        .iter()
-        .for_each(|(a, b)| transition_probs[*a >> *b] = prob_hop_x_extend);
-    HOP_Y_HOP_Y
-        .iter()
-        .for_each(|(a, b)| transition_probs[*a >> *b] = prob_hop_y_extend);
-    HOP_X_MATCH
-        .iter()
-        .for_each(|(a, b)| transition_probs[*a >> *b] = prob_hop_x_extend.ln_one_minus_exp());
-    HOP_Y_MATCH
-        .iter()
-        .for_each(|(a, b)| transition_probs[*a >> *b] = prob_hop_y_extend.ln_one_minus_exp());
+    MATCH_HOP_X.iter().for_each(|(a, b)| {
+        transition_probs.insert(*a >> *b, prob_hop_x);
+    });
+    MATCH_HOP_Y.iter().for_each(|(a, b)| {
+        transition_probs.insert(*a >> *b, prob_hop_y);
+    });
+    HOP_X_HOP_X.iter().for_each(|(a, b)| {
+        transition_probs.insert(*a >> *b, prob_hop_x_extend);
+    });
+    HOP_Y_HOP_Y.iter().for_each(|(a, b)| {
+        transition_probs.insert(*a >> *b, prob_hop_y_extend);
+    });
+    HOP_X_MATCH.iter().for_each(|(a, b)| {
+        transition_probs.insert(*a >> *b, prob_hop_x_extend.ln_one_minus_exp());
+    });
+    HOP_Y_MATCH.iter().for_each(|(a, b)| {
+        transition_probs.insert(*a >> *b, prob_hop_y_extend.ln_one_minus_exp());
+    });
 
     let match_same =
         LogProb::ln_sum_exp(&[prob_gap_y, prob_gap_x, prob_hop_x, prob_hop_y]).ln_one_minus_exp();
     let match_other =
         LogProb::ln_sum_exp(&[prob_gap_y, prob_gap_x, prob_hop_x, prob_hop_y]).ln_one_minus_exp();
-    MATCH_SAME_
-        .iter()
-        .for_each(|(a, b)| transition_probs[*a >> *b] = match_same);
-    MATCH_OTHER
-        .iter()
-        .for_each(|(a, b)| transition_probs[*a >> *b] = match_other);
+    MATCH_SAME_.iter().for_each(|(a, b)| {
+        transition_probs.insert(*a >> *b, match_same);
+    });
+    MATCH_OTHER.iter().for_each(|(a, b)| {
+        transition_probs.insert(*a >> *b, match_other);
+    });
 
-    MATCH_STATES
-        .iter()
-        .for_each(|&a| transition_probs[a >> GapX] = prob_gap_y);
-    MATCH_STATES
-        .iter()
-        .for_each(|&a| transition_probs[a >> GapY] = prob_gap_x);
-    MATCH_STATES
-        .iter()
-        .for_each(|&b| transition_probs[GapX >> b] = prob_gap_y_extend.ln_one_minus_exp());
-    MATCH_STATES
-        .iter()
-        .for_each(|&b| transition_probs[GapY >> b] = prob_gap_x_extend.ln_one_minus_exp());
-    transition_probs[GapX >> GapX] = prob_gap_y_extend;
-    transition_probs[GapY >> GapY] = prob_gap_x_extend;
+    MATCH_STATES.iter().for_each(|&a| {
+        transition_probs.insert(a >> GapX, prob_gap_y);
+    });
+    MATCH_STATES.iter().for_each(|&a| {
+        transition_probs.insert(a >> GapY, prob_gap_x);
+    });
+    MATCH_STATES.iter().for_each(|&b| {
+        transition_probs.insert(GapX >> b, prob_gap_y_extend.ln_one_minus_exp());
+    });
+    MATCH_STATES.iter().for_each(|&b| {
+        transition_probs.insert(GapY >> b, prob_gap_x_extend.ln_one_minus_exp());
+    });
+    transition_probs.insert(GapX >> GapX, prob_gap_y_extend);
+    transition_probs.insert(GapY >> GapY, prob_gap_x_extend);
     transition_probs
 }
 
