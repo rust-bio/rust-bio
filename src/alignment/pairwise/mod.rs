@@ -400,19 +400,19 @@ impl<F: MatchFunc> Scoring<F> {
 /// A generalized Smith-Waterman aligner.
 ///
 /// `M(i,j)` is the best score such that `x[i]` and `y[j]` ends in a match (or substitution)
-/// ```
+/// ```ignore
 ///              .... A   G  x_i
 ///              .... C   G  y_j
 /// ```
 /// `I(i,j)` is the best score such that `x[i]` is aligned with a gap
-/// ```
+/// ```ignore
 ///              .... A   G  x_i
 ///              .... G  y_j  -
 /// ```
 /// This is interpreted as an insertion into `x` w.r.t reference `y`
 ///
 /// `D(i,j)` is the best score such that `y[j]` is aligned with a gap
-/// ```
+/// ```ignore
 ///              .... A  x_i  -
 ///              .... G   G  y_j
 /// ```
