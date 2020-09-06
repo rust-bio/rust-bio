@@ -9,6 +9,7 @@ use crate::utils::TextSlice;
 use std::collections::BTreeMap;
 
 pub type AminoAcidCount = BTreeMap<u8, u32>;
+pub type AminoAcidPercentage = BTreeMap<u8, f32>;
 
 use lazy_static::lazy_static;
 
@@ -58,6 +59,7 @@ lazy_static! {
 pub struct ProteinSeqAnalysis<'a> {
     pub seq: TextSlice<'a>,
     pub aa_count: AminoAcidCount,
+    pub aa_percentages: AminoAcidPercentage,
     pub isoelectric_point: f32,
     pub molar_extinction_coefficient: (u32, u32),
 }
@@ -74,6 +76,7 @@ impl<'a> ProteinSeqAnalysis<'a> {
         let mut res = Self::new(seq);
         res.isoelectric_point = res.calc_isoelectric_point();
         res.molar_extinction_coefficient = res.calc_molar_extinction_coefficient();
+        res.aa_percentages = res.calc_aa_percentages();
         res
     }
 
@@ -86,7 +89,16 @@ impl<'a> ProteinSeqAnalysis<'a> {
         res
     }
 
-    /// Calculate the molar extinction coefficient.
+    pub fn calc_aa_percentages(&self) -> AminoAcidPercentage {
+        let mut percentages: AminoAcidPercentage = BTreeMap::new();
+        let len = self.seq.len();
+        for (&aa, &count) in self.aa_count.iter() {
+            percentages.insert(aa, count as f32 / len as f32);
+        }
+        percentages
+    }
+
+    /// Calculate the molar extinction coefficient (at 280 nm)
     ///
     /// Calculates the molar extinction coefficient assuming cysteines (reduced) and cystines residues (oxidised)
     pub fn calc_molar_extinction_coefficient(&self) -> (u32, u32) {
@@ -99,7 +111,7 @@ impl<'a> ProteinSeqAnalysis<'a> {
         }
         let mut mec_oxidised = mec_reduced;
         if let Some(n) = self.aa_count.get(&b'C') {
-            mec_oxidised += 125 * n / 2;
+            mec_oxidised += n / 2 * 125;
         }
         (mec_reduced, mec_oxidised)
     }
@@ -165,7 +177,22 @@ mod tests {
     }
 
     #[test]
+    fn test_aa_count() {
+        assert_eq!(RES1.aa_count.get(&b'A'), Some(&6u32))
+    }
+
+    #[test]
+    fn test_aa_percentages() {
+        assert!((RES1.aa_percentages.get(&b'A').unwrap() - 0.03947).abs() < 0.0001)
+    }
+
+    #[test]
     fn test_isoelectric_point() {
         assert!((RES1.isoelectric_point - 7.72).abs() < 0.01)
+    }
+
+    #[test]
+    fn test_molar_extinction_coefficient() {
+        assert_eq!(RES1.molar_extinction_coefficient, (17420, 17545))
     }
 }
