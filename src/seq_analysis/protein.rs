@@ -6,53 +6,46 @@
 //!   Handbook_, Humana Press (2005). pp. 571-607
 
 use crate::utils::TextSlice;
+use phf::phf_map;
 use std::collections::BTreeMap;
 use std::fmt;
 
-pub type AminoAcidCount = BTreeMap<u8, u32>;
-pub type AminoAcidPercentage = BTreeMap<u8, f32>;
-
-use lazy_static::lazy_static;
+type AminoAcidCount = BTreeMap<u8, u32>;
+type AminoAcidPercentage = BTreeMap<u8, f32>;
 
 // -------------- used for calculating isoelectric point -------------------
 const N_TERM_PKA_DEFAULT: f32 = 7.5;
 const C_TERM_PKA_DEFAULT: f32 = 3.55;
 
-pub enum Charge {
+enum Charge {
     Positive,
     Negative,
 }
 
-lazy_static! {
-    pub static ref pKa_table: BTreeMap<u8, (f32, Charge)> = {
-        let mut m = BTreeMap::new();
-        m.insert(b'K', (10.0, Charge::Positive));
-        m.insert(b'R', (12.0, Charge::Positive));
-        m.insert(b'H', (5.98, Charge::Positive));
-        m.insert(b'D', (4.05, Charge::Negative));
-        m.insert(b'E', (4.45, Charge::Negative));
-        m.insert(b'C', (9.00, Charge::Negative));
-        m.insert(b'Y', (10.0, Charge::Negative));
-        m
-    };
-    pub static ref n_terminal_pKa_table: BTreeMap<u8, f32> = {
-        let mut m = BTreeMap::new();
-        m.insert(b'A', 7.59);
-        m.insert(b'M', 7.00);
-        m.insert(b'S', 6.93);
-        m.insert(b'P', 8.36);
-        m.insert(b'T', 6.82);
-        m.insert(b'V', 7.44);
-        m.insert(b'E', 7.70);
-        m
-    };
-    pub static ref c_terminal_pKa_table: BTreeMap<u8, f32> = {
-        let mut m = BTreeMap::new();
-        m.insert(b'D', 4.55);
-        m.insert(b'E', 4.75);
-        m
-    };
-}
+static PKA: phf::Map<u8, (f32, Charge)> = phf_map! {
+    b'K'=> (10.0, Charge::Positive),
+    b'R'=> (12.0, Charge::Positive),
+    b'H'=> (5.98, Charge::Positive),
+    b'D'=> (4.05, Charge::Negative),
+    b'E'=> (4.45, Charge::Negative),
+    b'C'=> (9.00, Charge::Negative),
+    b'Y'=> (10.0, Charge::Negative),
+};
+
+static PKA_N_TERM: phf::Map<u8, f32> = phf_map! {
+    b'A' => 7.59,
+    b'M' => 7.00,
+    b'S' => 6.93,
+    b'P' => 8.36,
+    b'T' => 6.82,
+    b'V' => 7.44,
+    b'E' => 7.70,
+};
+
+static PKA_C_TERM: phf::Map<u8, f32> = phf_map! {
+    b'D' => 4.55,
+    b'E' => 4.75,
+};
 
 // --------------------------------
 
@@ -134,10 +127,11 @@ impl<'a> ProteinSeqAnalysis<'a> {
         }
         self.pi_recursive(x1, x2, (x1 + x2) / 2.0)
     }
+    #[allow(non_snake_case)]
     pub fn charge_at_pH(&self, pH: f32) -> f32 {
         let mut charge = 0f32;
         for (aa, &count) in self.aa_count.iter() {
-            if let Some((pKa, positivity)) = pKa_table.get(aa) {
+            if let Some((pKa, positivity)) = PKA.get(aa) {
                 match positivity {
                     Charge::Negative => {
                         let partial_charge = 1.0 / (10f32.powf(pKa - pH) + 1.0);
@@ -150,14 +144,13 @@ impl<'a> ProteinSeqAnalysis<'a> {
                 }
             }
         }
-        let n_term_pKa = if let Some(&pKa) = n_terminal_pKa_table.get(&self.seq[0]) {
+        let n_term_pKa = if let Some(&pKa) = PKA_N_TERM.get(&self.seq[0]) {
             pKa
         } else {
             N_TERM_PKA_DEFAULT
         };
         charge += 1.0 / (10f32.powf(pH - n_term_pKa) + 1.0);
-        let c_term_pKa = if let Some(&pKa) = c_terminal_pKa_table.get(&self.seq[self.seq.len() - 1])
-        {
+        let c_term_pKa = if let Some(&pKa) = PKA_C_TERM.get(&self.seq[self.seq.len() - 1]) {
             pKa
         } else {
             C_TERM_PKA_DEFAULT
@@ -205,7 +198,8 @@ impl<'a> fmt::Display for ProteinSeqAnalysis<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::ProteinSeqAnalysis;
+    use lazy_static::lazy_static;
 
     static S1: &[u8;152] = &b"MAEGEITTFTALTEKFNLPPGNYKKPKLLYCSNGGHFLRILPDGTVDGTRDRSDQHIQLQLSAESVGEVYIKSTETGQYLAMDTSGLLYGSQTPSEECLFLERLEENHYNTYTSKKHAEKNWFVGLKKNGSCKRGPRTHYGQKAILFLPLPV";
 
