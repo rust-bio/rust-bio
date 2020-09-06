@@ -7,3 +7,4 @@
 
 pub mod gc;
 pub mod orf;
+pub mod protein;
