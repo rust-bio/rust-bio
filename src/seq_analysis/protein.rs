@@ -225,47 +225,6 @@ impl<'a> ProteinSeqAnalysis<'a> {
     }
 }
 
-impl<'a> fmt::Display for ProteinSeqAnalysisResult<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Number of amino acids: {}", self.seq.len())?;
-        writeln!(f, "Molecular weight: {:.3}", self.molecular_weight)?;
-        writeln!(
-            f,
-            "Molecular weight (monoisotopic): {:.3}",
-            self.molecular_weight_monoisotopic
-        )?;
-        writeln!(f, "Theoretical pI: {}", self.isoelectric_point)?;
-        writeln!(
-            f,
-            "Molar extinction coefficient at 280 nm measured in water:"
-        )?;
-        writeln!(
-            f,
-            "     {}, assuming all Cys residues are reduced",
-            self.molar_extinction_coefficient.0
-        )?;
-        writeln!(
-            f,
-            "     {}, assuming all pairs of Cys residues form cystines",
-            self.molar_extinction_coefficient.1
-        )?;
-        writeln!(f, "┏━━━━━━━━━━━━━━━━━━━━━━━━┓")?;
-        writeln!(f, "┃{}┃", "Residue│count│percentage")?;
-        writeln!(f, "┠———————┼—————┼——————————┨")?;
-        for ((&aa, count), (_, percentage)) in self.aa_count.iter().zip(self.aa_percentages.iter())
-        {
-            writeln!(
-                f,
-                "┃{:^7}┆{:>5}┆{:9.2}%┃",
-                aa as char,
-                count,
-                percentage * 100.0
-            )?;
-        }
-        writeln!(f, "┗━━━━━━━┷━━━━━┷━━━━━━━━━━┛")
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::ProteinSeqAnalysis;
