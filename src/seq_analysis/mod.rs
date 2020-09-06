@@ -5,6 +5,7 @@
 
 //! Sequence analysis algorithms.
 
+pub mod data;
 pub mod gc;
 pub mod orf;
 pub mod protein;

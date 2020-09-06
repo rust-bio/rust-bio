@@ -49,3 +49,31 @@ pub static AMINO_ACID_MASS_MONOISOTOPIC: phf::Map<u8, f64> = phf_map! {
     b'W'=> 204.089878,
     b'Y'=> 181.073893,
 };
+
+/// Flexibility
+///
+/// Normalized flexibility parameters (B-values), average
+///
+/// Vihinen M., Torkkila E., Riikonen P. Proteins. 19(2):141-9(1994).
+pub static AMINO_ACID_FLEX: phf::Map<u8, f32> = phf_map! {
+    b'A' => 0.984,
+    b'C' => 0.906,
+    b'E' => 1.094,
+    b'D' => 1.068,
+    b'G' => 1.031,
+    b'F' => 0.915,
+    b'I' => 0.927,
+    b'H' => 0.950,
+    b'K' => 1.102,
+    b'M' => 0.952,
+    b'L' => 0.935,
+    b'N' => 1.048,
+    b'Q' => 1.037,
+    b'P' => 1.049,
+    b'S' => 1.046,
+    b'R' => 1.008,
+    b'T' => 0.997,
+    b'W' => 0.904,
+    b'V' => 0.931,
+    b'Y' => 0.929
+};

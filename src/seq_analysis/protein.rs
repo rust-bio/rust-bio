@@ -7,7 +7,7 @@
 
 use crate::utils::TextSlice;
 
-use super::data::protein::{AMINO_ACID_MASS, AMINO_ACID_MASS_MONOISOTOPIC};
+use super::data::protein::{AMINO_ACID_FLEX, AMINO_ACID_MASS, AMINO_ACID_MASS_MONOISOTOPIC};
 use phf::phf_map;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -51,34 +51,52 @@ static PKA_C_TERM: phf::Map<u8, f32> = phf_map! {
 
 // --------------------------------
 
-#[derive(Debug, Default)]
-pub struct ProteinSeqAnalysis<'a> {
+#[derive(Debug)]
+pub struct ProteinSeqAnalysisResult<'a> {
     pub seq: TextSlice<'a>,
     pub aa_count: AminoAcidCount,
     pub aa_percentages: AminoAcidPercentage,
+    pub flexibility: Vec<f32>,
     pub isoelectric_point: f32,
     pub molar_extinction_coefficient: (u32, u32),
     pub molecular_weight: f64,
     pub molecular_weight_monoisotopic: f64,
 }
 
+#[derive(Debug)]
+pub struct ProteinSeqAnalysis<'a> {
+    pub seq: TextSlice<'a>,
+    pub aa_count: AminoAcidCount,
+}
+
 impl<'a> ProteinSeqAnalysis<'a> {
     pub fn new(seq: TextSlice<'a>) -> Self {
-        let mut res = Self::default();
-        res.seq = seq;
-        res.aa_count = Self::count_aa(seq);
-        res
+        ProteinSeqAnalysis {
+            seq,
+            aa_count: Self::count_aa(seq),
+        }
     }
 
-    pub fn analyze(seq: TextSlice<'a>) -> Self {
-        let mut res = Self::new(seq);
-        res.isoelectric_point = res.calc_isoelectric_point();
-        res.molar_extinction_coefficient = res.calc_molar_extinction_coefficient();
-        res.aa_percentages = res.calc_aa_percentages();
-        let weights = res.calc_molecular_weights();
-        res.molecular_weight = weights.0;
-        res.molecular_weight_monoisotopic = weights.1;
-        res
+    pub fn analyze(seq: TextSlice<'a>) -> ProteinSeqAnalysisResult {
+        let analyzer = Self::new(seq);
+        let aa_count = analyzer.aa_count.clone();
+        let isoelectric_point = analyzer.isoelectric_point();
+        let molar_extinction_coefficient = analyzer.molar_extinction_coefficient();
+        let aa_percentages = analyzer.aa_percentages();
+        let weights = analyzer.molecular_weights();
+        let molecular_weight = weights.0;
+        let molecular_weight_monoisotopic = weights.1;
+        let flexibility = analyzer.flexibility();
+        ProteinSeqAnalysisResult {
+            seq,
+            aa_count,
+            aa_percentages,
+            flexibility,
+            isoelectric_point,
+            molar_extinction_coefficient,
+            molecular_weight_monoisotopic,
+            molecular_weight,
+        }
     }
 
     pub fn count_aa(seq: TextSlice) -> AminoAcidCount {
@@ -90,7 +108,7 @@ impl<'a> ProteinSeqAnalysis<'a> {
         res
     }
 
-    pub fn calc_aa_percentages(&self) -> AminoAcidPercentage {
+    pub fn aa_percentages(&self) -> AminoAcidPercentage {
         let mut percentages: AminoAcidPercentage = BTreeMap::new();
         let len = self.seq.len();
         for (&aa, &count) in self.aa_count.iter() {
@@ -100,7 +118,7 @@ impl<'a> ProteinSeqAnalysis<'a> {
     }
 
     /// Calculate the molecular weights.
-    pub fn calc_molecular_weights(&self) -> (f64, f64) {
+    pub fn molecular_weights(&self) -> (f64, f64) {
         let mut mw = 0f64;
         let mut mw_monoisotopic = 0f64;
         for (aa, &count) in self.aa_count.iter() {
@@ -119,7 +137,7 @@ impl<'a> ProteinSeqAnalysis<'a> {
     /// Calculate the molar extinction coefficient (at 280 nm)
     ///
     /// Calculates the molar extinction coefficient assuming cysteines (reduced) and cystines residues (oxidised)
-    pub fn calc_molar_extinction_coefficient(&self) -> (u32, u32) {
+    pub fn molar_extinction_coefficient(&self) -> (u32, u32) {
         let mut mec_reduced = 0;
         if let Some(n) = self.aa_count.get(&b'W') {
             mec_reduced += 5500 * n;
@@ -134,8 +152,31 @@ impl<'a> ProteinSeqAnalysis<'a> {
         (mec_reduced, mec_oxidised)
     }
 
+    /// Calculate the flexibility according to Vihinen (1994)
+    pub fn flexibility(&self) -> Vec<f32> {
+        let window_size = 9usize;
+        let weights = [0.25f32, 0.4375, 0.625, 0.8125, 1.0];
+        let len_minus_window_size = self.seq.len() - window_size;
+        let mut scores = Vec::with_capacity(len_minus_window_size);
+        for i in 0..len_minus_window_size {
+            let subsequence = &self.seq[i..i + window_size];
+            let mut score = 0.0;
+            for j in 0..window_size / 2 {
+                let front = subsequence[j];
+                let back = subsequence[window_size - j - 1];
+                score += (AMINO_ACID_FLEX.get(&front).unwrap()
+                    + AMINO_ACID_FLEX.get(&back).unwrap())
+                    * weights[j];
+            }
+            let middle = subsequence[window_size / 2 + 1];
+            score += AMINO_ACID_FLEX.get(&middle).unwrap();
+            scores.push(score / 5.25)
+        }
+        scores
+    }
+
     /// Estimate the isoelectric point of a polypeptide chain based on its primary structure.
-    pub fn calc_isoelectric_point(&self) -> f32 {
+    pub fn isoelectric_point(&self) -> f32 {
         self.pi_recursive(4.05, 12.0, 7.775)
     }
 
@@ -184,7 +225,7 @@ impl<'a> ProteinSeqAnalysis<'a> {
     }
 }
 
-impl<'a> fmt::Display for ProteinSeqAnalysis<'a> {
+impl<'a> fmt::Display for ProteinSeqAnalysisResult<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Number of amino acids: {}", self.seq.len())?;
         writeln!(f, "Molecular weight: {:.3}", self.molecular_weight)?;
@@ -233,26 +274,26 @@ mod tests {
     static S1: &[u8;152] = &b"MAEGEITTFTALTEKFNLPPGNYKKPKLLYCSNGGHFLRILPDGTVDGTRDRSDQHIQLQLSAESVGEVYIKSTETGQYLAMDTSGLLYGSQTPSEECLFLERLEENHYNTYTSKKHAEKNWFVGLKKNGSCKRGPRTHYGQKAILFLPLPV";
 
     lazy_static! {
-        static ref RES1: ProteinSeqAnalysis<'static> = ProteinSeqAnalysis::analyze(S1);
+        static ref A1: ProteinSeqAnalysis<'static> = ProteinSeqAnalysis::new(S1);
     }
 
     #[test]
     fn test_aa_count() {
-        assert_eq!(RES1.aa_count.get(&b'A'), Some(&6u32))
+        assert_eq!(A1.aa_count.get(&b'A'), Some(&6u32))
     }
 
     #[test]
     fn test_aa_percentages() {
-        assert!((RES1.aa_percentages.get(&b'A').unwrap() - 0.03947).abs() < 0.0001)
+        assert!((A1.aa_percentages().get(&b'A').unwrap() - 0.03947).abs() < 0.0001)
     }
 
     #[test]
     fn test_isoelectric_point() {
-        assert!((RES1.isoelectric_point - 7.72).abs() < 0.01)
+        assert!((A1.isoelectric_point() - 7.72).abs() < 0.01)
     }
 
     #[test]
     fn test_molar_extinction_coefficient() {
-        assert_eq!(RES1.molar_extinction_coefficient, (17420, 17545))
+        assert_eq!(A1.molar_extinction_coefficient(), (17420, 17545))
     }
 }
