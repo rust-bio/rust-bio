@@ -7,49 +7,12 @@
 
 use crate::utils::TextSlice;
 
-use super::data::protein::{AMINO_ACID_FLEX, AMINO_ACID_MASS, AMINO_ACID_MASS_MONOISOTOPIC};
+use super::data::protein::*;
 use phf::phf_map;
 use std::collections::BTreeMap;
-use std::fmt;
 
 type AminoAcidCount = BTreeMap<u8, u32>;
 type AminoAcidPercentage = BTreeMap<u8, f32>;
-
-// -------------- used for calculating isoelectric point -------------------
-const N_TERM_PKA_DEFAULT: f32 = 7.5;
-const C_TERM_PKA_DEFAULT: f32 = 3.55;
-
-enum Charge {
-    Positive,
-    Negative,
-}
-
-static PKA: phf::Map<u8, (f32, Charge)> = phf_map! {
-    b'K'=> (10.0, Charge::Positive),
-    b'R'=> (12.0, Charge::Positive),
-    b'H'=> (5.98, Charge::Positive),
-    b'D'=> (4.05, Charge::Negative),
-    b'E'=> (4.45, Charge::Negative),
-    b'C'=> (9.00, Charge::Negative),
-    b'Y'=> (10.0, Charge::Negative),
-};
-
-static PKA_N_TERM: phf::Map<u8, f32> = phf_map! {
-    b'A' => 7.59,
-    b'M' => 7.00,
-    b'S' => 6.93,
-    b'P' => 8.36,
-    b'T' => 6.82,
-    b'V' => 7.44,
-    b'E' => 7.70,
-};
-
-static PKA_C_TERM: phf::Map<u8, f32> = phf_map! {
-    b'D' => 4.55,
-    b'E' => 4.75,
-};
-
-// --------------------------------
 
 #[derive(Debug)]
 pub struct ProteinSeqAnalysisResult<'a> {

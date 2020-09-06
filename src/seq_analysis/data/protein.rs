@@ -77,3 +77,36 @@ pub static AMINO_ACID_FLEX: phf::Map<u8, f32> = phf_map! {
     b'V' => 0.931,
     b'Y' => 0.929
 };
+
+pub const N_TERM_PKA_DEFAULT: f32 = 7.5;
+pub const C_TERM_PKA_DEFAULT: f32 = 3.55;
+
+pub enum Charge {
+    Positive,
+    Negative,
+}
+
+pub static PKA: phf::Map<u8, (f32, Charge)> = phf_map! {
+    b'K'=> (10.0, Charge::Positive),
+    b'R'=> (12.0, Charge::Positive),
+    b'H'=> (5.98, Charge::Positive),
+    b'D'=> (4.05, Charge::Negative),
+    b'E'=> (4.45, Charge::Negative),
+    b'C'=> (9.00, Charge::Negative),
+    b'Y'=> (10.0, Charge::Negative),
+};
+
+pub static PKA_N_TERM: phf::Map<u8, f32> = phf_map! {
+    b'A' => 7.59,
+    b'M' => 7.00,
+    b'S' => 6.93,
+    b'P' => 8.36,
+    b'T' => 6.82,
+    b'V' => 7.44,
+    b'E' => 7.70,
+};
+
+pub static PKA_C_TERM: phf::Map<u8, f32> = phf_map! {
+    b'D' => 4.55,
+    b'E' => 4.75,
+};
