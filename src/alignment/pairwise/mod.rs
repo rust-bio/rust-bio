@@ -27,7 +27,7 @@
 //!     [Match, Match, Match, Match, Match, Subst, Match, Match, Match]
 //! );
 //!
-//! // If you don't known sizes of future sequences, you could
+//! // If you don't know sizes of future sequences, you could
 //! // use Aligner::new().
 //! // Global alignment:
 //! let mut aligner = Aligner::new(-5, -1, &score);
@@ -70,7 +70,7 @@
 //! );
 //!
 //! // scoring for global mode
-//! // scoring can also be created usinf from_scores if the match and mismatch scores are constants
+//! // scoring can also be created using from_scores if the match and mismatch scores are constants
 //! let scoring = Scoring::from_scores(-5, -1, 1, -1) // Gap open, extend, match, mismatch score
 //!     .xclip(MIN_SCORE) // Clipping penalty for x set to 'negative infinity', hence global in x
 //!     .yclip(MIN_SCORE); // Clipping penalty for y set to 'negative infinity', hence global in y
@@ -396,35 +396,43 @@ impl<F: MatchFunc> Scoring<F> {
 
 /// A generalized Smith-Waterman aligner.
 ///
-/// M(i,j) is the best score such that x[i] and y[j] ends in a match
+/// `M(i,j)` is the best score such that `x[i]` and `y[j]` ends in a match
+/// ```
 ///              .... A   G  x_i
 ///              .... C   G  y_j
-///
-/// I(i,j) is the best score such that x[i] is aligned with a gap
+/// ```
+/// `I(i,j)` is the best score such that `x[i]` is aligned with a gap
+/// ```
 ///              .... A   G  x_i
 ///              .... G  y_j  -
-/// This is interpreted as an insertion into "x" w.r.t reference "y"
+/// ```
+/// This is interpreted as an insertion into `x` w.r.t reference `y`
 ///
-/// D(i,j) is the best score such that y[j] is aligned with a gap
+/// `D(i,j)` is the best score such that `y[j]` is aligned with a gap
+/// ```
 ///              .... A  x_i  -
 ///              .... G   G  y_j
-/// This is interpreted as a deletion from "x" w.r.t reference "y"
+/// ```
+/// This is interpreted as a deletion from `x` w.r.t reference `y`
 ///
-/// S(i,j) is the best score for prefixes x[0..i], y[0..j]
+/// `S(i,j)` is the best score for prefixes `x[0..i]`, `y[0..j]`
 ///
 /// To save space, only two columns of these matrices are stored at
 /// any point - the current column and the previous one. Moreover
-/// M(i,j) is not explicitly stored
+/// `M(i,j)` is not explicitly stored
 ///
-/// Lx is the optimal x suffix clipping lengths from each position of the
+/// `Lx` is the optimal x suffix clipping lengths from each position of the
 /// sequence y
-/// Ly is the optimal y suffix clipping lengths from each position of the
+///
+/// `Ly` is the optimal y suffix clipping lengths from each position of the
 /// sequence x
-/// Sn is the last column of the matrix. This is needed to keep track of
+///
+/// `Sn` is the last column of the matrix. This is needed to keep track of
 /// suffix clipping scores
 ///
-/// traceback - see bio::alignment::pairwise::Traceback
-/// scoring - see bio::alignment::pairwise::Scoring
+/// `traceback` - see [`bio::alignment::pairwise::TracebackCell`](struct.TracebackCell.html)
+///
+/// `scoring` - see [`bio::alignment::pairwise::Scoring`](struct.Scoring.html)
 #[allow(non_snake_case)]
 pub struct Aligner<F: MatchFunc> {
     I: [Vec<i32>; 2],
