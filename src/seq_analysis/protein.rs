@@ -6,6 +6,8 @@
 //!   Handbook_, Humana Press (2005). pp. 571-607
 
 use crate::utils::TextSlice;
+
+use super::data::protein::{AMINO_ACID_MASS, AMINO_ACID_MASS_MONOISOTOPIC};
 use phf::phf_map;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -56,6 +58,8 @@ pub struct ProteinSeqAnalysis<'a> {
     pub aa_percentages: AminoAcidPercentage,
     pub isoelectric_point: f32,
     pub molar_extinction_coefficient: (u32, u32),
+    pub molecular_weight: f64,
+    pub molecular_weight_monoisotopic: f64,
 }
 
 impl<'a> ProteinSeqAnalysis<'a> {
@@ -71,6 +75,9 @@ impl<'a> ProteinSeqAnalysis<'a> {
         res.isoelectric_point = res.calc_isoelectric_point();
         res.molar_extinction_coefficient = res.calc_molar_extinction_coefficient();
         res.aa_percentages = res.calc_aa_percentages();
+        let weights = res.calc_molecular_weights();
+        res.molecular_weight = weights.0;
+        res.molecular_weight_monoisotopic = weights.1;
         res
     }
 
@@ -90,6 +97,23 @@ impl<'a> ProteinSeqAnalysis<'a> {
             percentages.insert(aa, count as f32 / len as f32);
         }
         percentages
+    }
+
+    /// Calculate the molecular weights.
+    pub fn calc_molecular_weights(&self) -> (f64, f64) {
+        let mut mw = 0f64;
+        let mut mw_monoisotopic = 0f64;
+        for (aa, &count) in self.aa_count.iter() {
+            match AMINO_ACID_MASS.get(aa) {
+                Some(w) => mw += count as f64 * w,
+                None => panic!(format!("Unknown amino acid '{}'", aa)),
+            }
+            match AMINO_ACID_MASS_MONOISOTOPIC.get(aa) {
+                Some(w) => mw_monoisotopic += count as f64 * w,
+                _ => unreachable!(),
+            }
+        }
+        (mw, mw_monoisotopic)
     }
 
     /// Calculate the molar extinction coefficient (at 280 nm)
@@ -163,7 +187,12 @@ impl<'a> ProteinSeqAnalysis<'a> {
 impl<'a> fmt::Display for ProteinSeqAnalysis<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Number of amino acids: {}", self.seq.len())?;
-        writeln!(f, "Molecular weight: {}", "<not implemented>")?;
+        writeln!(f, "Molecular weight: {:.3}", self.molecular_weight)?;
+        writeln!(
+            f,
+            "Molecular weight (monoisotopic): {:.3}",
+            self.molecular_weight_monoisotopic
+        )?;
         writeln!(f, "Theoretical pI: {}", self.isoelectric_point)?;
         writeln!(
             f,
