@@ -141,9 +141,9 @@ use crate::utils::TextSlice;
 
 pub mod banded;
 
-/// Value to use as a 'negative infinity' score. Should be close to i32::MIN,
+/// Value to use as a 'negative infinity' score. Should be close to `i32::MIN`,
 /// but avoid underflow when used with reasonable scoring parameters or even
-/// adding two negative infinities. Use ~ 0.4 * i32::MIN
+/// adding two negative infinities. Use ~ `0.4 * i32::MIN`
 pub const MIN_SCORE: i32 = -858_993_459;
 
 /// Trait required to instantiate a Scoring instance
@@ -199,8 +199,10 @@ where
 }
 
 /// Details of scoring are encapsulated in this structure.
-/// An affine gap score model is used so that the gap score for a length 'k' is:
-/// GapScore(k) = gap_open + gap_extend * k
+///
+/// An [affine gap score model](https://en.wikipedia.org/wiki/Gap_penalty#Affine)
+/// is used so that the gap score for a length `k` is:
+/// `GapScore(k) = gap_open + gap_extend * k`
 #[derive(Debug, Clone)]
 pub struct Scoring<F: MatchFunc> {
     pub gap_open: i32,
@@ -215,7 +217,7 @@ pub struct Scoring<F: MatchFunc> {
 
 impl Scoring<MatchParams> {
     /// Create new Scoring instance with given gap open, gap extend penalties
-    /// match and mismatch scores. The clip penalties are set to MIN_SCORE by default
+    /// match and mismatch scores. The clip penalties are set to `MIN_SCORE` by default
     ///
     /// # Arguments
     ///
@@ -247,13 +249,14 @@ impl Scoring<MatchParams> {
 
 impl<F: MatchFunc> Scoring<F> {
     /// Create new Scoring instance with given gap open, gap extend penalties
-    /// and the score function. The clip penalties are set to MIN_SCORE by default
+    /// and the score function. The clip penalties are set to [`MIN_SCORE`](constant.MIN_SCORE.html) by default
     ///
     /// # Arguments
     ///
     /// * `gap_open` - the score for opening a gap (should not be positive)
     /// * `gap_extend` - the score for extending a gap (should not be positive)
-    /// * `match_fn` - function that returns the score for substitutions (also see bio::scores)
+    /// * `match_fn` - function that returns the score for substitutions
+    ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         assert!(gap_open <= 0, "gap_open can't be positive");
         assert!(gap_extend <= 0, "gap_extend can't be positive");
@@ -396,7 +399,7 @@ impl<F: MatchFunc> Scoring<F> {
 
 /// A generalized Smith-Waterman aligner.
 ///
-/// `M(i,j)` is the best score such that `x[i]` and `y[j]` ends in a match
+/// `M(i,j)` is the best score such that `x[i]` and `y[j]` ends in a match (or substitution)
 /// ```
 ///              .... A   G  x_i
 ///              .... C   G  y_j
@@ -455,7 +458,8 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     /// * `gap_open` - the score for opening a gap (should be negative)
     /// * `gap_extend` - the score for extending a gap (should be negative)
-    /// * `match_fn` - function that returns the score for substitutions (also see bio::scores)
+    /// * `match_fn` - function that returns the score for substitutions
+    ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         Aligner::with_capacity(
             DEFAULT_ALIGNER_CAPACITY,
@@ -475,7 +479,8 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `n` - the expected size of y
     /// * `gap_open` - the score for opening a gap (should be negative)
     /// * `gap_extend` - the score for extending a gap (should be negative)
-    /// * `match_fn` - function that returns the score for substitutions (also see bio::scores)
+    /// * `match_fn` - function that returns the score for substitutions
+    ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         assert!(gap_open <= 0, "gap_open can't be positive");
         assert!(gap_extend <= 0, "gap_extend can't be positive");
