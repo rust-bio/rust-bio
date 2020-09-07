@@ -644,21 +644,21 @@ impl<F: MatchFunc> Aligner<F> {
                     let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
                     let c_score =
                         self.scoring.yclip_prefix + self.scoring.gap_open + self.scoring.gap_extend;
-                    if d_score > c_score {
-                        self.D[curr][0] = d_score;
+                    self.D[curr][0] = if d_score > c_score {
                         tb.set_d_bits(TB_DEL);
+                        d_score
                     } else {
-                        self.D[curr][0] = c_score;
                         tb.set_d_bits(TB_YCLIP_PREFIX);
-                    }
+                        c_score
+                    };
                 }
-                if self.D[curr][0] > self.scoring.yclip_prefix {
-                    self.S[curr][0] = self.D[curr][0];
+                self.S[curr][0] = if self.D[curr][0] > self.scoring.yclip_prefix {
                     tb.set_s_bits(TB_DEL);
+                    self.D[curr][0]
                 } else {
-                    self.S[curr][0] = self.scoring.yclip_prefix;
                     tb.set_s_bits(TB_YCLIP_PREFIX);
-                }
+                    self.scoring.yclip_prefix
+                };
 
                 if j == n && self.Sn[0] > self.S[curr][0] {
                     // Check if the suffix clip score is better
@@ -683,7 +683,7 @@ impl<F: MatchFunc> Aligner<F> {
                     self.scoring.yclip_prefix,
                     self.scoring.gap_open + self.scoring.gap_extend * (j as i32),
                 );
-            for i in 1..m + 1 {
+            for i in 1..=m {
                 let p = x[i - 1];
                 let mut tb = TracebackCell::new();
 
@@ -691,25 +691,23 @@ impl<F: MatchFunc> Aligner<F> {
 
                 let i_score = self.I[curr][i - 1] + self.scoring.gap_extend;
                 let s_score = self.S[curr][i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
-                let best_i_score;
-                if i_score > s_score {
-                    best_i_score = i_score;
+                let best_i_score = if i_score > s_score {
                     tb.set_i_bits(TB_INS);
+                    i_score
                 } else {
-                    best_i_score = s_score;
                     tb.set_i_bits(self.traceback.get(i - 1, j).get_s_bits());
-                }
+                    s_score
+                };
 
                 let d_score = self.D[prev][i] + self.scoring.gap_extend;
                 let s_score = self.S[prev][i] + self.scoring.gap_open + self.scoring.gap_extend;
-                let best_d_score;
-                if d_score > s_score {
-                    best_d_score = d_score;
+                let best_d_score = if d_score > s_score {
                     tb.set_d_bits(TB_DEL);
+                    d_score
                 } else {
-                    best_d_score = s_score;
                     tb.set_d_bits(self.traceback.get(i, j - 1).get_s_bits());
-                }
+                    s_score
+                };
 
                 tb.set_s_bits(TB_XCLIP_SUFFIX);
                 let mut best_s_score = self.S[curr][i];
