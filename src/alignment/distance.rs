@@ -135,12 +135,12 @@ pub mod simd {
     }
 
     /// SIMD-accelerated Levenshtein (or Edit) distance between two strings. Complexity:
-    /// O(k / w * (n + m)), with n and m being the length of the given texts, k being the
-    /// number of edits, and w being the length of the SIMD vectors (usually w = 16 or
-    /// w = 32).
+    /// $O\left(\frac{k}{w(n+m)}\right)$, with $n$ and $m$ being the length of the given texts, $k$ being the
+    /// number of edits, and $w$ being the length of the SIMD vectors (usually $w = 16$ or
+    /// $w = 32$).
     ///
     /// Uses exponential search, which is approximately two times slower than the usual
-    /// O(n * m) implementation if the number of edits between the two strings is very large,
+    /// $O(nm)$ implementation if the number of edits between the two strings is very large,
     /// but much faster for cases where the edit distance is low (when less than half of the
     /// characters in the strings differ).
     ///
