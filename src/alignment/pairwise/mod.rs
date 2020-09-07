@@ -585,12 +585,12 @@ impl<F: MatchFunc> Aligner<F> {
                     let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
                     let c_score =
                         self.scoring.xclip_prefix + self.scoring.gap_open + self.scoring.gap_extend; // Clip then insert
-                    if i_score > c_score {
-                        self.I[k][i] = i_score;
+                    self.I[k][i] = if i_score > c_score {
                         tb.set_i_bits(TB_INS);
+                        i_score
                     } else {
-                        self.I[k][i] = c_score;
                         tb.set_i_bits(TB_XCLIP_PREFIX);
+                        c_score
                     }
                 }
 
