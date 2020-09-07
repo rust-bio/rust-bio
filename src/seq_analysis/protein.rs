@@ -8,7 +8,6 @@
 use crate::utils::TextSlice;
 
 use super::data::protein::*;
-use phf::phf_map;
 use std::collections::BTreeMap;
 
 type AminoAcidCount = BTreeMap<u8, u32>;
@@ -19,7 +18,7 @@ pub struct ProteinSeqAnalysisResult<'a> {
     pub seq: TextSlice<'a>,
     pub aa_count: AminoAcidCount,
     pub aa_percentages: AminoAcidPercentage,
-    pub flexibility: Vec<f32>,
+    pub flexibility: Option<Vec<f32>>,
     pub isoelectric_point: f32,
     pub molar_extinction_coefficient: (u32, u32),
     pub molecular_weight: f64,
@@ -40,16 +39,32 @@ impl<'a> ProteinSeqAnalysis<'a> {
         }
     }
 
-    pub fn analyze(seq: TextSlice<'a>) -> ProteinSeqAnalysisResult {
-        let analyzer = Self::new(seq);
-        let aa_count = analyzer.aa_count.clone();
-        let isoelectric_point = analyzer.isoelectric_point();
-        let molar_extinction_coefficient = analyzer.molar_extinction_coefficient();
-        let aa_percentages = analyzer.aa_percentages();
-        let weights = analyzer.molecular_weights();
+    /// Compute all parameters.
+    ///
+    /// Consumes the ProteinSeqAnalysis struct and returns a ProteinSeqAnalysisResult.alignment
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bio::seq_analysis::protein::ProteinSeqAnalysis;
+    /// let params = ProteinSeqAnalysis::new(b"CCDKKW").analyze();
+    /// assert_eq!(params.seq, b"CCDKKW");
+    /// assert_eq!(params.aa_count.get(&b'C'), Some(&2));
+    /// assert!((params.molecular_weight - 872.02).abs() < 0.01);
+    /// assert!((params.molecular_weight_monoisotopic - 871.38).abs() < 0.01);
+    /// assert!((params.isoelectric_point - 8.04).abs() < 0.01);
+    /// assert_eq!(params.molar_extinction_coefficient, (5500, 5625));
+    /// ```
+    pub fn analyze(self) -> ProteinSeqAnalysisResult<'a> {
+        let seq = self.seq;
+        let isoelectric_point = self.isoelectric_point();
+        let molar_extinction_coefficient = self.molar_extinction_coefficient();
+        let aa_percentages = self.aa_percentages();
+        let weights = self.molecular_weights();
         let molecular_weight = weights.0;
         let molecular_weight_monoisotopic = weights.1;
-        let flexibility = analyzer.flexibility();
+        let flexibility = self.flexibility();
+        let aa_count = self.aa_count;
         ProteinSeqAnalysisResult {
             seq,
             aa_count,
@@ -116,9 +131,15 @@ impl<'a> ProteinSeqAnalysis<'a> {
     }
 
     /// Calculate the flexibility according to Vihinen (1994)
-    pub fn flexibility(&self) -> Vec<f32> {
+    ///
+    /// # Reference
+    /// - [Vihinen (1994) Accuracy of protein flexibility predictions, _Proteins: Structure, Function, and Genetics_ **19(2)**: 141-149](https://dx.doi.org/10.1002/prot.340190207)
+    pub fn flexibility(&self) -> Option<Vec<f32>> {
         let window_size = 9usize;
         let weights = [0.25f32, 0.4375, 0.625, 0.8125, 1.0];
+        if self.seq.len() <= window_size {
+            return None;
+        }
         let len_minus_window_size = self.seq.len() - window_size;
         let mut scores = Vec::with_capacity(len_minus_window_size);
         for i in 0..len_minus_window_size {
@@ -135,7 +156,7 @@ impl<'a> ProteinSeqAnalysis<'a> {
             score += AMINO_ACID_FLEX.get(&middle).unwrap();
             scores.push(score / 5.25)
         }
-        scores
+        Some(scores)
     }
 
     /// Estimate the isoelectric point of a polypeptide chain based on its primary structure.
