@@ -596,8 +596,6 @@ impl<F: MatchFunc> Aligner<F> {
 
                 if i == m {
                     tb.set_s_bits(TB_XCLIP_SUFFIX);
-                } else {
-                    self.S[k][i] = MIN_SCORE;
                 }
 
                 if self.I[k][i] > self.S[k][i] {
