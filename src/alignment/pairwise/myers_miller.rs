@@ -105,8 +105,8 @@ impl<F: MatchFunc> Aligner<F> {
                     &y[jmid..],
                     m - imid,
                     n - jmid,
-                    0,
                     self.scoring.gap_open,
+                    te,
                 ),
             ]
             .concat()
@@ -259,7 +259,7 @@ mod tests {
         let x = b"ACGAGAACA";
         let y = b"ACGACA";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -3i32 };
-        let mut aligner = Aligner::new(-5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
 
         println!("aln:\n{}", alignment.pretty(x, y));
@@ -274,7 +274,7 @@ mod tests {
         let x = b"AGATAGATAGATAGGGAGTTGTGTAGATGATCCACAGT";
         let y = b"AGATAGATAGATGTAGATGATCCACAGT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::new(-5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
 
         println!("aln:\n{}", alignment.pretty(x, y));
@@ -292,7 +292,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::new(-5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
 
         println!("\naln:\n{}", alignment.pretty(x, y));
@@ -309,7 +309,7 @@ mod tests {
         let x = b"AAAA";
         let y = b"AAAA";
         let score = &blosum62;
-        let mut aligner = Aligner::new(-5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
@@ -322,7 +322,7 @@ mod tests {
         let y = b"TACC"; //GTGGAC";
         let x = b"AAAAACC"; //GTTGACGCAA";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::new(-5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
@@ -337,7 +337,7 @@ mod tests {
         let x = b"GTGCATCATGTG";
         let y = b"GTGCATCATCATGTG";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::new(-5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
         println!("\naln:\n{}", alignment.pretty(x, y));
 
@@ -360,7 +360,7 @@ mod tests {
         let y = b"CCACGTACGT";
 
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::new(-5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
 
         println!("\naln:\n{}", alignment.pretty(x, y));
@@ -383,7 +383,7 @@ mod tests {
         let x = b"GTGCATCATCATGTG";
         let y = b"GTGCATCATGTG";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::new(-5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
         println!("\naln:\n{}", alignment.pretty(x, y));
 
@@ -403,7 +403,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::new(-5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
 
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
