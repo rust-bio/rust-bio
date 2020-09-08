@@ -46,8 +46,7 @@ impl<F: MatchFunc> Aligner<F> {
         }
     }
     pub fn global(&self, x: TextSlice, y: TextSlice) -> Alignment {
-        let m = x.len();
-        let n = y.len();
+        let (m, n) = (x.len(), y.len());
         let operations =
             self.compute_recursive(x, y, m, n, self.scoring.gap_open, self.scoring.gap_open);
         let score = self.cost_only(x, y, false, self.scoring.gap_open).0[y.len()];
@@ -75,10 +74,10 @@ impl<F: MatchFunc> Aligner<F> {
     ) -> Vec<AlignmentOperation> {
         // * m = x.len(); n = y.len()
         if n == 0 {
-            return vec![AlignmentOperation::Del; m];
+            return vec![AlignmentOperation::Ins; m];
         }
         if m == 0 {
-            return vec![AlignmentOperation::Ins; n];
+            return vec![AlignmentOperation::Del; n];
         }
         if m == 1 {
             return self.nw_onerow(x[0], y, n, tb, te);
@@ -87,7 +86,7 @@ impl<F: MatchFunc> Aligner<F> {
         return if join_by_deletion {
             [
                 self.compute_recursive(&x[..imid - 1], &y[..jmid], imid - 1, jmid, tb, 0),
-                vec![AlignmentOperation::Del; 2],
+                vec![AlignmentOperation::Ins; 2],
                 self.compute_recursive(&x[imid + 1..], &y[jmid..], m - imid - 1, n - jmid, 0, te),
             ]
             .concat()
@@ -224,15 +223,15 @@ impl<F: MatchFunc> Aligner<F> {
         }
         return if max == score_by_indels_only {
             let mut res = Vec::with_capacity(n + 1);
-            res.push(AlignmentOperation::Del);
+            res.push(AlignmentOperation::Ins);
             for _j in 0..n {
-                res.push(AlignmentOperation::Ins)
+                res.push(AlignmentOperation::Del)
             }
             res
         } else {
             let mut res = Vec::with_capacity(n);
             for _j in 0..maxj_ {
-                res.push(AlignmentOperation::Ins)
+                res.push(AlignmentOperation::Del)
             }
             if x == y[maxj_] {
                 res.push(AlignmentOperation::Match);
@@ -240,7 +239,7 @@ impl<F: MatchFunc> Aligner<F> {
                 res.push(AlignmentOperation::Subst);
             }
             for _j in 0..(n - maxj_ - 1) {
-                res.push(AlignmentOperation::Ins)
+                res.push(AlignmentOperation::Del)
             }
             res
         };
