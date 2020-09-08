@@ -397,20 +397,4 @@ mod tests {
             ]
         );
     }
-
-    #[test]
-    fn test_aligner_new() {
-        let x = b"ACCGTGGAT";
-        let y = b"AAAAACCGTTGAT";
-        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::new(-5, -1, &score);
-
-        let alignment = aligner.global(x, y);
-        assert_eq!(alignment.ystart, 0);
-        assert_eq!(alignment.xstart, 0);
-        assert_eq!(
-            alignment.operations,
-            [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
-        );
-    }
 }
