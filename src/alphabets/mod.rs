@@ -34,7 +34,7 @@ pub struct Alphabet {
 impl Alphabet {
     /// Create new alphabet from given symbols.
     ///
-    /// Complexity: O(n), where n is the number of symbols in the alphabet.
+    /// Complexity: $O(n)$, where $n$ is the number of symbols in the alphabet.
     ///
     /// # Example
     ///
@@ -59,7 +59,7 @@ impl Alphabet {
 
     /// Insert symbol into alphabet.
     ///
-    /// Complexity: O(1)
+    /// Complexity: $O(1)$
     ///
     /// # Example
     ///
@@ -77,7 +77,7 @@ impl Alphabet {
 
     /// Check if given text is a word over the alphabet.
     ///
-    /// Complexity: O(n), where n is the length of the text.
+    /// Complexity: $O(n)$, where $n$ is the length of the text.
     ///
     /// # Example
     ///
@@ -99,7 +99,7 @@ impl Alphabet {
 
     /// Return lexicographically maximal symbol.
     ///
-    /// Complexity: O(n), where n is the number of symbols in the alphabet.
+    /// Complexity: $O(n)$, where $n$ is the number of symbols in the alphabet.
     ///
     /// # Example
     ///
@@ -120,7 +120,7 @@ impl Alphabet {
     /// Upper and lower case representations of the same character
     /// are counted as distinct characters.
     ///
-    /// Complexity: O(n), where n is the number of symbols in the alphabet.
+    /// Complexity: $O(n)$, where $n$ is the number of symbols in the alphabet.
     ///
     /// # Example
     ///
@@ -136,7 +136,7 @@ impl Alphabet {
 
     /// Is this alphabet empty?
     ///
-    /// Complexity: O(n), where n is the number of symbols in the alphabet.
+    /// Complexity: $O(n)$, where $n$ is the number of symbols in the alphabet.
     ///
     /// # Example
     ///
@@ -170,7 +170,7 @@ pub struct RankTransform {
 impl RankTransform {
     /// Construct a new `RankTransform`.
     ///
-    /// Complexity: O(n), where n is the number of symbols in the alphabet.
+    /// Complexity: $O(n)$, where $n$ is the number of symbols in the alphabet.
     ///
     /// # Example
     ///
@@ -193,7 +193,7 @@ impl RankTransform {
     ///
     /// This method panics for characters not contained in the alphabet.
     ///
-    /// Complexity: O(1)
+    /// Complexity: $O(1)$
     ///
     /// # Example
     ///
@@ -211,7 +211,7 @@ impl RankTransform {
 
     /// Transform a given `text` into a vector of rank values.
     ///
-    /// Complexity: O(n), where n is the length of the text.
+    /// Complexity: $O(n)$, where $n$ is the length of the text.
     ///
     /// # Example
     ///
@@ -238,12 +238,14 @@ impl RankTransform {
             .collect()
     }
 
-    /// Iterate over q-grams (substrings of length q) of given `text`. The q-grams are encoded
-    /// as `usize` by storing the symbol ranks in log2(|A|) bits (with |A| being the alphabet size).
+    /// Iterate over *q-grams* (substrings of length `q`) of given `text`. The q-grams are encoded
+    /// as `usize` by storing the symbol ranks in $\log\_{2}\lvert A \rvert$ bits (with
+    /// $\lvert A \rvert$ being the alphabet size).
     ///
-    /// If q is larger than usize::BITS / log2(|A|), this method fails with an assertion.
+    /// If `q` is larger than $\dfrac{\texttt{usize::BITS}}{\log\_{2}\lvert A \rvert}$, this method
+    /// fails with an assertion.
     ///
-    /// Complexity: O(n), where n is the length of the text.
+    /// Complexity: $O(n)$, where $n$ is the length of the text.
     ///
     /// # Example
     ///
@@ -284,7 +286,7 @@ impl RankTransform {
 
     /// Restore alphabet from transform.
     ///
-    /// Complexity: O(n), where n is the number of symbols in the alphabet.
+    /// Complexity: $O(n)$, where $n$ is the number of symbols in the alphabet.
     ///
     /// # Example
     ///
@@ -309,7 +311,7 @@ impl RankTransform {
     /// This value can be used to create a `data_structures::bitenc::BitEnc`
     /// bit encoding tailored to the given alphabet.
     ///
-    /// Complexity: O(n), where n is the number of symbols in the alphabet.
+    /// Complexity: $O(n)$, where $n$ is the number of symbols in the alphabet.
     ///
     /// # Example
     ///
