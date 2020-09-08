@@ -3,7 +3,7 @@
 //! This implementation is based on the sorted array version as described/given in
 //! https://github.com/lh3/cgranges / https://github.com/lh3/cgranges/blob/master/cpp/IITree.h
 //!
-//! It uses the same conventions as `crate::data_structures::interval_tree::IntervalTree`.
+//! It uses the same conventions as `bio::data_structures::interval_tree::IntervalTree`.
 //! Note that if you do not use the `ArrayBackedIntervalTree::from_iter` constructor, you have to call `index(&mut self)`
 //! first before `find()`-ing overlaps.
 //!
@@ -32,7 +32,6 @@
 //! assert_eq!(i2.interval().end, 34);
 //! assert_eq!(i2.data(), &0u32);
 //! ```
-//!
 
 use crate::utils::Interval;
 use std::cmp::min;

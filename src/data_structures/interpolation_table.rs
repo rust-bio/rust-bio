@@ -55,10 +55,11 @@ impl<F: Fn(f64) -> f64> InterpolationTable<F> {
     /// * `frac_digits` - number of fraction digits to store in sample
     /// * `func` - Function to emulate.
     ///
-    /// If given value is outside of min_x and max_x, the lookup falls back to applying the
+    /// If given value is outside of `min_x` and `max_x`, the lookup falls back to applying the
     /// function itself.
     /// The table size grows with the number of fraction digits.
-    /// Space Complexity: O(m * 10^n), where `m = max_x - min_x` and `n = frac_digits`
+    ///
+    /// Space Complexity: $O(m \cdot 10^n)$, where $m =$ `max_x - min_x` and $n =$ `frac_digits`
     pub fn new(min_x: f64, max_x: f64, frac_digits: i32, func: F) -> Self {
         let shift = 10.0_f64.powi(frac_digits);
         let offset = (min_x * shift) as usize;
@@ -90,7 +91,8 @@ impl<F: Fn(f64) -> f64> InterpolationTable<F> {
     /// Lookup given value in table, and interpolate the result between the sampled values if
     /// necessary. This provides an approximation that is better the more fraction digits are
     /// used to generate this table.
-    /// Time Complexity for lookup: O(1) if `min_x <= x < max_x` and O(func(x)) otherwise.
+    ///
+    /// Time Complexity for lookup: $O(1)$ if `min_x <= x < max_x` or $O(\text{func(}x\text{)})$ otherwise.
     pub fn get(&self, x: f64) -> f64 {
         if x < self.min_x || x >= self.max_x {
             (self.func)(x)

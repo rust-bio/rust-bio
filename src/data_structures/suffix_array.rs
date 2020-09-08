@@ -173,8 +173,8 @@ impl SuffixArray for RawSuffixArray {
 //     }
 // }
 
-/// Construct suffix array for given text of length n.
-/// Complexity: O(n).
+/// Construct suffix array for given text of length $n$.
+/// Complexity: $O(n)$.
 /// This is an implementation of the induced sorting as presented by
 /// Ge Nong, Sen Zhang und Wai Hong Chan (2009), also known as SAIS.
 /// The implementation is based on the following lecture notes:
@@ -240,8 +240,8 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
     sais.pos
 }
 
-/// Construct lcp array for given text and suffix array of length n.
-/// Complexity: O(n).
+/// Construct lcp array for given text and suffix array of length $n$.
+/// Complexity: $O(n)$.
 ///
 /// # Arguments
 ///
@@ -258,7 +258,7 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
 /// // obtain compressed LCP array
 /// let lcp = lcp(text, &pos);
 ///
-/// // get most values in O(1).
+/// // get most values in $O(1)$.
 /// assert_eq!(lcp.get(6).unwrap(), 4);
 ///
 /// // obtain uncompressed LCP array.
@@ -296,7 +296,7 @@ pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray
 
 /// Calculate all locally shortest unique substrings from a given suffix and lcp array
 /// (Ohlebusch (2013). "Bioinformatics Algorithms". ISBN 978-3-00-041316-2).
-/// Complexity: O(n)
+/// Complexity: $O(n)$
 ///
 /// # Arguments
 ///
@@ -339,11 +339,11 @@ pub fn shortest_unique_substrings<SA: SuffixArray>(pos: &SA, lcp: &LCPArray) -> 
     // Initialize array representing the length of the shortest unique substring starting at position i
     let mut sus = vec![None; n];
     for i in 0..n {
-        // The longest common prefixes (LCP) of suffix pos[i] with its predecessor and successor are not unique.
-        // In turn the their maximum + 1 is the length of the shortest unique substring starting at pos[i].
+        // The longest common prefixes (LCP) of suffix `pos[i]` with its predecessor and successor are not unique.
+        // In turn the their maximum + 1 is the length of the shortest unique substring starting at `pos[i]`.
         let len = 1 + cmp::max(lcp.get(i).unwrap(), lcp.get(i + 1).unwrap_or(0)) as usize;
         let p = pos.get(i).unwrap();
-        // Check if the suffix pos[i] is a prefix of pos[i+1]. In that case, there is no unique substring
+        // Check if the suffix `pos[i]` is a prefix of `pos[i+1]`. In that case, there is no unique substring
         // at this position.
         if n - p >= len {
             sus[p] = Some(len);

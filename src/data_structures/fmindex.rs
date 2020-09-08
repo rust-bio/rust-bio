@@ -78,15 +78,15 @@ impl Interval {
 }
 
 pub trait FMIndexable {
-    /// Get occurrence count of symbol a in BWT[..r+1].
+    /// Get occurrence count of symbol `a` in `BWT[..r+1]`.
     fn occ(&self, r: usize, a: u8) -> usize;
     /// Also known as
     fn less(&self, a: u8) -> usize;
     fn bwt(&self) -> &BWT;
 
     /// Perform backward search, yielding suffix array
-    /// interval denoting exact occurrences of the given pattern of length m in the text.
-    /// Complexity: O(m).
+    /// interval denoting exact occurrences of the given pattern of length $m$ in the text.
+    /// Complexity: $O(m)$.
     ///
     /// # Arguments
     ///
@@ -238,7 +238,7 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> From<FMIndex<DBW
 {
     /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
     /// This expects a BWT that was created from a text over the DNA alphabet with N
-    /// (`alphabets::dna::n_alphabet()`) consisting of the
+    /// (`bio::alphabets::dna::n_alphabet()`) consisting of the
     /// concatenation with its reverse complement, separated by the sentinel symbol `$`.
     /// I.e., let T be the original text and R be its reverse complement.
     /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
@@ -257,7 +257,8 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> From<FMIndex<DBW
 
 impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, DLess, DOcc> {
     /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
-    /// Complexity O(m) with pattern of length m.
+    ///
+    /// Complexity: $O(m)$ with pattern of length $m$.
     ///
     /// # Example
     ///

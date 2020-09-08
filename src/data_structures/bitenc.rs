@@ -40,8 +40,9 @@
 
 /// A sequence of bitencoded values.
 ///
-/// Space complexity: O(⌈(n * width) / k⌉) * 32 bit, where n is the length of the input
-/// sequence and `k = 32 - (32 % width)`  is the number of bits in each
+/// Space complexity: $\left(\lceil\dfrac{n \cdot w}{k}\rceil\right) \times 32$
+/// bits, where $w$ is `width`, $n$ is the length of the input
+/// sequence, and `k = 32 - (32 % width)` is the number of bits in each
 /// 32-bit block that can be used to store values.
 /// For values that are not a divider of 32, some bits will remain unused.
 /// For example for `width = 7` only `4 * 7 = 28` bits are used.
@@ -61,10 +62,10 @@ fn mask(width: usize) -> u32 {
 }
 
 impl BitEnc {
-    /// Create a new instance with a given encoding width (e.g. width=2 for using two bits per value).
+    /// Create a new instance with a given encoding width (e.g. `width = 2` for using two bits per value).
     /// Supports widths up to 8 bits per character, i.e. `1 <= width <= 8`.
     ///
-    /// Complexity: O(1)
+    /// Complexity: $O(1)$
     ///
     /// # Example
     ///
@@ -87,7 +88,7 @@ impl BitEnc {
     /// (e.g. width=2 for using two bits per value).
     /// Supports widths up to 8 bits per character, i.e. `1 <= width <= 8`.
     ///
-    /// Complexity: O(1)
+    /// Complexity: $O(1)$
     ///
     /// # Example
     ///
@@ -109,7 +110,7 @@ impl BitEnc {
 
     /// Append a character to the current bit-encoding.
     ///
-    /// Complexity: O(1)
+    /// Complexity: $O(1)$
     ///
     /// # Example
     ///
@@ -140,7 +141,7 @@ impl BitEnc {
     /// completely filled with the value and 0 to 1 blocks
     /// that are only partially filled.
     ///
-    /// Complexity: O(n)
+    /// Complexity: $O(n)$
     ///
     /// # Example
     ///
@@ -233,7 +234,7 @@ impl BitEnc {
 
     /// Replace the current value as position `i` with the given value.
     ///
-    /// Complexity: O(1)
+    /// Complexity: $O(1)$
     ///
     /// ```
     /// use bio::data_structures::bitenc::BitEnc;
@@ -252,7 +253,7 @@ impl BitEnc {
 
     /// Get the value at position `i`.
     ///
-    /// Complexity: O(1)
+    /// Complexity: $O(1)$
     ///
     /// ```
     /// use bio::data_structures::bitenc::BitEnc;
@@ -276,7 +277,7 @@ impl BitEnc {
 
     /// Iterate over stored values (values will be unpacked into bytes).
     ///
-    /// Complexity: O(n), where n is the number of encoded values
+    /// Complexity: $O(n)$, where $n$ is the number of encoded values
     ///
     /// # Example
     ///
@@ -299,7 +300,7 @@ impl BitEnc {
 
     /// Clear the sequence.
     ///
-    /// Complexity: O(1)
+    /// Complexity: $O(1)$
     ///
     /// # Example
     ///
@@ -341,7 +342,7 @@ impl BitEnc {
 
     /// Get the number of symbols encoded.
     ///
-    /// Complexity: O(1)
+    /// Complexity: $O(1)$
     ///
     /// # Example
     ///
@@ -369,7 +370,7 @@ impl BitEnc {
 
     /// Get the number of blocks used by the encoding.
     ///
-    /// Complexity: O(1)
+    /// Complexity: $O(1)$
     ///
     /// # Example
     ///
@@ -394,7 +395,7 @@ impl BitEnc {
 
     /// Get the number of symbols encoded.
     ///
-    /// Complexity: O(1)
+    /// Complexity: $O(1)$
     ///
     /// # Example
     ///
@@ -417,7 +418,7 @@ impl BitEnc {
 
     /// Is the encoded sequence empty?
     ///
-    /// Complexity: O(1)
+    /// Complexity: $O(1)$
     ///
     /// # Example
     ///
