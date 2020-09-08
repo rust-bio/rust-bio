@@ -421,9 +421,9 @@ impl<F: MatchFunc> Scoring<F> {
 ///
 /// `S(i,j)` is the best score for prefixes `x[0..i]`, `y[0..j]`
 ///
-/// To save space, only one column of these matrices are stored at
-/// any point — the column `j` is obtained by overwriting column `j-1`.
-/// Moreover, `M(i,j)` is not explicitly stored
+/// To save space, only one column of these matrices are stored at any
+/// point — the column `j` is obtained by overwriting column `j-1` (Myers & Miller 1988).
+/// Moreover, `M(i,j)` is not explicitly stored.
 ///
 /// `Lx` is the optimal x suffix clipping lengths from each position of the
 /// sequence y
@@ -437,6 +437,9 @@ impl<F: MatchFunc> Scoring<F> {
 /// `traceback` - see [`bio::alignment::pairwise::TracebackCell`](struct.TracebackCell.html)
 ///
 /// `scoring` - see [`bio::alignment::pairwise::Scoring`](struct.Scoring.html)
+///
+/// # References
+/// - [Eugene W. Myers and Webb Miller (1988) Optimal alignments in linear space. _Bioinformatics_ **4**: 11-17.](https://doi.org/10.1093/bioinformatics/4.1.11)
 #[allow(non_snake_case)]
 pub struct Aligner<F: MatchFunc> {
     I: Vec<i32>,
