@@ -1,4 +1,5 @@
 // Copyright 2014-2015 Johannes Köster, Vadim Nazarov, Patrick Marks
+// Copyright 2020 Tianyi Shi (PR #354: space-efficiency and speed improvement)
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -420,9 +421,9 @@ impl<F: MatchFunc> Scoring<F> {
 ///
 /// `S(i,j)` is the best score for prefixes `x[0..i]`, `y[0..j]`
 ///
-/// To save space, only two columns of these matrices are stored at
-/// any point - the current column and the previous one. Moreover
-/// `M(i,j)` is not explicitly stored
+/// To save space, only one column of these matrices are stored at
+/// any point — the column `j` is obtained by overwriting column `j-1`.
+/// Moreover, `M(i,j)` is not explicitly stored
 ///
 /// `Lx` is the optimal x suffix clipping lengths from each position of the
 /// sequence y
