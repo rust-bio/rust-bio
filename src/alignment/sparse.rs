@@ -5,11 +5,11 @@
 
 //! Calculate 'sparse' alignments from kmer matches. Can be much faster than
 //! Smith-Waterman for long string, when a large enough k is used.
-//! Complexity: O(n * log(n)) for a pair of strings with n k-kmer matches. This
+//! Complexity: $O(n \cdot \log(n))$ for a pair of strings with $n$ k-kmer matches. This
 //! approach is useful for generating an approximate 'backbone' alignments
 //! between two long sequences, for example in long-read alignment or
 //! genome-genome alignment. The backbone alignment can be used as-is, or can serve
-//! as a guide for a banded alignment.  By tuning k so that len(query) + len(reference) < 4^k,
+//! as a guide for a banded alignment.  By tuning $k$ so that $\text{len(query) + len(reference)} \lt 4^k$,
 //! the number of false positive kmer matches is kept small, resulting in very
 //! fast run times for long strings.
 //!

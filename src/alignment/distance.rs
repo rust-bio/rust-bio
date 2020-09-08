@@ -10,7 +10,7 @@ use std::cmp::min;
 
 use crate::utils::TextSlice;
 
-/// Compute the Hamming distance between two strings. Complexity: O(n).
+/// Compute the Hamming distance between two strings. Complexity: $O(n)$.
 ///
 /// # Example
 ///
@@ -41,7 +41,7 @@ pub fn hamming(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u64 {
     dist
 }
 
-/// Compute the Levenshtein (or Edit) distance between two strings. Complexity: O(n * m) with
+/// Compute the Levenshtein (or Edit) distance between two strings. Complexity: $O(nm)$ with
 /// n and m being the length of the given texts.
 ///
 /// # Example
@@ -162,11 +162,11 @@ pub mod simd {
     }
 
     /// SIMD-accelerated bounded Levenshtein (or Edit) distance between two strings.
-    /// Complexity: O(k / w * (n + m)), with n and m being the length of the given texts,
-    /// k being the threshold on the number of edits, and w being the length of the SIMD vectors
-    /// (usually w = 16 or w = 32).
+    /// Complexity: $O\left(\frac{k}{w(n+m)}\right)$, with $n$ and $m$ being the length of the given texts,
+    /// $k$ being the threshold on the number of edits, and $w$ being the length of the SIMD vectors
+    /// (usually $w = 16$ or $w = 32$).
     ///
-    /// If the Levenshtein distance between two strings is greater than the threshold k, then
+    /// If the Levenshtein distance between two strings is greater than the threshold $k$, then
     /// `None` is returned. This is useful for efficiently calculating whether two strings
     /// are similar.
     ///

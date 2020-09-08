@@ -13,7 +13,7 @@
 //! excursion of the alignment path from diagonal between successive kmer
 //! matches.  This technique is employed in long-read aligners (e.g. BLASR and BWA)
 //! to drastically reduce runtime compared to Smith Waterman.
-//! Complexity roughly O(min(m,n) * w)
+//! Complexity roughly $O(\min{(m,n)} \cdot w)$
 //!
 //! # Example
 //!
@@ -99,7 +99,7 @@ const DEFAULT_MATCH_SCORE: i32 = 2;
 /// only inside a 'band' withing the dynamic programming matrix. The band is constructed using the
 /// Sparse DP routine (see sparse::sdpkpp), which uses kmer matches to build the best common
 /// subsequence (including gap penalties) between the two strings. The band is constructed around
-/// this subsequence (using the window length 'w'), filling in the gaps.
+/// this subsequence (using the window length `w`), filling in the gaps.
 ///
 /// In the case where there are no k-mer matches, the  aligner will fall back to a full alignment,
 /// by setting the band to contain the full matrix.
