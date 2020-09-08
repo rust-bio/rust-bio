@@ -727,7 +727,9 @@ impl<F: MatchFunc> Aligner<F> {
                     tb.set_s_bits(TB_XCLIP_PREFIX);
                 }
 
-                let yclip_score = self.scoring.yclip_prefix + self.scoring.gap_extend * (i as i32);
+                let yclip_score = self.scoring.yclip_prefix
+                    + self.scoring.gap_open
+                    + self.scoring.gap_extend * (i as i32);
                 if yclip_score > best_s_score {
                     best_s_score = yclip_score;
                     tb.set_s_bits(TB_YCLIP_PREFIX);
