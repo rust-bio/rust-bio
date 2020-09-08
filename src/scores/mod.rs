@@ -10,6 +10,7 @@ pub use self::pam250::pam250;
 pub use self::pam40::pam40;
 
 pub mod blosum62;
+pub mod blosum62_array;
 pub mod pam120;
 pub mod pam200;
 pub mod pam250;
