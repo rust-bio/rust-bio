@@ -45,7 +45,7 @@ impl<F: MatchFunc> Aligner<F> {
             scoring: Scoring::new(gap_open, gap_extend, match_fn),
         }
     }
-    pub fn global(&self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn global(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         let (m, n) = (x.len(), y.len());
         let operations =
             self.compute_recursive(x, y, m, n, self.scoring.gap_open, self.scoring.gap_open);
@@ -62,11 +62,41 @@ impl<F: MatchFunc> Aligner<F> {
             mode: AlignmentMode::Global,
         };
     }
+    pub fn local(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
+        let (m, n) = (x.len(), y.len());
+        let (score, start, end) = self.find_local_score_and_termini(x, y);
+        println!("{:?}", (score, start, end));
+        let xstart = start[0];
+        let ystart = start[1];
+        let xend = end[0];
+        let yend = end[1];
+        let xlen = xend - xstart;
+        let ylen = yend - ystart;
+        let operations = self.compute_recursive(
+            &x[xstart..xend],
+            &y[ystart..yend],
+            xlen,
+            ylen,
+            self.scoring.gap_open,
+            self.scoring.gap_open,
+        );
+        Alignment {
+            score,
+            xstart,
+            xend,
+            ystart,
+            yend,
+            xlen,
+            ylen,
+            operations,
+            mode: AlignmentMode::Local,
+        }
+    }
     /// Recursively compute alignments of sub-sequences and concatenating them
     fn compute_recursive(
         &self,
-        x: TextSlice,
-        y: TextSlice,
+        x: TextSlice<'_>,
+        y: TextSlice<'_>,
         m: usize,
         n: usize,
         tb: i32,
@@ -115,8 +145,8 @@ impl<F: MatchFunc> Aligner<F> {
 
     fn find_mid(
         &self,
-        x: TextSlice,
-        y: TextSlice,
+        x: TextSlice<'_>,
+        y: TextSlice<'_>,
         m: usize,
         n: usize,
         tb: i32,
@@ -194,25 +224,12 @@ impl<F: MatchFunc> Aligner<F> {
         (cc, dd)
     }
 
-    /// Find jmid, start and end positions
-    /// Run recursively until the line (i = imid) passes through the optimal alignment
-    /// This is judged by examining whether one number of the maximum pair equals 0;
-    fn find_mid_and_coords_local(
-        &self,
-        x: TextSlice,
-        y: TextSlice,
-        m: usize,
-        n: usize,
-    ) -> (usize, usize, [usize; 2], [usize; 2], bool) {
-        unimplemented!()
-    }
     /// to be run until i = imid pass through the local alignment
-    fn cost_only_local(
+    fn find_local_score_and_termini(
         &self,
         x: TextSlice,
         y: TextSlice,
-        rev: bool,
-    ) -> (Vec<i32>, Vec<i32>, Vec<[usize; 2]>, Vec<[usize; 2]>) {
+    ) -> (i32, [usize; 2], [usize; 2]) {
         let m = x.len() + 1;
         let n = y.len() + 1;
         let mut cc: Vec<i32> = vec![0; n]; // match/mismatch
@@ -228,10 +245,12 @@ impl<F: MatchFunc> Aligner<F> {
         }
         let mut e: i32; // I(i, j-1)
         let mut c: i32; // C(i, j-1)
-        let mut c_origin: [usize; 2];
+        let mut c_origin = [0usize, 0usize];
+        let mut max_c = i32::MIN;
+        let mut c_start = [0usize, 0usize];
+        let mut c_end = [m, n];
         let mut s: i32; // C(i-1, j-1)
         let mut s_origin: [usize; 2]; // origin of C(i-1, j-1)
-        let mut subst_score: i32;
         for i in 1..m {
             // s and cc[0] = 0; cc[0] always equals to 0
             s = 0;
@@ -258,12 +277,7 @@ impl<F: MatchFunc> Aligner<F> {
                     origin_dd[j] = origin_cc[j];
                     cc[j]
                 } + self.scoring.gap_extend; // cc[j] = C[i-1, j]
-                subst_score = if rev {
-                    s + self.scoring.match_fn.score(x[m - i - 1], y[n - j - 1])
-                } else {
-                    s + self.scoring.match_fn.score(x[i - 1], y[j - 1])
-                };
-                c = subst_score;
+                c = s + self.scoring.match_fn.score(x[i - 1], y[j - 1]); // substitution score
                 c_origin = s_origin;
                 s = cc[j];
                 s_origin = origin_cc[j];
@@ -280,11 +294,16 @@ impl<F: MatchFunc> Aligner<F> {
                     c = 0;
                     c_origin = [i, j]
                 }
+                if c > max_c {
+                    max_c = c;
+                    c_start = c_origin;
+                    c_end = [i, j];
+                }
+                origin_cc[j] = c_origin;
                 cc[j] = c;
             }
         }
-        dd[0] = cc[0]; // otherwise indels at start/end will be free
-        (cc, dd, origin_cc, origin_dd)
+        (max_c, c_start, c_end)
     }
     fn nw_onerow(
         &self,
