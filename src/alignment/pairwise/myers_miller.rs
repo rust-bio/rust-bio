@@ -103,8 +103,6 @@ impl<F: MatchFunc> Aligner<F> {
 
         // Compute the alignment
         let (score, xstart, ystart, xend, yend) = self.find_semiglobal_score_and_termini(x, y);
-        let yclip_start_number = ystart;
-        let yclip_end_number = y.len() - yend;
         let xlen = xend - xstart;
         let ylen = yend - ystart;
         let operations = self.compute_recursive(
@@ -423,8 +421,6 @@ impl<F: MatchFunc> Aligner<F> {
                 cc[j] = c;
                 y_origin_cc[j] = c_y_origin;
             }
-            println!("{:?}", cc);
-            println!("{:?}", y_origin_cc);
         }
         // last (m-th) row
         let mut max_last_row = cc[n];
