@@ -54,6 +54,7 @@ For extra credit, feel free to familiarize yourself with:
 * When referring to a variable as an arguments of the function or a field of the struct, put backticks (`` ` ``) around it.
 * Otherwise, put dollar signs (`$`) around it (i.e. making it a LaTeX expression).
 * In general, use LaTeX for math expressions (especially when writing "big-O" complexities)
+* For simple expressions, especially those containing function argument/struct field names, using backticks is recommended.
 
 In the following example, the public function `combinations` has two arguments `n` and `k`, which are referred to in the first line with backticks. Then, a LaTeX math expressions is used to show the complexity. The variable names *k* and *n* are not ambiguous (obviously referring to the two arguments), so we don't need to define again.
 
@@ -67,7 +68,7 @@ pub fn combinations(n: u64, k: u64) -> f64 {
 }
 ```
 
-In the next example, none of the variables *n*, *k* and *w* used in the space complexity expression matches any field names of the struct `BitEnc`, so we need to define explicitly.
+In the next example, none of the variables *n*, *k* and *w* used in the space complexity expression matches any field names of the struct `BitEnc`, so we need to define explicitly. Simple expressions like `width = 7` and `4 * 7 = 28` are enclosed in backticks.
 
 ```rust
 /// A sequence of bitencoded values.
@@ -85,11 +86,6 @@ pub struct BitEnc {
     mask: u32,
     len: usize,
     usable_bits_per_block: usize,
-}
-```
-
-pub fn combinations(n: u64, k: u64) -> f64 {
-    scaled_combinations(n, k, 1.0)
 }
 ```
 
