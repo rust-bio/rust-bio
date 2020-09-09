@@ -193,6 +193,83 @@ impl<F: MatchFunc> Aligner<F> {
         dd[0] = cc[0]; // otherwise indels at start/end will be free
         (cc, dd)
     }
+    /// to be run until i = imid pass through the local alignment
+    fn cost_only_local(&self, x: TextSlice, y: TextSlice, rev: bool) -> (Vec<i32>, Vec<i32>) {
+        let m = x.len() + 1;
+        let n = y.len() + 1;
+        let mut cc: Vec<i32> = vec![0; n]; // match/mismatch
+        let mut dd: Vec<i32> = vec![0; n]; // deletion
+        let mut origin_cc: Vec<[usize; 2]> = Vec::with_capacity(n);
+        let mut origin_dd: Vec<[usize; 2]> = Vec::with_capacity(n);
+        let mut origin_ii: Vec<[usize; 2]> = Vec::with_capacity(n);
+        for j in 0..n {
+            origin_cc.push([0, j]);
+            origin_dd.push([0, j]);
+            origin_ii.push([0, j]);
+            dd[0] = i32::MIN;
+        }
+        let mut e: i32; // I(i, j-1)
+        let mut c: i32; // C(i, j-1)
+        let mut c_origin: [usize; 2];
+        let mut s: i32; // C(i-1, j-1)
+        let mut s_origin: [usize; 2]; // origin of C(i-1, j-1)
+        let mut t: i32;
+        let mut subst_score: i32;
+        t = self.scoring.gap_open;
+        for i in 1..m {
+            // s and cc[0] = 0; cc[0] always equals to 0
+            s = 0;
+            s_origin = [i, 0];
+            c = 0;
+            c_origin = [i, 0];
+            // dd[0] = 0;
+            e = i32::MIN;
+            origin_cc[0] = [i, 0];
+            origin_dd[0] = [i, 0];
+            origin_ii[0] = [i, 0];
+            for j in 1..n {
+                e = if e > c + self.scoring.gap_open {
+                    origin_ii[j] = origin_ii[j - 1];
+                    e
+                } else {
+                    origin_ii[j] = c_origin;
+                    c + self.scoring.gap_open
+                } + self.scoring.gap_extend; // update e to I[i,j]
+                dd[j] = if dd[j] > cc[j] + self.scoring.gap_open {
+                    origin_dd[j] = origin_dd[j];
+                    dd[j]
+                } else {
+                    origin_dd[j] = origin_cc[j];
+                    cc[j]
+                } + self.scoring.gap_extend; // cc[j] = C[i-1, j]
+                subst_score = if rev {
+                    s + self.scoring.match_fn.score(x[m - i - 1], y[n - j - 1])
+                } else {
+                    s + self.scoring.match_fn.score(x[i - 1], y[j - 1])
+                };
+                c = subst_score;
+                c_origin = s_origin;
+                s = cc[j];
+                s_origin = origin_cc[j];
+                if dd[j] > c {
+                    c = dd[j];
+                    c_origin = origin_dd[j];
+                }
+                if e > c {
+                    c = e;
+                    c_origin = origin_ii[j];
+                }
+                if c < 0 {
+                    // the critical step in local alignment
+                    c = 0;
+                    c_origin = [i, j]
+                }
+                cc[j] = c;
+            }
+        }
+        dd[0] = cc[0]; // otherwise indels at start/end will be free
+        (cc, dd)
+    }
     fn nw_onerow(
         &self,
         x: u8,
