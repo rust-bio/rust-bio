@@ -107,7 +107,7 @@ impl<F: MatchFunc> Aligner<F> {
         let yclip_end_number = y.len() - yend;
         let xlen = xend - xstart;
         let ylen = yend - ystart;
-        let mut operations = self.compute_recursive(
+        let operations = self.compute_recursive(
             &x[xstart..xend],
             &y[ystart..yend],
             xlen,
@@ -115,12 +115,7 @@ impl<F: MatchFunc> Aligner<F> {
             self.scoring.gap_open,
             self.scoring.gap_open,
         );
-        if yclip_start_number > 0 {
-            operations.insert(0, AlignmentOperation::Yclip(yclip_start_number))
-        }
-        if yclip_end_number > 0 {
-            operations.push(AlignmentOperation::Yclip(yclip_end_number))
-        }
+        // (doesn't need to insert Yclip)
 
         // Set the clip penalties to the original values
         self.scoring.xclip_prefix = clip_penalties[0];
@@ -134,8 +129,8 @@ impl<F: MatchFunc> Aligner<F> {
             xend,
             ystart,
             yend,
-            xlen: xend - xstart,
-            ylen: yend - ystart,
+            xlen: x.len(),
+            ylen: y.len(),
             operations,
             mode: AlignmentMode::Semiglobal,
         }
@@ -355,21 +350,24 @@ impl<F: MatchFunc> Aligner<F> {
         x: TextSlice,
         y: TextSlice,
     ) -> (i32, usize, usize, usize, usize) {
-        let (m, n) = (x.len() + 1, y.len() + 1);
-        let mut cc: Vec<i32> = Vec::with_capacity(n); //          32 * n bits
-        let mut dd: Vec<i32> = vec![i32::MIN; n]; //              32 * n bits
-        let mut y_origin_cc: Vec<usize> = vec![0; n]; //            usize * n bits
-        let mut y_origin_dd: Vec<usize> = vec![0; n]; //            usize * n bits
-        let mut y_origin_ii: Vec<usize> = vec![0; n]; //            usize * n bits
+        let (m, n) = (x.len(), y.len());
+        let mut cc: Vec<i32> = Vec::with_capacity(n + 1); //            32 * n bits
+        let mut dd: Vec<i32> = vec![i32::MIN; n + 1]; //                32 * n bits
+        let mut y_origin_cc: Vec<usize> = Vec::with_capacity(n + 1); // usize * n bits
+        let mut y_origin_dd: Vec<usize> = vec![0; n + 1]; //            usize * n bits
+        let mut y_origin_ii: Vec<usize> = vec![0; n + 1]; //            usize * n bits
 
         // About clip_x: false: clip y (start = [0, j]); true: clip x (start = [i, 0]), or start = [0,0]
         cc.push(0);
+        y_origin_cc.push(0);
         let mut t = self.scoring.gap_open;
-        for _j in 1..n {
+        for j in 1..=n {
             t += self.scoring.gap_extend; // TODO: may be optimised: no need to add after reaching yclip_prefix
             cc.push(if t > self.scoring.yclip_prefix {
+                y_origin_cc.push(0);
                 t
             } else {
+                y_origin_cc.push(j);
                 self.scoring.yclip_prefix
             });
         } // end of 0th row initialisation
@@ -385,7 +383,7 @@ impl<F: MatchFunc> Aligner<F> {
         let mut s: i32; // C(i-1, j-1)
         let mut s_y_origin: usize; // y_origin of C(i-1, j-1)
         t = self.scoring.gap_open;
-        for i in 1..m {
+        for i in 1..=m {
             s = cc[0];
             t += self.scoring.gap_extend;
             c = t;
@@ -395,7 +393,7 @@ impl<F: MatchFunc> Aligner<F> {
             s_y_origin = 0;
             c_y_origin = 0;
             // y_origin_cc[0] = 0;WON'T CHANGE
-            for j in 1..n {
+            for j in 1..=n {
                 e = if e > c + self.scoring.gap_open {
                     y_origin_ii[j] = y_origin_ii[j - 1];
                     e
@@ -425,24 +423,24 @@ impl<F: MatchFunc> Aligner<F> {
                 cc[j] = c;
                 y_origin_cc[j] = c_y_origin;
             }
+            println!("{:?}", cc);
+            println!("{:?}", y_origin_cc);
         }
         // last (m-th) row
-        let mut max_last_row = i32::MIN; // tracks the maximum of the last column
-        for j in 0..n {
+        let mut max_last_row = cc[n];
+        ystart = y_origin_cc[n];
+        yend = n;
+        for j in 0..=n {
             let clip_score = cc[j] + self.scoring.yclip_suffix;
-            if clip_score > max_last_row && clip_score > cc[n]
-            // equivalent to: self.scoring.yclip_suffix> (n - j) as i32 * self.scoring.gap_extend + self.scoring.gap_open
-            {
+            if clip_score > max_last_row {
                 max_last_row = clip_score;
+                ystart = y_origin_cc[j];
                 yend = j;
             }
         }
-        if max_last_row < cc[n] {
-            max_last_row = cc[n]
-        }
         (max_last_row, xstart, ystart, xend, yend)
     }
-    // fn find_semiglobal_score_and_termini(
+    // fn find_custom_score_and_termini(
     //     &self,
     //     x: TextSlice,
     //     y: TextSlice,
@@ -664,22 +662,22 @@ mod tests {
         assert_eq!(alignment.operations, correct);
     }
 
-    #[test]
-    fn test_global() {
-        let x = b"ACCGTGGAT";
-        let y = b"AAAAACCGTTGAT";
-        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::new(-5, -1, score);
-        let alignment = aligner.global(x, y);
+    // #[test]
+    // fn test_global() {
+    //     let x = b"ACCGTGGAT";
+    //     let y = b"AAAAACCGTTGAT";
+    //     let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+    //     let aligner = Aligner::new(-5, -1, score);
+    //     let alignment = aligner.global(x, y);
 
-        println!("\naln:\n{}", alignment.pretty(x, y));
-        assert_eq!(alignment.ystart, 0);
-        assert_eq!(alignment.xstart, 0);
-        assert_eq!(
-            alignment.operations,
-            [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
-        );
-    }
+    //     println!("\naln:\n{}", alignment.pretty(x, y));
+    //     assert_eq!(alignment.ystart, 0);
+    //     assert_eq!(alignment.xstart, 0);
+    //     assert_eq!(
+    //         alignment.operations,
+    //         [Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+    //     );
+    // }
 
     #[test]
     fn test_blosum62() {
@@ -709,25 +707,25 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_left_aligned_del() {
-        let x = b"GTGCATCATGTG";
-        let y = b"GTGCATCATCATGTG";
-        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::new(-5, -1, score);
-        let alignment = aligner.global(x, y);
-        println!("\naln:\n{}", alignment.pretty(x, y));
+    // #[test]
+    // fn test_left_aligned_del() {
+    //     let x = b"GTGCATCATGTG";
+    //     let y = b"GTGCATCATCATGTG";
+    //     let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+    //     let aligner = Aligner::new(-5, -1, score);
+    //     let alignment = aligner.global(x, y);
+    //     println!("\naln:\n{}", alignment.pretty(x, y));
 
-        assert_eq!(alignment.ystart, 0);
-        assert_eq!(alignment.xstart, 0);
-        assert_eq!(
-            alignment.operations,
-            [
-                Match, Match, Match, Del, Del, Del, Match, Match, Match, Match, Match, Match,
-                Match, Match, Match,
-            ]
-        );
-    }
+    //     assert_eq!(alignment.ystart, 0);
+    //     assert_eq!(alignment.xstart, 0);
+    //     assert_eq!(
+    //         alignment.operations,
+    //         [
+    //             Match, Match, Match, Del, Del, Del, Match, Match, Match, Match, Match, Match,
+    //             Match, Match, Match,
+    //         ]
+    //     );
+    // }
 
     // Test that trailing deletions are correctly handled
     // in global mode
@@ -772,6 +770,50 @@ mod tests {
                 Match, Match, Match, Ins, Ins, Ins, Match, Match, Match, Match, Match, Match,
                 Match, Match, Match,
             ]
+        );
+    }
+
+    // semiglobal
+
+    fn test_semiglobal() {
+        let x = b"ACCGTGGAT";
+        let y = b"AAAAACCGTTGAT";
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let mut aligner = Aligner::new(-5, -1, score);
+        let alignment = aligner.semiglobal(x, y);
+        assert_eq!(alignment.ystart, 4);
+        assert_eq!(alignment.xstart, 0);
+        assert_eq!(
+            alignment.operations,
+            [Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+        );
+    }
+
+    // local
+
+    #[test]
+    fn test_local_affine_ins2() {
+        let x = b"ACGTATCATAGATAGATAGGGTTGTGTAGATGATCCACAG";
+        let y = b"CGTATCATAGATAGATGTAGATGATCCACAGT";
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let aligner = Aligner::new(-5, -1, score);
+        let alignment = aligner.local(x, y);
+        assert_eq!(alignment.xstart, 1);
+        assert_eq!(alignment.ystart, 0);
+    }
+
+    #[test]
+    fn test_local() {
+        let x = b"ACCGTGGAT";
+        let y = b"AAAAACCGTTGAT";
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let aligner = Aligner::new(-5, -1, score);
+        let alignment = aligner.local(x, y);
+        assert_eq!(alignment.ystart, 4);
+        assert_eq!(alignment.xstart, 0);
+        assert_eq!(
+            alignment.operations,
+            [Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
         );
     }
 }

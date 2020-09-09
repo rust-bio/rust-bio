@@ -166,6 +166,13 @@ fn bench_aligner_wc_global_myers_miller(b: &mut Bencher) {
 }
 
 #[bench]
+fn bench_aligner_wc_semiglobal_myers_miller(b: &mut Bencher) {
+    let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+    let mut aligner = myers_miller::Aligner::new(-5, -1, &score);
+    b.iter(|| aligner.semiglobal(STR_1, STR_2));
+}
+
+#[bench]
 fn bench_aligner_wc_local_myers_miller(b: &mut Bencher) {
     let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
     let aligner = myers_miller::Aligner::new(-5, -1, &score);
