@@ -49,6 +49,50 @@ For extra credit, feel free to familiarize yourself with:
 * the Rust [documentation conventions](https://rust-lang.github.io/rfcs/1574-more-api-documentation-conventions.html#appendix-a-full-conventions-text)
 * the Rust [API documentation guidelines](https://rust-lang.github.io/api-guidelines/documentation.html)
 
+#### About variable names and mathematical expressions
+
+* When referring to a variable as an arguments of the function or a field of the struct, put backticks (`` ` ``) around it.
+* Otherwise, put dollar signs (`$`) around it (i.e. making it a LaTeX expression).
+* In general, use LaTeX for math expressions (especially when writing "big-O" complexities)
+
+In the following example, the public function `combinations` has two arguments `n` and `k`, which are referred to in the first line with backticks. Then, a LaTeX math expressions is used to show the complexity. The variable names *k* and *n* are not ambiguous (obviously referring to the two arguments), so we don't need to define again.
+
+```rust
+/// Calculate the number of combinations when choosing
+/// `k` elements from `n` elements without replacement.
+///
+/// Time complexity: $O(\min(k, n - k))$
+pub fn combinations(n: u64, k: u64) -> f64 {
+    scaled_combinations(n, k, 1.0)
+}
+```
+
+In the next example, none of the variables *n*, *k* and *w* used in the space complexity expression matches any field names of the struct `BitEnc`, so we need to define explicitly.
+
+```rust
+/// A sequence of bitencoded values.
+///
+/// Space complexity: $O(\dfrac{nw}{k})$; specifically $\Big\lceil\dfrac{nw}{k}\Big\rceil \times 32$
+/// bits, where $w$ is `width`, $n$ is the length of the input
+/// sequence, and $k = 32 - (32 \mod w)$ is the number of bits in each
+/// 32-bit block that can be used to store values.
+/// For values that are not a divider of 32, some bits will remain unused.
+/// For example for `width = 7` only `4 * 7 = 28` bits are used.
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct BitEnc {
+    storage: Vec<u32>,
+    width: usize,
+    mask: u32,
+    len: usize,
+    usable_bits_per_block: usize,
+}
+```
+
+pub fn combinations(n: u64, k: u64) -> f64 {
+    scaled_combinations(n, k, 1.0)
+}
+```
+
 ### Contributors
 
 Main author:
@@ -79,6 +123,7 @@ Other contributors:
 * [David Lähnemann](https://github.com/dlaehnemann)
 * [Till Hartmann](https://github.com/tedil)
 * [Michael Hall](https://github.com/mbhall88)
+* [Tianyi Shi](https://github.com/tianyishi2001)
 
 ## License
 
