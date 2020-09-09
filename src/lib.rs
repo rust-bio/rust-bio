@@ -101,7 +101,7 @@
 //! use std::io;
 //!
 //! // a given text
-//! let text = b"ACAGCTCGATCGGTA";
+//! let text = b"ACAGCTCGATCGGTA$";
 //! let pattern = b"ATCG";
 //!
 //! // Create an FM-Index for the given text.
