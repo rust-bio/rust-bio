@@ -63,25 +63,16 @@ impl<R: io::Read> Reader<R> {
     }
 }
 
-type BedRecordCsv = (String, u64, u64, Option<Vec<String>>);
-
 /// An iterator over the records of a BED file.
 pub struct Records<'a, R: io::Read> {
-    inner: csv::DeserializeRecordsIter<'a, R, BedRecordCsv>,
+    inner: csv::DeserializeRecordsIter<'a, R, Record>,
 }
 
 impl<'a, R: io::Read> Iterator for Records<'a, R> {
     type Item = csv::Result<Record>;
 
     fn next(&mut self) -> Option<csv::Result<Record>> {
-        self.inner.next().map(|res| {
-            res.map(|(chrom, start, end, aux)| Record {
-                chrom,
-                start,
-                end,
-                aux: aux.unwrap_or_else(Vec::new),
-            })
-        })
+        self.inner.next()
     }
 }
 
@@ -128,6 +119,8 @@ pub struct Record {
     chrom: String,
     start: u64,
     end: u64,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     aux: Vec<String>,
 }
 
@@ -391,7 +384,7 @@ mod tests {
     const BED_FILE: &'static [u8] = b"1\t5\t5000\tname1\tup
 2\t3\t5005\tname2\tup
 ";
-    //const BED_FILE_COMPACT: &'static [u8] = b"1\t5\t5000\n2\t3\t5005\n";
+    const BED_FILE_COMPACT: &'static [u8] = b"1\t5\t5000\n2\t3\t5005\n";
 
     #[test]
     fn test_reader() {
@@ -412,23 +405,20 @@ mod tests {
         }
     }
 
-    // TODO enable this test case once compact bed file reading has been fixed, see
-    // https://github.com/rust-bio/rust-bio/pull/156/files#r157506929
-    // #[test]
-    // /// Test for 'compact' BED files which only have chrom, start, and stop fields.
-    // fn test_reader_compact() {
-    //     let chroms = ["1", "2"];
-    //     let starts = [5, 3];
-    //     let ends = [5000, 5005];
-    //
-    //     let mut reader = Reader::new(BED_FILE_COMPACT);
-    //     for (i, r) in reader.records().enumerate() {
-    //         let record = r.unwrap();
-    //         assert_eq!(record.chrom(), chroms[i]);
-    //         assert_eq!(record.start(), starts[i]);
-    //         assert_eq!(record.end(), ends[i]);
-    //     }
-    // }
+    #[test]
+    fn test_reader_compact() {
+        let chroms = ["1", "2"];
+        let starts = [5, 3];
+        let ends = [5000, 5005];
+
+        let mut reader = Reader::new(BED_FILE_COMPACT);
+        for (i, r) in reader.records().enumerate() {
+            let record = r.unwrap();
+            assert_eq!(record.chrom(), chroms[i]);
+            assert_eq!(record.start(), starts[i]);
+            assert_eq!(record.end(), ends[i]);
+        }
+    }
 
     #[test]
     fn test_writer() {
