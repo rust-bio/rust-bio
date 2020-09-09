@@ -5,7 +5,7 @@
 
 //! GC counter over an `IntoTextIterator` object.
 
-//! Complexity: O(n), where n is the length of the sequence.
+//! Complexity: $O(n)$, where $n$ is the length of the sequence.
 
 use std::borrow::Borrow;
 
