@@ -5,7 +5,7 @@
 
 """Convert a amino acid substitution matrice taken from seqAn for use in rust-bio
 
-Amino acid substitution matrices taken from [seqAn](https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h#L806) has rows and columns in this order:
+Amino acid substitution matrices taken from [seqAn](https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h) has rows and columns in this order:
 
 0  1  2 ... 22 23 24 25 26
 A  B  C ...  W  Y  Z  X  *
