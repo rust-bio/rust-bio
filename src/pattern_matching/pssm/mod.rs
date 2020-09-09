@@ -6,7 +6,7 @@
 //! Create a weight matrix representing a set of aligned reference sequences
 //! that constitute a motif, and use this matrix to scan query sequences for
 //! occurrences of this motif.
-//! Complexity: O(n*m) for motif length n and query length m
+//! Complexity: $O(nm)$ for motif length $n$ and query length $m$
 //!
 //! The position-specific scoring matrix (PSSM), aka position weight matrix (PWM),
 //! algorithm is implemented for both DNA and amino-acid sequences.
@@ -222,9 +222,8 @@ pub trait Motif {
 
     /// Returns a `ScoredPos` struct representing the best match within the query sequence
     /// see:
-    ///   MATCHTM: a tool for searching transcription factor binding sites in DNA sequences
-    ///   Nucleic Acids Res. 2003 Jul 1; 31(13): 3576–3579
-    ///   https://www.ncbi.nlm.nih.gov/pmc/articles/PMC169193/
+    ///   [*MATCHTM: a tool for searching transcription factor binding sites in DNA sequences*
+    ///   Nucleic Acids Res. 2003 Jul 1; 31(13): 3576–3579](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC169193/)
     ///
     /// # Arguments
     /// * `seq_it` - iterator representing the query sequence

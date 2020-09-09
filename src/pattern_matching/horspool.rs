@@ -9,8 +9,8 @@
 //! # Idea
 //! Look at a search window m, match pattern backwards.
 //! In case of a mismatch, you can jump behind that.
-//! Best case time complexity: O(n / m)
-//! Worst case time complexity: O(n * m)
+//! Best case time complexity: $O\left(\dfrac{n}{m}\right)$
+//! Worst case time complexity: $O(nm)$
 //! With a large alphabet, you are likely
 //! around the best case, and faster than the rather
 //! complicated Boyer-Moore.

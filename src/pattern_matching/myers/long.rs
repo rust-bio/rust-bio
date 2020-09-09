@@ -350,7 +350,7 @@ impl<'a, T: BitVec> LongTracebackHandler<'a, T> {
         let col = states_iter.next().unwrap();
         let left_col = states_iter.next().unwrap();
 
-        // This bit mask is supplied to State::adjust_by_mask() in order to adjust the distance
+        // This bit mask is supplied to `State::adjust_by_mask()` in order to adjust the distance
         // of the left block. It is adjusted with every `move_up_left`
         let left_mask = if last_m != 1 {
             T::zero()
