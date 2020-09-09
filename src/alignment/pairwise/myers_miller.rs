@@ -193,8 +193,26 @@ impl<F: MatchFunc> Aligner<F> {
         dd[0] = cc[0]; // otherwise indels at start/end will be free
         (cc, dd)
     }
+
+    /// Find jmid, start and end positions
+    /// Run recursively until the line (i = imid) passes through the optimal alignment
+    /// This is judged by examining whether one number of the maximum pair equals 0;
+    fn find_mid_and_coords_local(
+        &self,
+        x: TextSlice,
+        y: TextSlice,
+        m: usize,
+        n: usize,
+    ) -> (usize, usize, [usize; 2], [usize; 2], bool) {
+        unimplemented!()
+    }
     /// to be run until i = imid pass through the local alignment
-    fn cost_only_local(&self, x: TextSlice, y: TextSlice, rev: bool) -> (Vec<i32>, Vec<i32>) {
+    fn cost_only_local(
+        &self,
+        x: TextSlice,
+        y: TextSlice,
+        rev: bool,
+    ) -> (Vec<i32>, Vec<i32>, Vec<[usize; 2]>, Vec<[usize; 2]>) {
         let m = x.len() + 1;
         let n = y.len() + 1;
         let mut cc: Vec<i32> = vec![0; n]; // match/mismatch
@@ -213,9 +231,7 @@ impl<F: MatchFunc> Aligner<F> {
         let mut c_origin: [usize; 2];
         let mut s: i32; // C(i-1, j-1)
         let mut s_origin: [usize; 2]; // origin of C(i-1, j-1)
-        let mut t: i32;
         let mut subst_score: i32;
-        t = self.scoring.gap_open;
         for i in 1..m {
             // s and cc[0] = 0; cc[0] always equals to 0
             s = 0;
@@ -268,7 +284,7 @@ impl<F: MatchFunc> Aligner<F> {
             }
         }
         dd[0] = cc[0]; // otherwise indels at start/end will be free
-        (cc, dd)
+        (cc, dd, origin_cc, origin_dd)
     }
     fn nw_onerow(
         &self,
