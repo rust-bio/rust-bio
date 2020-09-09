@@ -39,6 +39,7 @@ const MAT: [i32; 729] = [
     -15, -15, -15, -15, -15, -15, 1,
 ];
 
+/// Return the substitution score in pam40 matrix between two amino acids (single characters as `u8`)
 pub fn pam40(a: u8, b: u8) -> i32 {
     MAT[lookup(a) * 27 + lookup(b)]
 }

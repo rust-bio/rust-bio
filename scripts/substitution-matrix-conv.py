@@ -55,6 +55,7 @@ const MAT: [i32; 729] = """
 
 suffix = """;
 
+/// Return the substitution score in {name} matrix between two amino acids (single characters as `u8`)
 pub fn {name}(a: u8, b: u8) -> i32 {{
     MAT[lookup(a) * 27 + lookup(b)]
 }}

@@ -37,6 +37,7 @@ const MAT: [i32; 729] = [
     -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, 1,
 ];
 
+/// Return the substitution score in blosum62 matrix between two amino acids (single characters as `u8`)
 pub fn blosum62(a: u8, b: u8) -> i32 {
     MAT[lookup(a) * 27 + lookup(b)]
 }
