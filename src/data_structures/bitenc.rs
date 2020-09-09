@@ -40,7 +40,7 @@
 
 /// A sequence of bitencoded values.
 ///
-/// Space complexity: $\Big\lceil\dfrac{n \cdot w}{k}\Big\rceil \times 32$
+/// Space complexity: $O(\dfrac{nw}{k})$; specifically $\Big\lceil\dfrac{nw}{k}\Big\rceil \times 32$
 /// bits, where $w$ is `width`, $n$ is the length of the input
 /// sequence, and $k = 32 - (32 \mod w)$ is the number of bits in each
 /// 32-bit block that can be used to store values.
