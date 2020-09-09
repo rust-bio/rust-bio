@@ -120,7 +120,6 @@ pub struct Record {
     start: u64,
     end: u64,
     #[serde(default)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
     aux: Vec<String>,
 }
 
