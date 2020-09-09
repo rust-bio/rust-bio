@@ -102,8 +102,8 @@ pub use pairhmm::PairHMM;
 
 use crate::stats::LogProb;
 
-mod homopolypairhmm;
-mod pairhmm;
+pub mod homopolypairhmm;
+pub mod pairhmm;
 
 // traits common to pairhmm implementations
 

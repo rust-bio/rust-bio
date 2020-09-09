@@ -146,7 +146,7 @@ impl<T: Ord> CDF<T> {
     /// The PMF may contain duplicate values the probabilities of which are summed
     /// during generation of the CDF.
     ///
-    /// Runtime complexity: O(n log n), where n is the number of `entries`.
+    /// Runtime complexity: O(n log n), where $n$ is the number of `entries`.
     ///
     /// # Arguments
     ///
@@ -178,7 +178,7 @@ impl<T: Ord> CDF<T> {
 
     /// Create CDF from iterator. This can be used to replace the values of a CDF.
     ///
-    /// Runtime complexity: O(n), where n is the number of `entries`.
+    /// Runtime complexity: $O(n)$, where $n$ is the number of `entries`.
     ///
     /// # Arguments
     ///
@@ -191,7 +191,7 @@ impl<T: Ord> CDF<T> {
 
     /// Reduce CDF by omitting values with zero probability.
     ///
-    /// Runtime complexity: O(n), where n is the number of `value`s with `prob` of zero.
+    /// Runtime complexity: $O(n)$, where $n$ is the number of `value`s with `prob` of zero.
     pub fn reduce(self) -> Self {
         let mut inner = Vec::new();
         let mut last = LogProb::ln_zero();
@@ -254,7 +254,7 @@ impl<T: Ord> CDF<T> {
     /// Get cumulative probability for a given value.
     ///
     /// If the value is not present, return the probability of the previous value.
-    /// Time complexity: O(log n), where n is the number of `Entry`s in `CDF`.
+    /// Time complexity: $O(\log(n))$, where $n$ is the number of `Entry`s in `CDF`.
     ///
     /// # Arguments
     ///
@@ -278,7 +278,7 @@ impl<T: Ord> CDF<T> {
 
     /// Get probability (i.e. probability mass) for a given `value`.
     ///
-    /// Time complexity: O(log n), where n is the number of `Entry`s in `CDF`.
+    /// Time complexity: $O(\log(n))$, where $n$ is the number of `Entry`s in `CDF`.
     pub fn get_pmf(&self, value: &T) -> Option<LogProb> {
         if self.inner.is_empty() {
             None
@@ -304,14 +304,14 @@ impl<T: Ord> CDF<T> {
 
     /// Return total probability of the `CDF`.
     ///
-    /// Time complexity: O(1).
+    /// Time complexity: $O(1)$.
     pub fn total_prob(&self) -> LogProb {
         self.inner.last().map_or(LogProb::ln_zero(), |e| e.prob)
     }
 
     /// Return maximum a posteriori probability estimate (MAP).
     ///
-    /// Time complexity: O(n), where n is the number of `Entry`s in `CDF`.
+    /// Time complexity: $O(n)$, where $n$ is the number of `Entry`s in `CDF`.
     pub fn map(&self) -> Option<&T> {
         if let Some(mut max) = self.iter_pmf().next() {
             for e in self.iter_pmf() {
@@ -328,7 +328,7 @@ impl<T: Ord> CDF<T> {
     /// Return w%-credible interval. The width w is a float between 0 and 1. Panics otherwise.
     /// E.g. provide `width=0.95` for the 95% credible interval.
     ///
-    /// Runtime complexity: O(log n), where n is the number of `Entry`s in `CDF`.
+    /// Runtime complexity: $O(\log(n))$, where $n$ is the number of `Entry`s in `CDF`.
     ///
     /// # Arguments
     ///
@@ -360,14 +360,14 @@ impl<T: Ord> CDF<T> {
 
     /// Number of `Entry`s in the `CDF`.
     ///
-    /// Time complexity: O(1)
+    /// Time complexity: $O(1)$
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
     /// Returns `true` if a CDF is empty, false otherwise.
     ///
-    /// Time complexity: O(1)
+    /// Time complexity: $O(1)$
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
@@ -379,7 +379,7 @@ where
 {
     /// Calculate expected value.
     ///
-    /// Runtime complexity: O(n), where n is the number of `Entry`s in `CDF`.
+    /// Runtime complexity: $O(n)$, where $n$ is the number of `Entry`s in `CDF`.
     pub fn expected_value(&self) -> f64 {
         self.iter_pmf()
             .map(|e| f64::from(e.value.clone()) * e.prob.exp())
@@ -388,7 +388,7 @@ where
 
     /// Calculate variance.
     ///
-    /// Runtime complexity: O(n), where n is the number of `Entry`s in `CDF`.
+    /// Runtime complexity: $O(n)$, where $n$ is the number of `Entry`s in `CDF`.
     pub fn variance(&self) -> f64 {
         let ev = self.expected_value();
         self.iter_pmf()
@@ -398,7 +398,7 @@ where
 
     /// Calculate standard deviation.
     ///
-    /// Runtime complexity: O(n), where n is the number of `Entry`s in `CDF`.
+    /// Runtime complexity: $O(n)$, where $n$ is the number of `Entry`s in `CDF`.
     pub fn standard_deviation(&self) -> f64 {
         self.variance().sqrt()
     }

@@ -319,7 +319,7 @@ impl LogProb {
         LogProb(*Self::ln_sum_exp(&probs) + width.ln() - (2.0 * (n - 1) as f64).ln())
     }
 
-    /// Integrate numerically stable over given log-space density in the interval [a, b]. Uses Simpson's rule with n (odd) grid points.
+    /// Integrate numerically stable over given log-space density in the interval `[a, b]`. Uses Simpson's rule with n (odd) grid points.
     pub fn ln_simpsons_integrate_exp<T, D>(mut density: D, a: T, b: T, n: usize) -> LogProb
     where
         T: Copy + Add<Output = T> + Sub<Output = T> + Div<Output = T> + Mul<Output = T> + Float,

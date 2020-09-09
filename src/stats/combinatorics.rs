@@ -7,9 +7,10 @@
 
 use std::cmp;
 
-/// Calculate the number of combinations when choosing
-/// k elements from n elements without replacement, multiplied by a scaling factor.
-/// Time complexity: O(min(k, n - k))
+/// Calculate the number of combinations when choosing `k` elements from `n`
+/// elements without replacement, multiplied by a scaling factor.
+///
+/// Time complexity: $O(\min(k, n - k))$
 ///
 /// # Examples
 /// ```
@@ -30,9 +31,10 @@ pub fn scaled_combinations(n: u64, k: u64, scale: f64) -> f64 {
 }
 
 /// Calculate the number of combinations when choosing
-/// k elements from n elements without replacement.
-/// This is also known as n over k, or the binomial coefficient.
-/// Time complexity: O(min(k, n - k))
+/// `k` elements from `n` elements without replacement.
+/// This is also known as $n$ over $k$, or the binomial coefficient.
+///
+/// Time complexity: $O(\min(k, n - k))$
 ///
 /// # Examples
 /// ```
@@ -44,8 +46,9 @@ pub fn combinations(n: u64, k: u64) -> f64 {
 }
 
 /// Calculate the number of combinations when choosing
-/// k elements from n elements with replacement.
-/// Time complexity: O(min(k, n - k))
+/// `k` elements from `n` elements with replacement.
+///
+/// Time complexity: $O(\min(k, n - k))$
 ///
 /// # Examples
 /// ```

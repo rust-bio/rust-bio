@@ -40,9 +40,9 @@
 
 /// A sequence of bitencoded values.
 ///
-/// Space complexity: $\left(\lceil\dfrac{n \cdot w}{k}\rceil\right) \times 32$
+/// Space complexity: $\Big\lceil\dfrac{n \cdot w}{k}\Big\rceil \times 32$
 /// bits, where $w$ is `width`, $n$ is the length of the input
-/// sequence, and `k = 32 - (32 % width)` is the number of bits in each
+/// sequence, and $k = 32 - (32 \mod w)$ is the number of bits in each
 /// 32-bit block that can be used to store values.
 /// For values that are not a divider of 32, some bits will remain unused.
 /// For example for `width = 7` only `4 * 7 = 28` bits are used.
