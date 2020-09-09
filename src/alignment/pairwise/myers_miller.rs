@@ -6,15 +6,17 @@
 //! Alignment with affine gap penalty in linear space, by combining Gotoh's (1982) and
 //! Hirschberg's (1975) ideas, which was first implemented in C (Myers & Miller 1988).
 //!
+//! Myers & Miller originally used their technique to implement global alignment only,
+//! but alignments of other modes can be achieved by 1) finding the termini of
+//! the "partial" alignment 2) global-aligning the resulting substrings.
+//!
 //! # Time Complexity
 //!
-//! O(n * m) for strings of length m and n.
+//! $O(nm)$ for strings of length $m$ and $n$.
 //!
 //! # Space Complexity
 //!
-//! The space usage depends on the `cost_only` method of [Aligner](struct.Aligner),
-//! which uses 6 scalars and 2 vectors of length (n + 1), where n is the length of the shorter sequence.
-//! [See also](struct.Aligner.html#space-complexity)
+//! $O(n)$, i.e. linear. For exact number of bits, see `global`, `semiglobal`, `local`, and `custom` methods
 //!
 //! # References
 //!
@@ -45,6 +47,12 @@ impl<F: MatchFunc> Aligner<F> {
             scoring: Scoring::new(gap_open, gap_extend, match_fn),
         }
     }
+    /// Calculate global alignment of `x` against `y`.
+    ///
+    /// - Time complexity: $O(mn)$, where $m$ and $n$ are the lengths of the first and the second
+    ///   sequence
+    /// - Space complexity: $O(n)$; specifically, about $64n$ bits. Note that `compute_recursive()`
+    ///   uses less and less space as recursion proceeds.
     pub fn global(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         let (m, n) = (x.len(), y.len());
         let operations =
@@ -62,6 +70,7 @@ impl<F: MatchFunc> Aligner<F> {
             mode: AlignmentMode::Global,
         };
     }
+    /// Calculate local alignment of x against y.
     pub fn local(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         let (score, xstart, ystart, xend, yend) = self.find_local_score_and_termini(x, y);
         let xlen = xend - xstart;
@@ -86,7 +95,7 @@ impl<F: MatchFunc> Aligner<F> {
             mode: AlignmentMode::Local,
         }
     }
-
+    /// Calculate semiglobal alignment of x against y (x is global, y is local).
     pub fn semiglobal(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -184,6 +193,7 @@ impl<F: MatchFunc> Aligner<F> {
         };
     }
 
+    /// Find the "midpoint"
     fn find_mid(
         &self,
         x: TextSlice<'_>,
@@ -217,13 +227,15 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Cost-only (score-only) Gotoh's algorithm in linear space
-    /// # Space Complexity
+    ///
+    /// - Space Complexity: $O(n)$; specifically, about $64n$ bits, where $n =$ `y.len() + 1`
     /// Use six scalars and two vectors of length (N + 1), where N is the length
     /// of the shorter sequence.
+    /// -Time complexity: $O(nm)$
     fn cost_only(&self, x: TextSlice, y: TextSlice, rev: bool, tx: i32) -> (Vec<i32>, Vec<i32>) {
         let (m, n) = (x.len() + 1, y.len() + 1);
-        let mut cc: Vec<i32> = vec![0; n]; // match/mismatch
-        let mut dd: Vec<i32> = vec![0; n]; // deletion
+        let mut cc: Vec<i32> = vec![0; n]; // match/mismatch    32 * n bits
+        let mut dd: Vec<i32> = vec![0; n]; // deletion          32 * n bits
         let mut e: i32; // I(i, j-1)
         let mut c: i32; // C(i, j-1)
         let mut s: i32; // C(i-1, j-1)
@@ -264,18 +276,23 @@ impl<F: MatchFunc> Aligner<F> {
         (cc, dd)
     }
 
-    /// to be run until i = imid pass through the local alignment
+    /// Find the maximum score in a local alignment between `x` and `y` and the coordinates
+    /// of the alignment path termini
+    ///
+    /// - Space complexity: $O(n)$; specifically, about $448n$ bits (x64 architecture)
+    ///   or $256n$ bits (x32 architecture), where $n=$ `y.len() + 1)
+    /// - Time complexity: $O(nm)$
     fn find_local_score_and_termini(
         &self,
         x: TextSlice,
         y: TextSlice,
     ) -> (i32, usize, usize, usize, usize) {
         let (m, n) = (x.len() + 1, y.len() + 1);
-        let mut cc: Vec<i32> = vec![0; n]; // match/mismatch
-        let mut dd: Vec<i32> = vec![i32::MIN; n]; // deletion
-        let mut origin_cc: Vec<[usize; 2]> = Vec::with_capacity(n);
-        let mut origin_dd: Vec<[usize; 2]> = vec![[0, 0]; n];
-        let mut origin_ii: Vec<[usize; 2]> = vec![[0, 0]; n];
+        let mut cc: Vec<i32> = vec![0; n]; // match/mismatch           32 * n bits
+        let mut dd: Vec<i32> = vec![i32::MIN; n]; // deletion          32 * n bits
+        let mut origin_cc: Vec<[usize; 2]> = Vec::with_capacity(n); // usize * 2 * n bits
+        let mut origin_dd: Vec<[usize; 2]> = vec![[0, 0]; n]; // usize * 2 * n bits
+        let mut origin_ii: Vec<[usize; 2]> = vec![[0, 0]; n]; // usize * 2 * n bits
         for j in 0..n {
             origin_cc.push([0, j]);
             // origin_dd.push([0, j]); values won't be used;
@@ -343,6 +360,9 @@ impl<F: MatchFunc> Aligner<F> {
         }
         (max_c, c_start[0], c_start[1], c_end[0], c_end[1])
     }
+
+    /// Find the maximum score in a semiglobal alignment of `x` against `y` (x is global, y is local),
+    /// and the coordinates of the alignment path termini // ! will change
     fn find_semiglobal_score_and_termini(
         &self,
         x: TextSlice,
@@ -564,6 +584,9 @@ impl<F: MatchFunc> Aligner<F> {
     //     }
     //     (max_last_column_or_row, xstart, ystart, xend, yend)
     // }
+
+    /// Compute the (global) alignment operations between a single letter sequence `x` and a
+    /// second sequence `y`. The second sequence can be empty, i.e. `b""`
     fn nw_onerow(
         &self,
         x: u8,
@@ -617,7 +640,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 }
 
-// copied from pariwise/mod.rs
+// adapted from pariwise/mod.rs
 #[cfg(test)]
 mod tests {
     use super::*;
