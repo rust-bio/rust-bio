@@ -63,13 +63,7 @@ impl<F: MatchFunc> Aligner<F> {
         };
     }
     pub fn local(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
-        let (m, n) = (x.len(), y.len());
-        let (score, start, end) = self.find_local_score_and_termini(x, y);
-        println!("{:?}", (score, start, end));
-        let xstart = start[0];
-        let ystart = start[1];
-        let xend = end[0];
-        let yend = end[1];
+        let (score, xstart, ystart, xend, yend) = self.find_local_score_and_termini(x, y);
         let xlen = xend - xstart;
         let ylen = yend - ystart;
         let operations = self.compute_recursive(
@@ -90,6 +84,60 @@ impl<F: MatchFunc> Aligner<F> {
             ylen,
             operations,
             mode: AlignmentMode::Local,
+        }
+    }
+
+    pub fn semiglobal(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+        let clip_penalties = [
+            self.scoring.xclip_prefix,
+            self.scoring.xclip_suffix,
+            self.scoring.yclip_prefix,
+            self.scoring.yclip_suffix,
+        ];
+
+        // Temporarily Over-write the clip penalties
+        self.scoring.xclip_prefix = i32::MIN;
+        self.scoring.xclip_suffix = i32::MIN;
+        self.scoring.yclip_prefix = 0;
+        self.scoring.yclip_suffix = 0;
+
+        // Compute the alignment
+        let (score, xstart, ystart, xend, yend) = self.find_semiglobal_score_and_termini(x, y);
+        let yclip_start_number = ystart;
+        let yclip_end_number = y.len() - yend;
+        let xlen = xend - xstart;
+        let ylen = yend - ystart;
+        let mut operations = self.compute_recursive(
+            &x[xstart..xend],
+            &y[ystart..yend],
+            xlen,
+            ylen,
+            self.scoring.gap_open,
+            self.scoring.gap_open,
+        );
+        if yclip_start_number > 0 {
+            operations.insert(0, AlignmentOperation::Yclip(yclip_start_number))
+        }
+        if yclip_end_number > 0 {
+            operations.push(AlignmentOperation::Yclip(yclip_end_number))
+        }
+
+        // Set the clip penalties to the original values
+        self.scoring.xclip_prefix = clip_penalties[0];
+        self.scoring.xclip_suffix = clip_penalties[1];
+        self.scoring.yclip_prefix = clip_penalties[2];
+        self.scoring.yclip_suffix = clip_penalties[3];
+
+        Alignment {
+            score,
+            xstart,
+            xend,
+            ystart,
+            yend,
+            xlen: xend - xstart,
+            ylen: yend - ystart,
+            operations,
+            mode: AlignmentMode::Semiglobal,
         }
     }
     /// Recursively compute alignments of sub-sequences and concatenating them
@@ -180,8 +228,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// Use six scalars and two vectors of length (N + 1), where N is the length
     /// of the shorter sequence.
     fn cost_only(&self, x: TextSlice, y: TextSlice, rev: bool, tx: i32) -> (Vec<i32>, Vec<i32>) {
-        let m = x.len() + 1;
-        let n = y.len() + 1;
+        let (m, n) = (x.len() + 1, y.len() + 1);
         let mut cc: Vec<i32> = vec![0; n]; // match/mismatch
         let mut dd: Vec<i32> = vec![0; n]; // deletion
         let mut e: i32; // I(i, j-1)
@@ -229,23 +276,22 @@ impl<F: MatchFunc> Aligner<F> {
         &self,
         x: TextSlice,
         y: TextSlice,
-    ) -> (i32, [usize; 2], [usize; 2]) {
-        let m = x.len() + 1;
-        let n = y.len() + 1;
+    ) -> (i32, usize, usize, usize, usize) {
+        let (m, n) = (x.len() + 1, y.len() + 1);
         let mut cc: Vec<i32> = vec![0; n]; // match/mismatch
-        let mut dd: Vec<i32> = vec![0; n]; // deletion
+        let mut dd: Vec<i32> = vec![i32::MIN; n]; // deletion
         let mut origin_cc: Vec<[usize; 2]> = Vec::with_capacity(n);
-        let mut origin_dd: Vec<[usize; 2]> = Vec::with_capacity(n);
-        let mut origin_ii: Vec<[usize; 2]> = Vec::with_capacity(n);
+        let mut origin_dd: Vec<[usize; 2]> = vec![[0, 0]; n];
+        let mut origin_ii: Vec<[usize; 2]> = vec![[0, 0]; n];
         for j in 0..n {
             origin_cc.push([0, j]);
-            origin_dd.push([0, j]);
-            origin_ii.push([0, j]);
-            dd[0] = i32::MIN;
+            // origin_dd.push([0, j]); values won't be used;
+            // dd[0] = [MIN, MIN, ...], dd[0][j] garanteed to be less than c[j] + self.scoring.gap_open
+            // origin_ii.push([0, j]); values won't be used
         }
         let mut e: i32; // I(i, j-1)
         let mut c: i32; // C(i, j-1)
-        let mut c_origin = [0usize, 0usize];
+        let mut c_origin;
         let mut max_c = i32::MIN;
         let mut c_start = [0usize, 0usize];
         let mut c_end = [m, n];
@@ -254,14 +300,13 @@ impl<F: MatchFunc> Aligner<F> {
         for i in 1..m {
             // s and cc[0] = 0; cc[0] always equals to 0
             s = 0;
-            s_origin = [i, 0];
+            s_origin = [i - 1, 0];
             c = 0;
             c_origin = [i, 0];
-            // dd[0] = 0;
-            e = i32::MIN;
             origin_cc[0] = [i, 0];
-            origin_dd[0] = [i, 0];
-            origin_ii[0] = [i, 0];
+            e = i32::MIN; // I[i, 0] garanteed to be less than c + self.scoring.gap_open
+                          // origin_dd[0] = [i, 0];  value won't be used
+                          // origin_ii[0] = [i, 0];  value won't be used
             for j in 1..n {
                 e = if e > c + self.scoring.gap_open {
                     origin_ii[j] = origin_ii[j - 1];
@@ -271,7 +316,7 @@ impl<F: MatchFunc> Aligner<F> {
                     c + self.scoring.gap_open
                 } + self.scoring.gap_extend; // update e to I[i,j]
                 dd[j] = if dd[j] > cc[j] + self.scoring.gap_open {
-                    origin_dd[j] = origin_dd[j];
+                    // origin_dd[j] = origin_dd[j];
                     dd[j]
                 } else {
                     origin_dd[j] = origin_cc[j];
@@ -303,8 +348,228 @@ impl<F: MatchFunc> Aligner<F> {
                 cc[j] = c;
             }
         }
-        (max_c, c_start, c_end)
+        (max_c, c_start[0], c_start[1], c_end[0], c_end[1])
     }
+    fn find_semiglobal_score_and_termini(
+        &self,
+        x: TextSlice,
+        y: TextSlice,
+    ) -> (i32, usize, usize, usize, usize) {
+        let (m, n) = (x.len() + 1, y.len() + 1);
+        let mut cc: Vec<i32> = Vec::with_capacity(n); //          32 * n bits
+        let mut dd: Vec<i32> = vec![i32::MIN; n]; //              32 * n bits
+        let mut y_origin_cc: Vec<usize> = vec![0; n]; //            usize * n bits
+        let mut y_origin_dd: Vec<usize> = vec![0; n]; //            usize * n bits
+        let mut y_origin_ii: Vec<usize> = vec![0; n]; //            usize * n bits
+
+        // About clip_x: false: clip y (start = [0, j]); true: clip x (start = [i, 0]), or start = [0,0]
+        cc.push(0);
+        let mut t = self.scoring.gap_open;
+        for _j in 1..n {
+            t += self.scoring.gap_extend; // TODO: may be optimised: no need to add after reaching yclip_prefix
+            cc.push(if t > self.scoring.yclip_prefix {
+                t
+            } else {
+                self.scoring.yclip_prefix
+            });
+        } // end of 0th row initialisation
+        let mut e: i32; // I(i, j-1)
+        let mut c: i32; // C(i, j-1)
+        let mut c_y_origin;
+        let xstart: usize = 0usize; // doesn't change; semiglobal allows yclip only
+                                    // i.e. xstart = 0, xend = 0
+                                    // may be removed later
+        let xend: usize = m;
+        let mut ystart = 0usize;
+        let mut yend = n;
+        let mut s: i32; // C(i-1, j-1)
+        let mut s_y_origin: usize; // y_origin of C(i-1, j-1)
+        t = self.scoring.gap_open;
+        for i in 1..m {
+            s = cc[0];
+            t += self.scoring.gap_extend;
+            c = t;
+            cc[0] = c;
+            e = i32::MIN;
+
+            s_y_origin = 0;
+            c_y_origin = 0;
+            // y_origin_cc[0] = 0;WON'T CHANGE
+            for j in 1..n {
+                e = if e > c + self.scoring.gap_open {
+                    y_origin_ii[j] = y_origin_ii[j - 1];
+                    e
+                } else {
+                    y_origin_ii[j] = c_y_origin;
+                    c + self.scoring.gap_open
+                } + self.scoring.gap_extend; // update e to I[i,j]
+                dd[j] = if dd[j] > cc[j] + self.scoring.gap_open {
+                    // y_origin_dd[j] = y_origin_dd[j];
+                    dd[j]
+                } else {
+                    y_origin_dd[j] = y_origin_cc[j];
+                    cc[j]
+                } + self.scoring.gap_extend; // cc[j] = C[i-1, j]
+                c = s + self.scoring.match_fn.score(x[i - 1], y[j - 1]); // substitution score
+                c_y_origin = s_y_origin;
+                s = cc[j];
+                s_y_origin = y_origin_cc[j];
+                if dd[j] > c {
+                    c = dd[j];
+                    c_y_origin = y_origin_dd[j];
+                }
+                if e > c {
+                    c = e;
+                    c_y_origin = y_origin_ii[j];
+                }
+                cc[j] = c;
+                y_origin_cc[j] = c_y_origin;
+            }
+        }
+        // last (m-th) row
+        let mut max_last_row = i32::MIN; // tracks the maximum of the last column
+        for j in 0..n {
+            let clip_score = cc[j] + self.scoring.yclip_suffix;
+            if clip_score > max_last_row && clip_score > cc[n]
+            // equivalent to: self.scoring.yclip_suffix> (n - j) as i32 * self.scoring.gap_extend + self.scoring.gap_open
+            {
+                max_last_row = clip_score;
+                yend = j;
+            }
+        }
+        if max_last_row < cc[n] {
+            max_last_row = cc[n]
+        }
+        (max_last_row, xstart, ystart, xend, yend)
+    }
+    // fn find_semiglobal_score_and_termini(
+    //     &self,
+    //     x: TextSlice,
+    //     y: TextSlice,
+    // ) -> (i32, usize, usize, usize, usize) {
+    //     let (m, n) = (x.len() + 1, y.len() + 1);
+    //     let mut cc: Vec<i32> = Vec::with_capacity(n); //          32 * n bits
+    //     let mut dd: Vec<i32> = vec![i32::MIN; n]; //              32 * n bits
+    //     let mut origin_cc: Vec<usize> = vec![0; n]; //            usize * n bits
+    //     let mut clip_x_cc: Vec<bool> = vec![false; n]; //         8 * n bits
+    //     let mut origin_dd: Vec<usize> = vec![0; n]; //            usize * n bits
+    //     let mut clip_x_dd: Vec<bool> = vec![false; n]; //         8 * n bits
+    //     let mut origin_ii: Vec<usize> = vec![0; n]; //            usize * n bits
+    //     let mut clip_x_ii: Vec<bool> = vec![false; n]; //         8 * n bits
+
+    //     // About clip_x: false: clip y (start = [0, j]); true: clip x (start = [i, 0]), or start = [0,0]
+    //     cc.push(0);
+    //     let mut t = self.scoring.gap_open;
+    //     for _j in 1..n {
+    //         t += self.scoring.gap_extend; // TODO: may be optimised: no need to add after reaching yclip_prefix; same later for xclip_prefix
+    //         cc.push(if t > self.scoring.yclip_prefix {
+    //             t
+    //         } else {
+    //             self.scoring.yclip_prefix
+    //         });
+    //     } // end of 0th row initialisation
+    //     let mut e: i32; // I(i, j-1)
+    //     let mut c: i32; // C(i, j-1)
+    //     let mut max_last_column_or_row = i32::MIN; // tracks the maximum of the last column
+    //     let mut c_origin;
+    //     let mut c_clip_x: bool;
+    //     let mut xstart = 0usize;
+    //     let mut ystart = 0usize;
+    //     let mut xend = m;
+    //     let mut yend = n;
+    //     let mut s: i32; // C(i-1, j-1)
+    //     let mut s_origin: usize; // origin of C(i-1, j-1)
+    //     let mut s_clip_x: bool;
+    //     t = self.scoring.gap_open;
+    //     for i in 1..m {
+    //         s = cc[0];
+    //         t += self.scoring.gap_extend;
+    //         c = if t > self.scoring.xclip_prefix {
+    //             t
+    //         } else {
+    //             self.scoring.xclip_prefix
+    //         };
+    //         cc[0] = c;
+    //         e = i32::MIN;
+
+    //         s_origin = i - 1; // origin_cc[0] (prev)
+    //         s_clip_x = true; //  clip_x_cc[0] (prev)
+    //         c_origin = i;
+    //         c_clip_x = true;
+    //         origin_cc[0] = i;
+    //         clip_x_cc[0] = true;
+    //         for j in 1..n {
+    //             e = if e > c + self.scoring.gap_open {
+    //                 origin_ii[j] = origin_ii[j - 1];
+    //                 clip_x_ii[j] = clip_x_ii[j - 1];
+    //                 e
+    //             } else {
+    //                 origin_ii[j] = c_origin;
+    //                 clip_x_ii[j] = c_clip_x;
+    //                 c + self.scoring.gap_open
+    //             } + self.scoring.gap_extend; // update e to I[i,j]
+    //             dd[j] = if dd[j] > cc[j] + self.scoring.gap_open {
+    //                 // origin_dd[j] = origin_dd[j];
+    //                 // clip_x_dd[j] = clip_x_dd[j];
+    //                 dd[j]
+    //             } else {
+    //                 origin_dd[j] = origin_cc[j];
+    //                 clip_x_dd[j] = clip_x_cc[j];
+    //                 cc[j]
+    //             } + self.scoring.gap_extend; // cc[j] = C[i-1, j]
+    //             c = s + self.scoring.match_fn.score(x[i - 1], y[j - 1]); // substitution score
+    //             c_origin = s_origin;
+    //             c_clip_x = s_clip_x;
+    //             s = cc[j];
+    //             s_origin = origin_cc[j];
+    //             s_clip_x = clip_x_cc[j];
+    //             if dd[j] > c {
+    //                 c = dd[j];
+    //                 c_origin = origin_dd[j];
+    //                 c_clip_x = clip_x_dd[j];
+    //             }
+    //             if e > c {
+    //                 c = e;
+    //                 c_origin = origin_ii[j];
+    //                 c_clip_x = clip_x_ii[j];
+    //             }
+    //             cc[j] = c;
+    //             origin_cc[j] = c_origin;
+    //             clip_x_cc[j] = c_clip_x;
+    //             if j == n
+    //                 && self.scoring.xclip_suffix
+    //                     > (m -i) as i32 * self.scoring.gap_extend + self.scoring.gap_open // TODO: may be optimised
+    //                 && c + self.scoring.xclip_suffix > max_last_column_or_row
+    //             {
+    //                 max_last_column_or_row = c + self.scoring.xclip_suffix;
+    //                 xend = i;
+    //                 // yend = n unchanged;
+    //                 if c_clip_x {
+    //                     xstart = c_origin;
+    //                     ystart = 0;
+    //                 } else {
+    //                     xstart = 0;
+    //                     ystart = c_origin;
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     // last (m-th) row
+    //     for j in 0..n {
+    //         if self.scoring.yclip_suffix
+    //             > (n - j) as i32 * self.scoring.gap_extend + self.scoring.gap_open
+    //             && cc[j] + self.scoring.yclip_suffix > max_last_column_or_row
+    //         {
+    //             max_last_column_or_row = cc[j] + self.scoring.yclip_suffix;
+    //             xend = m;
+    //             yend = j;
+    //         }
+    //     }
+    //     if max_last_column_or_row < cc[j] {
+    //         max_last_column_or_row = cc[j] // TODO: rewrite!
+    //     }
+    //     (max_last_column_or_row, xstart, ystart, xend, yend)
+    // }
     fn nw_onerow(
         &self,
         x: u8,
