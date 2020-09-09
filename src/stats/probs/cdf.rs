@@ -204,10 +204,10 @@ impl<T: Ord> CDF<T> {
         CDF { inner }
     }
 
-    /// Downsample CDF to n entries. Panics if n <= 1 and returns identity if n is greater
+    /// Downsample CDF to `n` entries. Panics if `n <= 1` and returns identity if `n` is greater
     /// than the number of entries.
     ///
-    /// Runtime complexity: O(m), where m is the original number of `Entry`s in `CDF`.
+    /// Runtime complexity: $O(m)$, where $m$ is the original number of `Entry`s in `CDF`.
     ///
     /// # Arguments
     ///
