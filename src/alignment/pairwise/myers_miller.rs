@@ -29,11 +29,11 @@ use crate::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use crate::utils::TextSlice;
 use std::cmp::max;
 
-pub struct Aligner<F: MatchFunc> {
+pub struct Aligner<F: MatchFunc + Sync> {
     scoring: Scoring<F>,
 }
 
-impl<F: MatchFunc> Aligner<F> {
+impl<F: MatchFunc + Sync> Aligner<F> {
     /// Create new aligner instance with given gap open and gap extend penalties
     /// and the score function.
     ///
@@ -72,7 +72,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
     /// Calculate local alignment of x against y.
     pub fn local(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
-        let (score, xstart, ystart, xend, yend) = self.find_local_score_and_termini_shamir(x, y);
+        let (score, xstart, ystart, xend, yend) = self.find_local_score_and_termini_huang(x, y);
         let xlen = xend - xstart;
         let ylen = yend - ystart;
         let operations = self.compute_recursive(
@@ -171,25 +171,29 @@ impl<F: MatchFunc> Aligner<F> {
             ]
             .concat()
         } else {
-            [
-                self.compute_recursive(
-                    &x[..imid],
-                    &y[..jmid],
-                    imid,
-                    jmid,
-                    tb,
-                    self.scoring.gap_open,
-                ),
-                self.compute_recursive(
-                    &x[imid..],
-                    &y[jmid..],
-                    m - imid,
-                    n - jmid,
-                    self.scoring.gap_open,
-                    te,
-                ),
-            ]
-            .concat()
+            let (a, b) = rayon::join(
+                || {
+                    (&self).compute_recursive(
+                        &x[..imid],
+                        &y[..jmid],
+                        imid,
+                        jmid,
+                        tb,
+                        self.scoring.gap_open,
+                    )
+                },
+                || {
+                    self.compute_recursive(
+                        &x[imid..],
+                        &y[jmid..],
+                        m - imid,
+                        n - jmid,
+                        self.scoring.gap_open,
+                        te,
+                    )
+                },
+            );
+            [a, b].concat()
         };
     }
 
@@ -204,8 +208,12 @@ impl<F: MatchFunc> Aligner<F> {
         te: i32,
     ) -> (usize, usize, bool) {
         let imid = m / 2;
-        let (cc_upper, dd_upper) = self.cost_only(&x[..imid], y, false, tb);
-        let (cc_lower, dd_lower) = self.cost_only(&x[imid..], y, true, te);
+        let (a, b) = rayon::join(
+            || self.cost_only(&x[..imid], y, false, tb),
+            || self.cost_only(&x[imid..], y, true, te),
+        );
+        let (cc_upper, dd_upper) = a;
+        let (cc_lower, dd_lower) = b;
         let mut max = i32::MIN;
         let mut jmid = 0;
         let mut join_by_deletion = false;
@@ -542,12 +550,12 @@ impl<F: MatchFunc> Aligner<F> {
 
     // ! Different from the original custom aligner, this one does not allow a gap to align to another gap!
     /// if all 4 clip scores are set to zero, then in all these alignments, terminal gaps are not penalized
-    /// ```
+    /// ```ignore
     /// ---TTGGCC  AAATTGG--  --TTGG---  AATTGGCCC
     /// AAATTGG--  ---TTGGCC  AATTGGCCC  --TTGG---
     /// ```
     /// But a gap is not allowed to align to another gap:
-    /// ```
+    /// ```ignore
     /// --AATTG  ATGAT--
     /// ---ATTG  ATGAT---
     /// ```
