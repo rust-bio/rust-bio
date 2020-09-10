@@ -539,134 +539,156 @@ impl<F: MatchFunc> Aligner<F> {
         }
         (max_last_row, ystart, yend)
     }
-    // fn find_custom_score_and_termini(
-    //     &self,
-    //     x: TextSlice,
-    //     y: TextSlice,
-    // ) -> (i32, usize, usize, usize, usize) {
-    //     let (m, n) = (x.len() + 1, y.len() + 1);
-    //     let mut cc: Vec<i32> = Vec::with_capacity(n); //          32 * n bits
-    //     let mut dd: Vec<i32> = vec![i32::MIN; n]; //              32 * n bits
-    //     let mut origin_cc: Vec<usize> = vec![0; n]; //            usize * n bits
-    //     let mut clip_x_cc: Vec<bool> = vec![false; n]; //         8 * n bits
-    //     let mut origin_dd: Vec<usize> = vec![0; n]; //            usize * n bits
-    //     let mut clip_x_dd: Vec<bool> = vec![false; n]; //         8 * n bits
-    //     let mut origin_ii: Vec<usize> = vec![0; n]; //            usize * n bits
-    //     let mut clip_x_ii: Vec<bool> = vec![false; n]; //         8 * n bits
 
-    //     // About clip_x: false: clip y (start = [0, j]); true: clip x (start = [i, 0]), or start = [0,0]
-    //     cc.push(0);
-    //     let mut t = self.scoring.gap_open;
-    //     for _j in 1..n {
-    //         t += self.scoring.gap_extend; // TODO: may be optimised: no need to add after reaching yclip_prefix; same later for xclip_prefix
-    //         cc.push(if t > self.scoring.yclip_prefix {
-    //             t
-    //         } else {
-    //             self.scoring.yclip_prefix
-    //         });
-    //     } // end of 0th row initialisation
-    //     let mut e: i32; // I(i, j-1)
-    //     let mut c: i32; // C(i, j-1)
-    //     let mut max_last_column_or_row = i32::MIN; // tracks the maximum of the last column
-    //     let mut c_origin;
-    //     let mut c_clip_x: bool;
-    //     let mut xstart = 0usize;
-    //     let mut ystart = 0usize;
-    //     let mut xend = m;
-    //     let mut yend = n;
-    //     let mut s: i32; // C(i-1, j-1)
-    //     let mut s_origin: usize; // origin of C(i-1, j-1)
-    //     let mut s_clip_x: bool;
-    //     t = self.scoring.gap_open;
-    //     for i in 1..m {
-    //         s = cc[0];
-    //         t += self.scoring.gap_extend;
-    //         c = if t > self.scoring.xclip_prefix {
-    //             t
-    //         } else {
-    //             self.scoring.xclip_prefix
-    //         };
-    //         cc[0] = c;
-    //         e = i32::MIN;
+    // ! Different from the original custom aligner, this one does not allow a gap to align to another gap!
+    /// if all 4 clip scores are set to zero, then in all these alignments, terminal gaps are not penalized
+    /// ```
+    /// ---TTGGCC  AAATTGG--  --TTGG---  AATTGGCCC
+    /// AAATTGG--  ---TTGGCC  AATTGGCCC  --TTGG---
+    /// ```
+    /// But a gap is not allowed to align to another gap:
+    /// ```
+    /// --AATTG  ATGAT--
+    /// ---ATTG  ATGAT---
+    /// ```
+    fn find_custom_score_and_termini_no_gap_overlap(
+        &self,
+        x: TextSlice,
+        y: TextSlice,
+    ) -> (i32, usize, usize, usize, usize) {
+        let (m, n) = (x.len() + 1, y.len() + 1);
+        let mut cc: Vec<i32> = Vec::with_capacity(n); //          32 * n bits
+        let mut dd: Vec<i32> = vec![i32::MIN; n]; //              32 * n bits
+        let mut origin_cc: Vec<usize> = vec![0; n]; //            usize * n bits
+        let mut clip_x_cc: Vec<bool> = vec![false; n]; //         8 * n bits
+        let mut origin_dd: Vec<usize> = vec![0; n]; //            usize * n bits
+        let mut clip_x_dd: Vec<bool> = vec![false; n]; //         8 * n bits
+        let mut origin_ii: Vec<usize> = vec![0; n]; //            usize * n bits
+        let mut clip_x_ii: Vec<bool> = vec![false; n]; //         8 * n bits
 
-    //         s_origin = i - 1; // origin_cc[0] (prev)
-    //         s_clip_x = true; //  clip_x_cc[0] (prev)
-    //         c_origin = i;
-    //         c_clip_x = true;
-    //         origin_cc[0] = i;
-    //         clip_x_cc[0] = true;
-    //         for j in 1..n {
-    //             e = if e > c + self.scoring.gap_open {
-    //                 origin_ii[j] = origin_ii[j - 1];
-    //                 clip_x_ii[j] = clip_x_ii[j - 1];
-    //                 e
-    //             } else {
-    //                 origin_ii[j] = c_origin;
-    //                 clip_x_ii[j] = c_clip_x;
-    //                 c + self.scoring.gap_open
-    //             } + self.scoring.gap_extend; // update e to I[i,j]
-    //             dd[j] = if dd[j] > cc[j] + self.scoring.gap_open {
-    //                 // origin_dd[j] = origin_dd[j];
-    //                 // clip_x_dd[j] = clip_x_dd[j];
-    //                 dd[j]
-    //             } else {
-    //                 origin_dd[j] = origin_cc[j];
-    //                 clip_x_dd[j] = clip_x_cc[j];
-    //                 cc[j]
-    //             } + self.scoring.gap_extend; // cc[j] = C[i-1, j]
-    //             c = s + self.scoring.match_fn.score(x[i - 1], y[j - 1]); // substitution score
-    //             c_origin = s_origin;
-    //             c_clip_x = s_clip_x;
-    //             s = cc[j];
-    //             s_origin = origin_cc[j];
-    //             s_clip_x = clip_x_cc[j];
-    //             if dd[j] > c {
-    //                 c = dd[j];
-    //                 c_origin = origin_dd[j];
-    //                 c_clip_x = clip_x_dd[j];
-    //             }
-    //             if e > c {
-    //                 c = e;
-    //                 c_origin = origin_ii[j];
-    //                 c_clip_x = clip_x_ii[j];
-    //             }
-    //             cc[j] = c;
-    //             origin_cc[j] = c_origin;
-    //             clip_x_cc[j] = c_clip_x;
-    //             if j == n
-    //                 && self.scoring.xclip_suffix
-    //                     > (m -i) as i32 * self.scoring.gap_extend + self.scoring.gap_open // TODO: may be optimised
-    //                 && c + self.scoring.xclip_suffix > max_last_column_or_row
-    //             {
-    //                 max_last_column_or_row = c + self.scoring.xclip_suffix;
-    //                 xend = i;
-    //                 // yend = n unchanged;
-    //                 if c_clip_x {
-    //                     xstart = c_origin;
-    //                     ystart = 0;
-    //                 } else {
-    //                     xstart = 0;
-    //                     ystart = c_origin;
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     // last (m-th) row
-    //     for j in 0..n {
-    //         if self.scoring.yclip_suffix
-    //             > (n - j) as i32 * self.scoring.gap_extend + self.scoring.gap_open
-    //             && cc[j] + self.scoring.yclip_suffix > max_last_column_or_row
-    //         {
-    //             max_last_column_or_row = cc[j] + self.scoring.yclip_suffix;
-    //             xend = m;
-    //             yend = j;
-    //         }
-    //     }
-    //     if max_last_column_or_row < cc[j] {
-    //         max_last_column_or_row = cc[j] // TODO: rewrite!
-    //     }
-    //     (max_last_column_or_row, xstart, ystart, xend, yend)
-    // }
+        // About clip_x: false: clip y (start = [0, j]); true: clip x (start = [i, 0]), or start = [0,0]
+        cc.push(0);
+        let mut t = self.scoring.gap_open;
+        for _j in 1..n {
+            t += self.scoring.gap_extend; // TODO: may be optimised: no need to add after reaching yclip_prefix; same later for xclip_prefix
+            cc.push(if t > self.scoring.yclip_prefix {
+                t
+            } else {
+                self.scoring.yclip_prefix
+            });
+        } // end of 0th row initialisation
+        let mut e: i32; // I(i, j-1)
+        let mut c: i32; // C(i, j-1)
+        let mut max_last_column_or_row = i32::MIN; // tracks the maximum of the last column
+        let mut c_origin;
+        let mut c_clip_x: bool;
+        let mut xstart = 0usize;
+        let mut ystart = 0usize;
+        let mut xend = m;
+        let mut yend = n;
+        let mut s: i32; // C(i-1, j-1)
+        let mut s_origin: usize; // origin of C(i-1, j-1)
+        let mut s_clip_x: bool;
+        t = self.scoring.gap_open;
+        for i in 1..m {
+            s = cc[0];
+            t += self.scoring.gap_extend;
+            c = if t > self.scoring.xclip_prefix {
+                t
+            } else {
+                self.scoring.xclip_prefix
+            };
+            cc[0] = c;
+            e = i32::MIN;
+
+            s_origin = i - 1; // origin_cc[0] (prev)
+            s_clip_x = true; //  clip_x_cc[0] (prev)
+            c_origin = i;
+            c_clip_x = true;
+            origin_cc[0] = i;
+            clip_x_cc[0] = true;
+            for j in 1..n {
+                e = if e > c + self.scoring.gap_open {
+                    origin_ii[j] = origin_ii[j - 1];
+                    clip_x_ii[j] = clip_x_ii[j - 1];
+                    e
+                } else {
+                    origin_ii[j] = c_origin;
+                    clip_x_ii[j] = c_clip_x;
+                    c + self.scoring.gap_open
+                } + self.scoring.gap_extend; // update e to I[i,j]
+                dd[j] = if dd[j] > cc[j] + self.scoring.gap_open {
+                    // origin_dd[j] = origin_dd[j];
+                    // clip_x_dd[j] = clip_x_dd[j];
+                    dd[j]
+                } else {
+                    origin_dd[j] = origin_cc[j];
+                    clip_x_dd[j] = clip_x_cc[j];
+                    cc[j]
+                } + self.scoring.gap_extend; // cc[j] = C[i-1, j]
+                c = s + self.scoring.match_fn.score(x[i - 1], y[j - 1]); // substitution score
+                c_origin = s_origin;
+                c_clip_x = s_clip_x;
+                s = cc[j];
+                s_origin = origin_cc[j];
+                s_clip_x = clip_x_cc[j];
+                if dd[j] > c {
+                    c = dd[j];
+                    c_origin = origin_dd[j];
+                    c_clip_x = clip_x_dd[j];
+                }
+                if e > c {
+                    c = e;
+                    c_origin = origin_ii[j];
+                    c_clip_x = clip_x_ii[j];
+                }
+                cc[j] = c;
+                origin_cc[j] = c_origin;
+                clip_x_cc[j] = c_clip_x;
+
+                if j == n && c + self.scoring.xclip_suffix > max_last_column_or_row {
+                    max_last_column_or_row = c + self.scoring.xclip_suffix;
+                    xend = i;
+                    // yend = n unchanged;
+                    if c_clip_x {
+                        xstart = c_origin;
+                        ystart = 0;
+                    } else {
+                        xstart = 0;
+                        ystart = c_origin;
+                    }
+                }
+            }
+        }
+        // last (m-th) row
+        max_last_column_or_row = if max_last_column_or_row > cc[n] {
+            max_last_column_or_row
+        } else {
+            if clip_x_cc[n] {
+                xstart = origin_cc[n];
+                ystart = 0;
+            } else {
+                xstart = 0;
+                ystart = origin_cc[n];
+            }
+            cc[n]
+        };
+        for j in 0..n {
+            if cc[j] + self.scoring.yclip_suffix > max_last_column_or_row {
+                max_last_column_or_row = cc[j] + self.scoring.yclip_suffix;
+                xend = m;
+                yend = j;
+                if clip_x_cc[j] {
+                    xstart = origin_cc[j];
+                    ystart = 0;
+                } else {
+                    xstart = 0;
+                    ystart = origin_cc[j];
+                }
+            }
+        }
+        (max_last_column_or_row, xstart, ystart, xend, yend)
+    }
 
     /// Compute the (global) alignment operations between a single letter sequence `x` and a
     /// second sequence `y`. The second sequence can be empty, i.e. `b""`
