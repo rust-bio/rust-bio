@@ -72,7 +72,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
     /// Calculate local alignment of x against y.
     pub fn local(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
-        let (score, xstart, ystart, xend, yend) = self.find_local_score_and_termini(x, y);
+        let (score, xstart, ystart, xend, yend) = self.find_local_score_and_termini_shamir(x, y);
         let xlen = xend - xstart;
         let ylen = yend - ystart;
         let operations = self.compute_recursive(
@@ -282,7 +282,11 @@ impl<F: MatchFunc> Aligner<F> {
     /// - Space complexity: $O(n)$; specifically, about $448n$ bits (x64 architecture)
     ///   or $256n$ bits (x32 architecture), where $n=$ `y.len() + 1)
     /// - Time complexity: $O(nm)$
-    fn find_local_score_and_termini(
+    ///
+    /// # References
+    ///
+    /// - [Huang, X. and Miller, W. 1991. A time-efficient linear-space local similarity algorithm. Adv. Appl. Math. 12, 3 (Sep. 1991), 337-357](https://doi.org/10.1016/0196-8858(91)90017-D)
+    fn find_local_score_and_termini_huang(
         &self,
         x: TextSlice,
         y: TextSlice,
@@ -349,7 +353,7 @@ impl<F: MatchFunc> Aligner<F> {
                     c = 0;
                     c_origin = [i, j]
                 }
-                if c > max_c {
+                if c >= max_c {
                     max_c = c;
                     c_start = c_origin;
                     c_end = [i, j];
@@ -359,6 +363,107 @@ impl<F: MatchFunc> Aligner<F> {
             }
         }
         (max_c, c_start[0], c_start[1], c_end[0], c_end[1])
+    }
+
+    /// Find the maximum score in a local alignment between `x` and `y` and the coordinates
+    /// of the alignment path termini, based on Shamir's approach
+    ///
+    /// - Space complexity: $O(n)$; specifically, about $64n$ bits (x64 architecture)
+    ///   or $256n$ bits (x32 architecture), where $n=$ `y.len() + 1)
+    /// - Time complexity: $O(nm)$ (slightly slower than the original `find_local_score_and_termini`)
+    fn find_local_score_and_termini_shamir(
+        &self,
+        x: TextSlice,
+        y: TextSlice,
+    ) -> (i32, usize, usize, usize, usize) {
+        let (m, n) = (x.len() + 1, y.len() + 1);
+        let mut cc: Vec<i32> = vec![0; n]; // match/mismatch           32 * n bits
+        let mut dd: Vec<i32> = vec![i32::MIN; n]; // deletion          32 * n bits
+        let mut e: i32; // I(i, j-1)
+        let mut c: i32; // C(i, j-1)
+        let mut max_c = i32::MIN;
+        let mut xstart = 0usize;
+        let mut ystart = 0usize;
+        let mut xend = m;
+        let mut yend = n;
+        let mut s: i32; // C(i-1, j-1)
+        for i in 1..m {
+            s = 0;
+            c = 0;
+            e = i32::MIN;
+            for j in 1..n {
+                e = if e > c + self.scoring.gap_open {
+                    e
+                } else {
+                    c + self.scoring.gap_open
+                } + self.scoring.gap_extend;
+                dd[j] = if dd[j] > cc[j] + self.scoring.gap_open {
+                    dd[j]
+                } else {
+                    cc[j]
+                } + self.scoring.gap_extend;
+                c = s + self.scoring.match_fn.score(x[i - 1], y[j - 1]);
+                s = cc[j];
+                if dd[j] > c {
+                    c = dd[j];
+                }
+                if e > c {
+                    c = e;
+                }
+                if c < 0 {
+                    c = 0;
+                }
+                if c >= max_c {
+                    max_c = c;
+                    xend = i;
+                    yend = j;
+                }
+                cc[j] = c;
+            }
+        }
+        // run in reverse
+        let x = &x[..xend];
+        let y = &y[..yend];
+        cc = vec![0; n];
+        dd = vec![i32::MIN; n];
+        max_c = i32::MIN;
+        for i in 1..=xend {
+            s = 0;
+            c = 0;
+            e = i32::MIN;
+            for j in 1..=yend {
+                e = if e > c + self.scoring.gap_open {
+                    e
+                } else {
+                    c + self.scoring.gap_open
+                } + self.scoring.gap_extend;
+                dd[j] = if dd[j] > cc[j] + self.scoring.gap_open {
+                    dd[j]
+                } else {
+                    cc[j]
+                } + self.scoring.gap_extend;
+                c = s + self.scoring.match_fn.score(x[xend - i], y[yend - j]);
+                s = cc[j];
+                if dd[j] > c {
+                    c = dd[j];
+                }
+                if e > c {
+                    c = e;
+                }
+                if c < 0 {
+                    c = 0;
+                }
+                if c >= max_c {
+                    max_c = c;
+                    xstart = i; // subtract from xend later
+                    ystart = j;
+                }
+                cc[j] = c;
+            }
+        }
+        xstart = xend - xstart;
+        ystart = yend - ystart;
+        (max_c, xstart, ystart, xend, yend)
     }
 
     /// Find the maximum score in a semiglobal alignment of `x` against `y` (x is global, y is local),
