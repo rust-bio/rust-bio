@@ -581,9 +581,7 @@ impl SAIS {
         self.init_bucket_end(text);
 
         // init all positions as unknown (n-1 is max position)
-        for _ in text.iter() {
-            self.pos.push(n);
-        }
+        self.pos.resize(n, n);
 
         // insert LMS positions to the end of their buckets
         for &p in self.lms_pos.iter().rev() {
