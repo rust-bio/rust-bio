@@ -1052,11 +1052,10 @@ impl Band {
     // * `n` - the expected size of y
     //
     fn new(m: usize, n: usize) -> Self {
-
         Band {
             rows: m + 1,
             cols: n + 1,
-            ranges: vec![m + 1..0; n + 1]
+            ranges: vec![m + 1..0; n + 1],
         }
     }
 

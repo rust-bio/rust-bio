@@ -12,8 +12,8 @@
 //! In this example, we parse a fasta file from stdin and compute some statistics
 //!
 //! ```
-//! use std::io;
 //! use bio::io::fasta;
+//! use std::io;
 //!
 //! let mut reader = fasta::Reader::new(io::stdin());
 //!
@@ -35,8 +35,8 @@
 //! We can also use a `while` loop to iterate over records.
 //! This is slightly faster than the `for` loop.
 //! ```
-//! use std::io;
 //! use bio::io::fasta;
+//! use std::io;
 //! let mut records = fasta::Reader::new(io::stdin()).records();
 //!
 //! let mut nb_reads = 0;
@@ -80,9 +80,9 @@
 //! In this example we filter reads from stdin on sequence length and write them to stdout
 //!
 //! ```
-//! use std::io;
 //! use bio::io::fasta;
 //! use bio::io::fasta::FastaRead;
+//! use std::io;
 //!
 //! let mut reader = fasta::Reader::new(io::stdin());
 //! let mut writer = fasta::Writer::new(io::stdout());
@@ -94,7 +94,10 @@
 //!     }
 //!
 //!     if record.seq().len() > 100 {
-//!         writer.write_record(&record).ok().expect("Error writing record.");
+//!         writer
+//!             .write_record(&record)
+//!             .ok()
+//!             .expect("Error writing record.");
 //!     }
 //! }
 //! ```
@@ -202,8 +205,8 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use bio::io::fasta::{Reader, FastaRead};
     /// use bio::io::fasta::Record;
+    /// use bio::io::fasta::{FastaRead, Reader};
     ///
     /// const fasta_file: &'static [u8] = b">id desc
     /// AAAA
@@ -212,7 +215,9 @@ where
     /// let mut record = Record::new();
     ///
     /// // Check for errors parsing the record
-    /// reader.read(&mut record).expect("fasta reader: got an io::Error or could not read_line()");
+    /// reader
+    ///     .read(&mut record)
+    ///     .expect("fasta reader: got an io::Error or could not read_line()");
     ///
     /// assert_eq!(record.id(), "id");
     /// assert_eq!(record.desc().unwrap(), "desc");
