@@ -49,16 +49,10 @@ pub struct FenwickTree<T: Default + Ord, Op: PrefixOp<T>> {
 impl<T: Ord + Default + Copy, Op: PrefixOp<T>> FenwickTree<T, Op> {
     /// Create a new bit tree with len elements
     pub fn new(len: usize) -> FenwickTree<T, Op> {
-        let mut tree = Vec::new();
-
         // Pad length by one. The first element is unused.
         // Done this way to make the tree structure work correctly.
-        for _ in 0..(len + 2) {
-            tree.push(T::default());
-        }
-
         FenwickTree {
-            tree,
+            tree: vec![T::default(); len + 1],
             phantom: PhantomData,
         }
     }

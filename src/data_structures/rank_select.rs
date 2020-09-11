@@ -204,7 +204,7 @@ impl RankSelect {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, PartialOrd)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub enum SuperblockRank {
     First(u64),
     Some(u64),
@@ -218,6 +218,12 @@ impl Deref for SuperblockRank {
             SuperblockRank::First(rank) => rank,
             SuperblockRank::Some(rank) => rank,
         }
+    }
+}
+
+impl PartialOrd for SuperblockRank {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 

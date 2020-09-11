@@ -84,6 +84,7 @@ pub struct Writer<W: io::Write> {
 
 impl Writer<fs::File> {
     /// Write to a given file path.
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::create(path).map(Writer::new)
     }
@@ -230,7 +231,11 @@ impl<'a> From<&'a Record> for annot::contig::Contig<String, strand::Strand> {
     /// use bio_types::strand::Strand;
     /// let example = b"chr1\t5\t5000\tname1\t0.5";
     /// let mut reader = bed::Reader::new(&example[..]);
-    /// let rec = reader.records().next().expect("Found no bed record.").expect("Got a csv::Error");
+    /// let rec = reader
+    ///     .records()
+    ///     .next()
+    ///     .expect("Found no bed record.")
+    ///     .expect("Got a csv::Error");
     /// let loc = Contig::from(&rec);
     /// assert_eq!(loc.to_string(), "chr1:5-5000");
     /// ```
@@ -308,7 +313,8 @@ where
 ///     &vec![808, 52, 109],
 ///     &vec![0, 864, 984],
 ///     ReqStrand::Reverse,
-/// ).expect("Encountered a bio_types::annot::spliced::SplicingError.");
+/// )
+/// .expect("Encountered a bio_types::annot::spliced::SplicingError.");
 /// assert_eq!(
 ///     tad3.to_string(),
 ///     "chrXII:765265-766073;766129-766181;766249-766358(-)"
