@@ -57,7 +57,6 @@ pub fn bwt(text: &[u8], pos: RawSuffixArraySlice) -> BWT {
 /// # Arguments
 ///
 /// * `bwt` - the BWT
-#[allow(clippy::same_item_push)]
 pub fn invert_bwt(bwt: &BWTSlice) -> Vec<u8> {
     let alphabet = Alphabet::new(bwt);
     let n = bwt.len();
