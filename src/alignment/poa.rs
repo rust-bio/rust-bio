@@ -317,7 +317,6 @@ impl<F: MatchFunc> Poa<F> {
     ///
     /// # Arguments
     /// * `query` - the query TextSlice to align against the internal graph member
-    #[allow(clippy::many_single_char_names)]
     pub fn global(&self, query: TextSlice) -> Traceback {
         assert!(self.graph.node_count() != 0);
 

@@ -373,7 +373,6 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
     }
 
     /// Backward extension of given interval with given character.
-    #[allow(clippy::many_single_char_names)]
     pub fn backward_ext(&self, interval: &BiInterval, a: u8) -> BiInterval {
         let mut s = 0;
         let mut o = 0;

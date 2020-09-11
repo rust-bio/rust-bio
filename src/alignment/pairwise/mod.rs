@@ -132,7 +132,6 @@
 //! );
 //! ```
 
-#![allow(clippy::many_single_char_names)]
 use std::cmp::max;
 use std::i32;
 use std::iter::repeat;

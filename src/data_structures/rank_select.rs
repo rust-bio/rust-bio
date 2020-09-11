@@ -243,7 +243,6 @@ impl Ord for SuperblockRank {
 }
 
 /// Create `n` superblocks of size `s` from a given bitvector.
-#[allow(clippy::many_single_char_names)]
 fn superblocks(t: bool, n: usize, s: usize, bits: &BitVec<u8>) -> Vec<SuperblockRank> {
     let mut superblocks = Vec::with_capacity(n / s + 1);
     let mut rank: u64 = 0;
