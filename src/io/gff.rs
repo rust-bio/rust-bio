@@ -182,6 +182,7 @@ pub struct Writer<W: io::Write> {
 
 impl Writer<fs::File> {
     /// Write to a given file path in given format.
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_file<P: AsRef<Path>>(path: P, fileformat: GffType) -> io::Result<Self> {
         fs::File::create(path).map(|f| Writer::new(f, fileformat))
     }

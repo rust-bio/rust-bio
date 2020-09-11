@@ -84,6 +84,7 @@ pub struct Writer<W: io::Write> {
 
 impl Writer<fs::File> {
     /// Write to a given file path.
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::create(path).map(Writer::new)
     }
