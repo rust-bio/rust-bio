@@ -90,7 +90,7 @@ pub fn lcskpp(matches: &[(u32, u32)], k: usize) -> SparseAlignmentResult {
         n = max(n, x + k);
         n = max(n, y + k);
     }
-    events.sort();
+    events.sort_unstable();
 
     let mut max_col_dp: MaxBitTree<(u32, u32)> = MaxBitTree::new(n as usize);
     let mut dp: Vec<(u32, i32)> = Vec::with_capacity(events.len());
@@ -219,7 +219,7 @@ pub fn sdpkpp(
         n = max(n, x + k);
         n = max(n, y + k);
     }
-    events.sort();
+    events.sort_unstable();
 
     let mut max_col_dp: MaxBitTree<PrevPtr> = MaxBitTree::new(n as usize);
     let mut dp: Vec<(u32, i32)> = Vec::with_capacity(events.len());
@@ -371,7 +371,7 @@ pub fn find_kmer_matches_seq1_hashed(
         }
     }
 
-    matches.sort();
+    matches.sort_unstable();
     matches
 }
 
@@ -394,7 +394,7 @@ pub fn find_kmer_matches_seq2_hashed(
         }
     }
 
-    matches.sort();
+    matches.sort_unstable();
     matches
 }
 
@@ -447,7 +447,7 @@ pub fn expand_kmer_matches(
         last_match_along_diagonal.insert(diag, (this_match.0 as i32, this_match.1 as i32));
     }
 
-    left_expanded_matches.sort();
+    left_expanded_matches.sort_unstable();
     let mut expanded_matches = left_expanded_matches.clone();
     left_expanded_matches.reverse();
 
@@ -488,7 +488,7 @@ pub fn expand_kmer_matches(
 
         next_match_along_diagonal.insert(diag, this_match);
     }
-    expanded_matches.sort();
+    expanded_matches.sort_unstable();
     expanded_matches
 }
 
