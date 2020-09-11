@@ -349,6 +349,7 @@ where
 
     // Useful for debugging
     #[allow(dead_code)]
+    #[allow(clippy::same_item_push)]
     fn print_tb_matrix(&self, pos: usize, state_slice: &'a [State<T, D>]) {
         let mut h = self.handler.init_traceback(self.m, pos, state_slice);
         let m = self.m.to_usize().unwrap();

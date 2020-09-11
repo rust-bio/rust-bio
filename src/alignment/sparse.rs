@@ -96,9 +96,7 @@ pub fn lcskpp(matches: &[(u32, u32)], k: usize) -> SparseAlignmentResult {
     let mut dp: Vec<(u32, i32)> = Vec::with_capacity(events.len());
     let mut best_dp = (k, 0);
 
-    for _ in 0..events.len() {
-        dp.push((0, 0));
-    }
+    dp.resize(events.len(), (0, 0));
 
     for ev in events {
         let p = (ev.2 % matches.len() as u32) as usize;
@@ -227,9 +225,7 @@ pub fn sdpkpp(
     let mut dp: Vec<(u32, i32)> = Vec::with_capacity(events.len());
     let mut best_dp = (k, 0);
 
-    for _ in 0..events.len() {
-        dp.push((0, 0));
-    }
+    dp.resize(events.len(), (0, 0));
 
     for ev in events {
         let p = (ev.2 % matches.len() as u32) as usize;

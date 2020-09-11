@@ -828,9 +828,7 @@ impl<F: MatchFunc> Aligner<F> {
             // Insert all i characters
             let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
             if i_score > self.scoring.xclip_prefix {
-                for _ in 0..i {
-                    operations.push(AlignmentOperation::Ins);
-                }
+                operations.resize(operations.len() + i, AlignmentOperation::Ins);
                 xstart = 0;
             } else {
                 operations.push(AlignmentOperation::Xclip(i));
@@ -841,9 +839,7 @@ impl<F: MatchFunc> Aligner<F> {
             // Delete all j characters
             let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
             if d_score > self.scoring.yclip_prefix {
-                for _ in 0..j {
-                    operations.push(AlignmentOperation::Del);
-                }
+                operations.resize(operations.len() + j, AlignmentOperation::Del);
                 ystart = 0;
             } else {
                 operations.push(AlignmentOperation::Yclip(j));
@@ -1056,15 +1052,11 @@ impl Band {
     // * `n` - the expected size of y
     //
     fn new(m: usize, n: usize) -> Self {
-        let mut ranges: Vec<Range<usize>> = Vec::with_capacity(n + 1);
-        for _ in 0..=n {
-            ranges.push(m + 1..0);
-        }
 
         Band {
             rows: m + 1,
             cols: n + 1,
-            ranges,
+            ranges: vec![m + 1..0; n + 1]
         }
     }
 
@@ -1370,9 +1362,7 @@ impl Band {
 
     fn full_matrix(&mut self) {
         self.ranges.clear();
-        for _ in 0..self.cols {
-            self.ranges.push(0..self.rows);
-        }
+        self.ranges.resize(self.cols, 0..self.rows);
     }
 
     fn num_cells(&self) -> usize {
