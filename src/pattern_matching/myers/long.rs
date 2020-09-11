@@ -150,7 +150,8 @@ fn advance_block<T: BitVec>(state: &mut State<T, usize>, p: &Peq<T>, a: u8, hin:
 
     if hin < 0 {
         mh |= T::one();
-    } else if hin > 0 {
+    }
+    if hin > 0 {
         ph |= T::one();
     }
     // not faster:
