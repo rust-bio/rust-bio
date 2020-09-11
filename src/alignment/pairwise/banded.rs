@@ -80,6 +80,7 @@
 //! // aligner.custom_with_prehash(x, y, &y_kmers_hash) is also supported
 //! ```
 
+#![allow(clippy::many_single_char_names)]
 use crate::alignment::{Alignment, AlignmentOperation};
 use crate::utils::TextSlice;
 use std::cmp::{max, min, Ordering};
