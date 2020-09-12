@@ -165,14 +165,23 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         let (imid, jmid, join_by_deletion) = self.find_mid(x, y, m, n, tb, te);
         return if join_by_deletion {
             let (a, b) = rayon::join(
-                || (&self).compute_recursive(&x[..imid - 1], &y[..jmid], imid, jmid, tb, 0),
-                || self.compute_recursive(&x[imid + 1..], &y[jmid..], m - imid, n - jmid, 0, te),
+                || self.compute_recursive(&x[..imid - 1], &y[..jmid], imid - 1, jmid, tb, 0),
+                || {
+                    self.compute_recursive(
+                        &x[imid + 1..],
+                        &y[jmid..],
+                        m - imid - 1,
+                        n - jmid,
+                        0,
+                        te,
+                    )
+                },
             );
             [a, vec![AlignmentOperation::Ins; 2], b].concat()
         } else {
             let (a, b) = rayon::join(
                 || {
-                    (&self).compute_recursive(
+                    self.compute_recursive(
                         &x[..imid],
                         &y[..jmid],
                         imid,
