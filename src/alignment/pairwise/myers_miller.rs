@@ -16,7 +16,7 @@
 //!
 //! # Space Complexity
 //!
-//! $O(n)$, i.e. linear. For exact number of bits, see `global`, `semiglobal`, `local`, and `custom` methods
+//! $O(n)$. For exact number of bits, see `global`, `semiglobal`, `local`, and `custom` methods
 //!
 //! # References
 //!
@@ -70,7 +70,24 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             mode: AlignmentMode::Global,
         };
     }
+
     /// Calculate local alignment of x against y.
+    ///
+    /// This algorithm first find the pair of coordinates corresponding to the termini of one optimal
+    /// local alignment path. Then, a global alignment on the corresponding substrings calculates the
+    /// operations.
+    ///
+    /// - Space complexity: $O(n)$
+    /// - Time complexity: $(mn + m'n')$ where $m$ and $n$ are lengths of the input sequences; $m'$
+    ///   and $n'$ are the lengths of the substrings of the input sequences that correspond to the
+    ///   optimal alignment.
+    ///
+    /// Termini can be determined by two approaches. Huang's method (1991) is faster, but uses about
+    /// $446n$ bits. Shamir's method is slightly slower, but only uses $64n$ bits.
+    ///
+    /// # References
+    ///
+    /// - [Huang, X. and Miller, W. 1991. A time-efficient linear-space local similarity algorithm. Adv. Appl. Math. 12, 3 (Sep. 1991), 337-357](https://doi.org/10.1016/0196-8858(91)90017-D)
     pub fn local(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         let (score, xstart, ystart, xend, yend) = self.find_local_score_and_termini_huang(x, y);
         let xlen = xend - xstart;
@@ -96,6 +113,14 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         }
     }
     /// Calculate semiglobal alignment of x against y (x is global, y is local).
+    ///
+    /// `xstart` is always 0 and `xend` is always `x.len()`. So this algorithm first finds `ystart`
+    /// and `yend`, thus determining the coordinates of the termini of the optimal alignment. Then,
+    /// a global alignment on the corresponding substrings calculates the operations.
+    ///
+    /// - Space complexity: $O(n)$
+    /// - Time complexity: $(mn + mn')$ where $m$ and $n$ are lengths of the input sequences `x` and
+    ///   `y`; $n'$ is the substrings of `y` that correspond to the optimal alignment.
     pub fn semiglobal(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
         let clip_penalties = [
             self.scoring.xclip_prefix,
@@ -142,7 +167,17 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             mode: AlignmentMode::Semiglobal,
         }
     }
-    /// Recursively compute alignments of sub-sequences and concatenating them
+    /// Recursively compute alignments of sub-sequences and concatenating them.
+    ///
+    /// - Space complexity: $O(n)$. Precisely, about $128n + log\_2{m}$, where $m =$ `x.len()` and $n =$ `y.len()`.
+    ///   $128n$ is used for four `Vec<i32>` in `find_mid()` and $log\_2{m}$ is due to the activation stack (the
+    ///   latter can be negligible).
+    ///
+    /// # Panics
+    ///
+    /// Rust has a [`recursion_limit` which defaults to 128](https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute),
+    /// which means the length of the sequence `x` should not exceed $2^128 = 3.4\times10^38$ (well, you'll
+    /// never encounter such gigantic biological sequences)
     fn compute_recursive(
         &self,
         x: TextSlice<'_>,
@@ -162,8 +197,10 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         if m == 1 {
             return self.nw_onerow(x[0], y, n, tb, te);
         }
-        let (imid, jmid, join_by_deletion) = self.find_mid(x, y, m, n, tb, te);
+        let (imid, jmid, join_by_deletion) = self.find_mid(x, y, m, n, tb, te); // `find_mid()` uses 128n bits
         return if join_by_deletion {
+            // y.len() === (&y[..jmid]).len() + (&y[jmid..]).len()
+            // so the sum of the space used by the two subtasks is still 128n (n = y.len())
             let (a, b) = rayon::join(
                 || self.compute_recursive(&x[..imid - 1], &y[..jmid], imid - 1, jmid, tb, 0),
                 || {
@@ -205,7 +242,11 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         };
     }
 
-    /// Find the "midpoint"
+    /// Find the "midpoint" (see module-level documentation)
+    ///
+    /// - Space complexity: $O(n)$. Specifically, about $128n$ bits (each of `cc_upper`,
+    ///   `dd_upper`, `cc_lower` and `dd_lower` are `Vec<i32>` of length $n$), where $n =$ `y.len()`.
+    /// - Time complexity: $O(nm)$
     fn find_mid(
         &self,
         x: TextSlice<'_>,
@@ -311,8 +352,8 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         let mut cc: Vec<i32> = vec![0; n]; // match/mismatch           32 * n bits
         let mut dd: Vec<i32> = vec![i32::MIN; n]; // deletion          32 * n bits
         let mut origin_cc: Vec<[usize; 2]> = Vec::with_capacity(n); // usize * 2 * n bits
-        let mut origin_dd: Vec<[usize; 2]> = vec![[0, 0]; n]; // usize * 2 * n bits
-        let mut origin_ii: Vec<[usize; 2]> = vec![[0, 0]; n]; // usize * 2 * n bits
+        let mut origin_dd: Vec<[usize; 2]> = vec![[0, 0]; n]; //       usize * 2 * n bits
+        let mut origin_ii: Vec<[usize; 2]> = vec![[0, 0]; n]; //       usize * 2 * n bits
         for j in 0..n {
             origin_cc.push([0, j]);
             // origin_dd.push([0, j]); values won't be used;
