@@ -24,13 +24,3 @@ fn lookup(a: u8) -> usize {
         (a - 65) as usize
     }
 }
-
-fn lookup_with_gap(gap_char: u8) -> impl Fn(u8) -> usize {
-    move |a| {
-        if a == gap_char {
-            26 as usize
-        } else {
-            (a - 65) as usize
-        }
-    }
-}
