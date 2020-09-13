@@ -58,7 +58,7 @@ mod tests {
         let score2 = blosum45(b'O', b'*');
         assert_eq!(score2, -5);
         let score3 = blosum45(b'A', b'*');
-        assert_eq!(score3, -1);
+        assert_eq!(score3, -5);
         let score4 = blosum45(b'*', b'*');
         assert_eq!(score4, 1);
         let score5 = blosum45(b'X', b'X');

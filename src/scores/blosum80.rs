@@ -60,7 +60,7 @@ mod tests {
         let score2 = blosum80(b'O', b'*');
         assert_eq!(score2, -8);
         let score3 = blosum80(b'A', b'*');
-        assert_eq!(score3, -3);
+        assert_eq!(score3, -8);
         let score4 = blosum80(b'*', b'*');
         assert_eq!(score4, 1);
         let score5 = blosum80(b'X', b'X');

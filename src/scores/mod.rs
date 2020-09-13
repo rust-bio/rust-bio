@@ -17,17 +17,24 @@
 //! # References
 //!
 //! - https://www.mathworks.com/help/bioinfo/ref/aminolookup.html
-pub use self::blosum62::blosum62;
-pub use self::pam120::pam120;
-pub use self::pam200::pam200;
-pub use self::pam250::pam250;
-pub use self::pam40::pam40;
 
+pub mod blosum30;
+pub mod blosum45;
 pub mod blosum62;
+pub mod blosum80;
 pub mod pam120;
 pub mod pam200;
 pub mod pam250;
 pub mod pam40;
+
+pub use blosum30::blosum30;
+pub use blosum45::blosum45;
+pub use blosum62::blosum62;
+pub use blosum80::blosum80;
+pub use pam120::pam120;
+pub use pam200::pam200;
+pub use pam250::pam250;
+pub use pam40::pam40;
 
 #[inline]
 fn lookup(a: u8) -> usize {
