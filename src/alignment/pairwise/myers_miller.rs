@@ -7,8 +7,8 @@
 //! Hirschberg's (1975) ideas, which was first implemented in C (Myers & Miller 1988).
 //!
 //! Myers & Miller originally used their technique to implement global alignment only,
-//! but alignments of other modes can be achieved by 1) finding the termini of
-//! the "partial" alignment 2) global-aligning the resulting substrings.
+//! but alignments of other modes can be achieved by first finding the termini of
+//! the non-global alignment and then global-aligning the corresponding substrings.
 //!
 //! # Time Complexity
 //!
@@ -24,6 +24,8 @@
 //! - [Hirschberg, D. S. (1975) A linear space algorithm for computing maximal common subsequences. _Commun. Assoc. Comput. Mach._ **18**: 341-343.](https://doi.org/10.1145/360825.360861)
 //! - [Gotoh, O. (1982) An improved algorithm for matching biological sequences. _J. Molec. Biol._ **162**: 705-708.](https://doi.org/10.1016/0022-2836(82)90398-9)
 
+#![allow(non_snake_case)]
+use crate::alignment::pairwise::MIN_SCORE;
 use crate::alignment::pairwise::{MatchFunc, Scoring};
 use crate::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use crate::utils::TextSlice;
@@ -57,7 +59,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         let (m, n) = (x.len(), y.len());
         let operations =
             self.compute_recursive(x, y, m, n, self.scoring.gap_open, self.scoring.gap_open);
-        let score = self.cost_only(x, y, false, self.scoring.gap_open).0[y.len()];
+        let score = self.cost_only(x, y, false, self.scoring.gap_open).0[x.len()];
         return Alignment {
             score,
             xstart: 0,
@@ -83,7 +85,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     ///   optimal alignment.
     ///
     /// Termini can be determined by two approaches. Huang's method (1991) is faster, but uses about
-    /// $446n$ bits. Shamir's method is slightly slower, but only uses $64n$ bits.
+    /// $446m$ bits. Shamir's method is slightly slower, but only uses $64m$ bits.
     ///
     /// # References
     ///
@@ -130,8 +132,8 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         ];
 
         // Temporarily Over-write the clip penalties
-        self.scoring.xclip_prefix = i32::MIN;
-        self.scoring.xclip_suffix = i32::MIN;
+        self.scoring.xclip_prefix = MIN_SCORE;
+        self.scoring.xclip_suffix = MIN_SCORE;
         self.scoring.yclip_prefix = 0;
         self.scoring.yclip_suffix = 0;
 
@@ -194,27 +196,73 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         if m == 0 {
             return vec![AlignmentOperation::Del; n];
         }
-        if m == 1 {
-            return self.nw_onerow(x[0], y, n, max(tb, te));
+        if n == 1 {
+            return self.nw_onecol(x, y[0], m, max(tb, te));
+        }
+        let (imid, jmid, join_by_deletion) = self.find_mid(x, y, m, n, tb, te); // `find_mid()` uses 128m bits
+        return if join_by_deletion {
+            let a = self.compute_recursive(&x[..imid], &y[..jmid - 1], imid, jmid - 1, tb, 0);
+            let b =
+                self.compute_recursive(&x[imid..], &y[jmid + 1..], m - imid, n - jmid - 1, 0, te);
+            [a, vec![AlignmentOperation::Del; 2], b].concat()
+        } else {
+            let a = self.compute_recursive(
+                &x[..imid],
+                &y[..jmid],
+                imid,
+                jmid,
+                tb,
+                self.scoring.gap_open,
+            );
+            let b = self.compute_recursive(
+                &x[imid..],
+                &y[jmid..],
+                m - imid,
+                n - jmid,
+                self.scoring.gap_open,
+                te,
+            );
+            [a, b].concat()
+        };
+    }
+
+    fn compute_recursive_parallel(
+        &self,
+        x: TextSlice<'_>,
+        y: TextSlice<'_>,
+        m: usize,
+        n: usize,
+        tb: i32,
+        te: i32,
+    ) -> Vec<AlignmentOperation> {
+        // * m = x.len(); n = y.len()
+        if n == 0 {
+            return vec![AlignmentOperation::Ins; m];
+        }
+        if m == 0 {
+            return vec![AlignmentOperation::Del; n];
+        }
+        if n == 1 {
+            return self.nw_onecol(x, y[0], m, max(tb, te));
         }
         let (imid, jmid, join_by_deletion) = self.find_mid(x, y, m, n, tb, te); // `find_mid()` uses 128n bits
         return if join_by_deletion {
-            // y.len() === (&y[..jmid]).len() + (&y[jmid..]).len()
-            // so the sum of the space used by the two subtasks is still 128n (n = y.len())
+            // x.len() === (&x[..imid]).len() + (&x[imid..]).len()
+            // so the sum of the space used by the two subtasks is still 128m (m= x.len())
             let (a, b) = rayon::join(
-                || self.compute_recursive(&x[..imid - 1], &y[..jmid], imid - 1, jmid, tb, 0),
+                || self.compute_recursive(&x[..imid], &y[..jmid - 1], imid, jmid - 1, tb, 0),
                 || {
                     self.compute_recursive(
-                        &x[imid + 1..],
-                        &y[jmid..],
-                        m - imid - 1,
-                        n - jmid,
+                        &x[imid..],
+                        &y[jmid + 1..],
+                        m - imid,
+                        n - jmid - 1,
                         0,
                         te,
                     )
                 },
             );
-            [a, vec![AlignmentOperation::Ins; 2], b].concat()
+            [a, vec![AlignmentOperation::Del; 2], b].concat()
         } else {
             let (a, b) = rayon::join(
                 || {
@@ -244,8 +292,8 @@ impl<F: MatchFunc + Sync> Aligner<F> {
 
     /// Find the "midpoint" (see module-level documentation)
     ///
-    /// - Space complexity: $O(n)$. Specifically, about $128n$ bits (each of `cc_upper`,
-    ///   `dd_upper`, `cc_lower` and `dd_lower` are `Vec<i32>` of length $n$), where $n =$ `y.len()`.
+    /// - Space complexity: $O(n)$. Specifically, about $128n$ bits (each of `cc_left`,
+    ///   `dd_left`, `cc_right` and `dd_right` are `Vec<i32>` of length $n$), where $n =$ `y.len()`.
     /// - Time complexity: $O(nm)$
     fn find_mid(
         &self,
@@ -256,27 +304,27 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         tb: i32,
         te: i32,
     ) -> (usize, usize, bool) {
-        let imid = m / 2;
+        let jmid = n / 2;
         let (a, b) = rayon::join(
-            || self.cost_only(&x[..imid], y, false, tb),
-            || self.cost_only(&x[imid..], y, true, te),
+            || self.cost_only(x, &y[..jmid], false, tb),
+            || self.cost_only(x, &y[jmid..], true, te),
         );
-        let (cc_upper, dd_upper) = a;
-        let (cc_lower, dd_lower) = b;
-        let mut max = i32::MIN;
-        let mut jmid = 0;
+        let (cc_left, dd_left) = a;
+        let (cc_right, dd_right) = b;
+        let mut max = MIN_SCORE;
+        let mut imid = 0;
         let mut join_by_deletion = false;
-        for j in 0..=n {
-            let c = cc_upper[j] + cc_lower[n - j];
+        for i in 0..=m {
+            let c = cc_left[i] + cc_right[m - i];
             if c > max {
                 max = c;
-                jmid = j;
+                imid = i;
                 join_by_deletion = false;
             }
-            let d = dd_upper[j] + dd_lower[n - j] - self.scoring.gap_open; // subtract duplicating open!
+            let d = dd_left[i] + dd_right[m - i] - self.scoring.gap_open; // subtract duplicating open!
             if d > max {
                 max = d;
-                jmid = j;
+                imid = i;
                 join_by_deletion = true;
             }
         }
@@ -285,59 +333,52 @@ impl<F: MatchFunc + Sync> Aligner<F> {
 
     /// Cost-only (score-only) Gotoh's algorithm in linear space
     ///
-    /// - Space Complexity: $O(n)$; specifically, about $64n$ bits, where $n =$ `y.len() + 1`
-    /// Use six scalars and two vectors of length (N + 1), where N is the length
-    /// of the shorter sequence.
-    /// -Time complexity: $O(nm)$
+    /// - Space Complexity: $O(m)$; specifically, about $64m$ bits, where $m =$ `x.len() + 1`, which
+    ///   are used by two `Vec<i32>`.
+    /// - Time complexity: $O(mn)$
     fn cost_only(&self, x: TextSlice, y: TextSlice, rev: bool, tx: i32) -> (Vec<i32>, Vec<i32>) {
         let (m, n) = (x.len() + 1, y.len() + 1);
-        let mut cc: Vec<i32> = vec![0; n]; // match/mismatch    32 * n bits
-        let mut dd: Vec<i32> = vec![0; n]; // deletion          32 * n bits
-        let mut e: i32; // I(i, j-1)
-        let mut c: i32; // C(i, j-1)
-        let mut s: i32; // C(i-1, j-1)
+        let mut cc: Vec<i32> = vec![0; m]; // match/mismatch    32 * n bits
+        let mut dd: Vec<i32> = vec![0; m]; // deletion          32 * n bits
+        let mut e: i32; // I(i - 1, j)
+        let mut c: i32; // C(i - 1, j)
+        let mut s: i32; // C(i - 1, j - 1)
         let mut t: i32;
+        let mut p: u8;
+        let mut q: u8;
         t = self.scoring.gap_open;
-        for j in 1..n {
-            t += self.scoring.gap_extend;
-            cc[j] = t;
-            dd[j] = i32::MIN;
-        }
-        t = tx; // originally self.scoring.gap_open;
         for i in 1..m {
+            t += self.scoring.gap_extend;
+            cc[i] = t;
+            dd[i] = MIN_SCORE;
+        }
+        t = tx;
+        for j in 1..n {
             s = cc[0];
             t += self.scoring.gap_extend;
             c = t;
             cc[0] = c;
             // dd[0] = c;
-            e = i32::MIN;
-            for j in 1..n {
+            e = MIN_SCORE;
+            q = if rev { y[n - j - 1] } else { y[j - 1] };
+            for i in 1..m {
+                p = if rev { x[m - i - 1] } else { x[i - 1] };
                 e = max(e, c + self.scoring.gap_open) + self.scoring.gap_extend; // update e to I[i,j]
-                dd[j] = max(dd[j], cc[j] + self.scoring.gap_open) + self.scoring.gap_extend; // cc[j] = C[i-1, j]
-                c = if rev {
-                    max(
-                        max(dd[j], e),
-                        s + self.scoring.match_fn.score(x[m - i - 1], y[n - j - 1]),
-                    )
-                } else {
-                    max(
-                        max(dd[j], e),
-                        s + self.scoring.match_fn.score(x[i - 1], y[j - 1]),
-                    )
-                };
-                s = cc[j];
-                cc[j] = c;
+                dd[i] = max(dd[i], cc[i] + self.scoring.gap_open) + self.scoring.gap_extend; // cc[i] = C[i, j - 1]
+                c = max(max(dd[i], e), s + self.scoring.match_fn.score(p, q));
+                s = cc[i];
+                cc[i] = c;
             }
         }
-        dd[0] = cc[0]; // otherwise indels at start/end will be free
+        dd[0] = cc[0]; // only need to fill cost of deletion in dd once
         (cc, dd)
     }
 
     /// Find the maximum score in a local alignment between `x` and `y` and the coordinates
     /// of the alignment path termini
     ///
-    /// - Space complexity: $O(n)$; specifically, about $448n$ bits (x64 architecture)
-    ///   or $256n$ bits (x32 architecture), where $n=$ `y.len() + 1)
+    /// - Space complexity: $O(m)$; specifically, about $448m$ bits (x64 architecture)
+    ///   or $256n$ bits (x32 architecture), where $m=$ `x.len() + 1)
     /// - Time complexity: $O(nm)$
     ///
     /// # References
@@ -349,61 +390,65 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         y: TextSlice,
     ) -> (i32, usize, usize, usize, usize) {
         let (m, n) = (x.len() + 1, y.len() + 1);
-        let mut cc: Vec<i32> = vec![0; n]; // match/mismatch           32 * n bits
-        let mut dd: Vec<i32> = vec![i32::MIN; n]; // deletion          32 * n bits
-        let mut origin_cc: Vec<[usize; 2]> = Vec::with_capacity(n); // usize * 2 * n bits
-        let mut origin_dd: Vec<[usize; 2]> = vec![[0, 0]; n]; //       usize * 2 * n bits
-        let mut origin_ii: Vec<[usize; 2]> = vec![[0, 0]; n]; //       usize * 2 * n bits
-        for j in 0..n {
-            origin_cc.push([0, j]);
-            // origin_dd.push([0, j]); values won't be used;
-            // dd[0] = [MIN, MIN, ...], dd[0][j] garanteed to be less than c[j] + self.scoring.gap_open
-            // origin_ii.push([0, j]); values won't be used
+        let mut cc: Vec<i32> = vec![0; m]; // match/mismatch           32 * n bits
+        let mut dd: Vec<i32> = vec![MIN_SCORE; m]; // deletion          32 * n bits
+        let mut origin_cc: Vec<[usize; 2]> = Vec::with_capacity(m); // usize * 2 * n bits
+        let mut origin_dd: Vec<[usize; 2]> = vec![[0, 0]; m]; //       usize * 2 * n bits
+        let mut origin_ii: Vec<[usize; 2]> = vec![[0, 0]; m]; //       usize * 2 * n bits
+        for i in 0..m {
+            origin_cc.push([i, 0]);
+            // origin_dd.push([i, 0]); values won't be used;
+            // dd[0] = [MIN, MIN, ...], dd[i][0] garanteed to be less than c[i] + self.scoring.gap_open
+            // origin_ii.push([i, 0]); values won't be used
         }
-        let mut e: i32; // I(i, j-1)
-        let mut c: i32; // C(i, j-1)
+        let mut e: i32; // I(i - 1, j)
+        let mut c: i32; // C(i - 1, j)
         let mut c_origin;
-        let mut max_c = i32::MIN;
+        let mut max_c = MIN_SCORE;
         let mut c_start = [0usize, 0usize];
         let mut c_end = [m, n];
         let mut s: i32; // C(i-1, j-1)
         let mut s_origin: [usize; 2]; // origin of C(i-1, j-1)
-        for i in 1..m {
+        let mut xi: u8;
+        let mut yj: u8;
+        for j in 1..n {
             // s and cc[0] = 0; cc[0] always equals to 0
             s = 0;
-            s_origin = [i - 1, 0];
+            s_origin = [0, j - 1];
             c = 0;
-            c_origin = [i, 0];
-            origin_cc[0] = [i, 0];
-            e = i32::MIN; // I[i, 0] garanteed to be less than c + self.scoring.gap_open
-                          // origin_dd[0] = [i, 0];  value won't be used
-                          // origin_ii[0] = [i, 0];  value won't be used
-            for j in 1..n {
+            c_origin = [0, j];
+            origin_cc[0] = [0, j];
+            e = MIN_SCORE; // I[i, 0] garanteed to be less than c + self.scoring.gap_open
+                           // origin_dd[0] = [i, 0];  value won't be used
+                           // origin_ii[0] = [i, 0];  value won't be used
+            yj = y[j - 1];
+            for i in 1..m {
+                xi = x[i - 1];
                 e = if e > c + self.scoring.gap_open {
-                    origin_ii[j] = origin_ii[j - 1];
+                    origin_ii[i] = origin_ii[i - 1];
                     e
                 } else {
-                    origin_ii[j] = c_origin;
+                    origin_ii[i] = c_origin;
                     c + self.scoring.gap_open
                 } + self.scoring.gap_extend; // update e to I[i,j]
-                dd[j] = if dd[j] > cc[j] + self.scoring.gap_open {
+                dd[i] = if dd[i] > cc[i] + self.scoring.gap_open {
                     // origin_dd[j] = origin_dd[j];
-                    dd[j]
+                    dd[i]
                 } else {
-                    origin_dd[j] = origin_cc[j];
-                    cc[j]
-                } + self.scoring.gap_extend; // cc[j] = C[i-1, j]
-                c = s + self.scoring.match_fn.score(x[i - 1], y[j - 1]); // substitution score
+                    origin_dd[i] = origin_cc[i];
+                    cc[i]
+                } + self.scoring.gap_extend; // cc[i] = C[i, j-1]
+                c = s + self.scoring.match_fn.score(xi, yj); // substitution score
                 c_origin = s_origin;
-                s = cc[j];
-                s_origin = origin_cc[j];
-                if dd[j] > c {
-                    c = dd[j];
-                    c_origin = origin_dd[j];
+                s = cc[i];
+                s_origin = origin_cc[i];
+                if dd[i] > c {
+                    c = dd[i];
+                    c_origin = origin_dd[i];
                 }
                 if e > c {
                     c = e;
-                    c_origin = origin_ii[j];
+                    c_origin = origin_ii[i];
                 }
                 if c < 0 {
                     // the critical step in local alignment
@@ -415,8 +460,8 @@ impl<F: MatchFunc + Sync> Aligner<F> {
                     c_start = c_origin;
                     c_end = [i, j];
                 }
-                origin_cc[j] = c_origin;
-                cc[j] = c;
+                origin_cc[i] = c_origin;
+                cc[i] = c;
             }
         }
         (max_c, c_start[0], c_start[1], c_end[0], c_end[1])
@@ -425,19 +470,19 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     /// Find the maximum score in a local alignment between `x` and `y` and the coordinates
     /// of the alignment path termini, based on Shamir's approach
     ///
-    /// - Space complexity: $O(n)$; specifically, about $64n$ bits, where $n=$ `y.len() + 1)
+    /// - Space complexity: $O(m)$; specifically, about $64m$ bits, where $m=$ `x.len() + 1)
     /// - Time complexity: $O(nm)$ (slightly slower than the original `find_local_score_and_termini`)
     fn find_local_score_and_termini_shamir(
         &self,
         x: TextSlice,
         y: TextSlice,
     ) -> (i32, usize, usize, usize, usize) {
-        let (m, n) = (x.len() + 1, y.len() + 1);
+        let (m, n) = (x.len() + 1, y.len() + 1); // TODO: Standardise direction
         let mut cc: Vec<i32> = vec![0; n]; // match/mismatch           32 * n bits
-        let mut dd: Vec<i32> = vec![i32::MIN; n]; // deletion          32 * n bits
+        let mut dd: Vec<i32> = vec![MIN_SCORE; n]; // deletion          32 * n bits
         let mut e: i32; // I(i, j-1)
         let mut c: i32; // C(i, j-1)
-        let mut max_c = i32::MIN;
+        let mut max_c = MIN_SCORE;
         let mut xstart = 0usize;
         let mut ystart = 0usize;
         let mut xend = m;
@@ -446,7 +491,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         for i in 1..m {
             s = 0;
             c = 0;
-            e = i32::MIN;
+            e = MIN_SCORE;
             for j in 1..n {
                 e = if e > c + self.scoring.gap_open {
                     e
@@ -481,12 +526,12 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         let x = &x[..xend];
         let y = &y[..yend];
         cc = vec![0; n];
-        dd = vec![i32::MIN; n];
-        max_c = i32::MIN;
+        dd = vec![MIN_SCORE; n];
+        max_c = MIN_SCORE;
         for i in 1..=xend {
             s = 0;
             c = 0;
-            e = i32::MIN;
+            e = MIN_SCORE;
             for j in 1..=yend {
                 e = if e > c + self.scoring.gap_open {
                     e
@@ -528,9 +573,9 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     /// In semiglobal mode, `xstart === 0` and `xend === m`, so only `ystart` and `yend` are computed
     /// and returned
     fn find_semiglobal_score_and_termini(&self, x: TextSlice, y: TextSlice) -> (i32, usize, usize) {
-        let (m, n) = (x.len(), y.len());
+        let (m, n) = (x.len(), y.len()); // TODO: To be standardised
         let mut cc: Vec<i32> = vec![0; n + 1]; //                           32 * n bits
-        let mut dd: Vec<i32> = vec![i32::MIN; n + 1]; //                    32 * n bits
+        let mut dd: Vec<i32> = vec![MIN_SCORE; n + 1]; //                    32 * n bits
         let mut y_origin_cc: Vec<usize> = (0..=n).into_iter().collect(); // usize * n bits
         let mut y_origin_dd: Vec<usize> = vec![0; n + 1]; //                usize * n bits
         let mut y_origin_ii: Vec<usize> = vec![0; n + 1]; //                usize * n bits
@@ -545,7 +590,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             t += self.scoring.gap_extend;
             c = t;
             cc[0] = c;
-            e = i32::MIN;
+            e = MIN_SCORE;
 
             s_y_origin = 0;
             c_y_origin = 0;
@@ -613,9 +658,9 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         x: TextSlice,
         y: TextSlice,
     ) -> (i32, usize, usize, usize, usize) {
-        let (m, n) = (x.len() + 1, y.len() + 1);
+        let (m, n) = (x.len() + 1, y.len() + 1); // TODO: to be standardised
         let mut cc: Vec<i32> = Vec::with_capacity(n); //          32 * n bits
-        let mut dd: Vec<i32> = vec![i32::MIN; n]; //              32 * n bits
+        let mut dd: Vec<i32> = vec![MIN_SCORE; n]; //              32 * n bits
         let mut origin_cc: Vec<usize> = vec![0; n]; //            usize * n bits
         let mut clip_x_cc: Vec<bool> = vec![false; n]; //         8 * n bits
         let mut origin_dd: Vec<usize> = vec![0; n]; //            usize * n bits
@@ -636,7 +681,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         } // end of 0th row initialisation
         let mut e: i32; // I(i, j-1)
         let mut c: i32; // C(i, j-1)
-        let mut max_last_column_or_row = i32::MIN; // tracks the maximum of the last column
+        let mut max_last_column_or_row = MIN_SCORE; // tracks the maximum of the last column
         let mut c_origin;
         let mut c_clip_x: bool;
         let mut xstart = 0usize;
@@ -656,7 +701,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
                 self.scoring.xclip_prefix
             };
             cc[0] = c;
-            e = i32::MIN;
+            e = MIN_SCORE;
 
             s_origin = i - 1; // origin_cc[0] (prev)
             s_clip_x = true; //  clip_x_cc[0] (prev)
@@ -747,51 +792,275 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         (max_last_column_or_row, xstart, ystart, xend, yend)
     }
 
-    /// Compute the (global) alignment operations between a single letter sequence `x` and a
-    /// second sequence `y`. The second sequence can be empty, i.e. `b""`
-    fn nw_onerow(&self, x: u8, y: TextSlice, n: usize, tx: i32) -> Vec<AlignmentOperation> {
+    /// Compute the (global) alignment operations between a single letter sequence `y` and a
+    /// second sequence `x`. The second sequence can be empty, i.e. `b""`
+    fn nw_onecol(&self, x: TextSlice<'_>, y: u8, m: usize, tx: i32) -> Vec<AlignmentOperation> {
         let score_by_indels_only =
-            tx + self.scoring.gap_extend * (n as i32 + 1) + self.scoring.gap_open;
+            tx + self.scoring.gap_extend * (m as i32 + 1) + self.scoring.gap_open;
         let mut max = score_by_indels_only;
         let score_with_one_substitution_base =
-            (n as i32 - 1) * self.scoring.gap_extend + self.scoring.gap_open; // plus substitution score and possibly one more gap_open
-        let mut maxj_ = 0usize;
-        for j_ in 0..n {
+            (m as i32 - 1) * self.scoring.gap_extend + self.scoring.gap_open; // plus substitution score and possibly one more gap_open
+        let mut maxi_ = 0usize;
+        for i_ in 0..m {
             // index of sequence instead of matrix; y[j] instead of j[j-1] is the jth character
             let score = score_with_one_substitution_base
-                + self.scoring.match_fn.score(x, y[j_])
-                + if j_ == 0 || j_ == n - 1 {
+                + self.scoring.match_fn.score(x[i_], y)
+                + if i_ == 0 || i_ == m - 1 {
                     0
                 } else {
                     self.scoring.gap_open
                 };
             if score > max {
                 max = score;
-                maxj_ = j_;
+                maxi_ = i_;
             }
         }
         return if max == score_by_indels_only {
-            let mut res = Vec::with_capacity(n + 1);
-            res.push(AlignmentOperation::Ins);
-            for _j in 0..n {
-                res.push(AlignmentOperation::Del)
+            let mut res = Vec::with_capacity(m + 1);
+            res.push(AlignmentOperation::Del);
+            for _i in 0..m {
+                res.push(AlignmentOperation::Ins)
             }
             res
         } else {
-            let mut res = Vec::with_capacity(n);
-            for _j in 0..maxj_ {
-                res.push(AlignmentOperation::Del)
+            let mut res = Vec::with_capacity(m);
+            for _j in 0..maxi_ {
+                res.push(AlignmentOperation::Ins)
             }
-            if x == y[maxj_] {
+            if x[maxi_] == y {
                 res.push(AlignmentOperation::Match);
             } else {
                 res.push(AlignmentOperation::Subst);
             }
-            for _j in 0..(n - maxj_ - 1) {
-                res.push(AlignmentOperation::Del)
+            for _i in 0..(m - maxi_ - 1) {
+                res.push(AlignmentOperation::Ins)
             }
             res
         };
+    }
+
+    /// Fast global alignment with $O(nm)$ space. Used when `y.len()` is small.
+    ///
+    /// # Implementation Details
+    ///
+    /// ## Traceback Matrix `T: Vec<u8>`
+    ///
+    /// ```ignore
+    /// 0b00   0b01    0b10    0b11
+    /// start  insert  delete  match_or_subst
+    /// ```
+    ///
+    /// ```ignore
+    /// 0b00101101
+    ///     / |  \
+    ///    S  D   I
+    /// ```
+    pub fn global_fast(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Vec<AlignmentOperation> {
+        let (m, n) = (x.len() + 1, y.len() + 1);
+        let mut S = vec![MIN_SCORE; m]; // 32 * m bits
+        let mut I = vec![MIN_SCORE; m]; // 32 * m bits // TODO: to be optimised
+        let mut D = vec![MIN_SCORE; m]; // 32 * m bits
+        let mut T: Vec<TracebackCell> = Vec::with_capacity(n * m); // traceback matrix // 8 * n * m bits
+        let mut p: u8;
+        let mut q: u8;
+
+        S[0] = 0;
+        T.push(TracebackCell::new()); // origin at T[0 * n + 0]
+        let mut t = self.scoring.gap_open;
+        for i in 1..m {
+            t += self.scoring.gap_extend;
+            // I[0][j] = t will not be read
+            S[i] = t;
+            D[i] = MIN_SCORE;
+            let mut tb = TracebackCell::new();
+            tb.set_s_bits(TB_INS);
+            tb.set_i_bits(TB_INS);
+            T.push(tb); // T[0 * m + i]
+        }
+
+        t = self.scoring.gap_open;
+        let mut s: i32;
+        let mut c: i32;
+        for j in 1..n {
+            s = S[0];
+            t += self.scoring.gap_extend;
+            c = t;
+            S[0] = c;
+            I[0] = MIN_SCORE;
+            // D[0] = t will not be read
+
+            let mut tb = TracebackCell::new();
+            tb.set_s_bits(TB_DEL);
+            tb.set_d_bits(TB_DEL);
+            T.push(tb); // T[i * n + 0]
+
+            let mut score_1: i32;
+            let mut score_2: i32;
+            q = y[j - 1];
+            for i in 1..m {
+                p = x[i - 1];
+                let mut tb = TracebackCell::new();
+
+                score_1 = I[i - 1] + self.scoring.gap_extend;
+                score_2 = c + self.scoring.gap_open + self.scoring.gap_extend;
+                let best_i_score = if score_1 > score_2 {
+                    tb.set_i_bits(TB_INS);
+                    score_1
+                } else {
+                    tb.set_i_bits(T[T.len() - 1].get_s_bits()); // T[i-1][j]
+                    score_2
+                };
+
+                score_1 = D[j] + self.scoring.gap_extend;
+                score_2 = S[j] + self.scoring.gap_open + self.scoring.gap_extend;
+                let best_d_score = if score_1 > score_2 {
+                    tb.set_d_bits(TB_DEL);
+                    score_1
+                } else {
+                    tb.set_d_bits(T[T.len() - m].get_s_bits()); //T[i][j-1]
+                    score_2
+                };
+
+                let mut best_s_score = s + self.scoring.match_fn.score(p, q);
+                tb.set_s_bits(TB_MATCH_OR_SUBST); // no need to be exact at this stage
+
+                if best_i_score > best_s_score {
+                    best_s_score = best_i_score;
+                    tb.set_s_bits(TB_INS);
+                }
+
+                if best_d_score > best_s_score {
+                    best_s_score = best_d_score;
+                    tb.set_s_bits(TB_DEL);
+                }
+
+                s = S[i];
+                S[i] = best_s_score; // ! S[i] updated
+                c = best_s_score;
+                I[i] = best_i_score;
+                D[i] = best_d_score;
+
+                T.push(tb); // T[j * (m+1) + i]
+            }
+        }
+
+        T[1].set_i_bits(TB_START); // TODO: optimise this by inserting n INS when reaching (0, j)
+        T[m].set_d_bits(TB_START);
+
+        let mut i = m - 1;
+        let mut j = n - 1;
+        let mut operations = Vec::with_capacity(m);
+        let mut next_layer = T[T.len() - 1].get_s_bits(); // start from the last tb cell
+        loop {
+            match next_layer {
+                TB_START => break,
+                TB_INS => {
+                    operations.push(AlignmentOperation::Ins);
+                    next_layer = T[j * m + i].get_i_bits();
+                    i -= 1;
+                }
+                TB_DEL => {
+                    operations.push(AlignmentOperation::Del);
+                    next_layer = T[j * m + j].get_d_bits();
+                    j -= 1;
+                }
+                TB_MATCH_OR_SUBST => {
+                    next_layer = T[(j - 1) * m + i - 1].get_s_bits(); // T[i-1][j-1]
+                    i -= 1;
+                    j -= 1;
+                    operations.push(if y[j] == x[i] {
+                        AlignmentOperation::Match
+                    } else {
+                        AlignmentOperation::Subst
+                    });
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        operations.reverse();
+        operations
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct TracebackCell(u8);
+
+const TB_START: u8 = 0b00;
+const TB_INS: u8 = 0b01;
+const TB_DEL: u8 = 0b10;
+const TB_MATCH_OR_SUBST: u8 = 0b11;
+
+// Traceback bit positions (LSB)
+const I_POS: u8 = 0; // Meaning bits 0,1 corresponds to I and so on
+const D_POS: u8 = 2;
+const S_POS: u8 = 4;
+
+impl TracebackCell {
+    /// Initialize a blank traceback cell
+    #[inline(always)]
+    pub fn new() -> TracebackCell {
+        TracebackCell(0u8)
+    }
+
+    /// Sets 2 bits [pos, pos+2) with the 2 LSBs of value
+    #[inline(always)]
+    fn set_bits(&mut self, pos: u8, value: u8) {
+        let bits: u8 = (0b11) << pos;
+        self.0 = (self.0 & !bits) // First clear the bits
+            | (value << pos) // And set the bits
+    }
+
+    #[inline(always)]
+    pub fn set_i_bits(&mut self, value: u8) {
+        // Traceback corresponding to matrix I
+        self.set_bits(I_POS, value);
+    }
+
+    #[inline(always)]
+    pub fn set_d_bits(&mut self, value: u8) {
+        // Traceback corresponding to matrix D
+        self.set_bits(D_POS, value);
+    }
+
+    #[inline(always)]
+    pub fn set_s_bits(&mut self, value: u8) {
+        // Traceback corresponding to matrix S
+        self.set_bits(S_POS, value);
+    }
+
+    // Gets 4 bits [pos, pos+4) of v
+    #[inline(always)]
+    fn get_bits(self, pos: u8) -> u8 {
+        (self.0 >> pos) & (0b11)
+    }
+
+    #[inline(always)]
+    pub fn get_i_bits(self) -> u8 {
+        self.get_bits(I_POS)
+    }
+
+    #[inline(always)]
+    pub fn get_d_bits(self) -> u8 {
+        self.get_bits(D_POS)
+    }
+
+    #[inline(always)]
+    pub fn get_s_bits(self) -> u8 {
+        self.get_bits(S_POS)
+    }
+
+    /// Set all matrices to the same value.
+    pub fn set_all(&mut self, value: u8) {
+        self.set_i_bits(value);
+        self.set_d_bits(value);
+        self.set_s_bits(value);
+    }
+}
+
+impl std::fmt::Debug for TracebackCell {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(&format!("{:06b}", self.0)).finish()
     }
 }
 
@@ -841,10 +1110,10 @@ mod tests {
         let alignment = aligner.global(x, y);
 
         println!("aln:\n{}", alignment.pretty(x, y));
-        assert_eq!(
-            alignment.operations,
-            [Match, Match, Match, Ins, Ins, Ins, Match, Match, Match]
-        );
+        assert!(equivalent_operations(
+            &alignment.operations,
+            &[Match, Match, Match, Ins, Ins, Ins, Match, Match, Match]
+        ));
     }
 
     #[test]
@@ -862,7 +1131,7 @@ mod tests {
         correct.extend(repeat(Ins).take(10));
         correct.extend(repeat(Match).take(17));
 
-        assert_eq!(alignment.operations, correct);
+        assert!(equivalent_operations(&alignment.operations, &correct));
     }
 
     #[test]
@@ -896,7 +1165,10 @@ mod tests {
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.score, 16);
-        assert_eq!(alignment.operations, [Match, Match, Match, Match]);
+        assert!(equivalent_operations(
+            &alignment.operations,
+            &[Match, Match, Match, Match]
+        ));
     }
 
     #[test]
@@ -908,10 +1180,10 @@ mod tests {
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(
-            alignment.operations,
-            [Ins, Ins, Ins, Subst, Match, Match, Match]
-        );
+        assert!(equivalent_operations(
+            &alignment.operations,
+            &[Ins, Ins, Ins, Subst, Match, Match, Match]
+        ));
     }
 
     #[test]
@@ -958,13 +1230,13 @@ mod tests {
         assert_eq!(alignment.score, -9);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(
-            alignment.operations,
-            [
+        assert!(equivalent_operations(
+            &alignment.operations,
+            &[
                 Ins, Ins, Match, Match, Match, Match, Match, Match, Match, Match, Match, Match,
                 Ins, Ins, Ins, Ins, Ins, Ins, Ins,
             ]
-        );
+        ));
     }
 
     #[test]
@@ -978,13 +1250,13 @@ mod tests {
 
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(
-            alignment.operations,
-            [
+        assert!(equivalent_operations(
+            &alignment.operations,
+            &[
                 Match, Match, Match, Ins, Ins, Ins, Match, Match, Match, Match, Match, Match,
                 Match, Match, Match,
             ]
-        );
+        ));
     }
 
     // semiglobal
@@ -999,10 +1271,10 @@ mod tests {
         println!("{}", alignment.pretty(x, y));
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(
-            alignment.operations,
-            [Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
-        );
+        assert!(equivalent_operations(
+            &alignment.operations,
+            &[Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+        ));
     }
 
     // local
@@ -1027,9 +1299,9 @@ mod tests {
         let alignment = aligner.local(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
-        assert_eq!(
-            alignment.operations,
-            [Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
-        );
+        assert!(equivalent_operations(
+            &alignment.operations,
+            &[Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+        ));
     }
 }
