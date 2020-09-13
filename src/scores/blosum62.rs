@@ -1,7 +1,13 @@
 // Copyright 2014-2017 M. Rizky Luthfianto.
+// Revisions Copyright 2020 Tianyi Shi.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
+
+//! The BLOSUM62 substitution matrix
+//!
+//! Cluster Percentage: >= 62
+//! Entropy = 0.6979, Expected = -0.5209
 
 use crate::scores::lookup;
 

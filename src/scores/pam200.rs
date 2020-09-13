@@ -1,7 +1,13 @@
 // Copyright 2015 M. Rizky Luthfianto.
+// Revisions Copyright 2020 Tianyi Shi.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
+
+//! The PAM200 substitution matrix, scale = ln(2)/3 = 0.231049
+//!
+//! - Expected score = -1.23, Entropy = 0.507 bits
+//! - Lowest score = -9, Highest score = 18
 
 use crate::scores::lookup;
 

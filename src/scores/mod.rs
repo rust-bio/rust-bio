@@ -3,7 +3,20 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// Substitution matrices taken from [seqAn](https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h)
+//! Substitution matrices taken from [SeqAn](https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2Fscore_matrix_data.h)
+//!
+//! Note these special characters in the alphabet:
+//!
+//! | character | 3-letter code |               Definition                |
+//! | :-------: | :-----------: | :-------------------------------------: |
+//! |     B     |      Asx      | Asparagine or Aspartic acid (Aspartate) |
+//! |     Z     |      Glx      | Glutamine or Glutamic acid (Glutamate)  |
+//! |     X     |      Xaa      |        Any amino acid	All codons        |
+//! |     *     |      END      |  Termination codon (translation stop)   |
+//!
+//! # References
+//!
+//! - https://www.mathworks.com/help/bioinfo/ref/aminolookup.html
 pub use self::blosum62::blosum62;
 pub use self::pam120::pam120;
 pub use self::pam200::pam200;

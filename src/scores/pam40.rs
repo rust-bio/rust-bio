@@ -1,7 +1,13 @@
 // Copyright 2014 M. Rizky Luthfianto.
+// Revisions Copyright 2020 Tianyi Shi.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
+
+//! The PAM40 substitution matrix, scale = ln(2)/2 = 0.346574
+//!
+//! - Expected score = -4.27, Entropy = 2.26 bits
+//! - Lowest score = -15, Highest score = 13
 use crate::scores::lookup;
 
 const MAT: [i32; 729] = [
