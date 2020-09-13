@@ -195,7 +195,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             return vec![AlignmentOperation::Del; n];
         }
         if m == 1 {
-            return self.nw_onerow(x[0], y, n, tb, te);
+            return self.nw_onerow(x[0], y, n, max(tb, te));
         }
         let (imid, jmid, join_by_deletion) = self.find_mid(x, y, m, n, tb, te); // `find_mid()` uses 128n bits
         return if join_by_deletion {
@@ -749,16 +749,9 @@ impl<F: MatchFunc + Sync> Aligner<F> {
 
     /// Compute the (global) alignment operations between a single letter sequence `x` and a
     /// second sequence `y`. The second sequence can be empty, i.e. `b""`
-    fn nw_onerow(
-        &self,
-        x: u8,
-        y: TextSlice,
-        n: usize,
-        tb: i32,
-        te: i32,
-    ) -> Vec<AlignmentOperation> {
+    fn nw_onerow(&self, x: u8, y: TextSlice, n: usize, tx: i32) -> Vec<AlignmentOperation> {
         let score_by_indels_only =
-            max(tb, te) + self.scoring.gap_extend * (n as i32 + 1) + self.scoring.gap_open;
+            tx + self.scoring.gap_extend * (n as i32 + 1) + self.scoring.gap_open;
         let mut max = score_by_indels_only;
         let score_with_one_substitution_base =
             (n as i32 - 1) * self.scoring.gap_extend + self.scoring.gap_open; // plus substitution score and possibly one more gap_open
