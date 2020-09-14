@@ -863,7 +863,6 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             D[i] = MIN_SCORE;
             let mut tb = TracebackCell::new();
             tb.set_s_bits(TB_INS);
-            tb.set_i_bits(TB_INS);
             T.push(tb); // T[0 * m + i]
         }
 
@@ -880,7 +879,6 @@ impl<F: MatchFunc + Sync> Aligner<F> {
 
             let mut tb = TracebackCell::new();
             tb.set_s_bits(TB_DEL);
-            tb.set_d_bits(TB_DEL);
             T.push(tb); // T[i * n + 0]
 
             let mut score_1: i32;
@@ -933,9 +931,6 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             }
         }
 
-        T[1].set_i_bits(TB_START); // TODO: optimise this by inserting n INS when reaching (0, j)
-        T[m].set_d_bits(TB_START);
-
         let mut i = m - 1;
         let mut j = n - 1;
         let mut operations = Vec::with_capacity(m);
@@ -950,13 +945,13 @@ impl<F: MatchFunc + Sync> Aligner<F> {
                 }
                 TB_DEL => {
                     operations.push(AlignmentOperation::Del);
-                    next_layer = T[j * m + j].get_d_bits();
+                    next_layer = T[j * m + i].get_d_bits();
                     j -= 1;
                 }
                 TB_MATCH_OR_SUBST => {
-                    next_layer = T[(j - 1) * m + i - 1].get_s_bits(); // T[i-1][j-1]
                     i -= 1;
                     j -= 1;
+                    next_layer = T[j * m + i].get_s_bits(); // T[i-1][j-1]
                     operations.push(if y[j] == x[i] {
                         AlignmentOperation::Match
                     } else {
@@ -966,6 +961,8 @@ impl<F: MatchFunc + Sync> Aligner<F> {
                 _ => unreachable!(),
             }
         }
+        operations.resize(operations.len() + i, AlignmentOperation::Ins); // reaching at (i, 0)
+        operations.resize(operations.len() + j, AlignmentOperation::Del); // reaching at (0, j)
 
         operations.reverse();
         operations
