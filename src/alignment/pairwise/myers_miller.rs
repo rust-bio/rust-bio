@@ -292,8 +292,8 @@ impl<F: MatchFunc + Sync> Aligner<F> {
 
     /// Find the "midpoint" (see module-level documentation)
     ///
-    /// - Space complexity: $O(n)$. Specifically, about $128n$ bits (each of `cc_left`,
-    ///   `dd_left`, `cc_right` and `dd_right` are `Vec<i32>` of length $n$), where $n =$ `y.len()`.
+    /// - Space complexity: $O(m)$, where $m =$ `x.len()`. Specifically, about $128m$ bits, which are occupied
+    ///   by the four `Vec<i32>` of length $n$: `cc_left`, `dd_left`, `cc_right` and `dd_right`.
     /// - Time complexity: $O(nm)$
     fn find_mid(
         &self,
@@ -377,8 +377,9 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     /// Find the maximum score in a local alignment between `x` and `y` and the coordinates
     /// of the alignment path termini
     ///
-    /// - Space complexity: $O(m)$; specifically, about $448m$ bits (x64 architecture)
-    ///   or $256n$ bits (x32 architecture), where $m=$ `x.len() + 1)
+    /// - Space complexity: $O(m)$; where $m=$ `x.len() + 1`. This function uses 2 `Vec<i32>`s and 2
+    ///   `Vec<[usize; 2]>`s, thus taking up about $320m$ bits (x64 architecture) or $192n$ bits
+    ///   (x32 architecture)
     /// - Time complexity: $O(nm)$
     ///
     /// # References
@@ -394,7 +395,6 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         let mut dd: Vec<i32> = vec![MIN_SCORE; m]; // deletion          32 * n bits
         let mut origin_cc: Vec<[usize; 2]> = Vec::with_capacity(m); // usize * 2 * n bits
         let mut origin_dd: Vec<[usize; 2]> = vec![[0, 0]; m]; //       usize * 2 * n bits
-        let mut origin_ii: Vec<[usize; 2]> = vec![[0, 0]; m]; //       usize * 2 * n bits
         for i in 0..m {
             origin_cc.push([i, 0]);
             // origin_dd.push([i, 0]); values won't be used;
@@ -402,6 +402,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             // origin_ii.push([i, 0]); values won't be used
         }
         let mut e: i32; // I(i - 1, j)
+        let mut e_origin: [usize; 2];
         let mut c: i32; // C(i - 1, j)
         let mut c_origin;
         let mut max_c = MIN_SCORE;
@@ -418,17 +419,17 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             c = 0;
             c_origin = [0, j];
             origin_cc[0] = [0, j];
-            e = MIN_SCORE; // I[i, 0] garanteed to be less than c + self.scoring.gap_open
-                           // origin_dd[0] = [i, 0];  value won't be used
-                           // origin_ii[0] = [i, 0];  value won't be used
+            e = MIN_SCORE; // I[0, j] garanteed to be less than c + self.scoring.gap_open
+                           // origin_dd[0] = [0, j];  value won't be used
+            e_origin = [0, j]; // value won't be used; may be optimised
             yj = y[j - 1];
             for i in 1..m {
                 xi = x[i - 1];
                 e = if e > c + self.scoring.gap_open {
-                    origin_ii[i] = origin_ii[i - 1];
+                    //e_origin = e_origin;
                     e
                 } else {
-                    origin_ii[i] = c_origin;
+                    e_origin = c_origin;
                     c + self.scoring.gap_open
                 } + self.scoring.gap_extend; // update e to I[i,j]
                 dd[i] = if dd[i] > cc[i] + self.scoring.gap_open {
@@ -448,7 +449,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
                 }
                 if e > c {
                     c = e;
-                    c_origin = origin_ii[i];
+                    c_origin = e_origin;
                 }
                 if c < 0 {
                     // the critical step in local alignment
@@ -471,95 +472,67 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     /// of the alignment path termini, based on Shamir's approach
     ///
     /// - Space complexity: $O(m)$; specifically, about $64m$ bits, where $m=$ `x.len() + 1)
-    /// - Time complexity: $O(nm)$ (slightly slower than the original `find_local_score_and_termini`)
+    /// - Time complexity: $O(nm)$ (slightly slower than Huang's approach)
     fn find_local_score_and_termini_shamir(
         &self,
         x: TextSlice,
         y: TextSlice,
     ) -> (i32, usize, usize, usize, usize) {
-        let (m, n) = (x.len() + 1, y.len() + 1); // TODO: Standardise direction
-        let mut cc: Vec<i32> = vec![0; n]; // match/mismatch           32 * n bits
-        let mut dd: Vec<i32> = vec![MIN_SCORE; n]; // deletion          32 * n bits
-        let mut e: i32; // I(i, j-1)
-        let mut c: i32; // C(i, j-1)
+        let (m, n) = (x.len() + 1, y.len() + 1);
+        let mut cc: Vec<i32> = vec![0; m]; // match/mismatch           32 * n bits
+        let mut dd: Vec<i32> = vec![MIN_SCORE; m]; // deletion          32 * n bits
+        let mut e: i32; // I(i - 1, j)
+        let mut c: i32; // C(i - 1, j)
         let mut max_c = MIN_SCORE;
         let mut xstart = 0usize;
         let mut ystart = 0usize;
         let mut xend = m;
         let mut yend = n;
         let mut s: i32; // C(i-1, j-1)
-        for i in 1..m {
+        let mut p: u8;
+        let mut q: u8;
+        for j in 1..n {
             s = 0;
             c = 0;
             e = MIN_SCORE;
-            for j in 1..n {
-                e = if e > c + self.scoring.gap_open {
-                    e
-                } else {
-                    c + self.scoring.gap_open
-                } + self.scoring.gap_extend;
-                dd[j] = if dd[j] > cc[j] + self.scoring.gap_open {
-                    dd[j]
-                } else {
-                    cc[j]
-                } + self.scoring.gap_extend;
-                c = s + self.scoring.match_fn.score(x[i - 1], y[j - 1]);
-                s = cc[j];
-                if dd[j] > c {
-                    c = dd[j];
-                }
-                if e > c {
-                    c = e;
-                }
-                if c < 0 {
-                    c = 0;
-                }
+            q = y[j - 1];
+            for i in 1..m {
+                p = x[i - 1];
+                e = max(e, c + self.scoring.gap_open) + self.scoring.gap_extend;
+                dd[i] = max(dd[i], cc[i] + self.scoring.gap_open) + self.scoring.gap_extend;
+                c = max(s + self.scoring.match_fn.score(p, q), max(dd[i], max(e, 0)));
+                s = cc[i];
                 if c >= max_c {
                     max_c = c;
                     xend = i;
                     yend = j;
                 }
-                cc[j] = c;
+                cc[i] = c;
             }
         }
         // run in reverse
         let x = &x[..xend];
         let y = &y[..yend];
-        cc = vec![0; n];
-        dd = vec![MIN_SCORE; n];
+        cc = vec![0; xend + 1];
+        dd = vec![MIN_SCORE; xend + 1];
         max_c = MIN_SCORE;
-        for i in 1..=xend {
+        for j in 1..=yend {
             s = 0;
             c = 0;
             e = MIN_SCORE;
-            for j in 1..=yend {
-                e = if e > c + self.scoring.gap_open {
-                    e
-                } else {
-                    c + self.scoring.gap_open
-                } + self.scoring.gap_extend;
-                dd[j] = if dd[j] > cc[j] + self.scoring.gap_open {
-                    dd[j]
-                } else {
-                    cc[j]
-                } + self.scoring.gap_extend;
-                c = s + self.scoring.match_fn.score(x[xend - i], y[yend - j]);
-                s = cc[j];
-                if dd[j] > c {
-                    c = dd[j];
-                }
-                if e > c {
-                    c = e;
-                }
-                if c < 0 {
-                    c = 0;
-                }
+            q = y[yend - j];
+            for i in 1..=xend {
+                p = x[xend - i];
+                e = max(e, c + self.scoring.gap_open) + self.scoring.gap_extend;
+                dd[i] = max(dd[i], cc[i] + self.scoring.gap_open) + self.scoring.gap_extend;
+                c = max(s + self.scoring.match_fn.score(p, q), max(dd[i], max(e, 0)));
+                s = cc[i];
                 if c >= max_c {
                     max_c = c;
                     xstart = i; // subtract from xend later
                     ystart = j;
                 }
-                cc[j] = c;
+                cc[i] = c;
             }
         }
         xstart = xend - xstart;
@@ -568,75 +541,91 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     }
 
     /// Find the maximum score in a semiglobal alignment of `x` against `y` (x is global, y is local),
-    /// and the coordinates of the alignment path termini
+    /// and the coordinates of the alignment path termini.
     ///
-    /// In semiglobal mode, `xstart === 0` and `xend === m`, so only `ystart` and `yend` are computed
-    /// and returned
+    /// In semiglobal mode, `xstart = 0` and `xend = m`, so only `ystart` and `yend` are computed
+    /// and returned.
+    ///
+    /// - Space complexity: $O(m)$, where $m = $ `x.len()`. This function uses 2 `Vec<i32>` and 3
+    ///   `Vec<usize>`, thus using `256m` bits (x64 architecture) or `160m` bits (x32 atchitecture).
+    /// - Time complexity: $O(mn)$
     fn find_semiglobal_score_and_termini(&self, x: TextSlice, y: TextSlice) -> (i32, usize, usize) {
-        let (m, n) = (x.len(), y.len()); // TODO: To be standardised
-        let mut cc: Vec<i32> = vec![0; n + 1]; //                           32 * n bits
-        let mut dd: Vec<i32> = vec![MIN_SCORE; n + 1]; //                    32 * n bits
-        let mut y_origin_cc: Vec<usize> = (0..=n).into_iter().collect(); // usize * n bits
-        let mut y_origin_dd: Vec<usize> = vec![0; n + 1]; //                usize * n bits
-        let mut y_origin_ii: Vec<usize> = vec![0; n + 1]; //                usize * n bits
+        let (m, n) = (x.len(), y.len());
+        let mut cc: Vec<i32> = Vec::with_capacity(m + 1); //                   32 * m bits
+        let mut dd: Vec<i32> = vec![MIN_SCORE; m + 1]; //                      32 * m bits
+        let mut y_origin_cc: Vec<usize> = vec![0; m + 1]; //                usize * m bits
+        let mut y_origin_dd: Vec<usize> = vec![0; m + 1]; //                usize * m bits
+        let mut y_origin_ii: Vec<usize> = vec![0; m + 1]; //                usize * m bits
         let mut e: i32; // I(i, j-1)
         let mut c: i32; // C(i, j-1)
         let mut c_y_origin;
         let mut s: i32; // C(i-1, j-1)
         let mut s_y_origin: usize; // y_origin of C(i-1, j-1)
+        let mut p: u8;
+        let mut q: u8;
+        let mut tmp: i32;
+        let mut ystart = 0usize;
+        let mut yend = n;
+        let mut max_last_row = MIN_SCORE;
+        cc.push(0i32);
         let mut t = self.scoring.gap_open;
-        for i in 1..=m {
+        for _i in 1..=m {
+            t += self.scoring.gap_extend;
+            cc.push(t);
+        }
+        t = self.scoring.gap_open;
+        for j in 1..=n {
             s = cc[0];
             t += self.scoring.gap_extend;
             c = t;
             cc[0] = c;
             e = MIN_SCORE;
 
-            s_y_origin = 0;
-            c_y_origin = 0;
-            // y_origin_cc[0] = 0;WON'T CHANGE
-            for j in 1..=n {
-                e = if e > c + self.scoring.gap_open {
-                    y_origin_ii[j] = y_origin_ii[j - 1];
+            s_y_origin = j - 1;
+            c_y_origin = j;
+            // y_origin_cc[0] = j;
+            q = y[j - 1];
+            for i in 1..=m {
+                p = x[i - 1];
+                tmp = c + self.scoring.gap_open;
+                e = if e > tmp {
+                    y_origin_ii[i] = y_origin_ii[i - 1];
                     e
                 } else {
-                    y_origin_ii[j] = c_y_origin;
-                    c + self.scoring.gap_open
-                } + self.scoring.gap_extend; // update e to I[i,j]
-                dd[j] = if dd[j] > cc[j] + self.scoring.gap_open {
-                    // y_origin_dd[j] = y_origin_dd[j];
-                    dd[j]
+                    y_origin_ii[i] = c_y_origin;
+                    tmp
+                } + self.scoring.gap_extend;
+
+                tmp = cc[i] + self.scoring.gap_open;
+                dd[i] = if dd[i] > tmp {
+                    // y_origin_dd[i] = y_origin_dd[i];
+                    dd[i]
                 } else {
-                    y_origin_dd[j] = y_origin_cc[j];
-                    cc[j]
-                } + self.scoring.gap_extend; // cc[j] = C[i-1, j]
-                c = s + self.scoring.match_fn.score(x[i - 1], y[j - 1]); // substitution score
+                    y_origin_dd[i] = y_origin_cc[i];
+                    tmp
+                } + self.scoring.gap_extend;
+
+                c = s + self.scoring.match_fn.score(p, q);
                 c_y_origin = s_y_origin;
-                s = cc[j];
-                s_y_origin = y_origin_cc[j];
-                if dd[j] > c {
-                    c = dd[j];
-                    c_y_origin = y_origin_dd[j];
+                s = cc[i];
+                s_y_origin = y_origin_cc[i];
+                if dd[i] > c {
+                    c = dd[i];
+                    c_y_origin = y_origin_dd[i];
                 }
                 if e > c {
                     c = e;
-                    c_y_origin = y_origin_ii[j];
+                    c_y_origin = y_origin_ii[i];
                 }
-                cc[j] = c;
-                y_origin_cc[j] = c_y_origin;
-            }
-        }
-        // last (m-th) row
-        let mut max_last_row = cc[n];
-        let mut ystart = y_origin_cc[n];
-        let mut yend = n;
-        // in semiglobal mode, xstart === 0; xend === m
-        for j in 0..=n {
-            let clip_score = cc[j] + self.scoring.yclip_suffix;
-            if clip_score > max_last_row {
-                max_last_row = clip_score;
-                ystart = y_origin_cc[j];
-                yend = j;
+                cc[i] = c;
+                y_origin_cc[i] = c_y_origin;
+
+                if i == m && c > max_last_row {
+                    // c + self.scoring.yclip_suffix
+                    max_last_row = c;
+                    ystart = c_y_origin;
+                    yend = j;
+                }
             }
         }
         (max_last_row, ystart, yend)
