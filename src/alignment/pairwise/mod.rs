@@ -421,7 +421,7 @@ impl<F: MatchFunc> Scoring<F> {
 ///
 /// `S(i,j)` is the best score for prefixes `x[0..i]`, `y[0..j]`
 ///
-/// To save space, only one column of these matrices are stored at any
+/// To save space, only one column of these matrices is stored at any
 /// point — the column `j` is obtained by overwriting column `j-1` (Myers & Miller 1988).
 /// Moreover, `M(i,j)` is not explicitly stored.
 ///
