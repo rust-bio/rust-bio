@@ -217,9 +217,7 @@ impl BitEnc {
             // to reach the last block
             let i = self.len + n;
             let (block, bit) = self.addr(i);
-            for _ in self.storage.len()..block {
-                self.storage.push(value_block);
-            }
+            self.storage.resize(block, value_block);
 
             if bit > 0 {
                 // add the remaining values to a final block

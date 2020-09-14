@@ -158,6 +158,10 @@ pub trait Motif {
     /// Returns the length of motif
     fn len(&self) -> usize;
 
+    fn is_empty(&self) -> bool {
+        self.len() == 0usize
+    }
+
     /// Returns a representation of the motif using ambiguous codes.
     /// Primarily useful for DNA motifs, where ambiguous codes are
     /// common (eg, 'M' for 'A or C'); less so for proteins, where we

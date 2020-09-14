@@ -5,7 +5,8 @@
 [![Coveralls](https://img.shields.io/coveralls/rust-bio/rust-bio.svg)](https://coveralls.io/github/rust-bio/rust-bio)
 [![DOI](https://zenodo.org/badge/29821195.svg)](https://zenodo.org/badge/latestdoi/29821195)
 
-# Rust-Bio, a bioinformatics library for Rust.
+
+# <img src="./img/bioferris.svg" width=50em alt="Rust-Bio logo" /> Rust-Bio, a bioinformatics library for Rust.
 
 This library provides [Rust](https://www.rust-lang.org) implementations of algorithms and data structures useful for bioinformatics.
 All provided implementations are rigorously tested via continuous integration.
