@@ -52,10 +52,8 @@ For extra credit, feel free to familiarize yourself with:
 
 #### variable names and mathematical expressions
 
-* When referring to a variable as an arguments of the function or a field of the struct, put backticks (`` ` ``) around it.
-* Otherwise, put dollar signs (`$`) around it (i.e. making it a LaTeX expression).
-* In general, use LaTeX for math expressions (especially when writing "big-O" complexities)
-* For simple expressions, especially those containing function argument/struct field names, using backticks is recommended.
+* For mathematical expressions in doc strings (e.g. for "big-O" notation), you can use LaTeX syntax in between dollar signs (e.g. `$O(n)$`) in-line.
+* For simple expressions that refer to a variable as an argument of a function or to a field of a struct, using backticks (`\`field_1 and var_x\``) is recommended.
 
 In the following example, the public function `combinations` has two arguments `n` and `k`, which are referred to in the first line with backticks. Then, a LaTeX math expressions is used to show the complexity. The variable names *k* and *n* are not ambiguous (obviously referring to the two arguments), so we don't need to define again.
 
