@@ -50,7 +50,7 @@ For extra credit, feel free to familiarize yourself with:
 * the Rust [documentation conventions](https://rust-lang.github.io/rfcs/1574-more-api-documentation-conventions.html#appendix-a-full-conventions-text)
 * the Rust [API documentation guidelines](https://rust-lang.github.io/api-guidelines/documentation.html)
 
-#### About variable names and mathematical expressions
+#### variable names and mathematical expressions
 
 * When referring to a variable as an arguments of the function or a field of the struct, put backticks (`` ` ``) around it.
 * Otherwise, put dollar signs (`$`) around it (i.e. making it a LaTeX expression).
