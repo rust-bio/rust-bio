@@ -57,14 +57,8 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     ///   uses less and less space as recursion proceeds.
     pub fn global(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         let (m, n) = (x.len(), y.len());
-        let operations = self.compute_recursive_noparallel(
-            x,
-            y,
-            m,
-            n,
-            self.scoring.gap_open,
-            self.scoring.gap_open,
-        );
+        let operations =
+            self.compute_recursive(x, y, m, n, self.scoring.gap_open, self.scoring.gap_open);
         let score = self.cost_only(x, y, false, self.scoring.gap_open).0[x.len()];
         return Alignment {
             score,
