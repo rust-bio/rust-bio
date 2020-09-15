@@ -57,8 +57,14 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     ///   uses less and less space as recursion proceeds.
     pub fn global(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         let (m, n) = (x.len(), y.len());
-        let operations =
-            self.compute_recursive(x, y, m, n, self.scoring.gap_open, self.scoring.gap_open);
+        let operations = self.compute_recursive_noparallel(
+            x,
+            y,
+            m,
+            n,
+            self.scoring.gap_open,
+            self.scoring.gap_open,
+        );
         let score = self.cost_only(x, y, false, self.scoring.gap_open).0[x.len()];
         return Alignment {
             score,
@@ -180,7 +186,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     /// Rust has a [`recursion_limit` which defaults to 128](https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute),
     /// which means the length of the sequence `x` should not exceed $2^128 = 3.4\times10^38$ (well, you'll
     /// never encounter such gigantic biological sequences)
-    fn compute_recursive(
+    fn compute_recursive_noparallel(
         &self,
         x: TextSlice<'_>,
         y: TextSlice<'_>,
@@ -201,12 +207,25 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         }
         let (imid, jmid, join_by_deletion) = self.find_mid(x, y, m, n, tb, te); // `find_mid()` uses 128m bits
         return if join_by_deletion {
-            let a = self.compute_recursive(&x[..imid], &y[..jmid - 1], imid, jmid - 1, tb, 0);
-            let b =
-                self.compute_recursive(&x[imid..], &y[jmid + 1..], m - imid, n - jmid - 1, 0, te);
+            let a = self.compute_recursive_noparallel(
+                &x[..imid],
+                &y[..jmid - 1],
+                imid,
+                jmid - 1,
+                tb,
+                0,
+            );
+            let b = self.compute_recursive_noparallel(
+                &x[imid..],
+                &y[jmid + 1..],
+                m - imid,
+                n - jmid - 1,
+                0,
+                te,
+            );
             [a, vec![AlignmentOperation::Del; 2], b].concat()
         } else {
-            let a = self.compute_recursive(
+            let a = self.compute_recursive_noparallel(
                 &x[..imid],
                 &y[..jmid],
                 imid,
@@ -214,7 +233,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
                 tb,
                 self.scoring.gap_open,
             );
-            let b = self.compute_recursive(
+            let b = self.compute_recursive_noparallel(
                 &x[imid..],
                 &y[jmid..],
                 m - imid,
@@ -226,7 +245,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         };
     }
 
-    fn compute_recursive_parallel(
+    fn compute_recursive(
         &self,
         x: TextSlice<'_>,
         y: TextSlice<'_>,
@@ -826,227 +845,6 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             }
             res
         };
-    }
-
-    /// Fast global alignment with $O(nm)$ space. Used when `y.len()` is small.
-    ///
-    /// # Implementation Details
-    ///
-    /// ## Traceback Matrix `T: Vec<u8>`
-    ///
-    /// ```ignore
-    /// 0b00   0b01    0b10    0b11
-    /// start  insert  delete  match_or_subst
-    /// ```
-    ///
-    /// ```ignore
-    /// 0b00101101
-    ///     / |  \
-    ///    S  D   I
-    /// ```
-    pub fn global_fast(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Vec<AlignmentOperation> {
-        let (m, n) = (x.len() + 1, y.len() + 1);
-        let mut S = vec![MIN_SCORE; m]; // 32 * m bits
-        let mut I = vec![MIN_SCORE; m]; // 32 * m bits // TODO: to be optimised
-        let mut D = vec![MIN_SCORE; m]; // 32 * m bits
-        let mut T: Vec<TracebackCell> = Vec::with_capacity(n * m); // traceback matrix // 8 * n * m bits
-        let mut p: u8;
-        let mut q: u8;
-
-        S[0] = 0;
-        T.push(TracebackCell::new()); // origin at T[0 * n + 0]
-        let mut t = self.scoring.gap_open;
-        for i in 1..m {
-            t += self.scoring.gap_extend;
-            // I[0][j] = t will not be read
-            S[i] = t;
-            D[i] = MIN_SCORE;
-            let mut tb = TracebackCell::new();
-            tb.set_s_bits(TB_INS);
-            T.push(tb); // T[0 * m + i]
-        }
-
-        t = self.scoring.gap_open;
-        let mut s: i32;
-        let mut c: i32;
-        for j in 1..n {
-            s = S[0];
-            t += self.scoring.gap_extend;
-            c = t;
-            S[0] = c;
-            I[0] = MIN_SCORE;
-            // D[0] = t will not be read
-
-            let mut tb = TracebackCell::new();
-            tb.set_s_bits(TB_DEL);
-            T.push(tb); // T[i * n + 0]
-
-            let mut score_1: i32;
-            let mut score_2: i32;
-            q = y[j - 1];
-            for i in 1..m {
-                p = x[i - 1];
-                let mut tb = TracebackCell::new();
-
-                score_1 = I[i - 1] + self.scoring.gap_extend;
-                score_2 = c + self.scoring.gap_open + self.scoring.gap_extend;
-                let best_i_score = if score_1 > score_2 {
-                    tb.set_i_bits(TB_INS);
-                    score_1
-                } else {
-                    tb.set_i_bits(T[T.len() - 1].get_s_bits()); // T[i-1][j]
-                    score_2
-                };
-
-                score_1 = D[j] + self.scoring.gap_extend;
-                score_2 = S[j] + self.scoring.gap_open + self.scoring.gap_extend;
-                let best_d_score = if score_1 > score_2 {
-                    tb.set_d_bits(TB_DEL);
-                    score_1
-                } else {
-                    tb.set_d_bits(T[T.len() - m].get_s_bits()); //T[i][j-1]
-                    score_2
-                };
-
-                let mut best_s_score = s + self.scoring.match_fn.score(p, q);
-                tb.set_s_bits(TB_MATCH_OR_SUBST); // no need to be exact at this stage
-
-                if best_i_score > best_s_score {
-                    best_s_score = best_i_score;
-                    tb.set_s_bits(TB_INS);
-                }
-
-                if best_d_score > best_s_score {
-                    best_s_score = best_d_score;
-                    tb.set_s_bits(TB_DEL);
-                }
-
-                s = S[i];
-                S[i] = best_s_score; // ! S[i] updated
-                c = best_s_score;
-                I[i] = best_i_score;
-                D[i] = best_d_score;
-
-                T.push(tb); // T[j * (m+1) + i]
-            }
-        }
-
-        let mut i = m - 1;
-        let mut j = n - 1;
-        let mut operations = Vec::with_capacity(m);
-        let mut next_layer = T[T.len() - 1].get_s_bits(); // start from the last tb cell
-        loop {
-            match next_layer {
-                TB_START => break,
-                TB_INS => {
-                    operations.push(AlignmentOperation::Ins);
-                    next_layer = T[j * m + i].get_i_bits();
-                    i -= 1;
-                }
-                TB_DEL => {
-                    operations.push(AlignmentOperation::Del);
-                    next_layer = T[j * m + i].get_d_bits();
-                    j -= 1;
-                }
-                TB_MATCH_OR_SUBST => {
-                    i -= 1;
-                    j -= 1;
-                    next_layer = T[j * m + i].get_s_bits(); // T[i-1][j-1]
-                    operations.push(if y[j] == x[i] {
-                        AlignmentOperation::Match
-                    } else {
-                        AlignmentOperation::Subst
-                    });
-                }
-                _ => unreachable!(),
-            }
-        }
-        operations.resize(operations.len() + i, AlignmentOperation::Ins); // reaching at (i, 0)
-        operations.resize(operations.len() + j, AlignmentOperation::Del); // reaching at (0, j)
-
-        operations.reverse();
-        operations
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct TracebackCell(u8);
-
-const TB_START: u8 = 0b00;
-const TB_INS: u8 = 0b01;
-const TB_DEL: u8 = 0b10;
-const TB_MATCH_OR_SUBST: u8 = 0b11;
-
-// Traceback bit positions (LSB)
-const I_POS: u8 = 0; // Meaning bits 0,1 corresponds to I and so on
-const D_POS: u8 = 2;
-const S_POS: u8 = 4;
-
-impl TracebackCell {
-    /// Initialize a blank traceback cell
-    #[inline(always)]
-    pub fn new() -> TracebackCell {
-        TracebackCell(0u8)
-    }
-
-    /// Sets 2 bits [pos, pos+2) with the 2 LSBs of value
-    #[inline(always)]
-    fn set_bits(&mut self, pos: u8, value: u8) {
-        let bits: u8 = (0b11) << pos;
-        self.0 = (self.0 & !bits) // First clear the bits
-            | (value << pos) // And set the bits
-    }
-
-    #[inline(always)]
-    pub fn set_i_bits(&mut self, value: u8) {
-        // Traceback corresponding to matrix I
-        self.set_bits(I_POS, value);
-    }
-
-    #[inline(always)]
-    pub fn set_d_bits(&mut self, value: u8) {
-        // Traceback corresponding to matrix D
-        self.set_bits(D_POS, value);
-    }
-
-    #[inline(always)]
-    pub fn set_s_bits(&mut self, value: u8) {
-        // Traceback corresponding to matrix S
-        self.set_bits(S_POS, value);
-    }
-
-    // Gets 4 bits [pos, pos+4) of v
-    #[inline(always)]
-    fn get_bits(self, pos: u8) -> u8 {
-        (self.0 >> pos) & (0b11)
-    }
-
-    #[inline(always)]
-    pub fn get_i_bits(self) -> u8 {
-        self.get_bits(I_POS)
-    }
-
-    #[inline(always)]
-    pub fn get_d_bits(self) -> u8 {
-        self.get_bits(D_POS)
-    }
-
-    #[inline(always)]
-    pub fn get_s_bits(self) -> u8 {
-        self.get_bits(S_POS)
-    }
-
-    /// Set all matrices to the same value.
-    pub fn set_all(&mut self, value: u8) {
-        self.set_i_bits(value);
-        self.set_d_bits(value);
-        self.set_s_bits(value);
-    }
-}
-
-impl std::fmt::Debug for TracebackCell {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct(&format!("{:06b}", self.0)).finish()
     }
 }
 
