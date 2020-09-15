@@ -39,21 +39,20 @@ impl<F: MatchFunc> Aligner<F> {
     /// ```
     pub fn global(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         let (m, n) = (x.len() + 1, y.len() + 1);
-        let mut S = vec![MIN_SCORE; m]; // 32 * m bits
+        let mut S = Vec::with_capacity(m); // 32 * m bits
         let mut D = vec![MIN_SCORE; m]; // 32 * m bits
         let mut e: i32;
         let mut T: Vec<TracebackCell> = Vec::with_capacity(n * m); // traceback matrix // 8 * n * m bits
         let mut p: u8;
         let mut q: u8;
 
-        S[0] = 0;
+        S.push(0);
         T.push(TracebackCell::new()); // origin at T[0 * n + 0]
         let mut t = self.scoring.gap_open;
-        for i in 1..m {
+        for _ in 1..m {
             t += self.scoring.gap_extend;
             // I[0][j] = t will not be read
-            S[i] = t;
-            D[i] = MIN_SCORE;
+            S.push(t);
             let mut tb = TracebackCell::new();
             tb.set_s_bits(TB_INS);
             T.push(tb); // T[0 * m + i]
@@ -159,6 +158,146 @@ impl<F: MatchFunc> Aligner<F> {
         operations.reverse();
         Alignment {
             score: S[m - 1],
+            xstart: 0,
+            ystart: 0,
+            xend: m - 1,
+            yend: n - 1,
+            xlen: m - 1,
+            ylen: n - 1,
+            operations,
+            mode: AlignmentMode::Global,
+        }
+    }
+
+    pub fn global_unsafe(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
+        let (m, n) = (x.len() + 1, y.len() + 1);
+        let mut S = Vec::with_capacity(m); // 32 * m bits
+        let mut D = vec![MIN_SCORE; m]; // 32 * m bits
+        let mut e: i32;
+        let mut T: Vec<TracebackCell> = Vec::with_capacity(n * m); // traceback matrix // 8 * n * m bits
+        let mut p: &u8;
+        let mut q: &u8;
+
+        let mut S_i: &mut i32;
+        let mut D_i: &mut i32;
+
+        S.push(0);
+        T.push(TracebackCell::new()); // origin at T[0 * n + 0]
+        let mut t = self.scoring.gap_open;
+        for _ in 1..m {
+            t += self.scoring.gap_extend;
+            // I[0][j] = t will not be read
+            S.push(t);
+            let mut tb = TracebackCell::new();
+            tb.set_s_bits(TB_INS);
+            T.push(tb); // T[0 * m + i]
+        }
+
+        t = self.scoring.gap_open;
+        let mut s: i32;
+        let mut c: i32;
+        for j in 1..n {
+            unsafe { s = *S.get_unchecked(0) }
+            t += self.scoring.gap_extend;
+            c = t;
+            unsafe { *S.get_unchecked_mut(0) = c }
+            e = MIN_SCORE;
+            // D[0] = t will not be read
+
+            let mut tb = TracebackCell::new();
+            tb.set_s_bits(TB_DEL);
+            T.push(tb); // T[i * n + 0]
+
+            let mut score_1: i32;
+            let mut score_2: i32;
+            unsafe { q = y.get_unchecked(j - 1) }
+            for i in 1..m {
+                unsafe {
+                    S_i = S.get_unchecked_mut(i);
+                    D_i = D.get_unchecked_mut(i);
+                }
+                unsafe { p = x.get_unchecked(i - 1) }
+                let mut tb = TracebackCell::new();
+
+                score_1 = e + self.scoring.gap_extend;
+                score_2 = c + self.scoring.gap_open + self.scoring.gap_extend;
+                e = if score_1 > score_2 {
+                    tb.set_i_bits(TB_INS);
+                    score_1
+                } else {
+                    tb.set_i_bits(unsafe { T.get_unchecked(T.len() - 1).get_s_bits() }); // T[i-1][j]
+                    score_2
+                };
+
+                score_1 = *D_i + self.scoring.gap_extend;
+                score_2 = *S_i + self.scoring.gap_open + self.scoring.gap_extend;
+                *D_i = if score_1 > score_2 {
+                    tb.set_d_bits(TB_DEL);
+                    score_1
+                } else {
+                    tb.set_d_bits(unsafe { T.get_unchecked(T.len() - m).get_s_bits() }); //T[i][j-1]
+                    score_2
+                };
+
+                let mut best_s_score = s + self.scoring.match_fn.score(*p, *q);
+                tb.set_s_bits(TB_MATCH_OR_SUBST); // no need to be exact at this stage
+
+                if e > best_s_score {
+                    best_s_score = e;
+                    tb.set_s_bits(TB_INS);
+                }
+
+                if *D_i > best_s_score {
+                    best_s_score = *D_i;
+                    tb.set_s_bits(TB_DEL);
+                }
+
+                s = *S_i;
+                *S_i = best_s_score; // ! S[i] updated
+                c = best_s_score;
+
+                T.push(tb); // T[j * (m+1) + i]
+            }
+        }
+
+        let mut i = m - 1;
+        let mut j = n - 1;
+        let mut operations = Vec::with_capacity(m);
+        unsafe {
+            let mut next_layer = T.get_unchecked(T.len() - 1).get_s_bits(); // start from the last tb cell
+            loop {
+                match next_layer {
+                    TB_START => break,
+                    TB_INS => {
+                        operations.push(AlignmentOperation::Ins);
+                        next_layer = T.get_unchecked(j * m + i).get_i_bits();
+                        i -= 1;
+                    }
+                    TB_DEL => {
+                        operations.push(AlignmentOperation::Del);
+                        next_layer = T.get_unchecked(j * m + i).get_d_bits();
+                        j -= 1;
+                    }
+                    TB_MATCH_OR_SUBST => {
+                        i -= 1;
+                        j -= 1;
+                        next_layer = T.get_unchecked(j * m + i).get_s_bits(); // T[i-1][j-1]
+                        operations.push(if *y.get_unchecked(j) == *x.get_unchecked(i) {
+                            AlignmentOperation::Match
+                        } else {
+                            AlignmentOperation::Subst
+                        });
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+        operations.resize(operations.len() + i, AlignmentOperation::Ins); // reaching at (i, 0)
+        operations.resize(operations.len() + j, AlignmentOperation::Del); // reaching at (0, j)
+
+        operations.reverse();
+        Alignment {
+            score: unsafe { *S.get_unchecked(m - 1) },
             xstart: 0,
             ystart: 0,
             xend: m - 1,
