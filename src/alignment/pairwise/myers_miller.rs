@@ -33,6 +33,7 @@ use std::cmp::max;
 
 pub struct Aligner<F: MatchFunc + Sync> {
     scoring: Scoring<F>,
+    parallel: bool,
 }
 
 impl<F: MatchFunc + Sync> Aligner<F> {
@@ -47,8 +48,26 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         Aligner {
             scoring: Scoring::new(gap_open, gap_extend, match_fn),
+            parallel: cfg!(feature = "parallel"),
         }
     }
+
+    /// Run without parallelization
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use bio::alignment::pairwise::myers_miller::Aligner;
+    ///
+    /// let aligner = Aligner.new(-5, -1, |a,b|{a==b{1i32}else{-1i32}}).no_parallel();
+    /// let result = aligner.global()
+    /// ```
+    #[cfg(feature = "parallel")]
+    pub fn no_parallel(mut self) -> Self {
+        self.parallel = false;
+        self
+    }
+
     /// Calculate global alignment of `x` against `y`.
     ///
     /// - Time complexity: $O(mn)$, where $m$ and $n$ are the lengths of the first and the second
@@ -169,6 +188,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             mode: AlignmentMode::Semiglobal,
         }
     }
+
     /// Recursively compute alignments of sub-sequences and concatenating them.
     ///
     /// - Space complexity: $O(n)$. Precisely, about $128n + log\_2{m}$, where $m =$ `x.len()` and $n =$ `y.len()`.
@@ -180,6 +200,22 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     /// Rust has a [`recursion_limit` which defaults to 128](https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute),
     /// which means the length of the sequence `x` should not exceed $2^128 = 3.4\times10^38$ (well, you'll
     /// never encounter such gigantic biological sequences)
+    pub fn compute_recursive(
+        &self,
+        x: TextSlice<'_>,
+        y: TextSlice<'_>,
+        m: usize,
+        n: usize,
+        tb: i32,
+        te: i32,
+    ) -> Vec<AlignmentOperation> {
+        if self.parallel {
+            self.compute_recursive_parallel(x, y, m, n, tb, te)
+        } else {
+            self.compute_recursive_noparallel(x, y, m, n, tb, te)
+        }
+    }
+
     fn compute_recursive_noparallel(
         &self,
         x: TextSlice<'_>,
@@ -199,7 +235,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         if n == 1 {
             return self.nw_onecol(x, y[0], m, max(tb, te));
         }
-        let (imid, jmid, join_by_deletion) = self.find_mid(x, y, m, n, tb, te); // `find_mid()` uses 128m bits
+        let (imid, jmid, join_by_deletion) = self.find_mid_noparallel(x, y, m, n, tb, te); // `find_mid()` uses 128m bits
         return if join_by_deletion {
             let a = self.compute_recursive_noparallel(
                 &x[..imid],
@@ -239,7 +275,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         };
     }
 
-    fn compute_recursive(
+    fn compute_recursive_parallel(
         &self,
         x: TextSlice<'_>,
         y: TextSlice<'_>,
@@ -324,6 +360,39 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         );
         let (cc_left, dd_left) = a;
         let (cc_right, dd_right) = b;
+        let mut max = MIN_SCORE;
+        let mut imid = 0;
+        let mut join_by_deletion = false;
+        for i in 0..=m {
+            let c = cc_left[i] + cc_right[m - i];
+            if c > max {
+                max = c;
+                imid = i;
+                join_by_deletion = false;
+            }
+            let d = dd_left[i] + dd_right[m - i] - self.scoring.gap_open; // subtract duplicating open!
+            if d > max {
+                max = d;
+                imid = i;
+                join_by_deletion = true;
+            }
+        }
+        (imid, jmid, join_by_deletion)
+    }
+
+    /// The non-parallel version of Self::find_mid
+    fn find_mid_noparallel(
+        &self,
+        x: TextSlice<'_>,
+        y: TextSlice<'_>,
+        m: usize,
+        n: usize,
+        tb: i32,
+        te: i32,
+    ) -> (usize, usize, bool) {
+        let jmid = n / 2;
+        let (cc_left, dd_left) = self.cost_only(x, &y[..jmid], false, tb);
+        let (cc_right, dd_right) = self.cost_only(x, &y[jmid..], true, te);
         let mut max = MIN_SCORE;
         let mut imid = 0;
         let mut join_by_deletion = false;
