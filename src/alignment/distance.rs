@@ -61,36 +61,36 @@ pub fn hamming(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u64 {
 #[allow(non_snake_case)]
 pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
     let (m, n) = (alpha.len(), beta.len());
-    let mut M: Vec<u32> = Vec::with_capacity(m + 1); // the dynamic programming matrix (only 1 column stored)
-    let mut s: u32; // M[i - 1][j - 1]
-    let mut c: u32; // M[i - 1][j]
-    let mut a: u8; // alpha[i]
-    let mut b: u8; // beta[j]
+    let mut dp_matrix: Vec<u32> = Vec::with_capacity(m + 1); // the dynamic programming matrix (only 1 column stored)
+    let mut s_diag: u32; // dp_matrix[i - 1][j - 1]
+    let mut s_above: u32; // dp_matrix[i - 1][j]
+    let mut a: u8; // alpha[i - 1]
+    let mut b: u8; // beta[j - 1]
 
     // 0th column
     for i in 0..=(m as u32) {
-        M.push(i);
+        dp_matrix.push(i);
     }
     // columns 1 to n - 1
     for j in 1..=n {
-        s = (j - 1) as u32;
-        c = j as u32;
+        s_diag = (j - 1) as u32;
+        s_above = j as u32;
         b = unsafe { *beta.get_unchecked(j - 1) };
         // the for loops ensures safe indexing
         for i in 1..=m {
             unsafe {
                 a = *alpha.get_unchecked(i - 1);
-                c = min(
-                    s + if a == b { 0 } else { 1 },
-                    min(c + 1, M.get_unchecked(i) + 1),
+                s_above = min(
+                    s_diag + if a == b { 0 } else { 1 },
+                    min(s_above + 1, dp_matrix.get_unchecked(i) + 1),
                 );
-                s = *M.get_unchecked(i);
-                *M.get_unchecked_mut(i) = c;
+                s_diag = *dp_matrix.get_unchecked(i);
+                *dp_matrix.get_unchecked_mut(i) = s_above;
             }
         }
     }
 
-    M[m]
+    dp_matrix[m]
 }
 
 pub mod simd {
