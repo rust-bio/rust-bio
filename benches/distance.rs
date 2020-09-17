@@ -302,21 +302,6 @@ fn bench_levenshtein_dist_worst_str(b: &mut Bencher) {
     b.iter(|| levenshtein(STR_3, STR_4));
 }
 
-#[bench]
-fn bench_levenshtein_dist_equal_str_safe(b: &mut Bencher) {
-    b.iter(|| levenshtein_safe(STR_1, STR_1));
-}
-
-#[bench]
-fn bench_levenshtein_dist_diverse_str_safe(b: &mut Bencher) {
-    b.iter(|| levenshtein_safe(STR_1, STR_2));
-}
-
-#[bench]
-fn bench_levenshtein_dist_worst_str_safe(b: &mut Bencher) {
-    b.iter(|| levenshtein_safe(STR_3, STR_4));
-}
-
 // SIMD-accelerated edit distance routines below
 
 #[bench]

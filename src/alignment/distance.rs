@@ -93,39 +93,6 @@ pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
     dp_matrix[m]
 }
 
-#[allow(non_snake_case)]
-pub fn levenshtein_safe(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
-    let (m, n) = (alpha.len(), beta.len());
-    let mut dp_matrix: Vec<u32> = Vec::with_capacity(m + 1); // the dynamic programming matrix (only 1 column stored)
-    let mut s_diag: u32; // dp_matrix[i - 1][j - 1]
-    let mut s_above: u32; // dp_matrix[i - 1][j]
-    let mut a: u8; // alpha[i - 1]
-    let mut b: u8; // beta[j - 1]
-
-    // 0th column
-    for i in 0..=(m as u32) {
-        dp_matrix.push(i);
-    }
-    // columns 1 to n - 1
-    for j in 1..=n {
-        s_diag = (j - 1) as u32;
-        s_above = j as u32;
-        b = beta[j - 1];
-        // the for loops ensures safe indexing
-        for i in 1..=m {
-            a = alpha[i - 1];
-            s_above = min(
-                s_diag + if a == b { 0 } else { 1 },
-                min(s_above + 1, dp_matrix[i] + 1),
-            );
-            s_diag = dp_matrix[i];
-            dp_matrix[i] = s_above;
-        }
-    }
-
-    dp_matrix[m]
-}
-
 pub mod simd {
     //! String distance routines accelerated with Single Instruction Multiple Data (SIMD)
     //! intrinsics.
