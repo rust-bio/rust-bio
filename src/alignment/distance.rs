@@ -76,7 +76,7 @@ pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
         s_diag = (j - 1) as u32;
         s_above = j as u32;
         b = unsafe { *beta.get_unchecked(j - 1) };
-        // the for loops ensures safe indexing
+        // see discussion on PR #365 about using unsafe here
         for i in 1..=m {
             unsafe {
                 a = *alpha.get_unchecked(i - 1);
