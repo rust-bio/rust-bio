@@ -83,8 +83,7 @@ pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
                     s_diag + if a == b { 0 } else { 1 },
                     min(s_above + 1, dp_matrix.get_unchecked(i) + 1),
                 );
-                s_diag = *dp_matrix.get_unchecked(i);
-                *dp_matrix.get_unchecked_mut(i) = s_above;
+                s_diag = std::mem::replace(dp_matrix.get_unchecked_mut(i), s_above);
             }
         }
     }
