@@ -66,15 +66,18 @@ pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
     let mut a: u8; // alpha[i - 1]
     let mut b: u8; // beta[j - 1]
 
-    // 0th column
+    // 0th column (j = 0)
     for i in 0..=(m as u32) {
         dp_matrix.push(i);
     }
-    // columns 1 to n - 1
+    // columns 1 to n
     for j in 1..=n {
-        s_diag = (j - 1) as u32;
-        s_above = j as u32;
-        b = unsafe { *beta.get_unchecked(j - 1) };
+        {
+            // handles i = 0
+            s_diag = (j - 1) as u32;
+            s_above = j as u32;
+            b = unsafe { *beta.get_unchecked(j - 1) };
+        }
         // see discussion on PR #365 about using unsafe here
         for i in 1..=m {
             unsafe {
