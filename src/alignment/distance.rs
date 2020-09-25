@@ -58,7 +58,6 @@ pub fn hamming(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u64 {
 /// let ldist = levenshtein(x, y); // Distance is 5
 /// assert_eq!(ldist, 5);
 /// ```
-#[allow(non_snake_case)]
 pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
     let (m, n) = (alpha.len(), beta.len());
     let mut dp_matrix: Vec<u32> = Vec::with_capacity(m + 1); // the dynamic programming matrix (only 1 column stored)
