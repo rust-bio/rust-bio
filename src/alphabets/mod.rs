@@ -45,7 +45,7 @@ impl PartialEq for Alphabet {
     /// assert_eq!(Alphabet::new(b"ATCG"), Alphabet::new(b"ATCG"));
     /// assert_eq!(Alphabet::new(b"ATCG"), Alphabet::new(b"TAGC"));
     ///
-    /// assert_ne!(Alphabet::new(b"ATCG"), Alphabet::new(b"ATCC"));
+    /// assert_ne!(Alphabet::new(b"ATCG"), Alphabet::new(b"ATC"));
     ///
     /// ```
     fn eq(&self, other: &Self) -> bool {
