@@ -27,9 +27,33 @@ pub mod rna;
 pub type SymbolRanks = VecMap<u8>;
 
 /// Representation of an alphabet.
+#[derive(Debug)]
 pub struct Alphabet {
     pub symbols: BitSet,
 }
+
+/// Implement partial equality for an Alphabet such that two alphabets are equal if their symbols
+/// are equal.
+impl PartialEq for Alphabet {
+    /// Checks that an alphabet and the other have the same symbols, if so, return true.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::alphabets::Alphabet;
+    ///
+    /// assert_eq!(Alphabet::new(b"ATCG"), Alphabet::new(b"ATCG"));
+    /// assert_eq!(Alphabet::new(b"ATCG"), Alphabet::new(b"TAGC"));
+    ///
+    /// assert_ne!(Alphabet::new(b"ATCG"), Alphabet::new(b"ATCC"));
+    ///
+    /// ```
+    fn eq(&self, other: &Self) -> bool {
+        self.symbols == other.symbols
+    }
+}
+
+impl Eq for Alphabet {}
 
 impl Alphabet {
     /// Create new alphabet from given symbols.
