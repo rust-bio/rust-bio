@@ -11,6 +11,16 @@ readme = "README.md"
 license = "MIT"
 build = "build.rs"
 edition = "2018"
+include = [
+    "src/",
+    "tests/",
+    "benches/",
+    "Cargo.toml",
+    "build.rs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+]
 
 [package.metadata.release]
 pre-release-commit-message = "release version {{version}}"
