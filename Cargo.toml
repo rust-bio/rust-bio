@@ -63,3 +63,4 @@ features = ["stable_graph"]
 [dev-dependencies]
 proptest = "0.10"
 tempfile = "3.1.0"
+rusty-hook = "0.11"
