@@ -32,7 +32,6 @@
 //! // z differs from x and y's partial order alignment by 1 base
 //! assert_eq!(aligner.global(z).alignment().score, 5);
 //! ```
-//!
 
 use std::cmp::{max, Ordering};
 
