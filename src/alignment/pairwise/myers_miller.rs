@@ -637,8 +637,8 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         let mut dd: Vec<i32> = vec![MIN_SCORE; m + 1]; //                      32 * m bits
         let mut y_origin_cc: Vec<usize> = vec![0; m + 1]; //                usize * m bits
         let mut y_origin_dd: Vec<usize> = vec![0; m + 1]; //                usize * m bits
-        let mut y_origin_ii: Vec<usize> = vec![0; m + 1]; //                usize * m bits
         let mut e: i32; // I(i, j-1)
+        let mut e_y_origin: usize;
         let mut c: i32; // C(i, j-1)
         let mut c_y_origin;
         let mut s: i32; // C(i-1, j-1)
@@ -665,16 +665,16 @@ impl<F: MatchFunc + Sync> Aligner<F> {
 
             s_y_origin = j - 1;
             c_y_origin = j;
+            e_y_origin = j;
             // y_origin_cc[0] = j;
             q = y[j - 1];
             for i in 1..=m {
                 p = x[i - 1];
                 tmp = c + self.scoring.gap_open;
                 e = if e > tmp {
-                    y_origin_ii[i] = y_origin_ii[i - 1];
                     e
                 } else {
-                    y_origin_ii[i] = c_y_origin;
+                    e_y_origin = c_y_origin;
                     tmp
                 } + self.scoring.gap_extend;
 
@@ -697,7 +697,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
                 }
                 if e > c {
                     c = e;
-                    c_y_origin = y_origin_ii[i];
+                    c_y_origin = e_y_origin;
                 }
                 cc[i] = c;
                 y_origin_cc[i] = c_y_origin;
