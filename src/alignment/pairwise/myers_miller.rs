@@ -289,7 +289,13 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     /// Use six scalars and two vectors of length (N + 1), where N is the length
     /// of the shorter sequence.
     /// -Time complexity: $O(nm)$
-    fn cost_only(&self, x: TextSlice, y: TextSlice, rev: bool, tx: i32) -> (Vec<i32>, Vec<i32>) {
+    pub fn cost_only(
+        &self,
+        x: TextSlice,
+        y: TextSlice,
+        rev: bool,
+        tx: i32,
+    ) -> (Vec<i32>, Vec<i32>) {
         let (m, n) = (x.len() + 1, y.len() + 1);
         let mut cc: Vec<i32> = vec![0; n]; // match/mismatch    32 * n bits
         let mut dd: Vec<i32> = vec![0; n]; // deletion          32 * n bits
