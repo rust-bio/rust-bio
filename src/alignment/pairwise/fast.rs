@@ -131,11 +131,36 @@ impl<F: MatchFunc> Aligner<F> {
                 }
             }
 
-            let mut i = m - 1;
-            let mut j = n - 1;
-            let mut operations = Vec::with_capacity(m);
+            let (mut operations, i, j) = Self::traceback(&T, x, y, m - 1, n - 1, m);
+            operations.resize(operations.len() + i, AlignmentOperation::Ins); // reaching at (i, 0)
+            operations.resize(operations.len() + j, AlignmentOperation::Del); // reaching at (0, j)
 
-            let mut next_layer = T.get_unchecked(idx).get_s_bits(); // start from the last tb cell
+            operations.reverse();
+            Alignment {
+                score: *S.get_unchecked(m - 1),
+                xstart: 0,
+                ystart: 0,
+                xend: m - 1,
+                yend: n - 1,
+                xlen: m - 1,
+                ylen: n - 1,
+                operations,
+                mode: AlignmentMode::Global,
+            }
+        }
+    }
+
+    pub fn traceback(
+        T: &Vec<TracebackCell>,
+        x: TextSlice,
+        y: TextSlice,
+        mut i: usize,
+        mut j: usize,
+        m: usize,
+    ) -> (Vec<AlignmentOperation>, usize, usize) {
+        let mut operations = Vec::with_capacity(m);
+        unsafe {
+            let mut next_layer = T.get_unchecked(j * m + i).get_s_bits(); // start from the last tb cell
             loop {
                 match next_layer {
                     TB_START => break,
@@ -162,22 +187,8 @@ impl<F: MatchFunc> Aligner<F> {
                     _ => unreachable!(),
                 }
             }
-            operations.resize(operations.len() + i, AlignmentOperation::Ins); // reaching at (i, 0)
-            operations.resize(operations.len() + j, AlignmentOperation::Del); // reaching at (0, j)
-
-            operations.reverse();
-            Alignment {
-                score: *S.get_unchecked(m - 1),
-                xstart: 0,
-                ystart: 0,
-                xend: m - 1,
-                yend: n - 1,
-                xlen: m - 1,
-                ylen: n - 1,
-                operations,
-                mode: AlignmentMode::Global,
-            }
         }
+        (operations, i, j)
     }
 }
 
