@@ -42,7 +42,9 @@ impl<F: MatchFunc> Aligner<F> {
         let mut S = vec![0; m]; // 32 * m bits
         let mut D = vec![MIN_SCORE; m]; // 32 * m bits
         let mut e: i32;
-        let mut T: Vec<TracebackCell> = Vec::with_capacity(n * m); // traceback matrix // 8 * n * m bits
+        let mut T: Vec<TracebackCell> = vec![TracebackCell::new(); n * m]; // traceback matrix // 8 * n * m bits
+                                                                           // Vec::with_capacity(n * m);
+        let mut idx: usize = 0;
         let mut p: &u8; // TODO: is not using p/q faster?
         let mut q: &u8;
 
@@ -53,7 +55,7 @@ impl<F: MatchFunc> Aligner<F> {
         //         it should have been implied by the for loops that all indexing operations are in-bound but
         //         the compiler wasn't smart enough to notice this as of October 2020.
         unsafe {
-            T.push(TracebackCell::new()); // origin at T[0 * n + 0]
+            // T[0] = TracebackCell::new() // origin at T[0 * n + 0]
             let mut t = self.scoring.gap_open;
             for i in 1..m {
                 t += self.scoring.gap_extend;
@@ -61,7 +63,8 @@ impl<F: MatchFunc> Aligner<F> {
                 *S.get_unchecked_mut(i) = t;
                 let mut tb = TracebackCell::new();
                 tb.set_s_bits(TB_INS);
-                T.push(tb); // T[0 * m + i]
+                idx += 1;
+                *T.get_unchecked_mut(idx) = tb; // T[0 * m + i]
             }
 
             t = self.scoring.gap_open;
@@ -74,10 +77,10 @@ impl<F: MatchFunc> Aligner<F> {
                 *S.get_unchecked_mut(0) = c;
                 e = MIN_SCORE;
                 // D[0] = t will not be read
-
                 let mut tb = TracebackCell::new();
                 tb.set_s_bits(TB_DEL);
-                T.push(tb); // T[i * n + 0]
+                idx += 1;
+                *T.get_unchecked_mut(idx) = tb; // T[j * m + 0]
 
                 let mut score_1: i32;
                 let mut score_2: i32;
@@ -94,9 +97,11 @@ impl<F: MatchFunc> Aligner<F> {
                         tb.set_i_bits(TB_INS);
                         score_1
                     } else {
-                        tb.set_i_bits(T.get_unchecked(T.len() - 1).get_s_bits()); // T[i-1][j]
+                        tb.set_i_bits(T.get_unchecked(idx).get_s_bits()); // T[i-1][j]
                         score_2
                     };
+
+                    idx += 1; // ! update idx
 
                     score_1 = *D_i + self.scoring.gap_extend;
                     score_2 = *S_i + self.scoring.gap_open + self.scoring.gap_extend;
@@ -104,7 +109,7 @@ impl<F: MatchFunc> Aligner<F> {
                         tb.set_d_bits(TB_DEL);
                         score_1
                     } else {
-                        tb.set_d_bits(T.get_unchecked(T.len() - m).get_s_bits()); //T[i][j-1]
+                        tb.set_d_bits(T.get_unchecked(idx - m).get_s_bits()); //T[i][j-1]
                         score_2
                     };
 
@@ -122,10 +127,9 @@ impl<F: MatchFunc> Aligner<F> {
                     }
 
                     s = *S_i;
-                    *S_i = best_s_score; // ! S[i] updated
+                    *S_i = best_s_score;
                     c = best_s_score;
-
-                    T.push(tb); // T[j * (m+1) + i]
+                    *T.get_unchecked_mut(idx) = tb;
                 }
             }
 
@@ -133,7 +137,7 @@ impl<F: MatchFunc> Aligner<F> {
             let mut j = n - 1;
             let mut operations = Vec::with_capacity(m);
 
-            let mut next_layer = T.get_unchecked(T.len() - 1).get_s_bits(); // start from the last tb cell
+            let mut next_layer = T.get_unchecked(idx).get_s_bits(); // start from the last tb cell
             loop {
                 match next_layer {
                     TB_START => break,
@@ -244,13 +248,6 @@ impl TracebackCell {
     #[inline(always)]
     pub fn get_s_bits(self) -> u8 {
         self.get_bits(S_POS)
-    }
-
-    /// Set all matrices to the same value.
-    pub fn set_all(&mut self, value: u8) {
-        self.set_i_bits(value);
-        self.set_d_bits(value);
-        self.set_s_bits(value);
     }
 }
 
