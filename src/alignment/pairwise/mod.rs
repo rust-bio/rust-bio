@@ -141,6 +141,30 @@ use crate::utils::TextSlice;
 
 pub mod banded;
 
+#[macro_export]
+macro_rules! scoring {
+    ($match_score:expr,$mismatch_score:expr) => {
+        |a: u8, b: u8| {
+            if a == b {
+                $match_score
+            } else {
+                $mismatch_score
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! aligner {
+    ($match_score:expr,$mismatch_score:expr,$gap_open:expr,$gap_extend:expr) => {
+        Aligner::new(
+            $gap_open,
+            $gap_extend,
+            scoring!($match_score, $mismatch_score),
+        );
+    };
+}
+
 /// Value to use as a 'negative infinity' score. Should be close to `i32::MIN`,
 /// but avoid underflow when used with reasonable scoring parameters or even
 /// adding two negative infinities. Use ~ `0.4 * i32::MIN`
@@ -1226,6 +1250,22 @@ mod tests {
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
         let alignment = aligner.global(x, y);
 
+        println!("aln:\n{}", alignment.pretty(x, y));
+
+        let mut correct = Vec::new();
+        correct.extend(repeat(Match).take(11));
+        correct.extend(repeat(Ins).take(10));
+        correct.extend(repeat(Match).take(17));
+
+        assert_eq!(alignment.operations, correct);
+    }
+
+    #[test]
+    fn test_global_affine_ins2_macro() {
+        let x = b"AGATAGATAGATAGGGAGTTGTGTAGATGATCCACAGT";
+        let y = b"AGATAGATAGATGTAGATGATCCACAGT";
+        let mut aligner: Aligner<_> = aligner!(1, -1, -5, -1);
+        let alignment = aligner.global(x, y);
         println!("aln:\n{}", alignment.pretty(x, y));
 
         let mut correct = Vec::new();
