@@ -111,22 +111,22 @@ impl<F: MatchFunc> Aligner<F> {
                         score_2
                     };
 
-                    let mut best_s_score = s + self.scoring.match_fn.score(*p, *q);
+                    // c is becoming S[i][j]
+                    c = s + self.scoring.match_fn.score(*p, *q);
                     tb.set_s_bits(TB_MATCH_OR_SUBST); // no need to be exact at this stage
 
-                    if e > best_s_score {
-                        best_s_score = e;
+                    if e > c {
+                        c = e;
                         tb.set_s_bits(TB_INS);
                     }
 
-                    if *D_i > best_s_score {
-                        best_s_score = *D_i;
+                    if *D_i > c {
+                        c = *D_i;
                         tb.set_s_bits(TB_DEL);
                     }
 
                     s = *S_i;
-                    *S_i = best_s_score;
-                    c = best_s_score;
+                    *S_i = c;
                     *T.get_unchecked_mut(idx) = tb;
                 }
             }
@@ -146,6 +146,110 @@ impl<F: MatchFunc> Aligner<F> {
                 ylen: n - 1,
                 operations,
                 mode: AlignmentMode::Global,
+            }
+        }
+    }
+
+    pub fn local(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
+        let (m, n) = (x.len() + 1, y.len() + 1);
+        let mut S = vec![0; m]; //                                            ! 32 * m bits
+        let mut D = vec![MIN_SCORE; m]; //                                    ! 32 * m bits
+        let mut T: Vec<TracebackCell> = vec![TracebackCell::new(); n * m]; // ! 8 * n * m bits
+        let mut s: i32;
+        let mut c: i32;
+        let mut e: i32;
+        let mut idx: usize = m - 1;
+        let mut p: &u8;
+        let mut q: &u8;
+        let mut S_i: &mut i32;
+        let mut D_i: &mut i32;
+        let mut score_1: i32;
+        let mut score_2: i32;
+        let mut max_score: i32 = MIN_SCORE;
+        let mut max_coords: [usize; 2] = [0, 0];
+
+        unsafe {
+            // all cells in the first column can be the origin
+            for j in 1..n {
+                s = 0;
+                c = 0;
+                *S.get_unchecked_mut(0) = 0;
+                e = MIN_SCORE;
+                idx += 1;
+                *T.get_unchecked_mut(idx) = TracebackCell::new(); // T[j * m + 0] // all cells in the first row can be the origin
+                q = y.get_unchecked(j - 1);
+                for i in 1..m {
+                    S_i = S.get_unchecked_mut(i);
+                    D_i = D.get_unchecked_mut(i);
+                    p = x.get_unchecked(i - 1);
+                    let mut tb = TracebackCell::new();
+
+                    score_1 = e + self.scoring.gap_extend;
+                    score_2 = c + self.scoring.gap_open + self.scoring.gap_extend;
+                    e = if score_1 > score_2 {
+                        tb.set_i_bits(TB_INS);
+                        score_1
+                    } else {
+                        tb.set_i_bits(T.get_unchecked(idx).get_s_bits()); // T[i-1][j]
+                        score_2
+                    };
+
+                    idx += 1; // ! update idx
+
+                    score_1 = *D_i + self.scoring.gap_extend;
+                    score_2 = *S_i + self.scoring.gap_open + self.scoring.gap_extend;
+                    *D_i = if score_1 > score_2 {
+                        tb.set_d_bits(TB_DEL);
+                        score_1
+                    } else {
+                        tb.set_d_bits(T.get_unchecked(idx - m).get_s_bits()); //T[i][j-1]
+                        score_2
+                    };
+
+                    c = s + self.scoring.match_fn.score(*p, *q);
+                    tb.set_s_bits(TB_MATCH_OR_SUBST); // no need to be exact at this stage
+
+                    if e > c {
+                        c = e;
+                        tb.set_s_bits(TB_INS);
+                    }
+
+                    if *D_i > c {
+                        c = *D_i;
+                        tb.set_s_bits(TB_DEL);
+                    }
+
+                    if c < 0 {
+                        c = 0;
+                        tb = TracebackCell::new(); // reset origin
+                    }
+
+                    if c >= max_score {
+                        max_score = c;
+                        max_coords = [i, j];
+                    }
+
+                    s = *S_i;
+                    *S_i = c;
+                    *T.get_unchecked_mut(idx) = tb;
+                }
+            }
+
+            let (xend, yend) = (max_coords[0], max_coords[1]);
+
+            let (mut operations, xstart, ystart) = Self::traceback(&T, x, y, xend, yend, m);
+
+            operations.reverse();
+            Alignment {
+                score: max_score,
+                xstart,
+                ystart,
+                xend,
+                yend,
+                xlen: xend - xstart,
+                ylen: yend - ystart,
+                operations,
+                mode: AlignmentMode::Local,
             }
         }
     }
@@ -355,5 +459,31 @@ mod tests {
             &alignment.operations,
             &[Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
         ))
+    }
+
+    #[test]
+    fn test_local_affine_ins2() {
+        let x = b"ACGTATCATAGATAGATAGGGTTGTGTAGATGATCCACAG";
+        let y = b"CGTATCATAGATAGATGTAGATGATCCACAGT";
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let aligner = Aligner::new(-5, -1, score);
+        let alignment = aligner.local(x, y);
+        assert_eq!(alignment.xstart, 1);
+        assert_eq!(alignment.ystart, 0);
+    }
+
+    #[test]
+    fn test_local() {
+        let x = b"ACCGTGGAT";
+        let y = b"AAAAACCGTTGAT";
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let aligner = Aligner::new(-5, -1, score);
+        let alignment = aligner.local(x, y);
+        assert_eq!(alignment.ystart, 4);
+        assert_eq!(alignment.xstart, 0);
+        assert!(equivalent_operations(
+            &alignment.operations,
+            &[Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+        ));
     }
 }
