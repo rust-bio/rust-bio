@@ -192,3 +192,31 @@ fn bench_aligner_wc_global_fast_unsafe(b: &mut Bencher) {
     let aligner = fast::Aligner::new(-5, -1, &score);
     b.iter(|| aligner.global_unsafe(STR_1, STR_2));
 }
+
+#[bench]
+fn bench_aligner_wc_global_cost_only_no_push_no_pq(b: &mut Bencher) {
+    let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+    let aligner = myers_miller::Aligner::new(-5, -1, &score);
+    b.iter(|| aligner.cost_only_no_push_no_pq(STR_1, STR_2, false, -5));
+}
+
+#[bench]
+fn bench_aligner_wc_global_cost_only_push_no_pq(b: &mut Bencher) {
+    let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+    let aligner = myers_miller::Aligner::new(-5, -1, &score);
+    b.iter(|| aligner.cost_only_push_no_pq(STR_1, STR_2, false, -5));
+}
+
+#[bench]
+fn bench_aligner_wc_global_cost_only_no_push_pq(b: &mut Bencher) {
+    let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+    let aligner = myers_miller::Aligner::new(-5, -1, &score);
+    b.iter(|| aligner.cost_only_no_push_pq(STR_1, STR_2, false, -5));
+}
+
+#[bench]
+fn bench_aligner_wc_global_cost_only_push_pq(b: &mut Bencher) {
+    let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+    let aligner = myers_miller::Aligner::new(-5, -1, &score);
+    b.iter(|| aligner.cost_only_push_pq(STR_1, STR_2, false, -5));
+}
