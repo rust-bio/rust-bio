@@ -298,6 +298,55 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     ) -> (Vec<i32>, Vec<i32>) {
         let (m, n) = (x.len() + 1, y.len() + 1);
         let mut cc: Vec<i32> = vec![0; n]; // match/mismatch    32 * n bits
+        let mut dd: Vec<i32> = vec![i32::MIN; n]; // deletion          32 * n bits
+        let mut e: i32; // I(i, j-1)
+        let mut c: i32; // C(i, j-1)
+        let mut s: i32; // C(i-1, j-1)
+        let mut t: i32;
+        t = self.scoring.gap_open;
+        for j in 1..n {
+            t += self.scoring.gap_extend;
+            cc[j] = t;
+        }
+        t = tx; // originally self.scoring.gap_open;
+        for i in 1..m {
+            s = cc[0];
+            t += self.scoring.gap_extend;
+            c = t;
+            cc[0] = c;
+            // dd[0] = c;
+            e = i32::MIN;
+            for j in 1..n {
+                e = max(e, c + self.scoring.gap_open) + self.scoring.gap_extend; // update e to I[i,j]
+                dd[j] = max(dd[j], cc[j] + self.scoring.gap_open) + self.scoring.gap_extend; // cc[j] = C[i-1, j]
+                c = if rev {
+                    max(
+                        max(dd[j], e),
+                        s + self.scoring.match_fn.score(x[m - i - 1], y[n - j - 1]),
+                    )
+                } else {
+                    max(
+                        max(dd[j], e),
+                        s + self.scoring.match_fn.score(x[i - 1], y[j - 1]),
+                    )
+                };
+                s = cc[j];
+                cc[j] = c;
+            }
+        }
+        dd[0] = cc[0]; // otherwise indels at start/end will be free
+        (cc, dd)
+    }
+
+    pub fn cost_only_redundant(
+        &self,
+        x: TextSlice,
+        y: TextSlice,
+        rev: bool,
+        tx: i32,
+    ) -> (Vec<i32>, Vec<i32>) {
+        let (m, n) = (x.len() + 1, y.len() + 1);
+        let mut cc: Vec<i32> = vec![0; n]; // match/mismatch    32 * n bits
         let mut dd: Vec<i32> = vec![0; n]; // deletion          32 * n bits
         let mut e: i32; // I(i, j-1)
         let mut c: i32; // C(i, j-1)

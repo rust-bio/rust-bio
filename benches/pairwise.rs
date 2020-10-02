@@ -180,15 +180,15 @@ fn bench_aligner_wc_local_myers_miller(b: &mut Bencher) {
 }
 
 #[bench]
+fn bench_aligner_wc_global_cost_only_redundant(b: &mut Bencher) {
+    let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+    let aligner = myers_miller::Aligner::new(-5, -1, &score);
+    b.iter(|| aligner.cost_only_redundant(STR_1, STR_2, false, -5));
+}
+
+#[bench]
 fn bench_aligner_wc_global_cost_only(b: &mut Bencher) {
     let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
     let aligner = myers_miller::Aligner::new(-5, -1, &score);
     b.iter(|| aligner.cost_only(STR_1, STR_2, false, -5));
-}
-
-#[bench]
-fn bench_aligner_wc_global_cost_only_rev(b: &mut Bencher) {
-    let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-    let aligner = myers_miller::Aligner::new(-5, -1, &score);
-    b.iter(|| aligner.cost_only(STR_2, STR_1, false, -5));
 }
