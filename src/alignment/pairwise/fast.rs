@@ -39,17 +39,19 @@ impl<F: MatchFunc> Aligner<F> {
     /// ```
     pub fn global(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         let (m, n) = (x.len() + 1, y.len() + 1);
-        let mut S = vec![0; m]; // 32 * m bits
-        let mut D = vec![MIN_SCORE; m]; // 32 * m bits
-        let mut e: i32;
-        let mut T: Vec<TracebackCell> = vec![TracebackCell::new(); n * m]; // traceback matrix // 8 * n * m bits
-                                                                           // Vec::with_capacity(n * m);
-        let mut idx: usize = 0;
-        let mut p: &u8; // TODO: is not using p/q faster?
-        let mut q: &u8;
-
-        let mut S_i: &mut i32;
-        let mut D_i: &mut i32;
+        let mut S = vec![0; m]; //                                            ! 32 * m bits
+        let mut D = vec![MIN_SCORE; m]; //                                    ! 32 * m bits
+        let mut T: Vec<TracebackCell> = vec![TracebackCell::new(); n * m]; // ! 8 * n * m bits
+        let mut s: i32; // S[i - 1][j - 1] or S[i][j - 1]
+        let mut c: i32; // S[i - 1][j] or S[i][j]
+        let mut e: i32; // I[i - 1] or I [i]
+        let mut idx: usize = 0; // j * m + i
+        let mut p: &u8; // x[i] (x[i - 1]) // TODO: is not using p/q faster?
+        let mut q: &u8; // y[j] (y[j - 1])
+        let mut S_i: &mut i32; // S[i]
+        let mut D_i: &mut i32; // D[i]
+        let mut score_1: i32; // used when determining D[i] and I[i]
+        let mut score_2: i32; // used when determining D[i] and I[i]
 
         // SAFETY: unchecked indexing is used here. x, y, S, D, T all have a fixed size related to n and/or m;
         //         it should have been implied by the for loops that all indexing operations are in-bound but
@@ -68,8 +70,6 @@ impl<F: MatchFunc> Aligner<F> {
             }
 
             t = self.scoring.gap_open;
-            let mut s: i32;
-            let mut c: i32;
             for j in 1..n {
                 s = *S.get_unchecked(0);
                 t += self.scoring.gap_extend;
@@ -82,8 +82,6 @@ impl<F: MatchFunc> Aligner<F> {
                 idx += 1;
                 *T.get_unchecked_mut(idx) = tb; // T[j * m + 0]
 
-                let mut score_1: i32;
-                let mut score_2: i32;
                 q = y.get_unchecked(j - 1);
                 for i in 1..m {
                     S_i = S.get_unchecked_mut(i);
@@ -154,7 +152,7 @@ impl<F: MatchFunc> Aligner<F> {
                     TB_MATCH_OR_SUBST => {
                         i -= 1;
                         j -= 1;
-                        next_layer = T.get_unchecked(j * m + i).get_s_bits(); // T[i-1][j-1]
+                        next_layer = T.get_unchecked(j * m + i).get_s_bits(); // T[i - 1][j - 1]
                         operations.push(if *y.get_unchecked(j) == *x.get_unchecked(i) {
                             AlignmentOperation::Match
                         } else {
