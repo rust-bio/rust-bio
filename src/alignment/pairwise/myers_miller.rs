@@ -552,7 +552,6 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         let mut t: i32;
         let mut p: u8;
         let mut q: u8;
-        cc.push(0);
         t = self.scoring.gap_open;
         for i in 1..m {
             t += self.scoring.gap_extend;
