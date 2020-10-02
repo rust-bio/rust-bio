@@ -64,7 +64,7 @@ impl<F: MatchFunc> Aligner<F> {
                 // I[0][j] = t will not be read
                 *S.get_unchecked_mut(i) = t;
                 let mut tb = TracebackCell::new();
-                tb.set_s_bits(TB_INS);
+                tb.set_s_bits(TB_UP);
                 idx += 1;
                 *T.get_unchecked_mut(idx) = tb; // T[0 * m + i]
             }
@@ -78,7 +78,7 @@ impl<F: MatchFunc> Aligner<F> {
                 e = MIN_SCORE;
                 // D[0] = t will not be read
                 let mut tb = TracebackCell::new();
-                tb.set_s_bits(TB_DEL);
+                tb.set_s_bits(TB_LEFT);
                 idx += 1;
                 *T.get_unchecked_mut(idx) = tb; // T[j * m + 0]
 
@@ -92,7 +92,7 @@ impl<F: MatchFunc> Aligner<F> {
                     score_1 = e + self.scoring.gap_extend;
                     score_2 = c + self.scoring.gap_open + self.scoring.gap_extend;
                     e = if score_1 > score_2 {
-                        tb.set_i_bits(TB_INS);
+                        tb.set_i_bits(TB_UP);
                         score_1
                     } else {
                         tb.set_i_bits(T.get_unchecked(idx).get_s_bits()); // T[i-1][j]
@@ -104,7 +104,7 @@ impl<F: MatchFunc> Aligner<F> {
                     score_1 = *D_i + self.scoring.gap_extend;
                     score_2 = *S_i + self.scoring.gap_open + self.scoring.gap_extend;
                     *D_i = if score_1 > score_2 {
-                        tb.set_d_bits(TB_DEL);
+                        tb.set_d_bits(TB_LEFT);
                         score_1
                     } else {
                         tb.set_d_bits(T.get_unchecked(idx - m).get_s_bits()); //T[i][j-1]
@@ -113,16 +113,16 @@ impl<F: MatchFunc> Aligner<F> {
 
                     // c is becoming S[i][j]
                     c = s + self.scoring.match_fn.score(*p, *q);
-                    tb.set_s_bits(TB_MATCH_OR_SUBST); // no need to be exact at this stage
+                    tb.set_s_bits(TB_DIAG); // no need to be exact at this stage
 
                     if e > c {
                         c = e;
-                        tb.set_s_bits(TB_INS);
+                        tb.set_s_bits(TB_UP);
                     }
 
                     if *D_i > c {
                         c = *D_i;
-                        tb.set_s_bits(TB_DEL);
+                        tb.set_s_bits(TB_LEFT);
                     }
 
                     s = *S_i;
@@ -187,7 +187,7 @@ impl<F: MatchFunc> Aligner<F> {
                     score_1 = e + self.scoring.gap_extend;
                     score_2 = c + self.scoring.gap_open + self.scoring.gap_extend;
                     e = if score_1 > score_2 {
-                        tb.set_i_bits(TB_INS);
+                        tb.set_i_bits(TB_UP);
                         score_1
                     } else {
                         tb.set_i_bits(T.get_unchecked(idx).get_s_bits()); // T[i-1][j]
@@ -199,7 +199,7 @@ impl<F: MatchFunc> Aligner<F> {
                     score_1 = *D_i + self.scoring.gap_extend;
                     score_2 = *S_i + self.scoring.gap_open + self.scoring.gap_extend;
                     *D_i = if score_1 > score_2 {
-                        tb.set_d_bits(TB_DEL);
+                        tb.set_d_bits(TB_LEFT);
                         score_1
                     } else {
                         tb.set_d_bits(T.get_unchecked(idx - m).get_s_bits()); //T[i][j-1]
@@ -207,16 +207,16 @@ impl<F: MatchFunc> Aligner<F> {
                     };
 
                     c = s + self.scoring.match_fn.score(*p, *q);
-                    tb.set_s_bits(TB_MATCH_OR_SUBST); // no need to be exact at this stage
+                    tb.set_s_bits(TB_DIAG); // no need to be exact at this stage
 
                     if e > c {
                         c = e;
-                        tb.set_s_bits(TB_INS);
+                        tb.set_s_bits(TB_UP);
                     }
 
                     if *D_i > c {
                         c = *D_i;
-                        tb.set_s_bits(TB_DEL);
+                        tb.set_s_bits(TB_LEFT);
                     }
 
                     if c < 0 {
@@ -268,17 +268,17 @@ impl<F: MatchFunc> Aligner<F> {
             loop {
                 match next_layer {
                     TB_START => break,
-                    TB_INS => {
+                    TB_UP => {
                         operations.push(AlignmentOperation::Ins);
                         next_layer = T.get_unchecked(j * m + i).get_i_bits();
                         i -= 1;
                     }
-                    TB_DEL => {
+                    TB_LEFT => {
                         operations.push(AlignmentOperation::Del);
                         next_layer = T.get_unchecked(j * m + i).get_d_bits();
                         j -= 1;
                     }
-                    TB_MATCH_OR_SUBST => {
+                    TB_DIAG => {
                         i -= 1;
                         j -= 1;
                         next_layer = T.get_unchecked(j * m + i).get_s_bits(); // T[i - 1][j - 1]
@@ -300,9 +300,9 @@ impl<F: MatchFunc> Aligner<F> {
 pub struct TracebackCell(u8);
 
 const TB_START: u8 = 0b00;
-const TB_INS: u8 = 0b01;
-const TB_DEL: u8 = 0b10;
-const TB_MATCH_OR_SUBST: u8 = 0b11;
+const TB_UP: u8 = 0b01;
+const TB_LEFT: u8 = 0b10;
+const TB_DIAG: u8 = 0b11;
 
 // Traceback bit positions (LSB)
 const I_POS: u8 = 0; // Meaning bits 0,1 corresponds to I and so on
