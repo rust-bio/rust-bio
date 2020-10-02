@@ -450,51 +450,40 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         let mut e: i32; // I(i, j-1)
         let mut c: i32; // C(i, j-1)
         let mut s: i32; // C(i-1, j-1)
-        let mut t: i32 = self.scoring.gap_open;
-        unsafe {
-            for i in 1..m {
-                t += self.scoring.gap_extend;
-                *cc.get_unchecked_mut(i) = t;
-            }
-            t = tx; // originally self.scoring.gap_open;
-            for j in 1..n {
-                s = *cc.get_unchecked(0);
-
-                t += self.scoring.gap_extend;
-                c = t;
-                *cc.get_unchecked_mut(0) = c;
-                // dd[0] = c;
-                e = i32::MIN;
-                for i in 1..m {
-                    e = max(e, c + self.scoring.gap_open) + self.scoring.gap_extend; // update e to I[i,j]
-                    *dd.get_unchecked_mut(i) = max(
-                        *dd.get_unchecked(i),
-                        *cc.get_unchecked(i) + self.scoring.gap_open,
-                    ) + self.scoring.gap_extend; // cc[j] = C[i-1, j]
-                    c = if rev {
-                        max(
-                            max(*dd.get_unchecked(i), e),
-                            s + self
-                                .scoring
-                                .match_fn
-                                .score(*x.get_unchecked(m - i - 1), *y.get_unchecked(n - j - 1)),
-                        )
-                    } else {
-                        max(
-                            max(*dd.get_unchecked(i), e),
-                            s + self
-                                .scoring
-                                .match_fn
-                                .score(*x.get_unchecked(i - 1), *y.get_unchecked(j - 1)),
-                        )
-                    };
-                    s = *cc.get_unchecked(i);
-                    *cc.get_unchecked_mut(i) = c;
-                }
-            }
-            *dd.get_unchecked_mut(0) = *cc.get_unchecked(0); // only need to fill cost of deletion in dd once
-            (cc, dd)
+        let mut t: i32;
+        t = self.scoring.gap_open;
+        for i in 1..m {
+            t += self.scoring.gap_extend;
+            cc[i] = t;
         }
+        t = tx; // originally self.scoring.gap_open;
+        for j in 1..n {
+            s = cc[0];
+            t += self.scoring.gap_extend;
+            c = t;
+            cc[0] = c;
+            // dd[0] = c;
+            e = i32::MIN;
+            for i in 1..m {
+                e = max(e, c + self.scoring.gap_open) + self.scoring.gap_extend; // update e to I[i,j]
+                dd[i] = max(dd[i], cc[i] + self.scoring.gap_open) + self.scoring.gap_extend; // cc[j] = C[i-1, j]
+                c = if rev {
+                    max(
+                        max(dd[i], e),
+                        s + self.scoring.match_fn.score(x[m - i - 1], y[n - j - 1]),
+                    )
+                } else {
+                    max(
+                        max(dd[i], e),
+                        s + self.scoring.match_fn.score(x[i - 1], y[j - 1]),
+                    )
+                };
+                s = cc[i];
+                cc[i] = c;
+            }
+        }
+        dd[0] = cc[0]; // only need to fill cost of deletion in dd once
+        (cc, dd)
     }
 
     pub fn cost_only_push_no_pq(
@@ -518,44 +507,32 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             cc.push(t);
         }
         t = tx;
-        unsafe {
-            for j in 1..n {
-                s = *cc.get_unchecked(0);
-
-                t += self.scoring.gap_extend;
-                c = t;
-                *cc.get_unchecked_mut(0) = c;
-                // dd[0] = c;
-                e = i32::MIN;
-                for i in 1..m {
-                    e = max(e, c + self.scoring.gap_open) + self.scoring.gap_extend; // update e to I[i,j]
-                    *dd.get_unchecked_mut(i) = max(
-                        *dd.get_unchecked(i),
-                        *cc.get_unchecked(i) + self.scoring.gap_open,
-                    ) + self.scoring.gap_extend; // cc[j] = C[i-1, j]
-                    c = if rev {
-                        max(
-                            max(*dd.get_unchecked(i), e),
-                            s + self
-                                .scoring
-                                .match_fn
-                                .score(*x.get_unchecked(m - i - 1), *y.get_unchecked(n - j - 1)),
-                        )
-                    } else {
-                        max(
-                            max(*dd.get_unchecked(i), e),
-                            s + self
-                                .scoring
-                                .match_fn
-                                .score(*x.get_unchecked(i - 1), *y.get_unchecked(j - 1)),
-                        )
-                    };
-                    s = *cc.get_unchecked(i);
-                    *cc.get_unchecked_mut(i) = c;
-                }
+        for j in 1..n {
+            s = cc[0];
+            t += self.scoring.gap_extend;
+            c = t;
+            cc[0] = c;
+            // dd[0] = c;
+            e = i32::MIN;
+            for i in 1..m {
+                e = max(e, c + self.scoring.gap_open) + self.scoring.gap_extend; // update e to I[i,j]
+                dd[i] = max(dd[i], cc[i] + self.scoring.gap_open) + self.scoring.gap_extend; // cc[i] = C[i, j - 1]
+                c = if rev {
+                    max(
+                        max(dd[i], e),
+                        s + self.scoring.match_fn.score(x[m - i - 1], y[n - j - 1]),
+                    )
+                } else {
+                    max(
+                        max(dd[i], e),
+                        s + self.scoring.match_fn.score(x[i - 1], y[j - 1]),
+                    )
+                };
+                s = cc[i];
+                cc[i] = c;
             }
-            *dd.get_unchecked_mut(0) = *cc.get_unchecked(0); // only need to fill cost of deletion in dd once
-        } // only need to fill cost of deletion in dd once
+        }
+        dd[0] = cc[0]; // only need to fill cost of deletion in dd once
         (cc, dd)
     }
 
@@ -576,46 +553,29 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         let mut p: u8;
         let mut q: u8;
         t = self.scoring.gap_open;
-        unsafe {
+        for i in 1..m {
+            t += self.scoring.gap_extend;
+            cc[i] = t;
+        }
+        t = tx;
+        for j in 1..n {
+            s = cc[0];
+            t += self.scoring.gap_extend;
+            c = t;
+            cc[0] = c;
+            // dd[0] = c;
+            e = i32::MIN;
+            q = if rev { y[n - j - 1] } else { y[j - 1] };
             for i in 1..m {
-                t += self.scoring.gap_extend;
-                cc[i] = t;
+                p = if rev { x[m - i - 1] } else { x[i - 1] };
+                e = max(e, c + self.scoring.gap_open) + self.scoring.gap_extend; // update e to I[i,j]
+                dd[i] = max(dd[i], cc[i] + self.scoring.gap_open) + self.scoring.gap_extend; // cc[i] = C[i, j - 1]
+                c = max(max(dd[i], e), s + self.scoring.match_fn.score(p, q));
+                s = cc[i];
+                cc[i] = c;
             }
-            t = tx;
-            for j in 1..n {
-                s = *cc.get_unchecked(0);
-
-                t += self.scoring.gap_extend;
-                c = t;
-                *cc.get_unchecked_mut(0) = c;
-                // dd[0] = c;
-                e = i32::MIN;
-                q = if rev {
-                    *y.get_unchecked(n - j - 1)
-                } else {
-                    *y.get_unchecked(j - 1)
-                };
-                for i in 1..m {
-                    p = if rev {
-                        *x.get_unchecked(m - i - 1)
-                    } else {
-                        *x.get_unchecked(i - 1)
-                    };
-                    e = max(e, c + self.scoring.gap_open) + self.scoring.gap_extend; // update e to I[i,j]
-                    *dd.get_unchecked_mut(i) = max(
-                        *dd.get_unchecked(i),
-                        *cc.get_unchecked(i) + self.scoring.gap_open,
-                    ) + self.scoring.gap_extend; // cc[j] = C[i-1, j]
-                    c = max(
-                        max(*dd.get_unchecked(i), e),
-                        s + self.scoring.match_fn.score(p, q),
-                    );
-                    s = *cc.get_unchecked(i);
-                    *cc.get_unchecked_mut(i) = c;
-                }
-            }
-            *dd.get_unchecked_mut(0) = *cc.get_unchecked(0);
-        } // only need to fill cost of deletion in dd once // only need to fill cost of deletion in dd once
+        }
+        dd[0] = cc[0]; // only need to fill cost of deletion in dd once
         (cc, dd)
     }
 
@@ -642,41 +602,24 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             cc.push(t);
         }
         t = tx;
-        unsafe {
-            for j in 1..n {
-                s = *cc.get_unchecked(0);
-
-                t += self.scoring.gap_extend;
-                c = t;
-                *cc.get_unchecked_mut(0) = c;
-                // dd[0] = c;
-                e = i32::MIN;
-                q = if rev {
-                    *y.get_unchecked(n - j - 1)
-                } else {
-                    *y.get_unchecked(j - 1)
-                };
-                for i in 1..m {
-                    p = if rev {
-                        *x.get_unchecked(m - i - 1)
-                    } else {
-                        *x.get_unchecked(i - 1)
-                    };
-                    e = max(e, c + self.scoring.gap_open) + self.scoring.gap_extend; // update e to I[i,j]
-                    *dd.get_unchecked_mut(i) = max(
-                        *dd.get_unchecked(i),
-                        *cc.get_unchecked(i) + self.scoring.gap_open,
-                    ) + self.scoring.gap_extend; // cc[j] = C[i-1, j]
-                    c = max(
-                        max(*dd.get_unchecked(i), e),
-                        s + self.scoring.match_fn.score(p, q),
-                    );
-                    s = *cc.get_unchecked(i);
-                    *cc.get_unchecked_mut(i) = c;
-                }
+        for j in 1..n {
+            s = cc[0];
+            t += self.scoring.gap_extend;
+            c = t;
+            cc[0] = c;
+            // dd[0] = c;
+            e = i32::MIN;
+            q = if rev { y[n - j - 1] } else { y[j - 1] };
+            for i in 1..m {
+                p = if rev { x[m - i - 1] } else { x[i - 1] };
+                e = max(e, c + self.scoring.gap_open) + self.scoring.gap_extend; // update e to I[i,j]
+                dd[i] = max(dd[i], cc[i] + self.scoring.gap_open) + self.scoring.gap_extend; // cc[i] = C[i, j - 1]
+                c = max(max(dd[i], e), s + self.scoring.match_fn.score(p, q));
+                s = cc[i];
+                cc[i] = c;
             }
-            *dd.get_unchecked_mut(0) = *cc.get_unchecked(0);
-        } // only need to fill cost of deletion in dd once // only need to fill cost of deletion in dd once
+        }
+        dd[0] = cc[0]; // only need to fill cost of deletion in dd once
         (cc, dd)
     }
 
