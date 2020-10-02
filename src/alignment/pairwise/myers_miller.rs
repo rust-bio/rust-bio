@@ -48,7 +48,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         Aligner {
             scoring: Scoring::new(gap_open, gap_extend, match_fn),
-            parallel: cfg!(feature = "parallel"),
+            parallel: true, //cfg!(feature = "parallel"),
         }
     }
 
@@ -299,9 +299,18 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             // x.len() === (&x[..imid]).len() + (&x[imid..]).len()
             // so the sum of the space used by the two subtasks is still 128m (m= x.len())
             let (a, b) = rayon::join(
-                || self.compute_recursive(&x[..imid], &y[..jmid - 1], imid, jmid - 1, tb, 0),
                 || {
-                    self.compute_recursive(
+                    self.compute_recursive_parallel(
+                        &x[..imid],
+                        &y[..jmid - 1],
+                        imid,
+                        jmid - 1,
+                        tb,
+                        0,
+                    )
+                },
+                || {
+                    self.compute_recursive_parallel(
                         &x[imid..],
                         &y[jmid + 1..],
                         m - imid,
@@ -315,7 +324,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         } else {
             let (a, b) = rayon::join(
                 || {
-                    self.compute_recursive(
+                    self.compute_recursive_parallel(
                         &x[..imid],
                         &y[..jmid],
                         imid,
@@ -325,7 +334,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
                     )
                 },
                 || {
-                    self.compute_recursive(
+                    self.compute_recursive_parallel(
                         &x[imid..],
                         &y[jmid..],
                         m - imid,
@@ -420,8 +429,8 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     /// - Time complexity: $O(mn)$
     fn cost_only(&self, x: TextSlice, y: TextSlice, rev: bool, tx: i32) -> (Vec<i32>, Vec<i32>) {
         let (m, n) = (x.len() + 1, y.len() + 1);
-        let mut cc: Vec<i32> = vec![0; m]; // match/mismatch    32 * n bits
-        let mut dd: Vec<i32> = vec![0; m]; // deletion          32 * n bits
+        let mut cc: Vec<i32> = Vec::with_capacity(n); // match/mismatch    32 * n bits
+        let mut dd: Vec<i32> = vec![MIN_SCORE; m]; //    deletion          32 * n bits
         let mut e: i32; // I(i - 1, j)
         let mut c: i32; // C(i - 1, j)
         let mut s: i32; // C(i - 1, j - 1)
@@ -429,10 +438,9 @@ impl<F: MatchFunc + Sync> Aligner<F> {
         let mut p: u8;
         let mut q: u8;
         t = self.scoring.gap_open;
-        for i in 1..m {
+        for _ in 1..m {
             t += self.scoring.gap_extend;
-            cc[i] = t;
-            dd[i] = MIN_SCORE;
+            cc.push(t);
         }
         t = tx;
         for j in 1..n {
