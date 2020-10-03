@@ -156,7 +156,7 @@
 //! `S(i,j)` is the best score for prefixes `x[0..i]`, `y[0..j]`, and thus
 //! `S(i, j) == max(M(i, j), I(i, j), D(i, j))`
 //!
-//! To save space, `M(i,j)` is not explicitly stored. I(i, j) is scored as a single scalar
+//! To save space, `M(i,j)` is not explicitly stored. `I(i, j)` is scored as a single scalar
 //! `e` that keeps overwriting itself. Only one column of the matrices `S` and `D` is stored
 //! at any point — the column `j` is obtained by overwriting column `j - 1`. To do this, two
 //! additional scalars `s` and `c` are needed. Before updating `S(i, j)`, `s` is `S[i - 1][j - 1]`
@@ -997,7 +997,6 @@ impl<F: MatchFunc> Aligner<F> {
                 *T.get_unchecked_mut(idx) = tb; // T[0 * m + i]
             }
 
-            t = self.scoring.gap_open;
             for j in 1..n {
                 s = 0;
                 c = 0;
@@ -1687,7 +1686,7 @@ mod tests {
             ]
         );
 
-        let aligner = Aligner::with_capacity(y.len(), x.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.semiglobal(y, x);
 
         assert_eq!(alignment.xstart, 0);
@@ -1932,8 +1931,8 @@ mod tests {
             yclip_suffix: 0,
             ..base_score
         };
-        let mut al = Aligner::with_scoring(scoring);
-        let alignment = al.custom(x, y);
+        let aligner = Aligner::with_scoring(scoring);
+        let alignment = aligner.custom(x, y);
         assert_eq!(alignment.score, 0);
     }
 
@@ -1948,8 +1947,8 @@ mod tests {
                 yclip_prefix: 0,
                 ..base_score.clone()
             };
-            let mut al = Aligner::with_scoring(scoring);
-            let alignment = al.custom(x, y);
+            let aligner = Aligner::with_scoring(scoring);
+            let alignment = aligner.custom(x, y);
             assert_eq!(alignment.score, 0);
         }
 
@@ -1959,8 +1958,8 @@ mod tests {
                 yclip_suffix: 0,
                 ..base_score.clone()
             };
-            let mut al = Aligner::with_scoring(scoring);
-            let alignment = al.custom(x, y);
+            let aligner = Aligner::with_scoring(scoring);
+            let alignment = aligner.custom(x, y);
             assert_eq!(alignment.score, 0);
         }
 
@@ -1970,8 +1969,8 @@ mod tests {
                 yclip_prefix: 0,
                 ..base_score.clone()
             };
-            let mut al = Aligner::with_scoring(scoring);
-            let alignment = al.custom(x, y);
+            let aligner = Aligner::with_scoring(scoring);
+            let alignment = aligner.custom(x, y);
             assert_eq!(alignment.score, 0);
         }
 
@@ -1981,8 +1980,8 @@ mod tests {
                 yclip_suffix: 0,
                 ..base_score.clone()
             };
-            let mut al = Aligner::with_scoring(scoring);
-            let alignment = al.custom(x, y);
+            let aligner = Aligner::with_scoring(scoring);
+            let alignment = aligner.custom(x, y);
             assert_eq!(alignment.score, 0);
         }
     }

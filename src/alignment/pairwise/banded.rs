@@ -1417,7 +1417,7 @@ mod banded {
         let banded_alignment = banded_aligner.local(x, y);
         // banded_aligner.visualize(&banded_alignment);
 
-        let full_aligner = pairwise::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let full_aligner = pairwise::Aligner::new(-5, -1, &score);
         let full_alignment = full_aligner.local(x, y);
 
         assert_eq!(banded_alignment, full_alignment);
@@ -1431,7 +1431,7 @@ mod banded {
         let banded_alignment = banded_aligner.global(x, y);
         banded_aligner.visualize(&banded_alignment);
 
-        let full_aligner = pairwise::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let full_aligner = pairwise::Aligner::new(-5, -1, &score);
         let full_alignment = full_aligner.global(x, y);
 
         assert_eq!(banded_alignment, full_alignment);
@@ -1445,7 +1445,7 @@ mod banded {
         let banded_alignment = banded_aligner.semiglobal(x, y);
         banded_aligner.visualize(&banded_alignment);
 
-        let full_aligner = pairwise::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let full_aligner = pairwise::Aligner::new(-5, -1, &score);
         let full_alignment = full_aligner.semiglobal(x, y);
         // banded_aligner.visualize(&full_alignment);
 
