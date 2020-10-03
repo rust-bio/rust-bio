@@ -134,6 +134,14 @@
 //! ```
 
 #![allow(non_snake_case)]
+// I, D, S are conventionally used for scoring matrices.
+// Only one row of the matrices are stored, i.e. I, D, S are Vec<_> instead of Vec<Vec<_>> or similar.
+// In addition, single-character variable names are abundant.
+// Therefore, using uppercase letter helps to better signify their meaning.
+#![allow(clippy::many_single_char_names)]
+// Due to the strategy used by this set of algorithms, some variables have different meanings under different
+// contexts, for example: `let mut s: i32; // S[i - 1][j - 1] or S[i][j - 1]`
+// Therefore, it is difficult to give them unchanged and descriptive names.
 
 use std::cmp::max;
 use std::i32;
