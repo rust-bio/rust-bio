@@ -129,6 +129,44 @@
 //!     ]
 //! );
 //! ```
+//!
+//! # Implementation Details
+//!
+//! All alignment mode are based on the following scoring and traceback matrices.
+//!
+//! `M(i,j)` is the best score such that `x[i]` and `y[j]` ends in a match (or substitution)
+//! ```ignore
+//!              .... A   G  x_i
+//!              .... C   G  y_j
+//! ```
+//! `I(i,j)` is the best score such that `x[i]` is aligned with a gap
+//! ```ignore
+//!              .... A   G  x_i
+//!              .... G  y_j  -
+//! ```
+//! This is interpreted as an insertion into `x` w.r.t reference `y`
+//!
+//! `D(i,j)` is the best score such that `y[j]` is aligned with a gap
+//! ```ignore
+//!              .... A  x_i  -
+//!              .... G   G  y_j
+//! ```
+//! This is interpreted as a deletion from `x` w.r.t reference `y`
+//!
+//! `S(i,j)` is the best score for prefixes `x[0..i]`, `y[0..j]`, and thus
+//! `S(i, j) == max(M(i, j), I(i, j), D(i, j))`
+//!
+//! To save space, `M(i,j)` is not explicitly stored. I(i, j) is scored as a single scalar
+//! `e` that keeps overwriting itself. Only one column of the matrices `S` and `D` is stored
+//! at any point — the column `j` is obtained by overwriting column `j - 1`. To do this, two
+//! additional scalars `s` and `c` are needed. Before updating `S(i, j)`, `s` is `S[i - 1][j - 1]`
+//! and `c` is `S[i - 1][j]`. When `S(i, j)` is updated, `s` is updated to `S[i][j - 1]` and
+//! `c` is updated to `S[i][j]` so that they will become `S[i - 1][j - 1]` and `S[i - 1][j]` for
+//! the cell below (Myers & Miller 1988).
+//!
+//! # References
+//!
+//! - [Eugene W. Myers and Webb Miller (1988) Optimal alignments in linear space. _Bioinformatics_ **4**: 11-17.](https://doi.org/10.1093/bioinformatics/4.1.11)
 
 #![allow(non_snake_case)]
 // I, D, S are conventionally used for scoring matrices.
@@ -405,48 +443,7 @@ impl<F: MatchFunc> Scoring<F> {
     }
 }
 
-/// A generalized Smith-Waterman aligner.
-///
-/// `M(i,j)` is the best score such that `x[i]` and `y[j]` ends in a match (or substitution)
-/// ```ignore
-///              .... A   G  x_i
-///              .... C   G  y_j
-/// ```
-/// `I(i,j)` is the best score such that `x[i]` is aligned with a gap
-/// ```ignore
-///              .... A   G  x_i
-///              .... G  y_j  -
-/// ```
-/// This is interpreted as an insertion into `x` w.r.t reference `y`
-///
-/// `D(i,j)` is the best score such that `y[j]` is aligned with a gap
-/// ```ignore
-///              .... A  x_i  -
-///              .... G   G  y_j
-/// ```
-/// This is interpreted as a deletion from `x` w.r.t reference `y`
-///
-/// `S(i,j)` is the best score for prefixes `x[0..i]`, `y[0..j]`
-///
-/// To save space, only one column of these matrices is stored at any
-/// point — the column `j` is obtained by overwriting column `j-1` (Myers & Miller 1988).
-/// Moreover, `M(i,j)` is not explicitly stored.
-///
-/// `Lx` is the optimal x suffix clipping lengths from each position of the
-/// sequence y
-///
-/// `Ly` is the optimal y suffix clipping lengths from each position of the
-/// sequence x
-///
-/// `Sn` is the last column of the matrix. This is needed to keep track of
-/// suffix clipping scores
-///
-/// `traceback` - see [`bio::alignment::pairwise::TracebackCell`](struct.TracebackCell.html)
-///
-/// `scoring` - see [`bio::alignment::pairwise::Scoring`](struct.Scoring.html)
-///
-/// # References
-/// - [Eugene W. Myers and Webb Miller (1988) Optimal alignments in linear space. _Bioinformatics_ **4**: 11-17.](https://doi.org/10.1093/bioinformatics/4.1.11)
+/// A Pairwise aligner with global, semiglobal, local, and custom modes of alignment
 pub struct Aligner<F: MatchFunc> {
     scoring: Scoring<F>,
 }
@@ -512,12 +509,27 @@ impl<F: MatchFunc> Aligner<F> {
         Aligner { scoring }
     }
 
-    /// The core function to compute the alignment
+    /// Alignment with custom clipping scores
     ///
     /// # Arguments
     ///
     /// * `x` - Textslice
     /// * `y` - Textslice
+    ///
+    /// # Implementation details
+    ///
+    /// `Lx` is the optimal x suffix clipping lengths from each position of the
+    /// sequence y
+    ///
+    /// `Ly` is the optimal y suffix clipping lengths from each position of the
+    /// sequence x
+    ///
+    /// `Sn` is the last column of the matrix. This is needed to keep track of
+    /// suffix clipping scores
+    ///
+    /// `traceback` - see [`bio::alignment::pairwise::TracebackCell`](struct.TracebackCell.html)
+    ///
+    /// `scoring` - see [`bio::alignment::pairwise::Scoring`](struct.Scoring.html)
     pub fn custom(self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
         use traceback_old::*;
         let (m, n) = (x.len(), y.len());
