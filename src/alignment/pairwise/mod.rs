@@ -18,7 +18,7 @@
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
 //! let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-//! let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+//! let aligner = Aligner::new(-5, -1, &score);
 //! let alignment = aligner.semiglobal(x, y);
 //! // x is global (target sequence) and y is local (reference sequence)
 //! assert_eq!(alignment.ystart, 4);
@@ -27,9 +27,6 @@
 //!     alignment.operations,
 //!     [Match, Match, Match, Match, Match, Subst, Match, Match, Match]
 //! );
-//!
-//! // If you don't know sizes of future sequences, you could
-//! // use Aligner::new().
 //! // Global alignment:
 //! let aligner = Aligner::new(-5, -1, &score);
 //! let x = b"ACCGTGGAT";
@@ -107,7 +104,7 @@
 //! };
 //! let x = b"GGGGGGACGTACGTACGT";
 //! let y = b"AAAAACGTACGTACGTAAAA";
-//! let aligner = Aligner::with_capacity_and_scoring(x.len(), y.len(), scoring);
+//! let aligner = Aligner::with_scoring(scoring);
 //! let alignment = aligner.custom(x, y);
 //! println!("{}", alignment.pretty(x, y));
 //! assert_eq!(alignment.score, 2);
@@ -142,6 +139,7 @@
 // Due to the strategy used by this set of algorithms, some variables have different meanings under different
 // contexts, for example: `let mut s: i32; // S[i - 1][j - 1] or S[i][j - 1]`
 // Therefore, it is difficult to give them unchanged and descriptive names.
+// The meanings of these variable names are explained in `Aligner.global`
 
 use std::cmp::max;
 use std::i32;
@@ -1499,7 +1497,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
@@ -1515,7 +1513,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -5i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -1, -1, score);
+        let aligner = Aligner::new(-1, -1, score);
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
@@ -1530,7 +1528,7 @@ mod tests {
         let x = b"ACGAGAACA";
         let y = b"ACGACA";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -3i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
 
         println!("aln:\n{}", alignment.pretty(x, y));
@@ -1545,7 +1543,7 @@ mod tests {
         let x = b"AGATAGATAGATAGGGAGTTGTGTAGATGATCCACAGT";
         let y = b"AGATAGATAGATGTAGATGATCCACAGT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
 
         println!("aln:\n{}", alignment.pretty(x, y));
@@ -1563,7 +1561,7 @@ mod tests {
         let x = b"ACGTATCATAGATAGATAGGGTTGTGTAGATGATCCACAG";
         let y = b"CGTATCATAGATAGATGTAGATGATCCACAGT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.local(x, y);
         assert_eq!(alignment.xstart, 1);
         assert_eq!(alignment.ystart, 0);
@@ -1574,7 +1572,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.local(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
@@ -1589,7 +1587,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
 
         println!("\naln:\n{}", alignment.pretty(x, y));
@@ -1606,7 +1604,7 @@ mod tests {
         let x = b"AAAA";
         let y = b"AAAA";
         let score = &blosum62;
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
@@ -1619,7 +1617,7 @@ mod tests {
         let y = b"TACC"; //GTGGAC";
         let x = b"AAAAACC"; //GTTGACGCAA";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
@@ -1634,7 +1632,7 @@ mod tests {
         let x = b"CCGGCA";
         let y = b"ACCGTTGACGC";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.ystart, 1);
@@ -1649,7 +1647,7 @@ mod tests {
         let y = b"CCGGCA";
         let x = b"ACCGTTGACGC";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.ystart, 0);
@@ -1665,7 +1663,7 @@ mod tests {
         let y = b"CCGTCCGGCAA";
         let x = b"AAAAACCGTTGACGCAA";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.semiglobal(x, y);
 
         assert_eq!(alignment.xstart, 0);
@@ -1692,7 +1690,7 @@ mod tests {
         let x = b"GTGCATCATGTG";
         let y = b"GTGCATCATCATGTG";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.global(x, y);
         println!("\naln:\n{}", alignment.pretty(x, y));
 
@@ -1715,7 +1713,7 @@ mod tests {
         let y = b"CCACGTACGT";
 
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.global(x, y);
 
         println!("\naln:\n{}", alignment.pretty(x, y));
@@ -1738,7 +1736,7 @@ mod tests {
         let x = b"GTGCATCATCATGTG";
         let y = b"GTGCATCATGTG";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.global(x, y);
         println!("\naln:\n{}", alignment.pretty(x, y));
 
