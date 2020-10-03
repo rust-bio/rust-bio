@@ -3,10 +3,11 @@
 - [General](#general)
 - [Making a PR](#making-a-pr)
   - [Creating A Branch](#creating-a-branch)
+  - [Install pre-commit hooks](#install-pre-commit-hooks)
   - [Applying Changes](#applying-changes)
-  - [Local Testing and Formatting](#local-testing-and-formatting)
   - [Merging](#merging)
 - [Style Guidelines](#style-guidelines)
+  - [Bypassing Formatting Warnings](#bypassing-formatting-warnings)
 
 ## General
 
@@ -15,7 +16,7 @@ Any contributions are welcome, from a simple bug report to full-blown new module
 If you **find a bug** and don't have the time or in-depth knowledge to fix it, just [check if you can add info to an existing issue](https://github.com/rust-bio/rust-bio/issues) and otherwise [file a bug report](https://github.com/rust-bio/rust-bio/issues/new/choose) with as many infos as possible.
 If you want to contribute fixes, documentation or new code, please [open a pull request](https://github.com/rust-bio/rust-bio/compare).
 
- 
+
 If you want to contribute and don't know where to start, have a look at the [roadmap](https://github.com/rust-bio/rust-bio/issues/3).
 
 
@@ -32,25 +33,22 @@ You have two options to do this:
     We'll add you to the team.
     Then, you don't have to create a fork, but can simply push new branches into the main repository and open pull requests there.
 
+### Install pre-commit hooks
+
+**If you want to contribute more than once, we strongly suggest you install pre-commit hooks.** To do so:
+
+1. [Follow the instructions](https://pre-commit.com) to install `pre-commit` if you haven't yet. (if you have `pip`, just `pip install pre-commit`)
+2. Nagivate to `rust-bio`'s project directory, and run `pre-commit install`. This should update `.git/hooks/pre-commit`
+
 ### Applying Changes
 
 Please follow our [style guidelines](#style-guidelines).
-
-### Local Testing and Formatting
-
-Before you commit, please:
-
-1. Run `cargo clippy` and fix any warnings related to your change
-2. Run `cargo test`
-3. Run `cargo fmt`
-
-<!--git hooks may be used in the future-->
 
 ### Merging
 
 Once you submit your pull request on GitHub, several automated tests should be run, and their results reported on the pull request.
 
-`cargo test`, `cargo fmt` and `cargo clippy` must be passed before a PR can be merged, which is why we strongly suggest running them locally before committing.
+`cargo test`, `cargo fmt` and `cargo clippy` must be passed before a PR can be merged. This is why we strongly suggest installing pre-commit hooks which warn you about any issues in advance
 
 ## Style Guidelines
 
@@ -67,3 +65,20 @@ In `rust-bio`, documentation comments should:
 For extra credit, feel free to familiarize yourself with:
 * the Rust [documentation conventions](https://rust-lang.github.io/rfcs/1574-more-api-documentation-conventions.html#appendix-a-full-conventions-text)
 * the Rust [API documentation guidelines](https://rust-lang.github.io/api-guidelines/documentation.html)
+
+### Bypassing Formatting Warnings
+
+Formatting warnings emitted by `cargo check` and `cargo clippy` can be bypassed using the attribute `#[allow(<rule_name>)]`. Where you absolutely need to do so, please justify. For example:
+
+```
+#![allow(non_snake_case)]
+// I, D, S are conventionally used for scoring matrices.
+// Only one row of the matrices are stored, i.e. I, D, S are Vec<_> instead of Vec<Vec<_>> or similar.
+// In addition, single-character variable names are abundant.
+// Therefore, using uppercase letter helps to better signify their meaning.
+#![allow(clippy::many_single_char_names)]
+// Due to the strategy used by this set of algorithms, some variables have different meanings under different
+// contexts, for example: `let mut s: i32; // S[i - 1][j - 1] (before updating S[i][j]) or S[i][j - 1] (after updating S[i][j])`
+// Therefore, it is difficult to give them unchanged and descriptive names.
+// The meanings of these variable names are explained in `Aligner.global`
+```
