@@ -445,8 +445,6 @@ pub struct Aligner<F: MatchFunc> {
     scoring: Scoring<F>,
 }
 
-const DEFAULT_ALIGNER_CAPACITY: usize = 200;
-
 impl<F: MatchFunc> Aligner<F> {
     /// Create new aligner instance with given gap open and gap extend penalties
     /// and the score function.
@@ -458,13 +456,9 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `match_fn` - function that returns the score for substitutions
     ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
-        Aligner::with_capacity(
-            DEFAULT_ALIGNER_CAPACITY,
-            DEFAULT_ALIGNER_CAPACITY,
-            gap_open,
-            gap_extend,
-            match_fn,
-        )
+        Aligner {
+            scoring: Scoring::new(gap_open, gap_extend, match_fn),
+        }
     }
 
     /// Create new aligner instance. The size hints help to
@@ -478,6 +472,8 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `gap_extend` - the score for extending a gap (should be negative)
     /// * `match_fn` - function that returns the score for substitutions
     ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
+    #[deprecated(since = "0.33.0", note = "Please use Aligner::new()")]
+    #[allow(unused_variables)]
     pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         assert!(gap_open <= 0, "gap_open can't be positive");
         assert!(gap_extend <= 0, "gap_extend can't be positive");
@@ -493,11 +489,7 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     /// * `scoring` - the scoring struct (see bio::alignment::pairwise::Scoring)
     pub fn with_scoring(scoring: Scoring<F>) -> Self {
-        Aligner::with_capacity_and_scoring(
-            DEFAULT_ALIGNER_CAPACITY,
-            DEFAULT_ALIGNER_CAPACITY,
-            scoring,
-        )
+        Aligner { scoring }
     }
 
     /// Create new aligner instance with scoring and size hint. The size hints help to
@@ -508,6 +500,8 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `m` - the expected size of x
     /// * `n` - the expected size of y
     /// * `scoring` - the scoring struct
+    #[deprecated(since = "0.33.0", note = "Please use Aligner::with_scoring()")]
+    #[allow(unused_variables)]
     pub fn with_capacity_and_scoring(m: usize, n: usize, scoring: Scoring<F>) -> Self {
         assert!(scoring.gap_open <= 0, "gap_open can't be positive");
         assert!(scoring.gap_extend <= 0, "gap_extend can't be positive");
