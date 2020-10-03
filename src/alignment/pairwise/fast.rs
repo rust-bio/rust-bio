@@ -254,6 +254,115 @@ impl<F: MatchFunc> Aligner<F> {
         }
     }
 
+    pub fn semiglobal(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
+        let (m, n) = (x.len() + 1, y.len() + 1);
+        let mut S = vec![0; m]; //                                            ! 32 * m bits
+        let mut D = vec![MIN_SCORE; m]; //                                    ! 32 * m bits
+        let mut T: Vec<TracebackCell> = vec![TracebackCell::new(); n * m]; // ! 8 * n * m bits
+        let mut s: i32;
+        let mut c: i32;
+        let mut e: i32;
+        let mut idx: usize = 0;
+        let mut p: &u8;
+        let mut q: &u8;
+        let mut S_i: &mut i32;
+        let mut D_i: &mut i32;
+        let mut score_1: i32;
+        let mut score_2: i32;
+        let mut max_last_row: i32 = MIN_SCORE;
+        let mut yend: usize = n;
+
+        unsafe {
+            let mut t = self.scoring.gap_open;
+            for i in 1..m {
+                t += self.scoring.gap_extend;
+                *S.get_unchecked_mut(i) = t;
+                let mut tb = TracebackCell::new();
+                tb.set_s_bits(TB_UP);
+                idx += 1;
+                *T.get_unchecked_mut(idx) = tb; // T[0 * m + i]
+            }
+
+            t = self.scoring.gap_open;
+            for j in 1..n {
+                s = 0;
+                c = 0;
+                *S.get_unchecked_mut(0) = 0;
+                e = MIN_SCORE;
+                idx += 1;
+                *T.get_unchecked_mut(idx) = TracebackCell::new(); // T[j * m + 0]
+
+                q = y.get_unchecked(j - 1);
+                for i in 1..m {
+                    S_i = S.get_unchecked_mut(i);
+                    D_i = D.get_unchecked_mut(i);
+                    p = x.get_unchecked(i - 1);
+                    let mut tb = TracebackCell::new();
+
+                    score_1 = e + self.scoring.gap_extend;
+                    score_2 = c + self.scoring.gap_open + self.scoring.gap_extend;
+                    e = if score_1 > score_2 {
+                        tb.set_i_bits(TB_UP);
+                        score_1
+                    } else {
+                        tb.set_i_bits(T.get_unchecked(idx).get_s_bits()); // T[i-1][j]
+                        score_2
+                    };
+
+                    idx += 1; // ! update idx
+
+                    score_1 = *D_i + self.scoring.gap_extend;
+                    score_2 = *S_i + self.scoring.gap_open + self.scoring.gap_extend;
+                    *D_i = if score_1 > score_2 {
+                        tb.set_d_bits(TB_LEFT);
+                        score_1
+                    } else {
+                        tb.set_d_bits(T.get_unchecked(idx - m).get_s_bits()); //T[i][j-1]
+                        score_2
+                    };
+
+                    c = s + self.scoring.match_fn.score(*p, *q);
+                    tb.set_s_bits(TB_DIAG);
+
+                    if e > c {
+                        c = e;
+                        tb.set_s_bits(TB_UP);
+                    }
+
+                    if *D_i > c {
+                        c = *D_i;
+                        tb.set_s_bits(TB_LEFT);
+                    }
+
+                    s = *S_i;
+                    *S_i = c;
+                    *T.get_unchecked_mut(idx) = tb;
+
+                    if i == m && c > max_last_row {
+                        max_last_row = c;
+                        yend = j;
+                    }
+                }
+            }
+
+            let (mut operations, i, ystart) = Self::traceback(&T, x, y, m - 1, n - 1, m);
+            operations.resize(operations.len() + i, AlignmentOperation::Ins); // reaching at (i, 0)
+
+            operations.reverse();
+            Alignment {
+                score: *S.get_unchecked(m - 1),
+                xstart: 0,
+                ystart,
+                xend: m - 1,
+                yend,
+                xlen: m - 1,
+                ylen: yend - ystart,
+                operations,
+                mode: AlignmentMode::Semiglobal,
+            }
+        }
+    }
+
     pub fn traceback(
         T: &Vec<TracebackCell>,
         x: TextSlice,
@@ -484,6 +593,39 @@ mod tests {
         assert!(equivalent_operations(
             &alignment.operations,
             &[Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+        ));
+    }
+
+    // semiglobal
+    #[test]
+    fn test_semiglobal() {
+        let x = b"ACCGTGGAT";
+        let y = b"AAAAACCGTTGAT";
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let mut aligner = Aligner::new(-5, -1, score);
+        let alignment = aligner.semiglobal(x, y);
+        println!("{:?}", alignment);
+        println!("{}", alignment.pretty(x, y));
+        assert_eq!(alignment.ystart, 4);
+        assert_eq!(alignment.xstart, 0);
+        assert!(equivalent_operations(
+            &alignment.operations,
+            &[Match, Match, Match, Match, Match, Subst, Match, Match, Match,]
+        ));
+    }
+    // Test case for underflow of the SW score.
+    #[test]
+    fn test_semiglobal_gap_open_lt_mismatch() {
+        let x = b"ACCGTGGAT";
+        let y = b"AAAAACCGTTGAT";
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -5i32 };
+        let mut aligner = Aligner::new(-1, -1, score);
+        let alignment = aligner.semiglobal(x, y);
+        assert_eq!(alignment.ystart, 4);
+        assert_eq!(alignment.xstart, 0);
+        assert!(equivalent_operations(
+            &alignment.operations,
+            &[Match, Match, Match, Match, Del, Match, Ins, Match, Match, Match,]
         ));
     }
 }
