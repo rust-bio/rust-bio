@@ -41,8 +41,8 @@
 //! # Getting started
 //!
 //! We explain how to use Rust-Bio step-by-step.
-//! Users who already have experience with Rust can skip right to [Step 3: Use Rust-Bio in your project](https://docs.rs/bio/#step-3-use-rust-bio-in-your-project).
-//! Users who already know `rust-bio` might want to jump right into the [modules docs](https://docs.rs/bio/#modules)
+//! Users who already have experience with Rust can skip right to [Step 3: Use Rust-Bio in your project](#step-3-use-rust-bio-in-your-project).
+//! Users who already know `rust-bio` might want to jump right into the [modules docs](#modules)
 //!
 //! ## Step 1: Setting up Rust
 //!
