@@ -503,25 +503,6 @@ impl<F: MatchFunc> Aligner<F> {
     #[deprecated(since = "0.33.0", note = "Please use Aligner::with_scoring()")]
     #[allow(unused_variables)]
     pub fn with_capacity_and_scoring(m: usize, n: usize, scoring: Scoring<F>) -> Self {
-        assert!(scoring.gap_open <= 0, "gap_open can't be positive");
-        assert!(scoring.gap_extend <= 0, "gap_extend can't be positive");
-        assert!(
-            scoring.xclip_prefix <= 0,
-            "Clipping penalty (x prefix) can't be positive"
-        );
-        assert!(
-            scoring.xclip_suffix <= 0,
-            "Clipping penalty (x suffix) can't be positive"
-        );
-        assert!(
-            scoring.yclip_prefix <= 0,
-            "Clipping penalty (y prefix) can't be positive"
-        );
-        assert!(
-            scoring.yclip_suffix <= 0,
-            "Clipping penalty (y suffix) can't be positive"
-        );
-
         Aligner { scoring }
     }
 
