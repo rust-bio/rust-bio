@@ -995,6 +995,7 @@ impl<F: MatchFunc> Aligner<F> {
         alignment
     }
 
+    #[allow(dead_code)]
     pub fn visualize(&self, alignment: &Alignment) {
         // First populate the band
         let mut view = vec!['.'; self.band.rows * self.band.cols];
