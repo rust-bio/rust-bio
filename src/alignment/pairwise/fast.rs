@@ -8,7 +8,6 @@ use crate::alignment::pairwise::MIN_SCORE;
 use crate::alignment::pairwise::{MatchFunc, Scoring};
 use crate::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use crate::utils::TextSlice;
-use std::cmp::max;
 
 pub struct Aligner<F: MatchFunc> {
     scoring: Scoring<F>,
@@ -602,7 +601,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::new(-5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.semiglobal(x, y);
         println!("{:?}", alignment);
         println!("{}", alignment.pretty(x, y));
@@ -619,7 +618,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -5i32 };
-        let mut aligner = Aligner::new(-1, -1, score);
+        let aligner = Aligner::new(-1, -1, score);
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);

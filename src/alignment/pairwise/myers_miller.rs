@@ -143,19 +143,6 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     /// - Time complexity: $(mn + mn')$ where $m$ and $n$ are lengths of the input sequences `x` and
     ///   `y`; $n'$ is the substrings of `y` that correspond to the optimal alignment.
     pub fn semiglobal(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
-        let clip_penalties = [
-            self.scoring.xclip_prefix,
-            self.scoring.xclip_suffix,
-            self.scoring.yclip_prefix,
-            self.scoring.yclip_suffix,
-        ];
-
-        // Temporarily Over-write the clip penalties
-        self.scoring.xclip_prefix = MIN_SCORE;
-        self.scoring.xclip_suffix = MIN_SCORE;
-        self.scoring.yclip_prefix = 0;
-        self.scoring.yclip_suffix = 0;
-
         // Compute the alignment
         let (score, ystart, yend) = self.find_semiglobal_score_and_termini(x, y);
         let ylen = yend - ystart;
@@ -168,13 +155,6 @@ impl<F: MatchFunc + Sync> Aligner<F> {
             self.scoring.gap_open,
             self.scoring.gap_open,
         );
-        // (doesn't need to insert Yclip)
-
-        // Set the clip penalties to the original values
-        self.scoring.xclip_prefix = clip_penalties[0];
-        self.scoring.xclip_suffix = clip_penalties[1];
-        self.scoring.yclip_prefix = clip_penalties[2];
-        self.scoring.yclip_suffix = clip_penalties[3];
 
         Alignment {
             score,
@@ -1131,7 +1111,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::new(-5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.semiglobal(x, y);
         println!("{:?}", alignment);
         println!("{}", alignment.pretty(x, y));
