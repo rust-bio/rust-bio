@@ -142,7 +142,7 @@ impl<F: MatchFunc + Sync> Aligner<F> {
     /// - Space complexity: $O(n)$
     /// - Time complexity: $(mn + mn')$ where $m$ and $n$ are lengths of the input sequences `x` and
     ///   `y`; $n'$ is the substrings of `y` that correspond to the optimal alignment.
-    pub fn semiglobal(&mut self, x: TextSlice, y: TextSlice) -> Alignment {
+    pub fn semiglobal(&self, x: TextSlice, y: TextSlice) -> Alignment {
         // Compute the alignment
         let (score, ystart, yend) = self.find_semiglobal_score_and_termini(x, y);
         let ylen = yend - ystart;
