@@ -75,7 +75,6 @@ where
 
     /// This method may be used for performance comparison instead of adjust_by_mask()
     #[inline]
-    #[allow(dead_code)]
     pub fn adjust_many(&mut self, pos_mask: T, n: usize) {
         let mut pos_mask = pos_mask;
         for _ in 0..n {
