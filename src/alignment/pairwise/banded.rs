@@ -80,14 +80,14 @@
 //! // aligner.custom_with_prehash(x, y, &y_kmers_hash) is also supported
 //! ```
 
-use crate::alignment::{Alignment, AlignmentOperation};
 use crate::utils::TextSlice;
 use std::cmp::{max, min, Ordering};
 use std::i32;
+use std::iter::repeat;
 use std::ops::Range;
 
-use super::*;
-use crate::alignment::pairwise::Scoring;
+use super::traceback_old::*;
+use super::{Alignment, AlignmentMode, AlignmentOperation, MatchFunc, Scoring, MIN_SCORE};
 use crate::alignment::sparse;
 use crate::alignment::sparse::HashMapFx;
 
