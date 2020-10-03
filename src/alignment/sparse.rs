@@ -202,7 +202,7 @@ pub fn sdpkpp(
 
     let k = k as u32;
     assert!(
-        gap_open > 0 || gap_extend > 0,
+        gap_open <= 0 && gap_extend <= 0,
         "gap parameters cannot be positive"
     );
     let _gap_open = (-gap_open) as u32;
