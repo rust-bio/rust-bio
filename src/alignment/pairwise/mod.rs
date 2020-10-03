@@ -1183,7 +1183,7 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     pub fn traceback(
-        T: &Vec<traceback_new::TracebackCell>,
+        T: &[traceback_new::TracebackCell],
         x: TextSlice,
         y: TextSlice,
         mut i: usize,
@@ -1250,11 +1250,18 @@ mod traceback_new {
     const D_POS: u8 = 2;
     const S_POS: u8 = 4;
 
+    impl std::default::Default for TracebackCell {
+        #[inline(always)]
+        fn default() -> Self {
+            TracebackCell(0u8)
+        }
+    }
+
     impl TracebackCell {
         /// Initialize a blank traceback cell
         #[inline(always)]
-        pub fn new() -> TracebackCell {
-            TracebackCell(0u8)
+        pub fn new() -> Self {
+            Self::default()
         }
 
         /// Sets 2 bits [pos, pos+2) with the 2 LSBs of value
