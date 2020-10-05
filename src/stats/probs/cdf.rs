@@ -105,7 +105,8 @@ use ordered_float::OrderedFloat;
 use crate::stats::LogProb;
 
 /// An `Entry` associates a `LogProb` with a value on an ordered axis. It can for example be
-/// used to set up probability mass functions or cumulative distribution functions ([CDF](struct.CDF)).
+/// used to set up probability mass functions or cumulative distribution functions
+/// ([CDF](struct.CDF)).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entry<T: Ord> {
     /// A `value` on the ordered axis, which has to have the Trait [`std::cmp::Ord`](https://doc.rust-lang.org/std/cmp/trait.Ord.html) implemented.

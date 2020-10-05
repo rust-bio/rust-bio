@@ -13,7 +13,8 @@
 //! * BOM algorithm: fast for long patterns and small alphabet.
 //! * KMP algorithm: the classical ancestor.
 //! * Ukkonens algorithm: approximate pattern matching with dynamic programming.
-//! * Myers algorithm: linear-time approximate pattern matching with edit distance for small patterns
+//! * Myers algorithm: linear-time approximate pattern matching with edit distance for small
+//!   patterns
 //!
 //! Another fast pattern matching algorithm is available in the twoway crate: https://crates.io/crates/twoway
 

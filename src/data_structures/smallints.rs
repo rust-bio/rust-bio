@@ -4,9 +4,9 @@
 // except according to those terms.
 
 //! A data structure for a sequence of small integers with a few big integers.
-//! Small ints are stored in type S (e.g. a byte), big ints are stored separately (in type B) in a BTree.
-//! The implementation provides vector-like operations on the data structure (e.g. retrieve a position,
-//! add an integer, etc.).
+//! Small ints are stored in type S (e.g. a byte), big ints are stored separately (in type B) in a
+//! BTree. The implementation provides vector-like operations on the data structure (e.g. retrieve a
+//! position, add an integer, etc.).
 //!
 //! # Example
 //!
@@ -72,7 +72,8 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
         }
     }
 
-    /// Create a new instance containing `n` times the integer `v` (and `v` is expected to be small).
+    /// Create a new instance containing `n` times the integer `v` (and `v` is expected to be
+    /// small).
     pub fn from_elem(v: S, n: usize) -> Self {
         assert!(
             size_of::<S>() < size_of::<B>(),
@@ -97,7 +98,8 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
         }
     }
 
-    /// Append `v` to the sequence. This will determine whether `v` is big or small and store it accordingly.
+    /// Append `v` to the sequence. This will determine whether `v` is big or small and store it
+    /// accordingly.
     pub fn push(&mut self, v: B) {
         let maxv: S = S::max_value();
         match cast(v) {
@@ -110,7 +112,8 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
         }
     }
 
-    /// Set value of position `i` to `v`. This will determine whether `v` is big or small and store it accordingly.
+    /// Set value of position `i` to `v`. This will determine whether `v` is big or small and store
+    /// it accordingly.
     pub fn set(&mut self, i: usize, v: B) {
         let maxv: S = S::max_value();
         match cast(v) {

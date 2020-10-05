@@ -94,8 +94,8 @@ where
     ///
     /// # Arguments
     ///
-    /// * adjust_dist: If true, the distance score of the block is adjusted
-    ///   based on the current cursor position before moving it up.
+    /// * adjust_dist: If true, the distance score of the block is adjusted based on the current
+    ///   cursor position before moving it up.
     ///  *Note concerning the block based Myers algorithm:*
     ///  The the active bit in bit vector returned by `pos_bitvec()`
     ///  is expected to jump back to the maximum (lowest) position
@@ -106,11 +106,10 @@ where
     ///
     /// # Arguments
     ///
-    /// * adjust_dist: If true, the distance score of the block is adjusted
-    ///   based on the current cursor position before moving it up.
-    ///   However, the current cursor position of the **right** block is used,
-    ///   **not** the one of the left block. This is an important oddity, which
-    ///   makes only sense because of the design of the traceback algorithm.
+    /// * adjust_dist: If true, the distance score of the block is adjusted based on the current
+    ///   cursor position before moving it up. However, the current cursor position of the **right**
+    ///   block is used, **not** the one of the left block. This is an important oddity, which makes
+    ///   only sense because of the design of the traceback algorithm.
     fn move_up_left(&mut self, adjust_dist: bool);
 
     /// Shift the view by one traceback column / block to the left. The
