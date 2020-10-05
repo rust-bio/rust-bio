@@ -3,10 +3,11 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Calculate alignments with a generalized variant of the Smith Waterman algorithm.
-//! Complexity: O(n * m) for strings of length m and n.
+//! Calculate alignments with a generalized variant of the Smith Waterman
+//! algorithm. Complexity: O(n * m) for strings of length m and n.
 //!
-//! For quick computation of alignments and alignment scores there are 6 simple functions.
+//! For quick computation of alignments and alignment scores there are 6 simple
+//! functions.
 //!
 //! # Example
 //!
@@ -187,8 +188,8 @@ impl MatchFunc for MatchParams {
     }
 }
 
-/// The trait Matchfunc is also implemented for Fn(u8, u8) -> i32 so that Scoring
-/// can be instantiated using closures and custom user defined functions
+/// The trait Matchfunc is also implemented for Fn(u8, u8) -> i32 so that
+/// Scoring can be instantiated using closures and custom user defined functions
 impl<F> MatchFunc for F
 where
     F: Fn(u8, u8) -> i32,
@@ -217,7 +218,8 @@ pub struct Scoring<F: MatchFunc> {
 
 impl Scoring<MatchParams> {
     /// Create new Scoring instance with given gap open, gap extend penalties
-    /// match and mismatch scores. The clip penalties are set to `MIN_SCORE` by default
+    /// match and mismatch scores. The clip penalties are set to `MIN_SCORE` by
+    /// default
     ///
     /// # Arguments
     ///
@@ -249,14 +251,15 @@ impl Scoring<MatchParams> {
 
 impl<F: MatchFunc> Scoring<F> {
     /// Create new Scoring instance with given gap open, gap extend penalties
-    /// and the score function. The clip penalties are set to [`MIN_SCORE`](constant.MIN_SCORE.html) by default
+    /// and the score function. The clip penalties are set to
+    /// [`MIN_SCORE`](constant.MIN_SCORE.html) by default
     ///
     /// # Arguments
     ///
     /// * `gap_open` - the score for opening a gap (should not be positive)
     /// * `gap_extend` - the score for extending a gap (should not be positive)
-    /// * `match_fn` - function that returns the score for substitutions
-    ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
+    /// * `match_fn` - function that returns the score for substitutions (see also
+    ///   [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         assert!(gap_open <= 0, "gap_open can't be positive");
         assert!(gap_extend <= 0, "gap_extend can't be positive");
@@ -399,12 +402,16 @@ impl<F: MatchFunc> Scoring<F> {
 
 /// A generalized Smith-Waterman aligner.
 ///
-/// `M(i,j)` is the best score such that `x[i]` and `y[j]` ends in a match (or substitution)
+/// `M(i,j)` is the best score such that `x[i]` and `y[j]` ends in a match (or
+/// substitution)
+///
 /// ```ignore
 ///              .... A   G  x_i
 ///              .... C   G  y_j
 /// ```
+///
 /// `I(i,j)` is the best score such that `x[i]` is aligned with a gap
+///
 /// ```ignore
 ///              .... A   G  x_i
 ///              .... G  y_j  -
@@ -412,10 +419,12 @@ impl<F: MatchFunc> Scoring<F> {
 /// This is interpreted as an insertion into `x` w.r.t reference `y`
 ///
 /// `D(i,j)` is the best score such that `y[j]` is aligned with a gap
+///
 /// ```ignore
 ///              .... A  x_i  -
 ///              .... G   G  y_j
 /// ```
+///
 /// This is interpreted as a deletion from `x` w.r.t reference `y`
 ///
 /// `S(i,j)` is the best score for prefixes `x[0..i]`, `y[0..j]`
@@ -433,7 +442,8 @@ impl<F: MatchFunc> Scoring<F> {
 /// `Sn` is the last column of the matrix. This is needed to keep track of
 /// suffix clipping scores
 ///
-/// `traceback` - see [`bio::alignment::pairwise::TracebackCell`](struct.TracebackCell.html)
+/// `traceback` - see
+/// [`bio::alignment::pairwise::TracebackCell`](struct.TracebackCell.html)
 ///
 /// `scoring` - see [`bio::alignment::pairwise::Scoring`](struct.Scoring.html)
 #[allow(non_snake_case)]
@@ -458,8 +468,8 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     /// * `gap_open` - the score for opening a gap (should be negative)
     /// * `gap_extend` - the score for extending a gap (should be negative)
-    /// * `match_fn` - function that returns the score for substitutions
-    ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
+    /// * `match_fn` - function that returns the score for substitutions (see also
+    ///   [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         Aligner::with_capacity(
             DEFAULT_ALIGNER_CAPACITY,
@@ -479,8 +489,8 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `n` - the expected size of y
     /// * `gap_open` - the score for opening a gap (should be negative)
     /// * `gap_extend` - the score for extending a gap (should be negative)
-    /// * `match_fn` - function that returns the score for substitutions
-    ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
+    /// * `match_fn` - function that returns the score for substitutions (see also
+    ///   [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         assert!(gap_open <= 0, "gap_open can't be positive");
         assert!(gap_extend <= 0, "gap_extend can't be positive");
@@ -510,8 +520,8 @@ impl<F: MatchFunc> Aligner<F> {
         )
     }
 
-    /// Create new aligner instance with scoring and size hint. The size hints help to
-    /// avoid unnecessary memory allocations.
+    /// Create new aligner instance with scoring and size hint. The size hints
+    /// help to avoid unnecessary memory allocations.
     ///
     /// # Arguments
     ///
@@ -988,8 +998,8 @@ impl<F: MatchFunc> Aligner<F> {
 /// Packed representation of one cell of a Smith-Waterman traceback matrix.
 /// Stores the I, D and S traceback matrix values in two bytes.
 /// Possible traceback moves include : start, insert, delete, match, substitute,
-/// prefix clip and suffix clip for x & y. So we need 4 bits each for matrices I, D, S
-/// to keep track of these 9 moves.
+/// prefix clip and suffix clip for x & y. So we need 4 bits each for matrices
+/// I, D, S to keep track of these 9 moves.
 #[derive(Copy, Clone)]
 pub struct TracebackCell {
     v: u16,

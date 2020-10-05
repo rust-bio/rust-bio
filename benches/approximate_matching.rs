@@ -220,8 +220,9 @@ ACCATCCTCCGTGAAATCAATATCCCGCACAAGAGTGCTACTCTCCTCGCTCCGGGCCCATAACACTTGGGGGTAGCTA\
 AAGTGAACTGTATCCGACATCTGGTTCCTACTTCAGGGTCATAAAGCCTAAATAGCCCACACGTTCCCCTTAAATAAGA\
 CATCACGATG";
 
-// Pattern has same length as in pattern_matching.rs, but 2 differences to best match.
-// With k = 5 there are 14 hits, with k = 6, there are 78 hits (most are overlapping)
+// Pattern has same length as in pattern_matching.rs, but 2 differences to best
+// match. With k = 5 there are 14 hits, with k = 6, there are 78 hits (most are
+// overlapping)
 static PATTERN: &'static [u8] = b"GCGCGTCCACACCGCTCG";
 
 static K: u8 = 6;

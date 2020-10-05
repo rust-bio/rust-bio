@@ -3,8 +3,9 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A fixed-width bit encoding implementation. This allows to store a sequence of values over
-//! a reduced alphabet by packing them bit-encoded into a sequence of bytes.
+//! A fixed-width bit encoding implementation. This allows to store a sequence
+//! of values over a reduced alphabet by packing them bit-encoded into a
+//! sequence of bytes.
 //!
 //! Similar behaviour can be achieved using a `PackedVec` from the [packedvec](https://docs.rs/packedvec) crate.
 //!
@@ -40,9 +41,9 @@
 
 /// A sequence of bitencoded values.
 ///
-/// Space complexity: O(⌈(n * width) / k⌉) * 32 bit, where n is the length of the input
-/// sequence and `k = 32 - (32 % width)`  is the number of bits in each
-/// 32-bit block that can be used to store values.
+/// Space complexity: O(⌈(n * width) / k⌉) * 32 bit, where n is the length of
+/// the input sequence and `k = 32 - (32 % width)`  is the number of bits in
+/// each 32-bit block that can be used to store values.
 /// For values that are not a divider of 32, some bits will remain unused.
 /// For example for `width = 7` only `4 * 7 = 28` bits are used.
 /// Five 7-bit values are stored in 2 blocks.
@@ -61,8 +62,9 @@ fn mask(width: usize) -> u32 {
 }
 
 impl BitEnc {
-    /// Create a new instance with a given encoding width (e.g. width=2 for using two bits per value).
-    /// Supports widths up to 8 bits per character, i.e. `1 <= width <= 8`.
+    /// Create a new instance with a given encoding width (e.g. width=2 for
+    /// using two bits per value). Supports widths up to 8 bits per
+    /// character, i.e. `1 <= width <= 8`.
     ///
     /// Complexity: O(1)
     ///
@@ -385,7 +387,7 @@ impl BitEnc {
     /// // Add another 2 to create a second block
     /// bitenc.push(2);
     /// assert_eq!(bitenc.nr_blocks(), 2);
-    /// ```    
+    /// ```
     pub fn nr_blocks(&self) -> usize {
         self.storage.len()
     }
@@ -408,7 +410,7 @@ impl BitEnc {
     /// assert_eq!(bitenc.nr_symbols(), 4);
     /// bitenc.push(2);
     /// assert_eq!(bitenc.nr_symbols(), 5);
-    /// ```    
+    /// ```
     pub fn nr_symbols(&self) -> usize {
         self.len
     }
@@ -434,8 +436,8 @@ impl BitEnc {
     }
 }
 
-/// Iterator over values of a bitencoded sequence (values will be unpacked into bytes).
-/// Used to implement the `iter` method of `BitEnc`.
+/// Iterator over values of a bitencoded sequence (values will be unpacked into
+/// bytes). Used to implement the `iter` method of `BitEnc`.
 pub struct BitEncIter<'a> {
     bitenc: &'a BitEnc,
     i: usize,

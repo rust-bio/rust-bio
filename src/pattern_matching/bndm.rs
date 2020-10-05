@@ -4,8 +4,8 @@
 // except according to those terms.
 
 //! Backward nondeterministic DAWG matching (BNDM).
-//! Best-case complexity: O(n / m) with pattern of length m <= 64 and text of length n.
-//! Worst case complexity: O(n * m).
+//! Best-case complexity: O(n / m) with pattern of length m <= 64 and text of
+//! length n. Worst case complexity: O(n * m).
 //!
 //! # Example
 //!
@@ -47,7 +47,8 @@ impl BNDM {
         BNDM { m, masks, accept }
     }
 
-    /// Find all matches of pattern with a given text. Matches are returned as iterator over start positions.
+    /// Find all matches of pattern with a given text. Matches are returned as
+    /// iterator over start positions.
     pub fn find_all<'a>(&'a self, text: TextSlice<'a>) -> Matches<'_> {
         Matches {
             bndm: self,

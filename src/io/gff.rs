@@ -83,7 +83,8 @@ impl Reader<fs::File> {
 }
 
 impl<R: io::Read> Reader<R> {
-    /// Create a new GFF reader given an instance of `io::Read`, in given format.
+    /// Create a new GFF reader given an instance of `io::Read`, in given
+    /// format.
     pub fn new(reader: R, fileformat: GffType) -> Self {
         Reader {
             inner: csv::ReaderBuilder::new()
@@ -390,7 +391,8 @@ gene_id \"ENSG00000223972.5\"; gene_type \"transcribed_unprocessed_pseudogene\";
 chr1\tHAVANA\ttranscript\t11869\t14409\t.\t+\t.\tgene_id \"ENSG00000223972.5\";\
 transcript_id \"ENST00000456328.2\"; gene_type \"transcribed_unprocessed_pseudogene\"";
 
-    // GTF file with duplicate attribute keys, taken from a published GENCODE GTF file.
+    // GTF file with duplicate attribute keys, taken from a published GENCODE GTF
+    // file.
     const GTF_FILE_DUP_ATTR_KEYS: &'static [u8] = b"chr1\tENSEMBL\ttranscript\t182393\t\
 184158\t.\t+\t.\tgene_id \"ENSG00000279928.1\"; transcript_id \"ENST00000624431.1\";\
 gene_type \"protein_coding\"; gene_status \"KNOWN\"; gene_name \"FO538757.2\";\

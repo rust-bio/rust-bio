@@ -8,7 +8,8 @@ use super::{BitVec, Myers};
 ///
 /// # Example:
 ///
-/// This example shows how recognition of IUPAC ambiguities in patterns can be implemented:
+/// This example shows how recognition of IUPAC ambiguities in patterns can be
+/// implemented:
 ///
 /// ```
 /// # extern crate bio;
@@ -44,9 +45,10 @@ use super::{BitVec, Myers};
 /// # }
 /// ```
 ///
-/// Note that only ambiguities in the pattern are recognized. The reverse is not true; ambiguities
-/// in the search text are not matched by multiple symbols in the pattern. This would require
-/// specifying additional ambiguities (`builder.ambig(b'A', b"MRWVHDN")`, etc...).
+/// Note that only ambiguities in the pattern are recognized. The reverse is not
+/// true; ambiguities in the search text are not matched by multiple symbols in
+/// the pattern. This would require specifying additional ambiguities
+/// (`builder.ambig(b'A', b"MRWVHDN")`, etc...).
 #[derive(Default, Clone, Eq, PartialEq)]
 pub struct MyersBuilder {
     ambigs: HashMap<u8, Vec<u8>>,
@@ -58,9 +60,9 @@ impl MyersBuilder {
         Self::default()
     }
 
-    /// Allows to specify ambiguous symbols and their equivalents. Note that the ambiguous symbol
-    /// will always be matched by itself. Explicitly including it in the equivalents is not
-    /// necessary.
+    /// Allows to specify ambiguous symbols and their equivalents. Note that the
+    /// ambiguous symbol will always be matched by itself. Explicitly
+    /// including it in the equivalents is not necessary.
     ///
     /// # Example:
     ///
@@ -92,10 +94,11 @@ impl MyersBuilder {
         self
     }
 
-    /// Allows to specify a wildcard symbol, that upon appearance in the search text
-    /// shall be matched by any symbol of the pattern. Multiple wildcards are possible.
-    /// For the inverse, that is, wildcards in the pattern matching any symbol in search
-    /// text, use `ambig(byte, 0..255)`.
+    /// Allows to specify a wildcard symbol, that upon appearance in the search
+    /// text shall be matched by any symbol of the pattern. Multiple
+    /// wildcards are possible. For the inverse, that is, wildcards in the
+    /// pattern matching any symbol in search text, use `ambig(byte,
+    /// 0..255)`.
     ///
     /// # Example:
     ///
@@ -118,8 +121,8 @@ impl MyersBuilder {
         self
     }
 
-    /// Creates a Myers instance given a pattern, using `u64` as bit vector type.
-    /// Pattern length is restricted to at most 64 symbols.
+    /// Creates a Myers instance given a pattern, using `u64` as bit vector
+    /// type. Pattern length is restricted to at most 64 symbols.
     pub fn build_64<C, P>(&self, pattern: P) -> Myers<u64>
     where
         C: Borrow<u8>,
@@ -129,8 +132,8 @@ impl MyersBuilder {
         self.build(pattern)
     }
 
-    /// Creates a Myers instance given a pattern, using `u128` as bit vector type.
-    /// Pattern length is restricted to at most 128 symbols.
+    /// Creates a Myers instance given a pattern, using `u128` as bit vector
+    /// type. Pattern length is restricted to at most 128 symbols.
     #[cfg(has_u128)]
     pub fn build_128<C, P>(&self, pattern: P) -> Myers<u128>
     where
@@ -141,8 +144,9 @@ impl MyersBuilder {
         self.build(pattern)
     }
 
-    /// Creates a Myers instance given a pattern, using any desired type for bit vectors.
-    /// Pattern length is restricted to the size of the bit vector `T`.
+    /// Creates a Myers instance given a pattern, using any desired type for bit
+    /// vectors. Pattern length is restricted to the size of the bit vector
+    /// `T`.
     ///
     /// # Example:
     ///
@@ -166,8 +170,9 @@ impl MyersBuilder {
         Myers::new_ambig(pattern, Some(&self.ambigs), Some(&self.wildcards))
     }
 
-    /// Creates a `long::Myers` instance given a pattern, using `u64` as bit vector type.
-    /// Pattern length is not restricted regardless of the type of the bit vector.
+    /// Creates a `long::Myers` instance given a pattern, using `u64` as bit
+    /// vector type. Pattern length is not restricted regardless of the type
+    /// of the bit vector.
     pub fn build_long_64<C, P>(&self, pattern: P) -> MyersLong<u64>
     where
         C: Borrow<u8>,
@@ -177,8 +182,9 @@ impl MyersBuilder {
         self.build_long(pattern)
     }
 
-    /// Creates a `long::Myers` instance given a pattern, using `u128` as bit vector type.
-    /// Pattern length is not restricted regardless of the type of the bit vector.
+    /// Creates a `long::Myers` instance given a pattern, using `u128` as bit
+    /// vector type. Pattern length is not restricted regardless of the type
+    /// of the bit vector.
     #[cfg(has_u128)]
     pub fn build_long_128<C, P>(&self, pattern: P) -> MyersLong<u128>
     where
@@ -189,8 +195,9 @@ impl MyersBuilder {
         self.build_long(pattern)
     }
 
-    /// Creates a `long::Myers` instance given a pattern, using any desired type for bit vectors.
-    /// Pattern length is not restricted regardless of the type of the bit vector.
+    /// Creates a `long::Myers` instance given a pattern, using any desired type
+    /// for bit vectors. Pattern length is not restricted regardless of the
+    /// type of the bit vector.
     pub fn build_long<T, C, P>(&self, pattern: P) -> MyersLong<T>
     where
         T: BitVec,

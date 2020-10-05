@@ -4,8 +4,8 @@
 // except according to those terms.
 
 //! Backward oracle matching algorithm.
-//! Best-case complexity: O(n / m) with pattern of length m and text of length n.
-//! Worst case complexity: O(n * m).
+//! Best-case complexity: O(n / m) with pattern of length m and text of length
+//! n. Worst case complexity: O(n * m).
 //!
 //! # Example
 //!
@@ -95,7 +95,8 @@ impl BOM {
         }
     }
 
-    /// Find all matches of the pattern in the given text. Matches are returned as an iterator over start positions.
+    /// Find all matches of the pattern in the given text. Matches are returned
+    /// as an iterator over start positions.
     pub fn find_all<'a>(&'a self, text: TextSlice<'a>) -> Matches<'_> {
         Matches {
             bom: self,

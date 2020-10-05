@@ -4,7 +4,8 @@
 // except according to those terms.
 
 //! The [Full-text index in Minute space index (FM-index)](https://doi.org/10.1109/SFCS.2000.892127) and
-//! the FMD-Index for finding suffix array intervals matching a given pattern in linear time.
+//! the FMD-Index for finding suffix array intervals matching a given pattern in
+//! linear time.
 //!
 //! # Examples
 //!
@@ -27,8 +28,9 @@
 //!
 //! ## Enclose in struct
 //!
-//! `FMIndex` was designed to not forcibly own the BWT and auxiliary data structures.
-//! It can take a reference (`&`), owned structs or any of the more complex pointer types.
+//! `FMIndex` was designed to not forcibly own the BWT and auxiliary data
+//! structures. It can take a reference (`&`), owned structs or any of the more
+//! complex pointer types.
 //!
 //! ```
 //! use bio::alphabets::dna;
@@ -85,8 +87,8 @@ pub trait FMIndexable {
     fn bwt(&self) -> &BWT;
 
     /// Perform backward search, yielding suffix array
-    /// interval denoting exact occurrences of the given pattern of length m in the text.
-    /// Complexity: O(m).
+    /// interval denoting exact occurrences of the given pattern of length m in
+    /// the text. Complexity: O(m).
     ///
     /// # Arguments
     ///
@@ -139,8 +141,8 @@ pub trait FMIndexable {
     }
 }
 
-/// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
-/// intervals matching a given pattern.
+/// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for
+/// finding suffix array intervals matching a given pattern.
 #[derive(Serialize, Deserialize)]
 pub struct FMIndex<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> {
     bwt: DBWT,
@@ -176,7 +178,8 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMIndex<DBWT, DL
     }
 }
 
-/// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
+/// A bi-interval on suffix array of the forward and reverse strand of a DNA
+/// text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BiInterval {
     lower: usize,
@@ -209,8 +212,8 @@ impl BiInterval {
     }
 }
 
-/// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
-/// strand of DNA texts (Li, 2012).
+/// The FMD-Index for linear time search of supermaximal exact matches on
+/// forward and reverse strand of DNA texts (Li, 2012).
 #[derive(Serialize, Deserialize)]
 pub struct FMDIndex<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> {
     fmindex: FMIndex<DBWT, DLess, DOcc>,
@@ -236,12 +239,13 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMIndexable
 impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> From<FMIndex<DBWT, DLess, DOcc>>
     for FMDIndex<DBWT, DLess, DOcc>
 {
-    /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics).
-    /// This expects a BWT that was created from a text over the DNA alphabet with N
-    /// (`alphabets::dna::n_alphabet()`) consisting of the
-    /// concatenation with its reverse complement, separated by the sentinel symbol `$`.
-    /// I.e., let T be the original text and R be its reverse complement.
-    /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
+    /// Construct a new instance of the FMD index (see Heng Li (2012)
+    /// Bioinformatics). This expects a BWT that was created from a text
+    /// over the DNA alphabet with N (`alphabets::dna::n_alphabet()`)
+    /// consisting of the concatenation with its reverse complement,
+    /// separated by the sentinel symbol `$`. I.e., let T be the original
+    /// text and R be its reverse complement. Then, the expected text is
+    /// T$R$. Further, multiple concatenated texts are allowed, e.g.
     /// T1$R1$T2$R2$T3$R3$.
     fn from(fmindex: FMIndex<DBWT, DLess, DOcc>) -> FMDIndex<DBWT, DLess, DOcc> {
         let mut alphabet = dna::n_alphabet();
@@ -256,8 +260,8 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> From<FMIndex<DBW
 }
 
 impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, DLess, DOcc> {
-    /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
-    /// Complexity O(m) with pattern of length m.
+    /// Find supermaximal exact matches of given pattern that overlap position i
+    /// in the pattern. Complexity O(m) with pattern of length m.
     ///
     /// # Example
     ///
@@ -301,7 +305,8 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
             if interval.size != forward_interval.size {
                 curr.push(interval);
             }
-            // if new interval size is zero, stop, as no further forward extension is possible
+            // if new interval size is zero, stop, as no further forward extension is
+            // possible
             if forward_interval.size == 0 {
                 break;
             }
@@ -362,7 +367,8 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
         }
     }
 
-    /// Initialize interval for empty pattern. The interval points at the whole suffix array.
+    /// Initialize interval for empty pattern. The interval points at the whole
+    /// suffix array.
     pub fn init_interval(&self) -> BiInterval {
         BiInterval {
             lower: 0,
@@ -377,8 +383,8 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
         let mut s = 0;
         let mut o = 0;
         let mut l = interval.lower_rev;
-        // Interval [l(c(aP)), u(c(aP))] is a subinterval of [l(c(P)), u(c(P))] for each a,
-        // starting with the lexicographically smallest ($),
+        // Interval [l(c(aP)), u(c(aP))] is a subinterval of [l(c(P)), u(c(P))] for each
+        // a, starting with the lexicographically smallest ($),
         // then c(T) = A, c(G) = C, c(C) = G, N, c(A) = T, ...
         // Hence, we calculate lower revcomp bounds by iterating over
         // symbols and updating from previous one.

@@ -1,14 +1,17 @@
-//! Interval tree, a data structure for efficiently storing and searching intervals.
+//! Interval tree, a data structure for efficiently storing and searching
+//! intervals.
 //!
-//! This data structure uses an `Interval` type to define the intervals. It is implemented by
-//! wrapping the `std::ops::Range` in a newtype. An interval must have a positive with and the interval bounds
-//! may be specified by any type satisfies both the `std::cmp::Ord` and `Clone` trait. Because
-//! `Interval` implements `From<Range>` you can also uses normal `Range` arguments in the
-//! `insert` and `find` functions. This implicit conversion will panic if a negative-width range is
-//! supplied.
+//! This data structure uses an `Interval` type to define the intervals. It is
+//! implemented by wrapping the `std::ops::Range` in a newtype. An interval must
+//! have a positive with and the interval bounds may be specified by any type
+//! satisfies both the `std::cmp::Ord` and `Clone` trait. Because `Interval`
+//! implements `From<Range>` you can also uses normal `Range` arguments in the
+//! `insert` and `find` functions. This implicit conversion will panic if a
+//! negative-width range is supplied.
 //!
-//! Upon inserting an interval may be associated with a data value. The intervals are stored in
-//! an augmented AVL-tree which allows for efficient inserting and querying.
+//! Upon inserting an interval may be associated with a data value. The
+//! intervals are stored in an augmented AVL-tree which allows for efficient
+//! inserting and querying.
 //!
 //! # Example
 //! ```
@@ -25,7 +28,6 @@
 //!     assert_eq!(r.data(), &"Range_1");
 //! }
 //! ```
-//!
 
 use crate::utils::Interval;
 use std::cmp;
@@ -43,8 +45,9 @@ impl<N: Ord + Clone, D> Default for IntervalTree<N, D> {
     }
 }
 
-/// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
-/// wraps the fields `interval` and `data` in an `Entry`.
+/// A `find` query on the interval tree does not directly return references to
+/// the nodes in the tree, but wraps the fields `interval` and `data` in an
+/// `Entry`.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Entry<'a, N: Ord + Clone, D> {
     data: &'a D,
@@ -63,8 +66,8 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Entry<'a, N, D> {
     }
 }
 
-/// An `IntervalTreeIterator` is returned by `Intervaltree::find` and iterates over the entries
-/// overlapping the query
+/// An `IntervalTreeIterator` is returned by `Intervaltree::find` and iterates
+/// over the entries overlapping the query
 pub struct IntervalTreeIterator<'a, N: Ord + Clone, D> {
     nodes: Vec<&'a Node<N, D>>,
     interval: Interval<N>,
@@ -80,7 +83,8 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D>
                 Some(node) => node,
             };
 
-            // stop traversal if the query interval is beyond the current node and all children
+            // stop traversal if the query interval is beyond the current node and all
+            // children
             if self.interval.start < candidate.max {
                 if let Some(ref left) = candidate.left {
                     self.nodes.push(left);
@@ -106,9 +110,10 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D>
     }
 }
 
-/// A `find_mut` query on the interval tree does not directly return references to the nodes in the tree, but
-/// wraps the fields `interval` and `data` in an `EntryMut`. Only the data part can be mutably accessed
-/// using the `data` method
+/// A `find_mut` query on the interval tree does not directly return references
+/// to the nodes in the tree, but wraps the fields `interval` and `data` in an
+/// `EntryMut`. Only the data part can be mutably accessed using the `data`
+/// method
 #[derive(PartialEq, Eq, Debug)]
 pub struct EntryMut<'a, N: Ord + Clone, D> {
     data: &'a mut D,
@@ -127,8 +132,9 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> EntryMut<'a, N, D> {
     }
 }
 
-/// An `IntervalTreeIteratorMut` is returned by `Intervaltree::find_mut` and iterates over the entries
-/// overlapping the query allowing mutable access to the data `D`, not the `Interval`.
+/// An `IntervalTreeIteratorMut` is returned by `Intervaltree::find_mut` and
+/// iterates over the entries overlapping the query allowing mutable access to
+/// the data `D`, not the `Interval`.
 pub struct IntervalTreeIteratorMut<'a, N: Ord + Clone, D> {
     nodes: Vec<&'a mut Node<N, D>>,
     interval: Interval<N>,
@@ -144,13 +150,15 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIteratorMut<'a, N,
                 Some(node) => node,
             };
 
-            // stop traversal if the query interval is beyond the current node and all children
+            // stop traversal if the query interval is beyond the current node and all
+            // children
             if self.interval.start < candidate.max {
                 if let Some(ref mut left) = candidate.left {
                     self.nodes.push(left);
                 }
 
-                // don't traverse right if the query interval is completely before the current interval
+                // don't traverse right if the query interval is completely before the current
+                // interval
                 if self.interval.end > candidate.interval.start {
                     if let Some(ref mut right) = candidate.right {
                         self.nodes.push(right);
@@ -184,8 +192,8 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
         };
     }
 
-    /// Uses the provided `Interval` to find overlapping intervals in the tree and returns an
-    /// `IntervalTreeIterator`
+    /// Uses the provided `Interval` to find overlapping intervals in the tree
+    /// and returns an `IntervalTreeIterator`
     pub fn find<I: Into<Interval<N>>>(&self, interval: I) -> IntervalTreeIterator<'_, N, D> {
         let interval = interval.into();
         match self.root {
@@ -200,8 +208,9 @@ impl<N: Clone + Ord, D> IntervalTree<N, D> {
         }
     }
 
-    /// Uses the provided `Interval` to find overlapping intervals in the tree and returns an
-    /// `IntervalTreeIteratorMut` that allows mutable access to the `data`
+    /// Uses the provided `Interval` to find overlapping intervals in the tree
+    /// and returns an `IntervalTreeIteratorMut` that allows mutable access
+    /// to the `data`
     pub fn find_mut<I: Into<Interval<N>>>(
         &mut self,
         interval: I,

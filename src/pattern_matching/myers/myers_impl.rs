@@ -47,8 +47,9 @@ where
         self.pv >= (T::max_value() >> 1) && self.mv == T::zero()
     }
 
-    // Adjust the distance of the block ('moving the cursor up in the traceback matrix')
-    // given a range bit mask that specifies which positions should be crossed.
+    // Adjust the distance of the block ('moving the cursor up in the traceback
+    // matrix') given a range bit mask that specifies which positions should be
+    // crossed.
     #[inline]
     pub fn adjust_by_mask(&mut self, mask: T) {
         let p = (self.pv & mask).count_ones();
@@ -69,11 +70,14 @@ where
         }
 
         // not faster:
-        // let diff = ((self.mv & pos_mask) != T::zero()) as isize - ((self.pv & pos_mask) != T::zero()) as isize;
-        // self.dist = D::from_usize(self.dist.to_usize().unwrap().wrapping_add(diff as usize)).unwrap();
+        // let diff = ((self.mv & pos_mask) != T::zero()) as isize - ((self.pv &
+        // pos_mask) != T::zero()) as isize; self.dist =
+        // D::from_usize(self.dist.to_usize().unwrap().wrapping_add(diff as
+        // usize)).unwrap();
     }
 
-    /// This method may be used for performance comparison instead of adjust_by_mask()
+    /// This method may be used for performance comparison instead of
+    /// adjust_by_mask()
     #[inline]
     #[allow(dead_code)]
     pub fn adjust_many(&mut self, pos_mask: T, n: usize) {

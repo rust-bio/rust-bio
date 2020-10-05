@@ -1,4 +1,5 @@
-//! This module defines a newtype `Interval` for `std::ops::Range`, which will panic if `end` < `start`.
+//! This module defines a newtype `Interval` for `std::ops::Range`, which will
+//! panic if `end` < `start`.
 //!
 //! # Examples
 //! Create a new `Interval` given a `Range`.
@@ -28,8 +29,8 @@ use std::ops::{Deref, Range};
 
 pub use self::errors::{Error, Result};
 
-/// An `Interval` wraps the `std::ops::Range` from the stdlib and is defined by a start and end field
-/// where end should be >= start.
+/// An `Interval` wraps the `std::ops::Range` from the stdlib and is defined by
+/// a start and end field where end should be >= start.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Interval<N: Ord + Clone>(Range<N>);
 
@@ -45,7 +46,8 @@ impl<N: Ord + Clone> Interval<N> {
     }
 }
 
-/// Convert a `Range` into an `Interval`. This conversion will panic if the `Range` has end < start
+/// Convert a `Range` into an `Interval`. This conversion will panic if the
+/// `Range` has end < start
 impl<N: Ord + Clone> From<Range<N>> for Interval<N> {
     fn from(r: Range<N>) -> Self {
         match Interval::new(r) {
@@ -55,8 +57,8 @@ impl<N: Ord + Clone> From<Range<N>> for Interval<N> {
     }
 }
 
-/// Convert a reference to a `Range` to an interval by cloning. This conversion will panic if the
-/// `Range` has end < start
+/// Convert a reference to a `Range` to an interval by cloning. This conversion
+/// will panic if the `Range` has end < start
 impl<'a, N: Ord + Clone> From<&'a Range<N>> for Interval<N> {
     fn from(r: &Range<N>) -> Self {
         match Interval::new(r.clone()) {
@@ -66,7 +68,8 @@ impl<'a, N: Ord + Clone> From<&'a Range<N>> for Interval<N> {
     }
 }
 
-/// Use the `Deref` operator to get a reference to `Range` wrapped by the `Interval` newtype.
+/// Use the `Deref` operator to get a reference to `Range` wrapped by the
+/// `Interval` newtype.
 impl<N: Ord + Clone> Deref for Interval<N> {
     type Target = Range<N>;
 

@@ -5,7 +5,8 @@
 
 //! The [Burrows-Wheeler-Transform](https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.37.6774) and related data structures.
 //! The implementation is based on the lecture notes
-//! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
+//! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008
+//! - 2015.
 
 use std::iter::repeat;
 
@@ -114,7 +115,8 @@ impl Occ {
     pub fn get(&self, bwt: &BWTSlice, r: usize, a: u8) -> usize {
         // NOTE:
         //
-        // Retrieving byte match counts in this function is critical to the performance of FM Index.
+        // Retrieving byte match counts in this function is critical to the performance
+        // of FM Index.
         //
         // The below manual count code is roughly equivalent to:
         // ```
@@ -126,11 +128,11 @@ impl Occ {
         // ```
         //
         // But there are a couple of reasons to do this manually:
-        // 1) As of 2016, versions of rustc/LLVM vectorize this manual loop more reliably
-        //    than the iterator adapter version.
+        // 1) As of 2016, versions of rustc/LLVM vectorize this manual loop more
+        // reliably    than the iterator adapter version.
         // 2) Manually accumulating the byte match count in a single chunk can allows
-        //    us to use a `u32` for that count, which has faster arithmetic on common arches.
-        //    This does necessitate storing `k` as a u32.
+        //    us to use a `u32` for that count, which has faster arithmetic on common
+        // arches.    This does necessitate storing `k` as a u32.
         //
         // See the conversation in these issues for some of the history here:
         //

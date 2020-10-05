@@ -3,8 +3,9 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Handling log-probabilities. Log probabilities are an important tool to deal with probabilities
-//! in a numerically stable way, in particular when having probabilities close to zero.
+//! Handling log-probabilities. Log probabilities are an important tool to deal
+//! with probabilities in a numerically stable way, in particular when having
+//! probabilities close to zero.
 
 pub mod cdf;
 pub mod errors;
@@ -23,14 +24,16 @@ use crate::utils::FastExp;
 
 pub use self::errors::{Error, Result};
 
-/// A factor to convert log-probabilities to PHRED-scale (phred = p * `LOG_TO_PHRED_FACTOR`).
+/// A factor to convert log-probabilities to PHRED-scale (phred = p *
+/// `LOG_TO_PHRED_FACTOR`).
 const LOG_TO_PHRED_FACTOR: f64 = -4.342_944_819_032_517_5; // -10 * 1 / ln(10)
 
-/// A factor to convert PHRED-scale to log-probabilities (p = phred * `PHRED_TO_LOG_FACTOR`).
+/// A factor to convert PHRED-scale to log-probabilities (p = phred *
+/// `PHRED_TO_LOG_FACTOR`).
 const PHRED_TO_LOG_FACTOR: f64 = -0.230_258_509_299_404_56; // 1 / (-10 * log10(e))
 
-/// Calculate log(1 - p) with p given in log space without loss of precision as described in
-/// http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf.
+/// Calculate log(1 - p) with p given in log space without loss of precision as
+/// described in http://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf.
 fn ln_1m_exp(p: f64) -> f64 {
     assert!(p <= 0.0);
     if p < -0.693 {
@@ -292,14 +295,16 @@ impl LogProb {
         }
     }
 
-    /// Calculate the cumulative sum of the given probabilities in a numerically stable way (Durbin 1998).
+    /// Calculate the cumulative sum of the given probabilities in a numerically
+    /// stable way (Durbin 1998).
     pub fn ln_cumsum_exp<I: IntoIterator<Item = LogProb>>(probs: I) -> ScanIter<I> {
         probs
             .into_iter()
             .scan(Self::ln_zero(), Self::scan_ln_add_exp)
     }
 
-    /// Integrate numerically stable over given log-space density in the interval [a, b]. Uses the trapezoidal rule with n grid points.
+    /// Integrate numerically stable over given log-space density in the
+    /// interval [a, b]. Uses the trapezoidal rule with n grid points.
     pub fn ln_trapezoidal_integrate_exp<T, D>(mut density: D, a: T, b: T, n: usize) -> LogProb
     where
         T: Copy + Add<Output = T> + Sub<Output = T> + Div<Output = T> + Mul<Output = T> + Float,
@@ -319,7 +324,8 @@ impl LogProb {
         LogProb(*Self::ln_sum_exp(&probs) + width.ln() - (2.0 * (n - 1) as f64).ln())
     }
 
-    /// Integrate numerically stable over given log-space density in the interval [a, b]. Uses Simpson's rule with n (odd) grid points.
+    /// Integrate numerically stable over given log-space density in the
+    /// interval [a, b]. Uses Simpson's rule with n (odd) grid points.
     pub fn ln_simpsons_integrate_exp<T, D>(mut density: D, a: T, b: T, n: usize) -> LogProb
     where
         T: Copy + Add<Output = T> + Sub<Output = T> + Div<Output = T> + Mul<Output = T> + Float,
@@ -333,7 +339,8 @@ impl LogProb {
             .dropping_back(1)
             .map(|(i, v)| {
                 let weight = (2 + (i % 2) * 2) as f64;
-                LogProb(*density(i, v) + weight.ln()) // factors alter between 2 and 4
+                LogProb(*density(i, v) + weight.ln()) // factors alter between 2
+                                                      // and 4
             })
             .collect_vec();
         probs.push(density(0, a));

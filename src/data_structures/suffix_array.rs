@@ -5,8 +5,8 @@
 
 //! Suffix arrays and related algorithms.
 //! The implementation is based on the lecture notes
-//! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
-//! The original algorithm desciption can be found in:
+//! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008
+//! - 2015. The original algorithm desciption can be found in:
 //! [Ge Nong, Sen Zhang, Wai Hong Chan: Two Efficient Algorithms for Linear Time Suffix Array Construction. IEEE Trans. Computers 60(10): 1471–1484 (2011)](https://doi.org/10.1109/TC.2010.188)
 //!
 //! # Examples
@@ -77,8 +77,8 @@ pub trait SuffixArray {
     //     (&self, bwt: DBWT, less: DLess, occ: DOcc, sampling_rate: usize) ->
     //     SampledSuffixArray<DBWT, DLess, DOcc> {
     //
-    //     let mut sample = Vec::with_capacity((self.len() as f32 / sampling_rate as f32).ceil() as usize);
-    //     for i in 0..self.len() {
+    //     let mut sample = Vec::with_capacity((self.len() as f32 / sampling_rate as
+    // f32).ceil() as usize);     for i in 0..self.len() {
     //         if (i % sampling_rate) == 0 {
     //             sample.push(self.get(i).unwrap());
     //         }
@@ -95,8 +95,8 @@ pub trait SuffixArray {
 }
 
 // /// A sampled suffix array.
-// pub struct SampledSuffixArray<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> {
-//     bwt: DBWT,
+// pub struct SampledSuffixArray<DBWT: DerefBWT, DLess: DerefLess, DOcc:
+// DerefOcc> {     bwt: DBWT,
 //     less: DLess,
 //     occ: DOcc,
 //     sample: Vec<usize>,
@@ -138,9 +138,9 @@ impl SuffixArray for RawSuffixArray {
     // }
 }
 
-// impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SuffixArray for SampledSuffixArray<DBWT, DLess, DOcc> {
-//     fn get(&self, index: usize) -> Option<usize> {
-//         if index < self.len() {
+// impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SuffixArray for
+// SampledSuffixArray<DBWT, DLess, DOcc> {     fn get(&self, index: usize) ->
+// Option<usize> {         if index < self.len() {
 //             let mut pos = index;
 //             let mut offset = 0;
 //             loop {
@@ -149,8 +149,8 @@ impl SuffixArray for RawSuffixArray {
 //                 }
 //
 //                 let c = self.bwt[pos];
-//                 pos = self.less[c as usize] + self.occ.get(&self.bwt, pos - 1, c);
-//                 offset += 1;
+//                 pos = self.less[c as usize] + self.occ.get(&self.bwt, pos -
+// 1, c);                 offset += 1;
 //             }
 //         } else {
 //             None
@@ -167,9 +167,9 @@ impl SuffixArray for RawSuffixArray {
 // }
 //
 //
-// impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SampledSuffixArray<DBWT, DLess, DOcc> {
-//     pub fn sampling_rate(&self) -> usize {
-//         self.s
+// impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc>
+// SampledSuffixArray<DBWT, DLess, DOcc> {     pub fn sampling_rate(&self) ->
+// usize {         self.s
 //     }
 // }
 
@@ -181,25 +181,26 @@ impl SuffixArray for RawSuffixArray {
 /// http://ls11-www.cs.tu-dortmund.de/people/rahmann/algoseq.pdf
 ///
 /// The idea is to first mark positions as L or S, with L being a position
-/// the suffix of which is lexicographically larger than that of the next position.
-/// Then, LMS-positions (leftmost S) are S-positions right to an L-position.
-/// An LMS substring is the substring from one LMS position to the next (inclusive).
-/// The algorithm works as follows:
+/// the suffix of which is lexicographically larger than that of the next
+/// position. Then, LMS-positions (leftmost S) are S-positions right to an
+/// L-position. An LMS substring is the substring from one LMS position to the
+/// next (inclusive). The algorithm works as follows:
 ///
 /// 1. Sort LMS positions: first step 2 is applied to the unsorted sequence
-///    of positions. Surprisingly, this sorts the LMS substrings. If all substrings
-///    are different, LMS positions (and their suffixes) are sorted. Else, a reduced
-///    text is build (at most half the size of the original text) and we recurse into
-///    suffix array construction on the reduced text, yielding the sorted LMS positions.
-/// 2. Derive the order of the other positions/suffixes from the (sorted) LMS positions.
-///    For this, the (still empty) suffix array is partitioned into buckets.
-///    Each bucket denotes an interval of suffixes with the same first symbol.
-///    We know that the L-suffixes have to occur first in the buckets, because they
-///    have to be lexicographically smaller than the S-suffixes with the same first letter.
-///    The LMS-positions can now be used to insert the L-positions in the correct order
-///    into the buckets.
-///    Then, the S-positions can be inserted, again using the already existing entries
-///    in the array.
+///    of positions. Surprisingly, this sorts the LMS substrings. If all
+/// substrings    are different, LMS positions (and their suffixes) are sorted.
+/// Else, a reduced    text is build (at most half the size of the original
+/// text) and we recurse into    suffix array construction on the reduced text,
+/// yielding the sorted LMS positions. 2. Derive the order of the other
+/// positions/suffixes from the (sorted) LMS positions.    For this, the (still
+/// empty) suffix array is partitioned into buckets.    Each bucket denotes an
+/// interval of suffixes with the same first symbol.    We know that the
+/// L-suffixes have to occur first in the buckets, because they    have to be
+/// lexicographically smaller than the S-suffixes with the same first letter.
+///    The LMS-positions can now be used to insert the L-positions in the
+/// correct order    into the buckets.
+///    Then, the S-positions can be inserted, again using the already existing
+/// entries    in the array.
 ///
 /// # Arguments
 ///
@@ -294,9 +295,9 @@ pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray
     lcp
 }
 
-/// Calculate all locally shortest unique substrings from a given suffix and lcp array
-/// (Ohlebusch (2013). "Bioinformatics Algorithms". ISBN 978-3-00-041316-2).
-/// Complexity: O(n)
+/// Calculate all locally shortest unique substrings from a given suffix and lcp
+/// array (Ohlebusch (2013). "Bioinformatics Algorithms". ISBN
+/// 978-3-00-041316-2). Complexity: O(n)
 ///
 /// # Arguments
 ///
@@ -305,8 +306,9 @@ pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray
 ///
 /// # Returns
 ///
-/// An vector of the length of the shortest unique substring for each position of the text.
-/// Suffixes are excluded. If no unique substring starts at a given position, the entry is `None`.
+/// An vector of the length of the shortest unique substring for each position
+/// of the text. Suffixes are excluded. If no unique substring starts at a given
+/// position, the entry is `None`.
 ///
 /// # Example
 ///
@@ -336,15 +338,17 @@ pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray
 /// ```
 pub fn shortest_unique_substrings<SA: SuffixArray>(pos: &SA, lcp: &LCPArray) -> Vec<Option<usize>> {
     let n = pos.len();
-    // Initialize array representing the length of the shortest unique substring starting at position i
+    // Initialize array representing the length of the shortest unique substring
+    // starting at position i
     let mut sus = vec![None; n];
     for i in 0..n {
-        // The longest common prefixes (LCP) of suffix pos[i] with its predecessor and successor are not unique.
-        // In turn the their maximum + 1 is the length of the shortest unique substring starting at pos[i].
+        // The longest common prefixes (LCP) of suffix pos[i] with its predecessor and
+        // successor are not unique. In turn the their maximum + 1 is the length
+        // of the shortest unique substring starting at pos[i].
         let len = 1 + cmp::max(lcp.get(i).unwrap(), lcp.get(i + 1).unwrap_or(0)) as usize;
         let p = pos.get(i).unwrap();
-        // Check if the suffix pos[i] is a prefix of pos[i+1]. In that case, there is no unique substring
-        // at this position.
+        // Check if the suffix pos[i] is a prefix of pos[i+1]. In that case, there is no
+        // unique substring at this position.
         if n - p >= len {
             sus[p] = Some(len);
         }
@@ -357,7 +361,8 @@ fn sentinel(text: &[u8]) -> u8 {
     text[text.len() - 1]
 }
 
-/// Count the sentinels occurring in the text given that the last character is the sentinel.
+/// Count the sentinels occurring in the text given that the last character is
+/// the sentinel.
 fn sentinel_count(text: &[u8]) -> usize {
     let sentinel = sentinel(text);
     assert!(
@@ -587,7 +592,8 @@ impl SAIS {
         for &p in self.lms_pos.iter().rev() {
             let c: usize = cast(text[p]).unwrap();
             self.pos[self.bucket_end[c]] = p;
-            // subtract without overflow: last -1 will cause overflow, but it does not matter
+            // subtract without overflow: last -1 will cause overflow, but it does not
+            // matter
             self.bucket_end[c] = self.bucket_end[c].wrapping_sub(1);
         }
 
@@ -634,8 +640,8 @@ struct PosTypes {
 
 impl PosTypes {
     /// Calculate the text position type.
-    /// L-type marks suffixes being lexicographically larger than their successor,
-    /// S-type marks the others.
+    /// L-type marks suffixes being lexicographically larger than their
+    /// successor, S-type marks the others.
     /// This function fills a BitVec, with 1-bits denoting S-type
     /// and 0-bits denoting L-type.
     ///
@@ -696,7 +702,8 @@ mod tests {
         let n = text.len();
 
         let pos_types = PosTypes::new(&text);
-        //let mut test = BitSlice::from_slice(&[0b01100110, 0b10010011, 0b01100100]).to_owned();
+        //let mut test = BitSlice::from_slice(&[0b01100110, 0b10010011,
+        // 0b01100100]).to_owned();
         let mut test = BitVec::new();
         test.push_block(0b001001101100100101100110);
         test.truncate(n as u64);
@@ -828,13 +835,17 @@ mod tests {
     //             CAGCC$"[..],
     //             "substring"),
     //          (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
-    //             AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
-    //             "complex"),
+    //
+    // AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"
+    // [..],             "complex"),
     //          (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
-    //             TTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATTATAATTAGGCCTAC$\
-    //             AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
-    //             TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"[..],
-    //             "complex with revcomps"),
+    //
+    // TTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATTATAATTAGGCCTAC$\
+    //
+    // AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
+    //
+    // TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"
+    // [..],             "complex with revcomps"),
     //          ];
     //
     //     for &(text, _) in test_cases.into_iter() {

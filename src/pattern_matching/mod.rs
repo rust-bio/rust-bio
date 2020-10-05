@@ -5,7 +5,8 @@
 
 //! This module contains various useful pattern matching algorithms.
 //! The implementations are based on the lecture notes
-//! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
+//! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008
+//! - 2015.
 //!
 //! * Algorithm of Horspool: fastest for a sufficiently large alphabet
 //! * Shift And algorithm: fast for patterns with less than 64 symbols and very small alphabets.
@@ -13,7 +14,8 @@
 //! * BOM algorithm: fast for long patterns and small alphabet.
 //! * KMP algorithm: the classical ancestor.
 //! * Ukkonens algorithm: approximate pattern matching with dynamic programming.
-//! * Myers algorithm: linear-time approximate pattern matching with edit distance for small patterns
+//! * Myers algorithm: linear-time approximate pattern matching with edit distance for small
+//!   patterns
 //!
 //! Another fast pattern matching algorithm is available in the twoway crate: https://crates.io/crates/twoway
 

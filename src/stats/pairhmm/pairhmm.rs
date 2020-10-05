@@ -3,14 +3,16 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A pair Hidden Markov Model for calculating the probability that two sequences are related to
-//! each other. Depending on the used parameters, this can, e.g., be used to calculate the
-//! probability that a certain sequencing read comes from a given position in a reference genome.
+//! A pair Hidden Markov Model for calculating the probability that two
+//! sequences are related to each other. Depending on the used parameters, this
+//! can, e.g., be used to calculate the probability that a certain sequencing
+//! read comes from a given position in a reference genome.
 //!
-//! Time complexity: O(n * m) where `n = seq1.len()`, `m = seq2.len()` (or `m = min(seq2.len(), max_edit_dist)` with banding enabled).
-//! Memory complexity: O(m) where `m = seq2.len()`.
-//! Note that if the number of states weren't fixed in this implementation, we would have to include
-//! these in both time and memory complexity above as an additional factor.
+//! Time complexity: O(n * m) where `n = seq1.len()`, `m = seq2.len()` (or `m =
+//! min(seq2.len(), max_edit_dist)` with banding enabled). Memory complexity:
+//! O(m) where `m = seq2.len()`. Note that if the number of states weren't fixed
+//! in this implementation, we would have to include these in both time and
+//! memory complexity above as an additional factor.
 
 use std::cmp;
 use std::mem;
@@ -21,9 +23,9 @@ pub use crate::stats::pairhmm::{
 };
 use crate::stats::LogProb;
 
-/// Fast approximation of sum over the three given proabilities. If the largest is sufficiently
-/// large compared to the others, we just return that instead of computing the full (expensive)
-/// sum.
+/// Fast approximation of sum over the three given proabilities. If the largest
+/// is sufficiently large compared to the others, we just return that instead of
+/// computing the full (expensive) sum.
 #[inline]
 fn ln_sum3_exp_approx(mut p0: LogProb, mut p1: LogProb, mut p2: LogProb) -> LogProb {
     if p1 < p2 {
@@ -42,8 +44,8 @@ fn ln_sum3_exp_approx(mut p0: LogProb, mut p1: LogProb, mut p2: LogProb) -> LogP
 }
 
 /// A pair Hidden Markov Model for comparing sequences x and y as described by
-/// Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence Analysis.
-/// Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
+/// Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence
+/// Analysis. Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
 #[derive(Debug, Clone)]
 pub struct PairHMM {
     fm: [Vec<LogProb>; 2],
@@ -96,13 +98,15 @@ impl PairHMM {
         }
     }
 
-    /// Calculate the probability of sequence x being related to y via any alignment.
+    /// Calculate the probability of sequence x being related to y via any
+    /// alignment.
     ///
     /// # Arguments
     ///
     /// * `gap_params` - parameters for opening or extending gaps
     /// * `emission_params` - parameters for emission
-    /// * `max_edit_dist` - maximum edit distance to consider; if not `None`, perform banded alignment
+    /// * `max_edit_dist` - maximum edit distance to consider; if not `None`, perform banded
+    ///   alignment
     pub fn prob_related<E, A>(
         &mut self,
         emission_params: &E,
@@ -137,7 +141,8 @@ impl PairHMM {
 
         // iterate over x
         for i in 0..emission_params.len_x() {
-            // allow alignment to start from offset in x (if prob_start_gap_x is set accordingly)
+            // allow alignment to start from offset in x (if prob_start_gap_x is set
+            // accordingly)
             self.fm[prev][0] = self.fm[prev][0].ln_add_exp(alignment_mode.prob_start_gap_x(i));
             if alignment_mode.free_start_gap_x() {
                 self.min_edit_dist[prev][0] = 0;
@@ -145,7 +150,8 @@ impl PairHMM {
 
             let prob_emit_x = emission_params.prob_emit_x(i);
 
-            // TODO: in the case of no gap extensions, we can reduce the number of columns of y that need to be looked at (by cone).
+            // TODO: in the case of no gap extensions, we can reduce the number of columns
+            // of y that need to be looked at (by cone).
             let (j_min, j_max) = (0, emission_params.len_y());
 
             // iterate over y

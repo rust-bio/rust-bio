@@ -16,11 +16,12 @@ use ordered_float::OrderedFloat;
 use crate::stats::LogProb;
 
 /// For each of the hypothesis tests given as posterior error probabilities
-/// (PEPs, i.e. the posterior probability of the null hypothesis), estimate the FDR
-/// for the case that all null hypotheses with at most this PEP are rejected.
-/// FDR is calculated as presented by Müller, Parmigiani, and Rice,
+/// (PEPs, i.e. the posterior probability of the null hypothesis), estimate the
+/// FDR for the case that all null hypotheses with at most this PEP are
+/// rejected. FDR is calculated as presented by Müller, Parmigiani, and Rice,
 /// "FDR and Bayesian Multiple Comparisons Rules" (July 2006).
-/// Johns Hopkin's University, Dept. of Biostatistics Working Papers. Working Paper 115.
+/// Johns Hopkin's University, Dept. of Biostatistics Working Papers. Working
+/// Paper 115.
 ///
 /// # Returns
 ///

@@ -3,7 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Partial-Order Alignment for fast alignment and consensus of multiple homologous sequences.
+//! Partial-Order Alignment for fast alignment and consensus of multiple
+//! homologous sequences.
 //!
 //! For the original concept and theory, see:
 //! * Lee, Christopher, Catherine Grasso, and Mark F. Sharlow. "Multiple sequence alignment using
@@ -32,7 +33,6 @@
 //! // z differs from x and y's partial order alignment by 1 base
 //! assert_eq!(aligner.global(z).alignment().score, 5);
 //! ```
-//!
 
 use std::cmp::{max, Ordering};
 
@@ -231,7 +231,8 @@ impl Traceback {
 
 /// A partially ordered aligner builder
 ///
-/// Uses consuming builder pattern for constructing partial order alignments with method chaining
+/// Uses consuming builder pattern for constructing partial order alignments
+/// with method chaining
 pub struct Aligner<F: MatchFunc> {
     traceback: Traceback,
     query: Vec<u8>,
@@ -283,7 +284,8 @@ pub struct Poa<F: MatchFunc> {
 }
 
 impl<F: MatchFunc> Poa<F> {
-    /// Create a new aligner instance from the directed acyclic graph of another.
+    /// Create a new aligner instance from the directed acyclic graph of
+    /// another.
     ///
     /// # Arguments
     ///
@@ -293,7 +295,8 @@ impl<F: MatchFunc> Poa<F> {
         Poa { scoring, graph }
     }
 
-    /// Create a new POA graph from an initial reference sequence and alignment penalties.
+    /// Create a new POA graph from an initial reference sequence and alignment
+    /// penalties.
     ///
     /// # Arguments
     ///

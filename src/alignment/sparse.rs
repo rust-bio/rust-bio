@@ -8,10 +8,10 @@
 //! Complexity: O(n * log(n)) for a pair of strings with n k-kmer matches. This
 //! approach is useful for generating an approximate 'backbone' alignments
 //! between two long sequences, for example in long-read alignment or
-//! genome-genome alignment. The backbone alignment can be used as-is, or can serve
-//! as a guide for a banded alignment.  By tuning k so that len(query) + len(reference) < 4^k,
-//! the number of false positive kmer matches is kept small, resulting in very
-//! fast run times for long strings.
+//! genome-genome alignment. The backbone alignment can be used as-is, or can
+//! serve as a guide for a banded alignment.  By tuning k so that len(query) +
+//! len(reference) < 4^k, the number of false positive kmer matches is kept
+//! small, resulting in very fast run times for long strings.
 //!
 //! # Example
 //!
@@ -38,7 +38,8 @@ pub type HashMapFx<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
 /// Result of a sparse alignment
 #[derive(Debug, PartialEq, Eq)]
 pub struct SparseAlignmentResult {
-    /// LCSk++ path, represented as vector of indices into the input matches vector.
+    /// LCSk++ path, represented as vector of indices into the input matches
+    /// vector.
     pub path: Vec<usize>,
     // Score of the path, which is the number of bases covered by the matched kmers.
     pub score: u32,
@@ -46,9 +47,9 @@ pub struct SparseAlignmentResult {
     pub dp_vector: Vec<(u32, i32)>,
 }
 
-/// Sparse DP routine for Longest Common Subsequence in length k substrings.  Also known of LCSk++
-/// From LCSk++: Practical similarity metric for long strings. Filip Pavetić, Goran Žužić, Mile Šikić
-/// Paper here :https://arxiv.org/abs/1407.2407.  Original implementation here:
+/// Sparse DP routine for Longest Common Subsequence in length k substrings.
+/// Also known of LCSk++ From LCSk++: Practical similarity metric for long
+/// strings. Filip Pavetić, Goran Žužić, Mile Šikić Paper here :https://arxiv.org/abs/1407.2407.  Original implementation here:
 /// https://github.com/fpavetic/lcskpp
 ///
 /// # Arguments
@@ -59,7 +60,8 @@ pub struct SparseAlignmentResult {
 ///
 /// # Return value
 ///
-/// The method returns a `SparseAlignmentResult` struct with the following fields:
+/// The method returns a `SparseAlignmentResult` struct with the following
+/// fields:
 /// * `path` is the LCSk++ path, represented as vector of indices into the input matches vector.
 /// * `score` is the score of the path, which is the number of bases covered by the matched kmers.
 /// * `dp_vector` is the full DP vector, which can generally be ignored. (It may be useful for
@@ -75,7 +77,8 @@ pub fn lcskpp(matches: &[(u32, u32)], k: usize) -> SparseAlignmentResult {
 
     let k = k as u32;
 
-    // incoming matches must be sorted to let us find the predecessor kmers by binary search.
+    // incoming matches must be sorted to let us find the predecessor kmers by
+    // binary search.
     for i in 1..matches.len() {
         assert!(matches[i - 1] < matches[i]);
     }
@@ -163,10 +166,10 @@ impl PrevPtr {
     }
 }
 
-/// Sparse DP routine generalizing LCSk++ method above to penalize alignment gaps.
-/// A gap is an unknown combination of mismatch, insertion and deletions, and incurs
-/// a penalty of gap_open + d * gap_extend, where d is the distance along the diagonal of the gap.
-/// # Arguments
+/// Sparse DP routine generalizing LCSk++ method above to penalize alignment
+/// gaps. A gap is an unknown combination of mismatch, insertion and deletions,
+/// and incurs a penalty of gap_open + d * gap_extend, where d is the distance
+/// along the diagonal of the gap. # Arguments
 ///
 /// * `matches` - a vector of tuples indicating the (string1 position, string2 position) kmer
 ///   matches between the strings
@@ -177,7 +180,8 @@ impl PrevPtr {
 ///
 /// # Return value
 ///
-/// The method returns a `SparseAlignmentResult` struct with the following fields:
+/// The method returns a `SparseAlignmentResult` struct with the following
+/// fields:
 /// * `path` is the SDP path, represented as vector of indices into the input matches vector.
 /// * `score` is the score of the path, which is the number of bases covered by the matched kmers.
 /// * `dp_vector` is the full DP vector, which can generally be ignored. (It may be useful for
@@ -204,7 +208,8 @@ pub fn sdpkpp(
     let _gap_open = (-gap_open) as u32;
     let _gap_extend = (-gap_extend) as u32;
 
-    // incoming matches must be sorted to let us find the predecessor kmers by binary search.
+    // incoming matches must be sorted to let us find the predecessor kmers by
+    // binary search.
     for i in 1..matches.len() {
         assert!(matches[i - 1] < matches[i]);
     }
@@ -328,7 +333,8 @@ pub fn sdpkpp_union_lcskpp_path(
 /// index. For very long reference strings, it may be more efficient to use and
 /// FMD index to generate the matches. Note that this method is mainly for
 /// demonstration & testing purposes.  For aligning many query sequences
-/// against the same reference, you should reuse the QGramIndex of the reference.
+/// against the same reference, you should reuse the QGramIndex of the
+/// reference.
 pub fn find_kmer_matches(seq1: &[u8], seq2: &[u8], k: usize) -> Vec<(u32, u32)> {
     if seq1.len() < seq2.len() {
         let set = hash_kmers(seq1, k);
@@ -339,9 +345,9 @@ pub fn find_kmer_matches(seq1: &[u8], seq2: &[u8], k: usize) -> Vec<(u32, u32)> 
     }
 }
 
-/// Creates a HashMap containing all the k-mers in the sequence. FxHasher is used
-/// as the hash function instead of the inbuilt one. A good rolling hash function
-/// should speed up the code.
+/// Creates a HashMap containing all the k-mers in the sequence. FxHasher is
+/// used as the hash function instead of the inbuilt one. A good rolling hash
+/// function should speed up the code.
 pub fn hash_kmers(seq: &[u8], k: usize) -> HashMapFx<&[u8], Vec<u32>> {
     let slc = seq;
     let mut set: HashMapFx<&[u8], Vec<u32>> = HashMapFx::default();
@@ -442,8 +448,8 @@ pub fn expand_kmer_matches(
             left_expanded_matches.push((curr_pos.0 as u32, curr_pos.1 as u32));
             curr_pos = (curr_pos.0 - 1, curr_pos.1 - 1);
         }
-        // We need to check until 1 position after this match, when we start our search from
-        // the next kmer match along this diagonal
+        // We need to check until 1 position after this match, when we start our search
+        // from the next kmer match along this diagonal
         last_match_along_diagonal.insert(diag, (this_match.0 as i32, this_match.1 as i32));
     }
 
@@ -469,7 +475,8 @@ pub fn expand_kmer_matches(
         let mut curr_pos = (this_match.0 + 1, this_match.1 + 1);
         loop {
             // println!(" This : ({},{}), Current : ({},{}), Next : ({}, {}), Miss : {}",
-            // this_match.0, this_match.1, curr_pos.0, curr_pos.1, next_match.0, next_match.1, n_mismatches);
+            // this_match.0, this_match.1, curr_pos.0, curr_pos.1, next_match.0,
+            // next_match.1, n_mismatches);
             if curr_pos >= next_match {
                 break;
             }
@@ -551,7 +558,8 @@ mod sparse_alignment {
 
         // For debugging:
         //for (idx, (ev, (score, prev))) in evs.iter().zip(dps.clone()).enumerate() {
-        //    println!("idx: {:?}\tev: {:?}\tscore: {:?}\t prev: {:?}", idx, ev, score, prev);
+        //    println!("idx: {:?}\tev: {:?}\tscore: {:?}\t prev: {:?}", idx, ev, score,
+        // prev);
         //}
         //println!("tb: {:?}", tb);
 
@@ -568,8 +576,8 @@ mod sparse_alignment {
 
     #[test]
     pub fn test_lcskpp2() {
-        // Match the same string -- should get a diagonal traceback, despite lots of off-diagonal
-        // homology
+        // Match the same string -- should get a diagonal traceback, despite lots of
+        // off-diagonal homology
         let s1 = b"ACGTACGATAGATCCGACGTACGTACGTTCAGTTATATGACGTACGTACGTAACATTTTTGTA";
         let k = 5;
 
@@ -578,7 +586,8 @@ mod sparse_alignment {
 
         // For debugging:
         //for (idx, (ev, (score, prev))) in evs.iter().zip(dps.clone()).enumerate() {
-        //    println!("idx: {:?}\tev: {:?}\tscore: {:?}\t prev: {:?}", idx, ev, score, prev);
+        //    println!("idx: {:?}\tev: {:?}\tscore: {:?}\t prev: {:?}", idx, ev, score,
+        // prev);
         //}
         //println!("tb: {:?}", tb);
 
@@ -624,14 +633,15 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
 
         // For debugging:
         //for (idx, (ev, (score, prev))) in evs.iter().zip(dps.clone()).enumerate() {
-        //    println!("idx: {:?}\tev: {:?}\tscore: {:?}\t prev: {:?}", idx, ev, score, prev);
+        //    println!("idx: {:?}\tev: {:?}\tscore: {:?}\t prev: {:?}", idx, ev, score,
+        // prev);
         //}
         //println!("tb: {:?}", tb);
 
         assert_eq!(res.score, QUERY_REPEAT.len() as u32);
 
-        // NOTE -- this test will fail, because LCSk++ introduces a gap in the placement of the TR
-        // Corrected with gap scoring in SDP
+        // NOTE -- this test will fail, because LCSk++ introduces a gap in the
+        // placement of the TR Corrected with gap scoring in SDP
         /*
         for i in 0..res.path.len() {
             assert_eq!(matches[res.path[i] as usize], (i as u32, i as u32));

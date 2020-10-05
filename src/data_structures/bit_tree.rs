@@ -4,8 +4,9 @@
 // except according to those terms.
 
 //! BIT-tree (Binary Indexed Trees, aka Fenwick Tree) maintains a prefix-sum or
-//! prefix-max that can be efficiently queried and updated. From: Peter M. Fenwick (1994). "A new data structure for cumulative frequency tables". Software: Practice and Experience. 24 (3): 327–336.
-//! Implementation outlined here: https://www.topcoder.com/community/data-science/data-science-tutorials/binary-indexed-trees/
+//! prefix-max that can be efficiently queried and updated. From: Peter M.
+//! Fenwick (1994). "A new data structure for cumulative frequency tables".
+//! Software: Practice and Experience. 24 (3): 327–336. Implementation outlined here: https://www.topcoder.com/community/data-science/data-science-tutorials/binary-indexed-trees/
 //!
 //! Time Complexity: O(log n) where `n = tree.len()`.
 //! Memory Complexity: O(n) where `n = tree.len()`.
@@ -35,12 +36,12 @@ pub trait PrefixOp<T> {
     fn operation(t1: T, t2: T) -> T;
 }
 
-/// In a max bit tree or Fenwick Tree, get(i) will return the largest element e that has been added
-/// to the bit tree with set(j, e), where j <= i. Initially all positions have
-/// the value T::default(). Note that a set cannot be 'undone' by inserting
-/// a smaller element at the same index.
-/// Time Complexity: O(n) to build a new tree or O(log n) for get() and set() operations,
-/// where `n = tree.len()`.
+/// In a max bit tree or Fenwick Tree, get(i) will return the largest element e
+/// that has been added to the bit tree with set(j, e), where j <= i. Initially
+/// all positions have the value T::default(). Note that a set cannot be
+/// 'undone' by inserting a smaller element at the same index.
+/// Time Complexity: O(n) to build a new tree or O(log n) for get() and set()
+/// operations, where `n = tree.len()`.
 pub struct FenwickTree<T: Default + Ord, Op: PrefixOp<T>> {
     tree: Vec<T>,
     phantom: PhantomData<Op>,

@@ -4,66 +4,83 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A pair Hidden Markov Model for calculating the probability that two sequences are related to
-//! each other. Depending on the used parameters, this can, e.g., be used to calculate the
-//! probability that a certain sequencing read comes from a given position in a reference genome.
-//! In contrast to `PairHMM`, this `HomopolyPairHMM` takes into account homopolymer errors as
+//! A pair Hidden Markov Model for calculating the probability that two
+//! sequences are related to each other. Depending on the used parameters, this
+//! can, e.g., be used to calculate the probability that a certain sequencing
+//! read comes from a given position in a reference genome. In contrast to
+//! `PairHMM`, this `HomopolyPairHMM` takes into account homopolymer errors as
 //! often encountered e.g. in Oxford Nanopore Technologies sequencing.
 //!
-//! Time complexity: O(n * m) where `n = seq1.len()`, `m = seq2.len()` (or `m = min(seq2.len(), max_edit_dist)` with banding enabled).
-//! Memory complexity: O(m) where `m = seq2.len()`.
-//! Note that if the number of states weren't fixed in this implementation, we would have to include
-//! these in both time and memory complexity above as an additional factor.
+//! Time complexity: O(n * m) where `n = seq1.len()`, `m = seq2.len()` (or `m =
+//! min(seq2.len(), max_edit_dist)` with banding enabled). Memory complexity:
+//! O(m) where `m = seq2.len()`. Note that if the number of states weren't fixed
+//! in this implementation, we would have to include these in both time and
+//! memory complexity above as an additional factor.
 //!
-//! The `HomopolyPairHMM` introduces the term "hop" for starting and extending homopolymer runs
-//! by analogy with "gap". Therefore, the constructor needs an additional parameter `hop_params`
-//! implementing `HopParameters`. Also, the emission parameter needs to implement `Emission`,
-//! since this HMM model needs to be able to distinguish the four different match states for
-//! A, C, G and T (see Details below).
+//! The `HomopolyPairHMM` introduces the term "hop" for starting and extending
+//! homopolymer runs by analogy with "gap". Therefore, the constructor needs an
+//! additional parameter `hop_params` implementing `HopParameters`. Also, the
+//! emission parameter needs to implement `Emission`, since this HMM model needs
+//! to be able to distinguish the four different match states for A, C, G and T
+//! (see Details below).
 //!
 //! # Details
-//! The HomopolyPairHMM defined in this module has one Match state for each character from [A, C, G, T],
-//! for each of those Match states two corresponding Hop (homopolymer run) states
-//! (one for a run in sequence `x`, one for a run in `y`),
-//! as well as the usual GapX and GapY states.
+//! The HomopolyPairHMM defined in this module has one Match state for each
+//! character from [A, C, G, T], for each of those Match states two
+//! corresponding Hop (homopolymer run) states (one for a run in sequence `x`,
+//! one for a run in `y`), as well as the usual GapX and GapY states.
 //!
-//! In states `MatchV` (where `V` ∈ `{A, C, G, T}`), the probability to emit anything other than
-//! `(V, V)`, `(V, y != V)`, `(x != V, y)` should be zero.
+//! In states `MatchV` (where `V` ∈ `{A, C, G, T}`), the probability to emit
+//! anything other than `(V, V)`, `(V, y != V)`, `(x != V, y)` should be zero.
 //!
-//! State `HopVZ` (where `V` ∈ `{A, C, G, T}`, `Z` ∈ `{X, Y}`) can only be transitioned to from
-//! corresponding state `MatchV`.
+//! State `HopVZ` (where `V` ∈ `{A, C, G, T}`, `Z` ∈ `{X, Y}`) can only be
+//! transitioned to from corresponding state `MatchV`.
 //!
 //! The transition matrix is given below:
-//!     | MA | MC | MG | MT | HAX | HAY | HCX | HCY | HGX | HGY | HTX | HTY | GX | GY
+//!     | MA | MC | MG | MT | HAX | HAY | HCX | HCY | HGX | HGY | HTX | HTY | GX
+//! | GY
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! MA  |  x |  x |  x |  x |  x  |  x  |     |     |     |     |     |     |  x |  x
+//! MA  |  x |  x |  x |  x |  x  |  x  |     |     |     |     |     |     |  x
+//! |  x
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! MC  |  x |  x |  x |  x |     |     |  x  |  x  |     |     |     |     |  x |  x
+//! MC  |  x |  x |  x |  x |     |     |  x  |  x  |     |     |     |     |  x
+//! |  x
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! MG  |  x |  x |  x |  x |     |     |     |     |  x  |  x  |     |     |  x |  x
+//! MG  |  x |  x |  x |  x |     |     |     |     |  x  |  x  |     |     |  x
+//! |  x
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! MT  |  x |  x |  x |  x |     |     |     |     |     |     |  x  |  x  |  x |  x
+//! MT  |  x |  x |  x |  x |     |     |     |     |     |     |  x  |  x  |  x
+//! |  x
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! HAX |  x |  x |  x |  x |  x  |     |     |     |     |     |     |     |    |
+//! HAX |  x |  x |  x |  x |  x  |     |     |     |     |     |     |     |
+//! |
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! HAY |  x |  x |  x |  x |     |  x  |     |     |     |     |     |     |    |
+//! HAY |  x |  x |  x |  x |     |  x  |     |     |     |     |     |     |
+//! |
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! HCX |  x |  x |  x |  x |     |     |  x  |     |     |     |     |     |    |
+//! HCX |  x |  x |  x |  x |     |     |  x  |     |     |     |     |     |
+//! |
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! HCY |  x |  x |  x |  x |     |     |     |  x  |     |     |     |     |    |
+//! HCY |  x |  x |  x |  x |     |     |     |  x  |     |     |     |     |
+//! |
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! HGX |  x |  x |  x |  x |     |     |     |     |  x  |     |     |     |    |
+//! HGX |  x |  x |  x |  x |     |     |     |     |  x  |     |     |     |
+//! |
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! HGY |  x |  x |  x |  x |     |     |     |     |     |  x  |     |     |    |
+//! HGY |  x |  x |  x |  x |     |     |     |     |     |  x  |     |     |
+//! |
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! HTX |  x |  x |  x |  x |     |     |     |     |     |     |  x  |     |    |
+//! HTX |  x |  x |  x |  x |     |     |     |     |     |     |  x  |     |
+//! |
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! HTY |  x |  x |  x |  x |     |     |     |     |     |     |     |  x  |    |
+//! HTY |  x |  x |  x |  x |     |     |     |     |     |     |     |  x  |
+//! |
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! GX  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |  x |
+//! GX  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |  x
+//! |
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
-//! GY  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |    |  x
-//!
+//! GY  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |
+//! |  x
 
 use std::cmp;
 use std::fmt::Debug;
@@ -124,9 +141,10 @@ const MATCH_STATES: [State; 4] = [MatchA, MatchC, MatchG, MatchT];
 const HOP_X_STATES: [State; 4] = [HopAX, HopCX, HopGX, HopTX];
 const HOP_Y_STATES: [State; 4] = [HopAY, HopCY, HopGY, HopTY];
 
-// We define Shr (>>) for `State` such that a transition from State `a` to State `b` can be modeled
-// as `a >> b`, where `a >> b` is an integer in `0..(1 << (2 * NUM_STATES)) - 1]` used for indexing
-// the transition table (see `build_transition_table`).
+// We define Shr (>>) for `State` such that a transition from State `a` to State
+// `b` can be modeled as `a >> b`, where `a >> b` is an integer in `0..(1 << (2
+// * NUM_STATES)) - 1]` used for indexing the transition table (see
+// `build_transition_table`).
 impl Shr for State {
     type Output = usize;
 
@@ -167,10 +185,10 @@ pub trait HopParameters {
 }
 
 /// A pair Hidden Markov Model for comparing sequences x and y as described by
-/// Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence Analysis.
-/// Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
-/// The default model has been extended to consider homopolymer errors, at the cost of more states
-/// and transitions.
+/// Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence
+/// Analysis. Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
+/// The default model has been extended to consider homopolymer errors, at the
+/// cost of more states and transitions.
 #[derive(Debug, Clone)]
 pub struct HomopolyPairHMM {
     transition_probs: HashMap<usize, LogProb>,
@@ -192,13 +210,15 @@ impl HomopolyPairHMM {
         }
     }
 
-    /// Calculate the probability of sequence x being related to y via any alignment.
+    /// Calculate the probability of sequence x being related to y via any
+    /// alignment.
     ///
     /// # Arguments
     ///
     /// * `emission_params` - parameters for emission
     /// * `alignment_mode` - parameters for free end/start gaps
-    /// * `max_edit_dist` - maximum edit distance to consider; if not `None`, perform banded alignment
+    /// * `max_edit_dist` - maximum edit distance to consider; if not `None`, perform banded
+    ///   alignment
     pub fn prob_related<E, A>(
         &self,
         emission_params: &E,

@@ -63,13 +63,13 @@
 //!
 //! ## Limitations
 //!
-//! Currently, only discrete and single-variate Gaussian continuous HMMs are implemented.
-//! Also, only dense transition matrices are supported.
+//! Currently, only discrete and single-variate Gaussian continuous HMMs are
+//! implemented. Also, only dense transition matrices are supported.
 //!
 //! ## References
 //!
-//! - Rabiner, Lawrence R. "A tutorial on hidden Markov models and selected applications
-//!   in speech recognition." Proceedings of the IEEE 77, no. 2 (1989): 257-286.
+//! - Rabiner, Lawrence R. "A tutorial on hidden Markov models and selected applications in speech
+//!   recognition." Proceedings of the IEEE 77, no. 2 (1989): 257-286.
 
 pub mod errors;
 
@@ -183,17 +183,19 @@ impl Iterator for StateTransitionIter {
 
 /// A trait for Hidden Markov Models (HMM) with generic `Observation` type.
 ///
-/// Rabiner (1989) defines a Hidden Markov Model λ as the tiple (*A*, *B*, π) of transition matrix
-/// *A*, emission probabilities *B*, and initial state distribution π.  This has been generalized
-/// in `Model` such that you implement `transition_prob()`, `observation_prob()`, and
-/// `initial_prob()` (and the other methods; implementation of `transition_prob_idx()` can
-/// optionally be implemented and your implementation of `transition_prob()` can then panic).
+/// Rabiner (1989) defines a Hidden Markov Model λ as the tiple (*A*, *B*, π) of
+/// transition matrix *A*, emission probabilities *B*, and initial state
+/// distribution π.  This has been generalized in `Model` such that you
+/// implement `transition_prob()`, `observation_prob()`, and `initial_prob()`
+/// (and the other methods; implementation of `transition_prob_idx()` can
+/// optionally be implemented and your implementation of `transition_prob()` can
+/// then panic).
 ///
-/// The inference algorithm implementations `viterbi()`, `forward()`, and `backward()` will work
-/// with any implementation.
+/// The inference algorithm implementations `viterbi()`, `forward()`, and
+/// `backward()` will work with any implementation.
 ///
-/// Consequently, this allows for the implementation of HMMs with both discrete and continuous
-/// emission distributions.
+/// Consequently, this allows for the implementation of HMMs with both discrete
+/// and continuous emission distributions.
 pub trait Model<Observation> {
     /// The number of states in the model.
     fn num_states(&self) -> usize;
@@ -207,12 +209,13 @@ pub trait Model<Observation> {
     /// Transition probability between two states `from` and `to`.
     fn transition_prob(&self, from: State, to: State) -> LogProb;
 
-    /// Transition probability between two states `from` and `to` for observation with index
-    /// `_to_idx` (index of `to`).
+    /// Transition probability between two states `from` and `to` for
+    /// observation with index `_to_idx` (index of `to`).
     ///
-    /// This feature comes in handy in several applications of HMMs to biological sequences.
-    /// One prominent one is how XHMM by Fromer et al. (2014) uses the distance between target
-    /// regions for adjusting the transition probabilities.
+    /// This feature comes in handy in several applications of HMMs to
+    /// biological sequences. One prominent one is how XHMM by Fromer et al.
+    /// (2014) uses the distance between target regions for adjusting the
+    /// transition probabilities.
     ///
     /// The default implementation return the result of the position-independent
     /// `transition_prob()`.
@@ -234,7 +237,8 @@ fn viterbi_matrices<O, M: Model<O>>(
 ) -> (Array2<LogProb>, Array2<usize>) {
     // The matrix with probabilities.
     let mut vals = Array2::<LogProb>::zeros((observations.len(), hmm.num_states()));
-    // For each cell in `vals`, a pointer to the row in the previous column (for the traceback).
+    // For each cell in `vals`, a pointer to the row in the previous column (for the
+    // traceback).
     let mut from = Array2::<usize>::zeros((observations.len(), hmm.num_states()));
 
     // Compute matrix.
@@ -303,8 +307,8 @@ fn viterbi_traceback(vals: Array2<LogProb>, from: Array2<usize>) -> (Vec<State>,
     (result, res_prob)
 }
 
-/// Execute Viterbi algorithm on the given slice of `Observation` values to get the maximum a
-/// posteriori (MAP) probability.
+/// Execute Viterbi algorithm on the given slice of `Observation` values to get
+/// the maximum a posteriori (MAP) probability.
 ///
 /// ## Arguments
 ///
@@ -313,8 +317,9 @@ fn viterbi_traceback(vals: Array2<LogProb>, from: Array2<usize>) -> (Vec<State>,
 ///
 /// ## Result
 ///
-/// The resulting pair *(s, p)* is the `Vec<State>` of most probable states given `hmm`
-/// and `observations` as well as the probability (as `LogProb`) of path `s`.
+/// The resulting pair *(s, p)* is the `Vec<State>` of most probable states
+/// given `hmm` and `observations` as well as the probability (as `LogProb`) of
+/// path `s`.
 ///
 /// ## Type Parameters
 ///
@@ -325,8 +330,8 @@ pub fn viterbi<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Vec<State>, LogP
     viterbi_traceback(vals, from)
 }
 
-/// Execute the forward algorithm and return the forward probabilites as `LogProb` values
-/// and the resulting forward probability.
+/// Execute the forward algorithm and return the forward probabilites as
+/// `LogProb` values and the resulting forward probability.
 ///
 /// ## Arguments
 ///
@@ -335,9 +340,9 @@ pub fn viterbi<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Vec<State>, LogP
 ///
 /// ## Result
 ///
-/// The resulting pair (*P*, *p*) is the forward probability table (`P[[s, o]]` is the entry
-/// for state `s` and observation `o`) and the overall probability for `observations` (as
-/// `LogProb`).
+/// The resulting pair (*P*, *p*) is the forward probability table (`P[[s, o]]`
+/// is the entry for state `s` and observation `o`) and the overall probability
+/// for `observations` (as `LogProb`).
 ///
 /// ## Type Parameters
 ///
@@ -376,8 +381,8 @@ pub fn forward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>,
     (vals, prob)
 }
 
-/// Execute the backward algorithm and return the backward probabilities as `LogProb` values
-/// and the resulting backward probability.
+/// Execute the backward algorithm and return the backward probabilities as
+/// `LogProb` values and the resulting backward probability.
 ///
 /// ## Arguments
 ///
@@ -386,9 +391,9 @@ pub fn forward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>,
 ///
 /// ## Result
 ///
-/// The resulting pair (*P*, *p*) is the backward probability table (`P[[s, o]]` is the entry
-/// for state `s` and observation `o`) and the overall probability for `observations` (as
-/// `LogProb`).
+/// The resulting pair (*P*, *p*) is the backward probability table (`P[[s, o]]`
+/// is the entry for state `s` and observation `o`) and the overall probability
+/// for `observations` (as `LogProb`).
 ///
 /// ## Type Parameters
 ///
@@ -438,34 +443,40 @@ pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>
     (vals, prob)
 }
 
-/// Implementation of Hidden Markov Model with emission values from discrete distributions.
+/// Implementation of Hidden Markov Model with emission values from discrete
+/// distributions.
 pub mod discrete_emission {
     use super::super::{LogProb, Prob};
     use super::*;
 
-    /// Implementation of a `hmm::Model` with emission values from discrete distributions.
+    /// Implementation of a `hmm::Model` with emission values from discrete
+    /// distributions.
     ///
     /// Log-scale probabilities are used for numeric stability.
     ///
-    /// In Rabiner's tutorial, a discrete emission value HMM has `N` states and `M` output symbols.
-    /// The state transition matrix with dimensions `NxN` is `A`, the observation probability
-    /// distribution is the matrix `B` with dimensions `NxM` and the initial state distribution `pi`
+    /// In Rabiner's tutorial, a discrete emission value HMM has `N` states and
+    /// `M` output symbols. The state transition matrix with dimensions
+    /// `NxN` is `A`, the observation probability distribution is the matrix
+    /// `B` with dimensions `NxM` and the initial state distribution `pi`
     /// has length `N`.
     #[derive(Debug, PartialEq)]
     pub struct Model {
         /// The state transition matrix (size `NxN`), `A` in Rabiner's tutorial.
         transition: Array2<LogProb>,
 
-        /// The observation symbol probability distribution (size `NxM`), `B` in Rabiner's tutorial.
+        /// The observation symbol probability distribution (size `NxM`), `B` in
+        /// Rabiner's tutorial.
         observation: Array2<LogProb>,
 
-        /// The initial state distribution (size `N`), `pi` in Rabiner's tutorial.
+        /// The initial state distribution (size `N`), `pi` in Rabiner's
+        /// tutorial.
         initial: Array1<LogProb>,
     }
 
     impl Model {
-        /// Construct new Hidden MarkovModel with the given transition, observation, and initial
-        /// state matrices and vectors already in log-probability space.
+        /// Construct new Hidden MarkovModel with the given transition,
+        /// observation, and initial state matrices and vectors already
+        /// in log-probability space.
         pub fn new(
             transition: Array2<LogProb>,
             observation: Array2<LogProb>,
@@ -492,8 +503,9 @@ pub mod discrete_emission {
             }
         }
 
-        /// Construct new Hidden MarkovModel with the given transition, observation, and initial
-        /// state matrices and vectors already as `Prob` values.
+        /// Construct new Hidden MarkovModel with the given transition,
+        /// observation, and initial state matrices and vectors already
+        /// as `Prob` values.
         pub fn with_prob(
             transition: &Array2<Prob>,
             observation: &Array2<Prob>,
@@ -506,8 +518,9 @@ pub mod discrete_emission {
             )
         }
 
-        /// Construct new Hidden MarkovModel with the given transition, observation, and initial
-        /// state matrices and vectors with probabilities as `f64` values.
+        /// Construct new Hidden MarkovModel with the given transition,
+        /// observation, and initial state matrices and vectors with
+        /// probabilities as `f64` values.
         pub fn with_float(
             transition: &Array2<f64>,
             observation: &Array2<f64>,
@@ -555,13 +568,14 @@ pub mod discrete_emission {
     }
 }
 
-/// Implementation of Hidden Markov Models with emission values from univariate continuous
-/// distributions.
+/// Implementation of Hidden Markov Models with emission values from univariate
+/// continuous distributions.
 pub mod univariate_continuous_emission {
     use super::super::{LogProb, Prob};
     use super::*;
 
-    /// Implementation of a `hmm::Model` with emission values from univariate continuous distributions.
+    /// Implementation of a `hmm::Model` with emission values from univariate
+    /// continuous distributions.
     ///
     /// Log-scale probabilities are used for numeric stability.
     pub struct Model<Dist: Continuous<f64, f64>> {
@@ -571,13 +585,15 @@ pub mod univariate_continuous_emission {
         /// The emission probability distributions.
         observation: Vec<Dist>,
 
-        /// The initial state distribution (size `N`), `pi` in Rabiner's tutorial.
+        /// The initial state distribution (size `N`), `pi` in Rabiner's
+        /// tutorial.
         initial: Array1<LogProb>,
     }
 
     impl<Dist: Continuous<f64, f64>> Model<Dist> {
-        /// Construct new Hidden MarkovModel with the given transition, observation, and initial
-        /// state matrices and vectors already in log-probability space.
+        /// Construct new Hidden MarkovModel with the given transition,
+        /// observation, and initial state matrices and vectors already
+        /// in log-probability space.
         pub fn new(
             transition: Array2<LogProb>,
             observation: Vec<Dist>,
@@ -604,8 +620,9 @@ pub mod univariate_continuous_emission {
             }
         }
 
-        /// Construct new Hidden MarkovModel with the given transition, observation, and initial
-        /// state matrices and vectors already as `Prob` values.
+        /// Construct new Hidden MarkovModel with the given transition,
+        /// observation, and initial state matrices and vectors already
+        /// as `Prob` values.
         pub fn with_prob(
             transition: &Array2<Prob>,
             observation: Vec<Dist>,
@@ -618,8 +635,9 @@ pub mod univariate_continuous_emission {
             )
         }
 
-        /// Construct new Hidden MarkovModel with the given transition, observation, and initial
-        /// state matrices and vectors with probabilities as `f64` values.
+        /// Construct new Hidden MarkovModel with the given transition,
+        /// observation, and initial state matrices and vectors with
+        /// probabilities as `f64` values.
         pub fn with_float(
             transition: &Array2<f64>,
             observation: Vec<Dist>,

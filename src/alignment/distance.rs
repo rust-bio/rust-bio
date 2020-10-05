@@ -41,8 +41,8 @@ pub fn hamming(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u64 {
     dist
 }
 
-/// Compute the Levenshtein (or Edit) distance between two strings. Complexity: O(n * m) with
-/// n and m being the length of the given texts.
+/// Compute the Levenshtein (or Edit) distance between two strings. Complexity:
+/// O(n * m) with n and m being the length of the given texts.
 ///
 /// # Example
 ///
@@ -86,29 +86,31 @@ pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
 }
 
 pub mod simd {
-    //! String distance routines accelerated with Single Instruction Multiple Data (SIMD)
-    //! intrinsics.
+    //! String distance routines accelerated with Single Instruction Multiple
+    //! Data (SIMD) intrinsics.
     //!
-    //! These routines will automatically fallback to scalar versions if AVX2 or SSE4.1 is
-    //! not supported by the CPU.
+    //! These routines will automatically fallback to scalar versions if AVX2 or
+    //! SSE4.1 is not supported by the CPU.
     //!
-    //! With AVX2, SIMD-accelerated Hamming distance can reach up to 40 times faster than
-    //! the scalar version on strings that are long enough.
+    //! With AVX2, SIMD-accelerated Hamming distance can reach up to 40 times
+    //! faster than the scalar version on strings that are long enough.
     //!
-    //! The performance of SIMD-accelerated Levenshtein distance depends on the number of
-    //! edits between two strings, so it can perform anywhere from 2 times to nearly 1000
-    //! times faster than the scalar version. When the two strings are completely different,
-    //! there could be no speedup at all. It is important to note that the algorithms work
-    //! best when the number of edits is known to be small compared to the length of the
-    //! strings (for example, 10% difference). This should be applicable in many situations.
+    //! The performance of SIMD-accelerated Levenshtein distance depends on the
+    //! number of edits between two strings, so it can perform anywhere from
+    //! 2 times to nearly 1000 times faster than the scalar version. When
+    //! the two strings are completely different, there could be no speedup
+    //! at all. It is important to note that the algorithms work
+    //! best when the number of edits is known to be small compared to the
+    //! length of the strings (for example, 10% difference). This should be
+    //! applicable in many situations.
     //!
-    //! If AVX2 support is not available, there is a speed penalty for using SSE4.1 with
-    //! smaller vectors.
+    //! If AVX2 support is not available, there is a speed penalty for using
+    //! SSE4.1 with smaller vectors.
 
     use crate::utils::TextSlice;
 
-    /// SIMD-accelerated Hamming distance between two strings. Complexity: O(n / w), for
-    /// SIMD vectors of length w (usually w = 16 or w = 32).
+    /// SIMD-accelerated Hamming distance between two strings. Complexity: O(n /
+    /// w), for SIMD vectors of length w (usually w = 16 or w = 32).
     ///
     /// # Example
     ///
@@ -134,15 +136,16 @@ pub mod simd {
         triple_accel::hamming(alpha, beta) as u64
     }
 
-    /// SIMD-accelerated Levenshtein (or Edit) distance between two strings. Complexity:
-    /// O(k / w * (n + m)), with n and m being the length of the given texts, k being the
-    /// number of edits, and w being the length of the SIMD vectors (usually w = 16 or
-    /// w = 32).
+    /// SIMD-accelerated Levenshtein (or Edit) distance between two strings.
+    /// Complexity: O(k / w * (n + m)), with n and m being the length of the
+    /// given texts, k being the number of edits, and w being the length of
+    /// the SIMD vectors (usually w = 16 or w = 32).
     ///
-    /// Uses exponential search, which is approximately two times slower than the usual
-    /// O(n * m) implementation if the number of edits between the two strings is very large,
-    /// but much faster for cases where the edit distance is low (when less than half of the
-    /// characters in the strings differ).
+    /// Uses exponential search, which is approximately two times slower than
+    /// the usual O(n * m) implementation if the number of edits between the
+    /// two strings is very large, but much faster for cases where the edit
+    /// distance is low (when less than half of the characters in the
+    /// strings differ).
     ///
     /// # Example
     ///
@@ -161,14 +164,15 @@ pub mod simd {
         triple_accel::levenshtein_exp(alpha, beta)
     }
 
-    /// SIMD-accelerated bounded Levenshtein (or Edit) distance between two strings.
-    /// Complexity: O(k / w * (n + m)), with n and m being the length of the given texts,
-    /// k being the threshold on the number of edits, and w being the length of the SIMD vectors
-    /// (usually w = 16 or w = 32).
+    /// SIMD-accelerated bounded Levenshtein (or Edit) distance between two
+    /// strings. Complexity: O(k / w * (n + m)), with n and m being the
+    /// length of the given texts, k being the threshold on the number of
+    /// edits, and w being the length of the SIMD vectors (usually w = 16 or
+    /// w = 32).
     ///
-    /// If the Levenshtein distance between two strings is greater than the threshold k, then
-    /// `None` is returned. This is useful for efficiently calculating whether two strings
-    /// are similar.
+    /// If the Levenshtein distance between two strings is greater than the
+    /// threshold k, then `None` is returned. This is useful for efficiently
+    /// calculating whether two strings are similar.
     ///
     /// # Example
     ///

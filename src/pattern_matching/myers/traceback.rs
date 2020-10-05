@@ -7,8 +7,9 @@ use crate::alignment::AlignmentOperation;
 
 use crate::pattern_matching::myers::{word_size, BitVec, DistType, State};
 
-/// Objects implementing this trait handle the addition of calculated blocks (State<T, D>)
-/// to a container, and are responsible for creating the respective `TracebackHandler` object.
+/// Objects implementing this trait handle the addition of calculated blocks
+/// (State<T, D>) to a container, and are responsible for creating the
+/// respective `TracebackHandler` object.
 pub(super) trait StatesHandler<'a, T, D>
 where
     T: BitVec + 'a,
@@ -19,23 +20,24 @@ where
     /// Type that represents a column in the traceback matrix
     type TracebackColumn: ?Sized;
 
-    /// Prepare for a new search given n (maximum expected number of traceback columns) and
-    /// m (pattern length).
-    /// Returns the expected size of the vector storing the calculated blocks given this
-    /// information. The vector will then be initialized with the given number of 'empty'
-    /// State<T, D> objects and supplied to the other methods as slice.
+    /// Prepare for a new search given n (maximum expected number of traceback
+    /// columns) and m (pattern length).
+    /// Returns the expected size of the vector storing the calculated blocks
+    /// given this information. The vector will then be initialized with the
+    /// given number of 'empty' State<T, D> objects and supplied to the
+    /// other methods as slice.
     fn init(&mut self, n: usize, m: D) -> usize;
 
-    /// Fill the column at `pos` with states initialized with the maximum distance
-    /// (`State::max()`).
+    /// Fill the column at `pos` with states initialized with the maximum
+    /// distance (`State::max()`).
     fn set_max_state(&self, pos: usize, states: &mut [State<T, D>]);
 
-    /// This method copies over all blocks (or the one block) from a tracback column
-    /// into the mutable `states` slice at the given column position.
+    /// This method copies over all blocks (or the one block) from a tracback
+    /// column into the mutable `states` slice at the given column position.
     fn add_state(&self, source: &Self::TracebackColumn, pos: usize, states: &mut [State<T, D>]);
 
-    /// Initiates a `TracebackHandler` object to assist with a traceback, 'starting'
-    /// at the given end position.
+    /// Initiates a `TracebackHandler` object to assist with a traceback,
+    /// 'starting' at the given end position.
     fn init_traceback(&self, m: D, pos: usize, states: &'a [State<T, D>])
         -> Self::TracebackHandler;
 }
@@ -57,8 +59,8 @@ where
 /// traceback columns (two separate cursors for left and right column).
 /// `block()` and `left_block()` will always return the block that currently
 /// contain the cursors.
-/// `pos_bitvec()` returns a bit vector with a single activated bit at the current
-/// vertical position within the *right (current)* column.
+/// `pos_bitvec()` returns a bit vector with a single activated bit at the
+/// current vertical position within the *right (current)* column.
 /// Moving to the next vertical position is achieved by `move_up()` and
 /// `move_up_left()`. With the block based implementation, this may involve
 /// switching to a new block.
@@ -94,8 +96,8 @@ where
     ///
     /// # Arguments
     ///
-    /// * adjust_dist: If true, the distance score of the block is adjusted
-    ///   based on the current cursor position before moving it up.
+    /// * adjust_dist: If true, the distance score of the block is adjusted based on the current
+    ///   cursor position before moving it up.
     ///  *Note concerning the block based Myers algorithm:*
     ///  The the active bit in bit vector returned by `pos_bitvec()`
     ///  is expected to jump back to the maximum (lowest) position
@@ -106,11 +108,10 @@ where
     ///
     /// # Arguments
     ///
-    /// * adjust_dist: If true, the distance score of the block is adjusted
-    ///   based on the current cursor position before moving it up.
-    ///   However, the current cursor position of the **right** block is used,
-    ///   **not** the one of the left block. This is an important oddity, which
-    ///   makes only sense because of the design of the traceback algorithm.
+    /// * adjust_dist: If true, the distance score of the block is adjusted based on the current
+    ///   cursor position before moving it up. However, the current cursor position of the **right**
+    ///   block is used, **not** the one of the left block. This is an important oddity, which makes
+    ///   only sense because of the design of the traceback algorithm.
     fn move_up_left(&mut self, adjust_dist: bool);
 
     /// Shift the view by one traceback column / block to the left. The
@@ -123,26 +124,29 @@ where
     /// important that the cursor is moved *before* calling `move_left()`.
     fn move_to_left(&mut self);
 
-    /// Rather specialized method that allows having a simpler code in Traceback::_traceback_at()
-    /// Checks if the position below the left cursor has a smaller distance, and if so,
-    /// moves the cursor to this block and returns `true`.
+    /// Rather specialized method that allows having a simpler code in
+    /// Traceback::_traceback_at() Checks if the position below the left
+    /// cursor has a smaller distance, and if so, moves the cursor to this
+    /// block and returns `true`.
     ///
-    /// The problem is that the current implementation always keeps the left cursor in the
-    /// diagonal position for performance reasons. In this case, checking the actual left
-    /// distance score can be complicated with the block-based algorithm since the left cursor
-    /// may be at the lower block boundary. If so, the function thus has to check the topmost
-    /// position of the lower block and keep this block if the distance is better (lower).
+    /// The problem is that the current implementation always keeps the left
+    /// cursor in the diagonal position for performance reasons. In this
+    /// case, checking the actual left distance score can be complicated
+    /// with the block-based algorithm since the left cursor may be at the
+    /// lower block boundary. If so, the function thus has to check the topmost
+    /// position of the lower block and keep this block if the distance is
+    /// better (lower).
     fn move_left_down_if_better(&mut self) -> bool;
 
     /// Returns a slice containing all blocks of the current traceback column
     /// from top to bottom. Used for debugging only.
     fn column_slice(&self) -> &'a [State<T, D>];
 
-    /// Returns true if topmost position in the traceback matrix has been reached,
-    /// meaning that the traceback is complete.
+    /// Returns true if topmost position in the traceback matrix has been
+    /// reached, meaning that the traceback is complete.
     /// Technically this means, that `move_up_cursor()` was called so many times
-    /// until the uppermost block was reached and the pos_bitvec() does not contain
-    /// any bit, since shifting has removed it from the vector.
+    /// until the uppermost block was reached and the pos_bitvec() does not
+    /// contain any bit, since shifting has removed it from the vector.
     fn finished(&self) -> bool;
 
     /// For debugging only
@@ -197,8 +201,8 @@ where
         m: D,
         mut handler: H,
     ) -> Self {
-        // Correct traceback needs two additional columns at the left of the matrix (see below).
-        // Therefore reserving additional space.
+        // Correct traceback needs two additional columns at the left of the matrix (see
+        // below). Therefore reserving additional space.
         let num_cols = num_cols + 2;
 
         let n_states = handler.init(num_cols, m);
@@ -220,7 +224,8 @@ where
             states.truncate(n_states);
             states.shrink_to_fit();
         }
-        // important if using unsafe in add_state(), and also for correct functioning of traceback
+        // important if using unsafe in add_state(), and also for correct functioning of
+        // traceback
         debug_assert!(states.len() == n_states);
 
         // first column is used to ensure a correct path if the text (target)
@@ -251,8 +256,8 @@ where
         self._traceback_at(self.pos, ops, states)
     }
 
-    /// Returns the length of a match with a given end position, optionally adding the
-    /// alignment path to `ops`
+    /// Returns the length of a match with a given end position, optionally
+    /// adding the alignment path to `ops`
     /// only to be called if the `states` vec contains all states of the text
     #[inline]
     pub fn traceback_at(
@@ -268,8 +273,8 @@ where
         None
     }
 
-    /// returns a tuple of alignment length and hit distance, optionally adding the alignment path
-    /// to `ops`
+    /// returns a tuple of alignment length and hit distance, optionally adding
+    /// the alignment path to `ops`
     #[inline]
     fn _traceback_at(
         &self,
@@ -286,24 +291,26 @@ where
 
         let ops = &mut ops;
 
-        // horizontal column offset from starting point in traceback matrix (bottom right)
+        // horizontal column offset from starting point in traceback matrix (bottom
+        // right)
         let mut h_offset = D::zero();
 
         // distance of the match (will be returned)
         let dist = h.block().dist;
 
-        // The cursor of the left state is always for diagonal position in the traceback matrix.
-        // This allows checking for a substitution by a simple comparison.
+        // The cursor of the left state is always for diagonal position in the traceback
+        // matrix. This allows checking for a substitution by a simple
+        // comparison.
         h.move_up_left(true);
 
         // Loop for finding the traceback path
-        // If there are several possible solutions, substitutions are preferred over InDels
-        // (Subst > Ins > Del)
+        // If there are several possible solutions, substitutions are preferred over
+        // InDels (Subst > Ins > Del)
         while !h.finished() {
             let op;
-            // This loop is used to allow skipping `move_left()` using break (kind of similar
-            // to 'goto'). This was done to avoid having to inline move_left() three times,
-            // which would use more space.
+            // This loop is used to allow skipping `move_left()` using break (kind of
+            // similar to 'goto'). This was done to avoid having to inline
+            // move_left() three times, which would use more space.
             #[allow(clippy::never_loop)]
             loop {
                 // h.print_state();

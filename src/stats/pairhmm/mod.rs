@@ -1,9 +1,9 @@
-//! This module contains the implementation of a classic `PairHMM` as described in
-//! Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence Analysis.
-//! Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
-//! It also contains a modified variant `HomopolyPairHMM` with additional homopolymer states suited
-//! for dealing with homopolymer runs in sequencing as often encountered in Oxford Nanopore
-//! sequencing data.
+//! This module contains the implementation of a classic `PairHMM` as described
+//! in Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological
+//! Sequence Analysis. Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
+//! It also contains a modified variant `HomopolyPairHMM` with additional
+//! homopolymer states suited for dealing with homopolymer runs in sequencing as
+//! often encountered in Oxford Nanopore sequencing data.
 //!
 //! Traits defined in this module apply to both `PairHMM` and `HomopolyPairHMM`.
 //!
@@ -110,8 +110,8 @@ mod pairhmm;
 /// Trait for parametrization of `PairHMM` emission behavior.
 pub trait EmissionParameters {
     /// Emission probability for (x[i], y[j]).
-    /// Returns a tuple with probability and a boolean indicating whether emissions match
-    /// (e.g., are the same DNA alphabet letter).
+    /// Returns a tuple with probability and a boolean indicating whether
+    /// emissions match (e.g., are the same DNA alphabet letter).
     fn prob_emit_xy(&self, i: usize, j: usize) -> XYEmission;
 
     /// Emission probability for (x[i], -).
@@ -156,8 +156,8 @@ pub trait GapParameters {
 /// * global: methods return `false` and `LogProb::ln_zero()`.
 /// * semiglobal: methods return `true` and `LogProb::ln_one()`.
 pub trait StartEndGapParameters {
-    /// Probability to start at x[i]. This can be left unchanged if you use `free_start_gap_x` and
-    /// `free_end_gap_x`.
+    /// Probability to start at x[i]. This can be left unchanged if you use
+    /// `free_start_gap_x` and `free_end_gap_x`.
     #[inline]
     #[allow(unused_variables)]
     fn prob_start_gap_x(&self, i: usize) -> LogProb {
