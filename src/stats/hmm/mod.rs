@@ -68,8 +68,8 @@
 //!
 //! ## References
 //!
-//! - Rabiner, Lawrence R. "A tutorial on hidden Markov models and selected applications
-//!   in speech recognition." Proceedings of the IEEE 77, no. 2 (1989): 257-286.
+//! - Rabiner, Lawrence R. "A tutorial on hidden Markov models and selected applications in speech
+//!   recognition." Proceedings of the IEEE 77, no. 2 (1989): 257-286.
 
 pub mod errors;
 
@@ -456,7 +456,8 @@ pub mod discrete_emission {
         /// The state transition matrix (size `NxN`), `A` in Rabiner's tutorial.
         transition: Array2<LogProb>,
 
-        /// The observation symbol probability distribution (size `NxM`), `B` in Rabiner's tutorial.
+        /// The observation symbol probability distribution (size `NxM`), `B` in Rabiner's
+        /// tutorial.
         observation: Array2<LogProb>,
 
         /// The initial state distribution (size `N`), `pi` in Rabiner's tutorial.
@@ -561,7 +562,8 @@ pub mod univariate_continuous_emission {
     use super::super::{LogProb, Prob};
     use super::*;
 
-    /// Implementation of a `hmm::Model` with emission values from univariate continuous distributions.
+    /// Implementation of a `hmm::Model` with emission values from univariate continuous
+    /// distributions.
     ///
     /// Log-scale probabilities are used for numeric stability.
     pub struct Model<Dist: Continuous<f64, f64>> {

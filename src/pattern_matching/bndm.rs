@@ -47,7 +47,8 @@ impl BNDM {
         BNDM { m, masks, accept }
     }
 
-    /// Find all matches of pattern with a given text. Matches are returned as iterator over start positions.
+    /// Find all matches of pattern with a given text. Matches are returned as iterator over start
+    /// positions.
     pub fn find_all<'a>(&'a self, text: TextSlice<'a>) -> Matches<'_> {
         Matches {
             bndm: self,

@@ -1,4 +1,5 @@
-//! This module defines a newtype `Interval` for `std::ops::Range`, which will panic if `end` < `start`.
+//! This module defines a newtype `Interval` for `std::ops::Range`, which will panic if `end` <
+//! `start`.
 //!
 //! # Examples
 //! Create a new `Interval` given a `Range`.
@@ -28,8 +29,8 @@ use std::ops::{Deref, Range};
 
 pub use self::errors::{Error, Result};
 
-/// An `Interval` wraps the `std::ops::Range` from the stdlib and is defined by a start and end field
-/// where end should be >= start.
+/// An `Interval` wraps the `std::ops::Range` from the stdlib and is defined by a start and end
+/// field where end should be >= start.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Interval<N: Ord + Clone>(Range<N>);
 

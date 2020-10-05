@@ -49,11 +49,10 @@ impl RankSelect {
     /// # Arguments
     ///
     /// * `bits` - A bit vector.
-    /// * `k` - Determines the size (k * 32 bits) of the superblocks.
-    ///   A small k means faster rank query times at the expense of using more
-    ///   space and slower select query times.
-    ///   The data structure needs O(n + n log n / (k * 32)) bits with n being the bits of the given bitvector.
-    ///   The data structure is succinct if k is chosen as a sublinear function of n
+    /// * `k` - Determines the size (k * 32 bits) of the superblocks. A small k means faster rank
+    ///   query times at the expense of using more space and slower select query times. The data
+    ///   structure needs O(n + n log n / (k * 32)) bits with n being the bits of the given
+    ///   bitvector. The data structure is succinct if k is chosen as a sublinear function of n
     ///   (e.g. k = (log n)² / 32).
     pub fn new(bits: BitVec<u8>, k: usize) -> RankSelect {
         let n = bits.len() as usize;
@@ -84,8 +83,8 @@ impl RankSelect {
         self.bits.get_bit(i)
     }
 
-    /// Get the 1-rank of a given bit, i.e. the number of 1-bits in the bitvector up to i (inclusive).
-    /// Complexity: O(k).
+    /// Get the 1-rank of a given bit, i.e. the number of 1-bits in the bitvector up to i
+    /// (inclusive). Complexity: O(k).
     ///
     /// # Arguments
     ///
@@ -113,8 +112,8 @@ impl RankSelect {
         }
     }
 
-    /// Get the 0-rank of a given bit, i.e. the number of 0-bits in the bitvector up to i (inclusive).
-    /// Complexity: O(k).
+    /// Get the 0-rank of a given bit, i.e. the number of 0-bits in the bitvector up to i
+    /// (inclusive). Complexity: O(k).
     ///
     /// # Arguments
     ///

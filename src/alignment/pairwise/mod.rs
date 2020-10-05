@@ -249,14 +249,15 @@ impl Scoring<MatchParams> {
 
 impl<F: MatchFunc> Scoring<F> {
     /// Create new Scoring instance with given gap open, gap extend penalties
-    /// and the score function. The clip penalties are set to [`MIN_SCORE`](constant.MIN_SCORE.html) by default
+    /// and the score function. The clip penalties are set to [`MIN_SCORE`](constant.MIN_SCORE.html)
+    /// by default
     ///
     /// # Arguments
     ///
     /// * `gap_open` - the score for opening a gap (should not be positive)
     /// * `gap_extend` - the score for extending a gap (should not be positive)
-    /// * `match_fn` - function that returns the score for substitutions
-    ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
+    /// * `match_fn` - function that returns the score for substitutions (see also
+    ///   [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         assert!(gap_open <= 0, "gap_open can't be positive");
         assert!(gap_extend <= 0, "gap_extend can't be positive");
@@ -458,8 +459,8 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     /// * `gap_open` - the score for opening a gap (should be negative)
     /// * `gap_extend` - the score for extending a gap (should be negative)
-    /// * `match_fn` - function that returns the score for substitutions
-    ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
+    /// * `match_fn` - function that returns the score for substitutions (see also
+    ///   [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         Aligner::with_capacity(
             DEFAULT_ALIGNER_CAPACITY,
@@ -479,8 +480,8 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `n` - the expected size of y
     /// * `gap_open` - the score for opening a gap (should be negative)
     /// * `gap_extend` - the score for extending a gap (should be negative)
-    /// * `match_fn` - function that returns the score for substitutions
-    ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
+    /// * `match_fn` - function that returns the score for substitutions (see also
+    ///   [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         assert!(gap_open <= 0, "gap_open can't be positive");
         assert!(gap_extend <= 0, "gap_extend can't be positive");

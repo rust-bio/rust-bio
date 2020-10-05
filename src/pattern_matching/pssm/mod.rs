@@ -85,8 +85,8 @@ pub trait Motif {
     /// This code is shared by implementations of `from_seqs`
     /// # Arguments
     /// * `seqs` - sequences incorporated into motif
-    /// * `pseudos` - array slice with a pseudocount for each monomer;
-    ///    defaults to DEF_PSEUDO for all if None is supplied
+    /// * `pseudos` - array slice with a pseudocount for each monomer; defaults to DEF_PSEUDO for
+    ///   all if None is supplied
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently unsupported

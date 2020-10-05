@@ -47,8 +47,8 @@ pub struct SparseAlignmentResult {
 }
 
 /// Sparse DP routine for Longest Common Subsequence in length k substrings.  Also known of LCSk++
-/// From LCSk++: Practical similarity metric for long strings. Filip Pavetić, Goran Žužić, Mile Šikić
-/// Paper here :https://arxiv.org/abs/1407.2407.  Original implementation here:
+/// From LCSk++: Practical similarity metric for long strings. Filip Pavetić, Goran Žužić, Mile
+/// Šikić Paper here :https://arxiv.org/abs/1407.2407.  Original implementation here:
 /// https://github.com/fpavetic/lcskpp
 ///
 /// # Arguments
@@ -469,7 +469,8 @@ pub fn expand_kmer_matches(
         let mut curr_pos = (this_match.0 + 1, this_match.1 + 1);
         loop {
             // println!(" This : ({},{}), Current : ({},{}), Next : ({}, {}), Miss : {}",
-            // this_match.0, this_match.1, curr_pos.0, curr_pos.1, next_match.0, next_match.1, n_mismatches);
+            // this_match.0, this_match.1, curr_pos.0, curr_pos.1, next_match.0, next_match.1,
+            // n_mismatches);
             if curr_pos >= next_match {
                 break;
             }
