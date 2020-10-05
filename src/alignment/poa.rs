@@ -5,6 +5,8 @@
 
 //! Partial-Order Alignment for fast alignment and consensus of multiple homologous sequences.
 //!
+//! - time complexity: `O(N^2 * L^2)`, where `N` is the number of sequences and `L` is the length of each sequence.
+//!
 //! For the original concept and theory, see:
 //! * Lee, Christopher, Catherine Grasso, and Mark F. Sharlow. "Multiple sequence alignment using
 //! partial order graphs." Bioinformatics 18.3 (2002): 452-464.
@@ -32,7 +34,6 @@
 //! // z differs from x and y's partial order alignment by 1 base
 //! assert_eq!(aligner.global(z).alignment().score, 5);
 //! ```
-//!
 
 use std::cmp::{max, Ordering};
 
