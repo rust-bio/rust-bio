@@ -6,10 +6,10 @@
 //! Algorithm of Knuth Morris and Pratt.
 //! Constructs an automaton recognizing the pattern, and scans linearly over
 //! a text of length n. Complexity: O(n).
-//! The transition function delta is simulated via the lps-function, that
-//! assigns to each position q in the pattern the longest prefix of the pattern
-//! that is suffix of pattern[..q+1]. Then, in the NFA for the pattern, active
-//! states after reading position q are {q, lps(q), lps(lps(q)), ... 0}.
+//! The transition function delta is simulated via the lps-function, that assigns to each position
+//! q in the pattern the longest prefix of the pattern that is suffix of pattern[..q+1].
+//! Then, in the NFA for the pattern, active states after reading position q are
+//! {q, lps(q), lps(lps(q)), ... 0}.
 //!
 //! # Example
 //!
@@ -56,8 +56,8 @@ impl<'a> KMP<'a> {
         q
     }
 
-    /// Find all matches of pattern in a given text. Matches are returned as
-    /// iterator over start positions.
+    /// Find all matches of pattern in a given text. Matches are returned as iterator over start
+    /// positions.
     pub fn find_all<C, T>(&self, text: T) -> Matches<C, T::IntoIter>
     where
         C: Borrow<u8>,

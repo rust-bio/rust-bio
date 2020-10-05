@@ -8,8 +8,8 @@
 use std::cmp;
 
 /// Calculate the number of combinations when choosing
-/// k elements from n elements without replacement, multiplied by a scaling
-/// factor. Time complexity: O(min(k, n - k))
+/// k elements from n elements without replacement, multiplied by a scaling factor.
+/// Time complexity: O(min(k, n - k))
 ///
 /// # Examples
 /// ```

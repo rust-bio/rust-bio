@@ -153,14 +153,12 @@ impl Alphabet {
     }
 }
 
-/// Tools based on transforming the alphabet symbols to their lexicographical
-/// ranks.
+/// Tools based on transforming the alphabet symbols to their lexicographical ranks.
 ///
 /// Lexicographical rank is computed using `u8` representations,
 /// i.e. ASCII codes, of the input characters.
-/// For example, assuming that the alphabet consists of the symbols `A`, `C`,
-/// `G`, and `T`, this will yield ranks `0`, `1`, `2`, `3` for them,
-/// respectively.
+/// For example, assuming that the alphabet consists of the symbols `A`, `C`, `G`, and `T`, this
+/// will yield ranks `0`, `1`, `2`, `3` for them, respectively.
 ///
 /// `RankTransform` can be used in to perform bit encoding for texts over a
 /// given alphabet via `bio::data_structures::bitenc`.
@@ -240,12 +238,10 @@ impl RankTransform {
             .collect()
     }
 
-    /// Iterate over q-grams (substrings of length q) of given `text`. The
-    /// q-grams are encoded as `usize` by storing the symbol ranks in
-    /// log2(|A|) bits (with |A| being the alphabet size).
+    /// Iterate over q-grams (substrings of length q) of given `text`. The q-grams are encoded
+    /// as `usize` by storing the symbol ranks in log2(|A|) bits (with |A| being the alphabet size).
     ///
-    /// If q is larger than usize::BITS / log2(|A|), this method fails with an
-    /// assertion.
+    /// If q is larger than usize::BITS / log2(|A|), this method fails with an assertion.
     ///
     /// Complexity: O(n), where n is the length of the text.
     ///

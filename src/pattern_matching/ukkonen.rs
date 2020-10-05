@@ -7,11 +7,10 @@
 //! Complexity: O(n * k) on random texts.
 //!
 //! The algorithm finds all matches of a pattern in a text with up to k errors.
-//! Idea is to use dynamic programming to column-wise explore the edit matrix,
-//! but to omit parts of the matrix for which the error exceeds k. To achieve
-//! this, a value `lastk` is maintained that provides the lower feasible
-//! boundary of the matrix. Initially, lastk = min(k, m). In each iteration
-//! (over a column), lastk can increase by at most 1.
+//! Idea is to use dynamic programming to column-wise explore the edit matrix, but to omit
+//! parts of the matrix for which the error exceeds k. To achieve this, a value `lastk` is
+//! maintained that provides the lower feasible boundary of the matrix.
+//! Initially, lastk = min(k, m). In each iteration (over a column), lastk can increase by at most 1.
 //!
 //! # Example
 //!
@@ -61,8 +60,7 @@ where
     }
 
     /// Find all matches between pattern and text with up to k errors.
-    /// Matches are returned as an iterator over pairs of end position and
-    /// distance.
+    /// Matches are returned as an iterator over pairs of end position and distance.
     pub fn find_all_end<'a, C, T>(
         &'a mut self,
         pattern: TextSlice<'a>,
@@ -130,8 +128,8 @@ where
                 );
             }
 
-            // reduce lastk as long as k is exceeded: while lastk can increase by at most 1,
-            // it can decrease more in one iteration.
+            // reduce lastk as long as k is exceeded: while lastk can increase by at most 1, it can
+            // decrease more in one iteration.
             while self.ukkonen.D[col][self.lastk] > self.k {
                 self.lastk -= 1;
             }

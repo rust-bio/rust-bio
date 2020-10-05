@@ -8,8 +8,8 @@
 //! occurrences of this motif.
 //! Complexity: O(n*m) for motif length n and query length m
 //!
-//! The position-specific scoring matrix (PSSM), aka position weight matrix
-//! (PWM), algorithm is implemented for both DNA and amino-acid sequences.
+//! The position-specific scoring matrix (PSSM), aka position weight matrix (PWM),
+//! algorithm is implemented for both DNA and amino-acid sequences.
 //!
 //! # Examples
 //!
@@ -85,8 +85,8 @@ pub trait Motif {
     /// This code is shared by implementations of `from_seqs`
     /// # Arguments
     /// * `seqs` - sequences incorporated into motif
-    /// * `pseudos` - array slice with a pseudocount for each monomer; defaults to DEF_PSEUDO for
-    ///   all if None is supplied
+    /// * `pseudos` - array slice with a pseudocount for each monomer;
+    ///    defaults to DEF_PSEUDO for all if None is supplied
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently unsupported
@@ -131,8 +131,8 @@ pub trait Motif {
         Ok(counts)
     }
 
-    /// Returns the index of given monomer in the scores matrix using the lookup
-    /// table `LK` # Arguments
+    /// Returns the index of given monomer in the scores matrix using the lookup table `LK`
+    /// # Arguments
     /// * `mono` - monomer, eg, b'A' for DNA or b'R' for protein
     /// # Errors
     /// * `Error::InvalidMonomer(mono)` - `mono` wasn't found in the lookup table
@@ -149,9 +149,9 @@ pub trait Motif {
         }
     }
 
-    /// Returns the monomer associated with the given index; the reverse of
-    /// `lookup`. Returns INVALID_MONO if the index isn't associated with a
-    /// monomer. # Arguments
+    /// Returns the monomer associated with the given index; the reverse of `lookup`.
+    /// Returns INVALID_MONO if the index isn't associated with a monomer.
+    /// # Arguments
     /// * `idx` - the index in question
     fn rev_lk(idx: usize) -> u8;
 
@@ -182,8 +182,8 @@ pub trait Motif {
     /// FIXME: this should be replaced with a CTFE ... or maybe just a constant
     fn get_bits() -> f32;
 
-    /// Returns the un-normalized sum of matching bases, useful for comparing
-    /// matches from motifs of different lengths
+    /// Returns the un-normalized sum of matching bases, useful for comparing matches from
+    /// motifs of different lengths
     ///
     /// # Arguments
     /// * `seq_it` - iterator representing the query sequence
@@ -224,10 +224,10 @@ pub trait Motif {
         Ok((best_start, best_score, best_m))
     }
 
-    /// Returns a `ScoredPos` struct representing the best match within the
-    /// query sequence see:
-    ///   MATCHTM: a tool for searching transcription factor binding sites in
-    /// DNA sequences   Nucleic Acids Res. 2003 Jul 1; 31(13): 3576–3579
+    /// Returns a `ScoredPos` struct representing the best match within the query sequence
+    /// see:
+    ///   MATCHTM: a tool for searching transcription factor binding sites in DNA sequences
+    ///   Nucleic Acids Res. 2003 Jul 1; 31(13): 3576–3579
     ///   https://www.ncbi.nlm.nih.gov/pmc/articles/PMC169193/
     ///
     /// # Arguments
@@ -274,8 +274,8 @@ pub trait Motif {
         })
     }
 
-    /// Returns a float representing the information content of a motif; roughly
-    /// the inverse of Shannon Entropy.
+    /// Returns a float representing the information content of a motif; roughly the
+    /// inverse of Shannon Entropy.
     /// Adapted from the information content described here:
     ///    https://en.wikipedia.org/wiki/Sequence_logo#Logo_creation
     fn info_content(&self) -> f32 {

@@ -46,16 +46,15 @@ pub struct QGramIndex {
 
 impl QGramIndex {
     /// Create a new q-gram index.
-    /// The q has to be smaller than b / log2(|A|) with |A| being the alphabet
-    /// size and b the number bits with the `usize` data type.
+    /// The q has to be smaller than b / log2(|A|) with |A| being the alphabet size and b the number
+    /// bits with the `usize` data type.
     pub fn new(q: u32, text: &[u8], alphabet: &Alphabet) -> Self {
         QGramIndex::with_max_count(q, text, alphabet, std::usize::MAX)
     }
 
-    /// Create a new q-gram index, only considering q-grams that occur at most
-    /// `max_count` times. The q has to be smaller than b / log2(|A|) with
-    /// |A| being the alphabet size and b the number bits with the `usize`
-    /// data type.
+    /// Create a new q-gram index, only considering q-grams that occur at most `max_count` times.
+    /// The q has to be smaller than b / log2(|A|) with |A| being the alphabet size and b the number
+    /// bits with the `usize` data type.
     pub fn with_max_count(q: u32, text: &[u8], alphabet: &Alphabet, max_count: usize) -> Self {
         let ranks = RankTransform::new(alphabet);
 
@@ -107,8 +106,7 @@ impl QGramIndex {
     }
 
     /// Return matches of the given pattern.
-    /// Complexity O(m + k) for pattern of length m and k being the number of
-    /// matching q-grams.
+    /// Complexity O(m + k) for pattern of length m and k being the number of matching q-grams.
     pub fn matches(&self, pattern: &[u8], min_count: usize) -> Vec<Match> {
         let q = self.q as usize;
         let mut diagonals = collections::HashMap::new();
@@ -145,8 +143,7 @@ impl QGramIndex {
     }
 
     /// Return exact matches (substrings) of the given pattern.
-    /// Complexity O(m + k) for pattern of length m and k being the number of
-    /// matching q-grams.
+    /// Complexity O(m + k) for pattern of length m and k being the number of matching q-grams.
     pub fn exact_matches(&self, pattern: &[u8]) -> Vec<ExactMatch> {
         let q = self.q as usize;
         let mut diagonals = collections::HashMap::new();

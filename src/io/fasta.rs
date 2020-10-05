@@ -9,8 +9,7 @@
 //!
 //! ## Read
 //!
-//! In this example, we parse a fasta file from stdin and compute some
-//! statistics
+//! In this example, we parse a fasta file from stdin and compute some statistics
 //!
 //! ```
 //! use bio::io::fasta;
@@ -54,8 +53,7 @@
 //!
 //! ## Write
 //!
-//! In this example we generate 10 random sequences with length 100 and write
-//! them to stdout.
+//! In this example we generate 10 random sequences with length 100 and write them to stdout.
 //!
 //! ```
 //! use std::io;
@@ -79,8 +77,7 @@
 //!
 //! ## Read and Write
 //!
-//! In this example we filter reads from stdin on sequence length and write them
-//! to stdout
+//! In this example we filter reads from stdin on sequence length and write them to stdout
 //!
 //! ```
 //! use bio::io::fasta;
@@ -368,8 +365,8 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         Ok(())
     }
 
-    /// Fetch an interval from the sequence with the given record index for
-    /// reading. (stop position is exclusive).
+    /// Fetch an interval from the sequence with the given record index for reading.
+    /// (stop position is exclusive).
     pub fn fetch_by_rid(&mut self, rid: usize, start: u64, stop: u64) -> io::Result<()> {
         let idx = self.idx_by_rid(rid)?;
         self.start = Some(start);
@@ -809,9 +806,9 @@ impl Record {
 }
 
 impl fmt::Display for Record {
-    /// Allows for using `Record` in a given formatter `f`. In general this is
-    /// for creating a `String` representation of a `Record` and,
-    /// optionally, writing it to a file.
+    /// Allows for using `Record` in a given formatter `f`. In general this is for
+    /// creating a `String` representation of a `Record` and, optionally, writing it to
+    /// a file.
     ///
     /// # Errors
     /// Returns [`std::fmt::Error`](https://doc.rust-lang.org/std/fmt/struct.Error.html)
@@ -1162,18 +1159,16 @@ ATTGTTGTTTTA
         assert_eq!(read(&mut reader, "id", 0, 12).unwrap(), b"ACCGTAGGCTGA");
         assert!(read(&mut reader, "id", 0, 13).is_err()); // read past EOF
         assert!(read(&mut reader, "id", 36, 52).is_err()); // seek and read past EOF
-        assert!(read(&mut reader, "id2", 12, 40).is_err()); // seek and read
-                                                            // past EOF
+        assert!(read(&mut reader, "id2", 12, 40).is_err()); // seek and read past EOF
     }
 
     fn _test_indexed_reader_extreme_whitespace<'a, F>(read: F)
     where
         F: Fn(&mut IndexedReader<io::Cursor<Vec<u8>>>, &str, u64, u64) -> io::Result<Vec<u8>>,
     {
-        // Test to exercise the case where we cannot consume all whitespace at once.
-        // More than DEFAULT_BUF_SIZE (a non-public constant set to 8 * 1024)
-        // whitespace is used to ensure that it can't all fit in the BufReader
-        // at once.
+        // Test to exercise the case where we cannot consume all whitespace at once. More than
+        // DEFAULT_BUF_SIZE (a non-public constant set to 8 * 1024) whitespace is used to ensure
+        // that it can't all fit in the BufReader at once.
         let mut seq = Vec::new();
         seq.push(b'A');
         seq.resize(10000, b' ');

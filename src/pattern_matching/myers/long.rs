@@ -1,12 +1,11 @@
-//! Block-based version of the algorithm, which does not restrict pattern
-//! length.
+//! Block-based version of the algorithm, which does not restrict pattern length.
 //!
-//! This module implements the block-based version of the Myers pattern matching
-//! algorithm. It can be used for searching patterns of any length and obtaining
-//! semiglobal alignments of the hits. Apart from that, the `Myers` object in
-//! this module provides exactly the same API as the 'simple' version
-//! `bio::pattern_matching::myers::Myers`. For short patterns, the 'simple'
-//! version is still to be preferred, as the block-based algorithm is slower.
+//! This module implements the block-based version of the Myers pattern matching algorithm.
+//! It can be used for searching patterns of any length and obtaining semiglobal alignments
+//! of the hits. Apart from that, the `Myers` object in this module provides exactly the same
+//! API as the 'simple' version `bio::pattern_matching::myers::Myers`.
+//! For short patterns, the 'simple' version is still to be preferred, as the block-based
+//! algorithm is slower.
 
 use std::borrow::Borrow;
 use std::cmp::{max, min};
@@ -352,8 +351,8 @@ impl<'a, T: BitVec> LongTracebackHandler<'a, T> {
         let col = states_iter.next().unwrap();
         let left_col = states_iter.next().unwrap();
 
-        // This bit mask is supplied to State::adjust_by_mask() in order to adjust the
-        // distance of the left block. It is adjusted with every `move_up_left`
+        // This bit mask is supplied to State::adjust_by_mask() in order to adjust the distance
+        // of the left block. It is adjusted with every `move_up_left`
         let left_mask = if last_m != 1 {
             T::zero()
         } else {
@@ -423,10 +422,10 @@ impl<'a, T: BitVec + 'a> TracebackHandler<'a, T, usize> for LongTracebackHandler
 
     #[inline]
     fn move_up_left(&mut self, adjust_dist: bool) {
-        // If the block boundary has not been reached yet, we can extend the range mask
-        // by activating a new bit.
-        // However, we switch to a new block (if there is one!) before the mask would
-        // cover the whole block.
+        // If the block boundary has not been reached yet, we can extend the range mask by
+        // activating a new bit.
+        // However, we switch to a new block (if there is one!) before the mask would cover
+        // the whole block.
         if self.left_mask & T::from_usize(0b10).unwrap() == T::zero() || self.left_block_pos == 0 {
             self.left_mask = (self.left_mask >> 1) | self.left_max_mask;
             if adjust_dist {

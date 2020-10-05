@@ -21,9 +21,8 @@ pub trait Likelihood<Payload = ()> {
     type Event;
     type Data;
 
-    /// Compute likelihood of event given the data. Optionally, the passed
-    /// payload can be used to e.g., cache intermediate results. One payload
-    /// corresponds to one model instance.
+    /// Compute likelihood of event given the data. Optionally, the passed payload can be used
+    /// to e.g., cache intermediate results. One payload corresponds to one model instance.
     fn compute(&self, event: &Self::Event, data: &Self::Data, payload: &mut Payload) -> LogProb;
 }
 

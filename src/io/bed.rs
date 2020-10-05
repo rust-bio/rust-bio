@@ -216,8 +216,7 @@ impl Record {
         }
     }
 
-    /// Add auxilliary field. This has to happen after name and score have been
-    /// set.
+    /// Add auxilliary field. This has to happen after name and score have been set.
     pub fn push_aux(&mut self, field: &str) {
         self.aux.push(field.to_owned());
     }
@@ -440,8 +439,7 @@ mod tests {
 
     #[test]
     fn spliced_to_bed() {
-        //chrV    166236  166885  YER007C-A       0       -       166236  166885  0
-        // 2       535,11, 0,638,
+        //chrV    166236  166885  YER007C-A       0       -       166236  166885  0       2       535,11, 0,638,
         let tma20 = Spliced::with_lengths_starts(
             "chrV".to_owned(),
             166236,
@@ -462,8 +460,7 @@ mod tests {
             String::from_utf8(buf).unwrap().as_str()
         );
 
-        //chrXVI  173151  174702  YPL198W 0       +       173151  174702  0       3
-        // 11,94,630,      0,420,921,
+        //chrXVI  173151  174702  YPL198W 0       +       173151  174702  0       3       11,94,630,      0,420,921,
         let rpl7b = Spliced::with_lengths_starts(
             "chrXVI".to_owned(),
             173151,
@@ -484,8 +481,7 @@ mod tests {
             String::from_utf8(buf).unwrap().as_str()
         );
 
-        //chrXII  765265  766358  YLR316C 0       -       765265  766358  0       3
-        // 808,52,109,     0,864,984,
+        //chrXII  765265  766358  YLR316C 0       -       765265  766358  0       3       808,52,109,     0,864,984,
         let tad3 = Spliced::with_lengths_starts(
             "chrXII".to_owned(),
             765265,

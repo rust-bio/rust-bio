@@ -3,17 +3,16 @@ use std::ops::*;
 
 use num_traits::{AsPrimitive, FromPrimitive, PrimInt, ToPrimitive, WrappingAdd};
 
-/// Trait for types that should be used to store the distance score when using
-/// the simple Myers algorithm (not the block-based one, which always uses
-/// `usize`).
+/// Trait for types that should be used to store the distance score when using the simple
+/// Myers algorithm (not the block-based one, which always uses `usize`).
 ///
 /// For all currently implemented BitVec types, the maximum possible distance
 /// can be stored in `u8`. Custom implementations using bigger integers can
 /// adjust `DistType` to hold bigger numbers. Note that due to how the traceback
-/// algorithm currently works, `DistType` should be able to represent numbers
-/// larger than the bit-width of the `BitVec` type. For instance, a hypothetical
-/// `BitVec` type of `u256` should use `u16` as distance, since `u8` cannot
-/// store numbers larger than 255.
+/// algorithm currently works, `DistType` should be able to represent numbers larger
+/// than the bit-width of the `BitVec` type. For instance, a hypothetical `BitVec` type
+/// of `u256` should use `u16` as distance, since `u8` cannot store numbers larger
+/// than 255.
 pub trait DistType: Copy
         + Debug
         + Default
@@ -79,8 +78,7 @@ impl_bitvec!(u128, u8);
 use crate::alignment::{Alignment, AlignmentMode};
 
 /// Updates an `Alignment` instance with new data (except of path).
-/// Assumes *0-based* range end coordinates, they will be converted to 1-based
-/// ones
+/// Assumes *0-based* range end coordinates, they will be converted to 1-based ones
 #[inline(always)]
 pub(crate) fn update_aln(
     end_pos: usize,

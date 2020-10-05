@@ -44,8 +44,8 @@ impl ShiftAnd {
         ShiftAnd { m, masks, accept }
     }
 
-    /// Find all matches of pattern in the given text. Matches are returned as
-    /// an iterator over start positions.
+    /// Find all matches of pattern in the given text. Matches are returned as an iterator
+    /// over start positions.
     pub fn find_all<C, T>(&self, text: T) -> Matches<'_, C, T::IntoIter>
     where
         C: Borrow<u8>,
@@ -59,8 +59,8 @@ impl ShiftAnd {
     }
 }
 
-/// Calculate ShiftAnd masks. This function is called automatically when
-/// instantiating a new ShiftAnd for a given pattern.
+/// Calculate ShiftAnd masks. This function is called automatically when instantiating
+/// a new ShiftAnd for a given pattern.
 pub fn masks<C, P>(pattern: P) -> ([u64; 256], u64)
 where
     C: Borrow<u8>,

@@ -3,8 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Support for discrete probability distributions in terms of cumulative
-//! distribution functions (CDF).
+//! Support for discrete probability distributions in terms of cumulative distribution
+//! functions (CDF).
 //!
 //! # Examples
 //!
@@ -104,9 +104,8 @@ use ordered_float::OrderedFloat;
 
 use crate::stats::LogProb;
 
-/// An `Entry` associates a `LogProb` with a value on an ordered axis. It can
-/// for example be used to set up probability mass functions or cumulative
-/// distribution functions ([CDF](struct.CDF)).
+/// An `Entry` associates a `LogProb` with a value on an ordered axis. It can for example be
+/// used to set up probability mass functions or cumulative distribution functions ([CDF](struct.CDF)).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entry<T: Ord> {
     /// A `value` on the ordered axis, which has to have the Trait [`std::cmp::Ord`](https://doc.rust-lang.org/std/cmp/trait.Ord.html) implemented.
@@ -136,8 +135,7 @@ impl<T: Ord> Entry<T> {
     }
 }
 
-/// Implementation of a cumulative distribution function as a vector of
-/// `Entry`s.
+/// Implementation of a cumulative distribution function as a vector of `Entry`s.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CDF<T: Ord> {
     inner: Vec<Entry<T>>,
@@ -145,8 +143,8 @@ pub struct CDF<T: Ord> {
 
 impl<T: Ord> CDF<T> {
     /// Create CDF from a vector representing a probability mass function (PMF).
-    /// The PMF may contain duplicate values the probabilities of which are
-    /// summed during generation of the CDF.
+    /// The PMF may contain duplicate values the probabilities of which are summed
+    /// during generation of the CDF.
     ///
     /// Runtime complexity: O(n log n), where n is the number of `entries`.
     ///
@@ -170,8 +168,7 @@ impl<T: Ord> CDF<T> {
         }
         let mut cdf = CDF { inner };
 
-        // cap at prob=1.0 if there are slightly exceeding values due to numerical
-        // issues.
+        // cap at prob=1.0 if there are slightly exceeding values due to numerical issues.
         for e in &mut cdf.inner {
             e.prob = e.prob.cap_numerical_overshoot(0.00001);
         }
@@ -179,8 +176,7 @@ impl<T: Ord> CDF<T> {
         cdf
     }
 
-    /// Create CDF from iterator. This can be used to replace the values of a
-    /// CDF.
+    /// Create CDF from iterator. This can be used to replace the values of a CDF.
     ///
     /// Runtime complexity: O(n), where n is the number of `entries`.
     ///
@@ -195,8 +191,7 @@ impl<T: Ord> CDF<T> {
 
     /// Reduce CDF by omitting values with zero probability.
     ///
-    /// Runtime complexity: O(n), where n is the number of `value`s with `prob`
-    /// of zero.
+    /// Runtime complexity: O(n), where n is the number of `value`s with `prob` of zero.
     pub fn reduce(self) -> Self {
         let mut inner = Vec::new();
         let mut last = LogProb::ln_zero();
@@ -209,11 +204,10 @@ impl<T: Ord> CDF<T> {
         CDF { inner }
     }
 
-    /// Downsample CDF to n entries. Panics if n <= 1 and returns identity if n
-    /// is greater than the number of entries.
+    /// Downsample CDF to n entries. Panics if n <= 1 and returns identity if n is greater
+    /// than the number of entries.
     ///
-    /// Runtime complexity: O(m), where m is the original number of `Entry`s in
-    /// `CDF`.
+    /// Runtime complexity: O(m), where m is the original number of `Entry`s in `CDF`.
     ///
     /// # Arguments
     ///
@@ -259,9 +253,8 @@ impl<T: Ord> CDF<T> {
 
     /// Get cumulative probability for a given value.
     ///
-    /// If the value is not present, return the probability of the previous
-    /// value. Time complexity: O(log n), where n is the number of `Entry`s
-    /// in `CDF`.
+    /// If the value is not present, return the probability of the previous value.
+    /// Time complexity: O(log n), where n is the number of `Entry`s in `CDF`.
     ///
     /// # Arguments
     ///
@@ -332,12 +325,10 @@ impl<T: Ord> CDF<T> {
         }
     }
 
-    /// Return w%-credible interval. The width w is a float between 0 and 1.
-    /// Panics otherwise. E.g. provide `width=0.95` for the 95% credible
-    /// interval.
+    /// Return w%-credible interval. The width w is a float between 0 and 1. Panics otherwise.
+    /// E.g. provide `width=0.95` for the 95% credible interval.
     ///
-    /// Runtime complexity: O(log n), where n is the number of `Entry`s in
-    /// `CDF`.
+    /// Runtime complexity: O(log n), where n is the number of `Entry`s in `CDF`.
     ///
     /// # Arguments
     ///

@@ -14,9 +14,9 @@
 //! All provided implementations are rigorously tested via continuous
 //! integration.
 //!
-//! For **getting started** with using `rust-bio`, see [the `Getting started`
-//! section below](#getting-started). For navigating the documentation of the
-//! available modules, see [the `Modules` section below](#modules). If you want to contribute to `rust-bio`, see [the `Contribute` section in the repo](https://github.com/rust-bio/rust-bio#contribute).
+//! For **getting started** with using `rust-bio`, see [the `Getting started` section below](#getting-started).
+//! For navigating the documentation of the available modules, see [the `Modules` section below](#modules).
+//! If you want to contribute to `rust-bio`, see [the `Contribute` section in the repo](https://github.com/rust-bio/rust-bio#contribute).
 //!
 //! Currently, rust-bio provides
 //!
@@ -31,8 +31,7 @@
 //! * utilities to work with [PSSMs](https://en.wikipedia.org/wiki/Position_weight_matrix),
 //! * an open reading frame (ORF) search algorithm,
 //! * a rank/select data structure,
-//! * [serde](https://github.com/serde-rs/serde) support for all data structures when built with
-//!   `nightly` feature,
+//! * [serde](https://github.com/serde-rs/serde) support for all data structures when built with `nightly` feature,
 //! * readers and writers for FASTQ, FASTA and BED,
 //! * helper functions for combinatorics and dealing with log probabilities,
 //! * an implementation of the Hidden Markov Model and related algorithms.
@@ -52,16 +51,16 @@
 //!
 //! ## Step 2: Setting up a new Rust project
 //!
-//! Since Rust-Bio is a library, you need to setup your own new Rust project to
-//! use Rust-Bio. With Rust, projects and their dependencies are managed with the builtin package manager [Cargo](https://doc.rust-lang.org/cargo/index.html).
+//! Since Rust-Bio is a library, you need to setup your own new Rust project to use Rust-Bio.
+//! With Rust, projects and their dependencies are managed with the builtin package manager [Cargo](https://doc.rust-lang.org/cargo/index.html).
 //! To create a new Rust project, issue
 //!
 //! ```bash
 //! cargo new hello_world --bin
 //! cd hello_world
 //! ```
-//! in your terminal. The flag `--bin` tells Cargo to create an executable
-//! project instead of a library. In [this section](https://doc.rust-lang.org/nightly/book/hello-cargo.html#a-new-project) of the Rust docs, you find details about what Cargo just created for you.
+//! in your terminal. The flag `--bin` tells Cargo to create an executable project instead of a library.
+//! In [this section](https://doc.rust-lang.org/nightly/book/hello-cargo.html#a-new-project) of the Rust docs, you find details about what Cargo just created for you.
 //!
 //! Your new project can be compiled with
 //! ```bash
@@ -150,8 +149,7 @@
 //! }
 //! ```
 //!
-//! Documentation and further examples for each module can be found in the
-//! module descriptions below.
+//! Documentation and further examples for each module can be found in the module descriptions below.
 //!
 //!
 //! ## Example: Multithreaded
@@ -190,14 +188,11 @@
 //! }
 //! ```
 //!
-//! Documentation and further examples for each module can be found in the
-//! module descriptions below.
+//! Documentation and further examples for each module can be found in the module descriptions below.
 //!
 //! # Benchmarks
 //!
-//! Since Rust-Bio is based on a compiled language, similar performance to C/C++
-//! based libraries can be expected. Indeed, we find the pattern matching
-//! algorithms of Rust-Bio to perform in the range of the C++ library Seqan:
+//! Since Rust-Bio is based on a compiled language, similar performance to C/C++ based libraries can be expected. Indeed, we find the pattern matching algorithms of Rust-Bio to perform in the range of the C++ library Seqan:
 //!
 //! | Algorithm | Rust-Bio | Seqan   |
 //! | --------- | -------: | ------: |
@@ -206,13 +201,10 @@
 //! | BOM       | 103ms    | 107ms   |
 //! | Shift-And | 241ms    | 545ms   |
 //!
-//! We measured 10000 iterations of searching pattern `GCGCGTACACACCGCCCG` in
-//! the sequence of the hg38 MT chromosome. Initialization time of each
-//! algorithm for the given pattern was included in each iteration. Benchmarks
-//! were conducted with *Cargo bench* for Rust-Bio and *Python timeit* for Seqan
-//! on an Intel Core i5-3427U CPU. Benchmarking Seqan from *Python timeit*
-//! entails an overhead of 1.46ms for calling a C++ binary. This overhead was
-//! subtracted from above Seqan run times. Note that this benchmark only compares the two libraries to exemplify that Rust-Bio has comparable speed to C++ libraries: all used algorithms have their advantages for specific text and pattern structures and lengths (see [the pattern matching section in the documentation](https://docs.rs/bio/0.28.2/bio/pattern_matching/index.html))./!
+//! We measured 10000 iterations of searching pattern `GCGCGTACACACCGCCCG` in the sequence of the hg38 MT chromosome.
+//! Initialization time of each algorithm for the given pattern was included in each iteration. Benchmarks were conducted with *Cargo bench* for Rust-Bio and *Python timeit* for Seqan on an Intel Core i5-3427U CPU.
+//! Benchmarking Seqan from *Python timeit* entails an overhead of 1.46ms for calling a C++ binary. This overhead was subtracted from above Seqan run times.
+//! Note that this benchmark only compares the two libraries to exemplify that Rust-Bio has comparable speed to C++ libraries: all used algorithms have their advantages for specific text and pattern structures and lengths (see [the pattern matching section in the documentation](https://docs.rs/bio/0.28.2/bio/pattern_matching/index.html))./!
 
 #[macro_use]
 extern crate approx;

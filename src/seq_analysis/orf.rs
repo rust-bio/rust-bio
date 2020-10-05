@@ -26,8 +26,8 @@
 //!
 //! Right now the only way to check the reverse strand for ORF is to use
 //! the `alphabet::dna::RevComp` struct and to check for both sequences.
-//! But that's not so performance friendly, as the reverse complementation and
-//! the ORF research could go on at the same time.
+//! But that's not so performance friendly, as the reverse complementation and the ORF research
+//! could go on at the same time.
 
 use std::borrow::Borrow;
 use std::collections::VecDeque;
@@ -47,8 +47,8 @@ pub struct Finder {
 }
 
 impl Finder {
-    /// Create a new instance of a finder for the given start and stop codons
-    /// and the minimum length of an ORF.
+    /// Create a new instance of a finder for the given start and stop codons and the minimum
+    /// length of an ORF.
     pub fn new<'a>(
         start_codons: Vec<&'a [u8; 3]>,
         stop_codons: Vec<&'a [u8; 3]>,
@@ -107,8 +107,7 @@ impl State {
     }
 }
 
-/// Iterator over offset, start position, end position and sequence of matched
-/// ORFs.
+/// Iterator over offset, start position, end position and sequence of matched ORFs.
 pub struct Matches<'a, C, T>
 where
     C: Borrow<u8>,

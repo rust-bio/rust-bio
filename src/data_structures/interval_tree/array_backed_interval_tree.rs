@@ -1,13 +1,11 @@
-//! Interval tree, a data structure for efficiently storing and searching
-//! intervals.
+//! Interval tree, a data structure for efficiently storing and searching intervals.
 //!
-//! This implementation is based on the sorted array version as described/given
-//! in https://github.com/lh3/cgranges / https://github.com/lh3/cgranges/blob/master/cpp/IITree.h
+//! This implementation is based on the sorted array version as described/given in
+//! https://github.com/lh3/cgranges / https://github.com/lh3/cgranges/blob/master/cpp/IITree.h
 //!
-//! It uses the same conventions as
-//! `crate::data_structures::interval_tree::IntervalTree`. Note that if you do
-//! not use the `ArrayBackedIntervalTree::from_iter` constructor, you have to
-//! call `index(&mut self)` first before `find()`-ing overlaps.
+//! It uses the same conventions as `crate::data_structures::interval_tree::IntervalTree`.
+//! Note that if you do not use the `ArrayBackedIntervalTree::from_iter` constructor, you have to call `index(&mut self)`
+//! first before `find()`-ing overlaps.
 //!
 //! # Example
 //! ```
@@ -34,14 +32,14 @@
 //! assert_eq!(i2.interval().end, 34);
 //! assert_eq!(i2.data(), &0u32);
 //! ```
+//!
 
 use crate::utils::Interval;
 use std::cmp::min;
 use std::iter::FromIterator;
 
-/// A `find` query on the interval tree does not directly return references to
-/// the intervals in the tree but wraps the fields `interval` and `data` in an
-/// `Entry`.
+/// A `find` query on the interval tree does not directly return references to the intervals in the
+/// tree but wraps the fields `interval` and `data` in an `Entry`.
 #[derive(PartialEq, Eq, Debug, Clone)]
 struct InternalEntry<N: Ord + Clone + Copy, D> {
     data: D,
@@ -49,9 +47,8 @@ struct InternalEntry<N: Ord + Clone + Copy, D> {
     max: N,
 }
 
-/// A `find` query on the interval tree does not directly return references to
-/// the nodes in the tree, but wraps the fields `interval` and `data` in an
-/// `Entry`.
+/// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
+/// wraps the fields `interval` and `data` in an `Entry`.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Entry<'a, N: Ord + Clone, D> {
     data: &'a D,
@@ -166,13 +163,11 @@ impl<N: Ord + Clone + Copy, D: Clone> ArrayBackedIntervalTree<N, D> {
     }
 
     /// Find overlapping intervals in the index.
-    /// Returns a vector of entries, consisting of the interval and its
-    /// associated data.
+    /// Returns a vector of entries, consisting of the interval and its associated data.
     ///
     /// # Arguments
     ///
-    /// * `interval` - The interval for which overlaps are to be found in the index. Can also be a
-    ///   `Range`.
+    /// * `interval` - The interval for which overlaps are to be found in the index. Can also be a `Range`.
     ///
     /// # Panics
     ///
@@ -187,8 +182,7 @@ impl<N: Ord + Clone + Copy, D: Clone> ArrayBackedIntervalTree<N, D> {
     ///
     /// # Arguments
     ///
-    /// * `interval` - The interval for which overlaps are to be found in the index. Can also be a
-    ///   `Range`.
+    /// * `interval` - The interval for which overlaps are to be found in the index. Can also be a `Range`.
     /// * `results` - A reusable buffer vector for storing the results.
     ///
     /// # Panics

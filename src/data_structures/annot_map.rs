@@ -81,8 +81,8 @@ where
     /// # Arguments
     ///
     /// * `data` - any type of data to be inserted at the location / region
-    /// * `location` - any object with the `Loc` trait implemented, determining the Range at which
-    ///   to insert the `data`
+    /// * `location` - any object with the `Loc` trait implemented, determining
+    ///   the Range at which to insert the `data`
     ///
     /// # Example
     ///
@@ -203,8 +203,7 @@ where
         self.itree_entry.interval()
     }
 
-    /// Return a reference to the identifier of the annotated reference
-    /// sequence.
+    /// Return a reference to the identifier of the annotated reference sequence.
     pub fn refid(&self) -> &'a R {
         self.refid
     }

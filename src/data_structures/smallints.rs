@@ -4,10 +4,9 @@
 // except according to those terms.
 
 //! A data structure for a sequence of small integers with a few big integers.
-//! Small ints are stored in type S (e.g. a byte), big ints are stored
-//! separately (in type B) in a BTree. The implementation provides vector-like
-//! operations on the data structure (e.g. retrieve a position, add an integer,
-//! etc.).
+//! Small ints are stored in type S (e.g. a byte), big ints are stored separately (in type B) in a BTree.
+//! The implementation provides vector-like operations on the data structure (e.g. retrieve a position,
+//! add an integer, etc.).
 //!
 //! # Example
 //!
@@ -32,8 +31,8 @@ use std::slice;
 use num_integer::Integer;
 use num_traits::{cast, Bounded, Num, NumCast};
 
-/// Data structure for storing a sequence of small integers with few big ones
-/// space efficiently while supporting classical vector operations.
+/// Data structure for storing a sequence of small integers with few big ones space efficiently
+/// while supporting classical vector operations.
 #[derive(Serialize, Deserialize)]
 pub struct SmallInts<F: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> {
     smallints: Vec<F>,
@@ -73,8 +72,7 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
         }
     }
 
-    /// Create a new instance containing `n` times the integer `v` (and `v` is
-    /// expected to be small).
+    /// Create a new instance containing `n` times the integer `v` (and `v` is expected to be small).
     pub fn from_elem(v: S, n: usize) -> Self {
         assert!(
             size_of::<S>() < size_of::<B>(),
@@ -99,8 +97,7 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
         }
     }
 
-    /// Append `v` to the sequence. This will determine whether `v` is big or
-    /// small and store it accordingly.
+    /// Append `v` to the sequence. This will determine whether `v` is big or small and store it accordingly.
     pub fn push(&mut self, v: B) {
         let maxv: S = S::max_value();
         match cast(v) {
@@ -113,8 +110,7 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
         }
     }
 
-    /// Set value of position `i` to `v`. This will determine whether `v` is big
-    /// or small and store it accordingly.
+    /// Set value of position `i` to `v`. This will determine whether `v` is big or small and store it accordingly.
     pub fn set(&mut self, i: usize, v: B) {
         let maxv: S = S::max_value();
         match cast(v) {
@@ -126,8 +122,7 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
         }
     }
 
-    /// Iterate over sequence. Values will be returned in the big integer type
-    /// (`B`).
+    /// Iterate over sequence. Values will be returned in the big integer type (`B`).
     pub fn iter(&self) -> Iter<'_, S, B> {
         Iter {
             smallints: self,

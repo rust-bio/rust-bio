@@ -11,8 +11,8 @@
 //! alignment if a) there is a reasonable density of exact k-mer matches
 //! between the sequences, and b) the width parameter w is larger than the
 //! excursion of the alignment path from diagonal between successive kmer
-//! matches.  This technique is employed in long-read aligners (e.g. BLASR and
-//! BWA) to drastically reduce runtime compared to Smith Waterman.
+//! matches.  This technique is employed in long-read aligners (e.g. BLASR and BWA)
+//! to drastically reduce runtime compared to Smith Waterman.
 //! Complexity roughly O(min(m,n) * w)
 //!
 //! # Example
@@ -95,20 +95,18 @@ const MAX_CELLS: usize = 5_000_000;
 const DEFAULT_MATCH_SCORE: i32 = 2;
 
 /// A banded implementation of Smith-Waterman aligner (SWA).
-/// Unlike the full SWA, this implementation computes the alignment between a
-/// pair of sequences only inside a 'band' withing the dynamic programming
-/// matrix. The band is constructed using the Sparse DP routine (see
-/// sparse::sdpkpp), which uses kmer matches to build the best common
-/// subsequence (including gap penalties) between the two strings. The band is
-/// constructed around this subsequence (using the window length 'w'), filling
-/// in the gaps.
+/// Unlike the full SWA, this implementation computes the alignment between a pair of sequences
+/// only inside a 'band' withing the dynamic programming matrix. The band is constructed using the
+/// Sparse DP routine (see sparse::sdpkpp), which uses kmer matches to build the best common
+/// subsequence (including gap penalties) between the two strings. The band is constructed around
+/// this subsequence (using the window length 'w'), filling in the gaps.
 ///
-/// In the case where there are no k-mer matches, the  aligner will fall back to
-/// a full alignment, by setting the band to contain the full matrix.
+/// In the case where there are no k-mer matches, the  aligner will fall back to a full alignment,
+/// by setting the band to contain the full matrix.
 ///
-/// Banded aligner will proceed to compute the alignment only when the total
-/// number of cells in the band is less than MAX_CELLS (currently set to 10
-/// million), otherwise it returns an empty alignment
+/// Banded aligner will proceed to compute the alignment only when the total number of cells
+/// in the band is less than MAX_CELLS (currently set to 10 million), otherwise it returns an
+/// empty alignment
 #[allow(non_snake_case)]
 pub struct Aligner<F: MatchFunc> {
     S: [Vec<i32>; 2],
@@ -186,8 +184,8 @@ impl<F: MatchFunc> Aligner<F> {
         }
     }
 
-    /// Create new aligner instance with scoring and size hint. The size hints
-    /// help to avoid unnecessary memory allocations.
+    /// Create new aligner instance with scoring and size hint. The size hints help to
+    /// avoid unnecessary memory allocations.
     ///
     /// # Arguments
     ///
@@ -237,8 +235,8 @@ impl<F: MatchFunc> Aligner<F> {
         }
     }
 
-    /// Create new aligner instance with scoring and size hint. The size hints
-    /// help to avoid unnecessary memory allocations.
+    /// Create new aligner instance with scoring and size hint. The size hints help to
+    /// avoid unnecessary memory allocations.
     ///
     /// # Arguments
     ///
@@ -275,8 +273,8 @@ impl<F: MatchFunc> Aligner<F> {
         self.compute_alignment(x, y)
     }
 
-    /// Compute the alignment with custom clip penalties with 'y' being
-    /// pre-hashed (see sparse::hash_kmers)
+    /// Compute the alignment with custom clip penalties with 'y' being pre-hashed
+    /// (see sparse::hash_kmers)
     ///
     /// # Arguments
     ///
@@ -1060,8 +1058,8 @@ impl Band {
         }
     }
 
-    // Add cells around a kmer of length 'k', starting at 'start', which are within
-    // a distance of 'w' in x or y directions to the band.
+    // Add cells around a kmer of length 'k', starting at 'start', which are within a
+    // distance of 'w' in x or y directions to the band.
     fn add_kmer(&mut self, start: (u32, u32), k: usize, w: usize) {
         let (r, c) = (start.0 as usize, start.1 as usize);
         // println!("{} {} {}", r, k, self.rows);
@@ -1100,8 +1098,8 @@ impl Band {
         }
     }
 
-    // Add cells around a specific position to the band. An cell which is within 'w'
-    // distance in x or y directions are added
+    // Add cells around a specific position to the band. An cell which is within 'w' distance
+    // in x or y directions are added
     fn add_entry(&mut self, pos: (u32, u32), w: usize) {
         let (r, c) = (pos.0 as usize, pos.1 as usize);
 
@@ -1130,14 +1128,13 @@ impl Band {
         }
     }
 
-    // The band needs to start either at (0,0) or at a point that is zero score from
-    // (0,0). This naturally sets the start positions correctly for global,
-    // semiglobal and local modes. Similarly the band has to either end at (m,n)
-    // or at a point from which there is a zero score path to (m,n).
+    // The band needs to start either at (0,0) or at a point that is zero score from (0,0).
+    // This naturally sets the start positions correctly for global, semiglobal and local
+    // modes. Similarly the band has to either end at (m,n) or at a point from which there is
+    // a zero score path to (m,n).
     //
-    // At the minimum, irrespective of the score (0,0)->start or end->(m,n), we
-    // extend the band diagonally for a length "lazy_extend"(2k) or when it hits
-    // the corner, whichever happens first
+    // At the minimum, irrespective of the score (0,0)->start or end->(m,n), we extend the band
+    // diagonally for a length "lazy_extend"(2k) or when it hits the corner, whichever happens first
     //
     // start - the index of the first matching kmer in LCSk++
     // end - the index of the last matching kmer in LCSk++
@@ -1747,11 +1744,9 @@ mod banded {
 
     // #[test]
     // fn test_failure() {
-    //     let x =
-    // b"AGAATTTTAGTGATCATATCGTTAACAGCTCCTGAGGGGACTTGGCCCAGCTGGAATAGCTACATGGCAGATTTTTCGTTCACGTTTTCTCTTCGCGATGTTCATCACTGCTTCTACCATATCGAGACCCGTTTATTGACTTCAGACAATGAGGAGCAATTAGGACGTTTATACGATGTTAGCGCGTTTAATAACTCACTGATATGCCACAGGCGCAGGCCTGACAAAGTTTATCCGGGGTCGGGAAAGCTGTGCCCTCATCCAAGTGCTCAGCTAACCAGCAACTGTCGGCTAATTCTTAGATATACCGGATTTATTAACACTGGCCTGACATCCTATACCGAGTAGGCCCCCAAAGTAATTGATGTTCCCGCAACTACTACTCCCGAGGCTAGGTCGAGTCCTACTCCAAGACATCCTGCGTAAAGACAAGGCGCTGACTTGACGTAGTAAAGACCTGGCGCGGGATACACACAGCATAGCGTGAAGCACAGACAAACTGAAGTGGCCGAAGAGAATCTAACAATGGTAC"
-    // ;     let y =
-    // b"GTTTCGATGCTCACTGAACAGTAGAGTTTACGCCCAACGGTTAGTACCTCGCTAAGGGAGTGGGTGTCCGGGCAGAATTTTAGTGATCATATCGTTAACAGCTCCTGAGGGGACTTGGCCCAGCTGGAATAGCTACATGGCAGATTTTTCGTTCACGTTTTCTCTTCCCGATGTTCATCACTGCTTCTACCATATCGCATCCAAGTGCTCAGCTAACCAGCAACTGTCGGCTAATTCTTAGATATACCGGATTTATTAACACTGGCCTGACATCCTATACCGAGTAGGCCCCCAAAGTAATTGATGTTCCCGCAACTACTACTCCCGAGGCTAGGTATTTGTACCTGTTGCCGCCACGTATCGGGGGCGCTACGGGCGGCACGGCCCGATGCCTTGCTTCCCAGGGTGTTTTTTAGGATTCGATTCAGTGGTCGGTCGGGCTTTAAGCGGTCCAGATCTTAGCTGTATCTCGAGTCCTACTCCAAGACGTCCTGCGTAAAGACAAGGCGCTGACTTGACGTAGTAAAGACCTGGCGCGGGATACACACAGCATAGCGTGAAGCACAGACAAACTGAAGTGGCCGAAGAGAATCTAACAATGGTACTGACAGG"
-    // ;     compare_to_full_alignment_semiglobal(x, y);
+    //     let x = b"AGAATTTTAGTGATCATATCGTTAACAGCTCCTGAGGGGACTTGGCCCAGCTGGAATAGCTACATGGCAGATTTTTCGTTCACGTTTTCTCTTCGCGATGTTCATCACTGCTTCTACCATATCGAGACCCGTTTATTGACTTCAGACAATGAGGAGCAATTAGGACGTTTATACGATGTTAGCGCGTTTAATAACTCACTGATATGCCACAGGCGCAGGCCTGACAAAGTTTATCCGGGGTCGGGAAAGCTGTGCCCTCATCCAAGTGCTCAGCTAACCAGCAACTGTCGGCTAATTCTTAGATATACCGGATTTATTAACACTGGCCTGACATCCTATACCGAGTAGGCCCCCAAAGTAATTGATGTTCCCGCAACTACTACTCCCGAGGCTAGGTCGAGTCCTACTCCAAGACATCCTGCGTAAAGACAAGGCGCTGACTTGACGTAGTAAAGACCTGGCGCGGGATACACACAGCATAGCGTGAAGCACAGACAAACTGAAGTGGCCGAAGAGAATCTAACAATGGTAC";
+    //     let y = b"GTTTCGATGCTCACTGAACAGTAGAGTTTACGCCCAACGGTTAGTACCTCGCTAAGGGAGTGGGTGTCCGGGCAGAATTTTAGTGATCATATCGTTAACAGCTCCTGAGGGGACTTGGCCCAGCTGGAATAGCTACATGGCAGATTTTTCGTTCACGTTTTCTCTTCCCGATGTTCATCACTGCTTCTACCATATCGCATCCAAGTGCTCAGCTAACCAGCAACTGTCGGCTAATTCTTAGATATACCGGATTTATTAACACTGGCCTGACATCCTATACCGAGTAGGCCCCCAAAGTAATTGATGTTCCCGCAACTACTACTCCCGAGGCTAGGTATTTGTACCTGTTGCCGCCACGTATCGGGGGCGCTACGGGCGGCACGGCCCGATGCCTTGCTTCCCAGGGTGTTTTTTAGGATTCGATTCAGTGGTCGGTCGGGCTTTAAGCGGTCCAGATCTTAGCTGTATCTCGAGTCCTACTCCAAGACGTCCTGCGTAAAGACAAGGCGCTGACTTGACGTAGTAAAGACCTGGCGCGGGATACACACAGCATAGCGTGAAGCACAGACAAACTGAAGTGGCCGAAGAGAATCTAACAATGGTACTGACAGG";
+    //     compare_to_full_alignment_semiglobal(x, y);
     // }
 
     use crate::alignment::AlignmentOperation::*;

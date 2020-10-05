@@ -9,8 +9,7 @@
 //!
 //! ## Read
 //!
-//! In this example, we parse a fastq file from stdin and compute some
-//! statistics
+//! In this example, we parse a fastq file from stdin and compute some statistics
 //!
 //! ```
 //! use bio::io::fastq;
@@ -51,8 +50,7 @@
 //!
 //! ## Write
 //!
-//! In this example we generate 10 random sequences with length 100 and write
-//! them to stdout.
+//! In this example we generate 10 random sequences with length 100 and write them to stdout.
 //!
 //! ```
 //! use std::io;
@@ -78,8 +76,7 @@
 //!
 //! ## Read and Write
 //!
-//! In this example we filter reads from stdin on mean quality (Phred + 33) and
-//! write them to stdout
+//! In this example we filter reads from stdin on mean quality (Phred + 33) and write them to stdout
 //!
 //! ```
 //! use bio::io::fastq;
@@ -187,9 +184,8 @@ where
     ///
     /// This function will return an error if the record is incomplete,
     /// syntax is violated or any form of I/O error is encountered.
-    /// Additionally, if the FastQ file has line-wrapped records, and the
-    /// wrapping is not consistent between the sequence and quality string
-    /// for a record, parsing will fail.
+    /// Additionally, if the FastQ file has line-wrapped records, and the wrapping is not
+    /// consistent between the sequence and quality string for a record, parsing will fail.
     ///
     /// # Example
     ///
@@ -325,11 +321,10 @@ impl Record {
     /// Check the validity of a FastQ record.
     ///
     /// # Errors
-    /// This function will return an `Err` if one of the following conditions is
-    /// met:
-    /// - The record identifier is empty.
-    /// - There is a non-ASCII character found in either the sequence or quality strings.
-    /// - The sequence and quality strings do not have the same length.
+    /// This function will return an `Err` if one of the following conditions is met:
+    /// -   The record identifier is empty.
+    /// -   There is a non-ASCII character found in either the sequence or quality strings.
+    /// -   The sequence and quality strings do not have the same length.
     ///
     /// # Example
     ///
@@ -394,9 +389,9 @@ impl Record {
 }
 
 impl fmt::Display for Record {
-    /// Allows for using `Record` in a given formatter `f`. In general this is
-    /// for creating a `String` representation of a `Record` and,
-    /// optionally, writing it to a file.
+    /// Allows for using `Record` in a given formatter `f`. In general this is for
+    /// creating a `String` representation of a `Record` and, optionally, writing it to
+    /// a file.
     ///
     /// # Errors
     /// Returns [`std::fmt::Error`](https://doc.rust-lang.org/std/fmt/struct.Error.html)
@@ -501,8 +496,7 @@ impl<W: io::Write> Writer<W> {
         self.write(record.id(), record.desc(), record.seq(), record.qual())
     }
 
-    /// Write a FastQ record with given id, optional description, sequence and
-    /// qualities.
+    /// Write a FastQ record with given id, optional description, sequence and qualities.
     pub fn write(
         &mut self,
         id: &str,

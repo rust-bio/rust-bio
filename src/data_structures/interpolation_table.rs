@@ -33,9 +33,9 @@ pub fn interpolate(a: f64, b: f64, fraction: f64) -> f64 {
 
 /// Fast lookup table for arbitrary floating point functions.
 /// This can be used to e.g., provide fast lookups of distribution values.
-/// Input values are sampled with a given precision and results are stored in a
-/// vector. During lookup, infimum and supremum of a given value are calculated
-/// and the result is interpolated.
+/// Input values are sampled with a given precision and results are stored in a vector.
+/// During lookup, infimum and supremum of a given value are calculated and the result is
+/// interpolated.
 pub struct InterpolationTable<F: Fn(f64) -> f64> {
     inner: Vec<f64>,
     func: F,
@@ -55,11 +55,10 @@ impl<F: Fn(f64) -> f64> InterpolationTable<F> {
     /// * `frac_digits` - number of fraction digits to store in sample
     /// * `func` - Function to emulate.
     ///
-    /// If given value is outside of min_x and max_x, the lookup falls back to
-    /// applying the function itself.
+    /// If given value is outside of min_x and max_x, the lookup falls back to applying the
+    /// function itself.
     /// The table size grows with the number of fraction digits.
-    /// Space Complexity: O(m * 10^n), where `m = max_x - min_x` and `n =
-    /// frac_digits`
+    /// Space Complexity: O(m * 10^n), where `m = max_x - min_x` and `n = frac_digits`
     pub fn new(min_x: f64, max_x: f64, frac_digits: i32, func: F) -> Self {
         let shift = 10.0_f64.powi(frac_digits);
         let offset = (min_x * shift) as usize;
@@ -88,11 +87,10 @@ impl<F: Fn(f64) -> f64> InterpolationTable<F> {
         (x * self.shift) as usize - self.offset
     }
 
-    /// Lookup given value in table, and interpolate the result between the
-    /// sampled values if necessary. This provides an approximation that is
-    /// better the more fraction digits are used to generate this table.
-    /// Time Complexity for lookup: O(1) if `min_x <= x < max_x` and O(func(x))
-    /// otherwise.
+    /// Lookup given value in table, and interpolate the result between the sampled values if
+    /// necessary. This provides an approximation that is better the more fraction digits are
+    /// used to generate this table.
+    /// Time Complexity for lookup: O(1) if `min_x <= x < max_x` and O(func(x)) otherwise.
     pub fn get(&self, x: f64) -> f64 {
         if x < self.min_x || x >= self.max_x {
             (self.func)(x)

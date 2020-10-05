@@ -48,8 +48,7 @@ lazy_static! {
     };
 }
 
-/// Return complement of given RNA alphabet character (IUPAC alphabet
-/// supported).
+/// Return complement of given RNA alphabet character (IUPAC alphabet supported).
 ///
 /// Casing of input character is preserved, e.g. `u` → `a`, but `U` → `A`.
 /// All `N`s and `Z`s remain as they are.

@@ -211,8 +211,7 @@ macro_rules! impl_tests {
             let text = b"TGABCNTR";
             let patt = b"TGRRCGTR";
             //                x  x
-            // Matching is asymmetric here (A matches R and G matches N, but the reverse is
-            // not true)
+            // Matching is asymmetric here (A matches R and G matches N, but the reverse is not true)
 
             let myers = MyersBuilder::new().ambig(b'R', b"AG").build_64(patt);
             assert_eq!(myers.distance(text), 2);

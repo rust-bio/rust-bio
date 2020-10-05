@@ -3,9 +3,9 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This module provides a trait adding a fast approximation of the exponential
-//! function to f64. This can be very useful if the exact value is not too
-//! important, for example when working with `bio::stats::LogProb`.
+//! This module provides a trait adding a fast approximation of the exponential function to f64.
+//! This can be very useful if the exact value is not too important, for example when working with
+//! `bio::stats::LogProb`.
 
 use num_traits::Float;
 use std::f64;
