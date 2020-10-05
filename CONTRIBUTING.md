@@ -40,6 +40,10 @@ You have two options to do this:
 1. [Follow the instructions](https://pre-commit.com) to install `pre-commit` if you haven't yet. (if you have `pip`, just `pip install pre-commit`)
 2. Nagivate to `rust-bio`'s project directory, and run `pre-commit install`. This should update `.git/hooks/pre-commit`
 
+After hooks have been installed, several checks specified in `.pre-commit-config.yaml` will be run every time you want to commit. In most cases, if any test fails, the hook will try to fix the problem automatically, and then you can commit your changes together with changes made by the hook.
+
+If you need to bypass the hook, use `git commit -n`.
+
 ### Applying Changes
 
 Please follow our [style guidelines](#style-guidelines).
