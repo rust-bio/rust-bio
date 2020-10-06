@@ -60,15 +60,15 @@ pub fn hamming(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u64 {
 /// ```
 pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
     let (m, n) = (alpha.len(), beta.len());
-    let mut dp_matrix: Vec<u32> = Vec::with_capacity(m + 1); // the dynamic programming matrix (only 1 column stored)
+    let mut dp_matrix = vec![0u32; m + 1]; // the dynamic programming matrix (only 1 column stored)
     let mut s_diag: u32; // dp_matrix[i - 1][j - 1]
     let mut s_above: u32; // dp_matrix[i - 1][j]
     let mut a: u8; // alpha[i - 1]
     let mut b: u8; // beta[j - 1]
 
     // 0th column (j = 0)
-    for i in 0..=(m as u32) {
-        dp_matrix.push(i);
+    for i in 1..=m {
+        unsafe { *dp_matrix.get_unchecked_mut(i) = i as u32 }
     }
     // columns 1 to n
     for j in 1..=n {
