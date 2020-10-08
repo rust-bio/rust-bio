@@ -3,6 +3,11 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/rust-bio/rust-bio/master/img/bioferris.svg",
+    html_favicon_url = "https://raw.githubusercontent.com/rust-bio/rust-bio/master/img/bioferris.svg"
+)]
+
 //! # Rust-bio, a bioinformatics library for Rust.
 //! This library provides implementations of many algorithms and data structures
 //! that are useful for bioinformatics.
