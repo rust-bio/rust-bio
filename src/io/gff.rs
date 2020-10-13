@@ -55,7 +55,7 @@ pub enum GffType {
 }
 
 impl FromStr for GffType {
-    type Err = ();
+    type Err = String;
 
     /// Create a GffType from a string.
     ///
@@ -67,7 +67,10 @@ impl FromStr for GffType {
             "gff3" => Ok(GffType::GFF3),
             "gff2" => Ok(GffType::GFF2),
             "gtf2" => Ok(GffType::GTF2),
-            _ => Err(()),
+            _ => Err(format!(
+                "String {} is not a valid GFFType (GFF/GTF format version).",
+                src_str
+            )),
         }
     }
 }
@@ -483,8 +486,11 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let gtf2 = GffType::from_str("gtf2").expect("Error parsing");
         assert_eq!(gtf2, GffType::GTF2);
 
-        let unk = GffType::from_str("unknown");
-        assert!(unk.is_err());
+        let unk = GffType::from_str("unknown").unwrap_err();
+        assert_eq!(
+            unk,
+            "String unknown is not a valid GFFType (GFF/GTF format version)."
+        )
     }
 
     #[test]
