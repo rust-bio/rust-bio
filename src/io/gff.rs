@@ -68,7 +68,7 @@ impl FromStr for GffType {
             "gff2" => Ok(GffType::GFF2),
             "gtf2" => Ok(GffType::GTF2),
             _ => Err(format!(
-                "String {} is not a valid GFFType (GFF/GTF format version).",
+                "String '{}' is not a valid GFFType (GFF/GTF format version).",
                 src_str
             )),
         }
@@ -489,7 +489,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let unk = GffType::from_str("unknown").unwrap_err();
         assert_eq!(
             unk,
-            "String unknown is not a valid GFFType (GFF/GTF format version)."
+            "String 'unknown' is not a valid GFFType (GFF/GTF format version)."
         )
     }
 
