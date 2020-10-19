@@ -212,6 +212,7 @@ where
                      of 4 lines: header, sequence, separator and \
                      qualities.";
         
+        record.clear();
         self.line_buffer.clear();
         if self.reader.read_line(&mut self.line_buffer)? > 0 { // reader successfully read bytes
             if !self.line_buffer.starts_with('@') {
@@ -259,9 +260,6 @@ where
                     incomplete_msg,
                 ));
             }
-        } else {
-            // mark record as empty in case user reuses prefilled record
-            record.clear();
         }
 
         Ok(())
