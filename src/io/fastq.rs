@@ -208,47 +208,60 @@ where
     /// assert_eq!(record.qual().to_vec(), b"IIII");
     /// ```
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
-        record.clear();
+        let incomplete_msg = "Incomplete record. Each FastQ record has to consist \
+                     of 4 lines: header, sequence, separator and \
+                     qualities.";
+        
         self.line_buffer.clear();
-
-        self.reader.read_line(&mut self.line_buffer)?;
-
-        if !self.line_buffer.is_empty() {
+        if self.reader.read_line(&mut self.line_buffer)? > 0 { // reader successfully read bytes
             if !self.line_buffer.starts_with('@') {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
                     "Expected @ at record start.",
                 ));
             }
+            let read_line = |reader: &mut io::BufReader<R>, line_buffer: &mut String| {
+                if reader.read_line(line_buffer)? == 0 {
+                    // eof reached
+                    return Err(io::Error::new(
+                        io::ErrorKind::Other,
+                        incomplete_msg,
+                    ));
+                }
+
+                Ok(())
+            };
+
             let mut header_fields = self.line_buffer[1..].trim_end().splitn(2, ' ');
             record.id = header_fields.next().unwrap_or_default().to_owned();
             record.desc = header_fields.next().map(|s| s.to_owned());
             self.line_buffer.clear();
 
-            self.reader.read_line(&mut self.line_buffer)?;
+            read_line(&mut self.reader, &mut self.line_buffer)?;
 
             let mut lines_read = 0;
             while !self.line_buffer.starts_with('+') {
                 record.seq.push_str(&self.line_buffer.trim_end());
                 self.line_buffer.clear();
-                self.reader.read_line(&mut self.line_buffer)?;
+                read_line(&mut self.reader, &mut self.line_buffer)?;
                 lines_read += 1;
             }
 
             for _ in 0..lines_read {
                 self.line_buffer.clear();
-                self.reader.read_line(&mut self.line_buffer)?;
+                read_line(&mut self.reader, &mut self.line_buffer)?;
                 record.qual.push_str(self.line_buffer.trim_end());
             }
 
             if record.qual.is_empty() {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
-                    "Incomplete record. Each FastQ record has to consist \
-                     of 4 lines: header, sequence, separator and \
-                     qualities.",
+                    incomplete_msg,
                 ));
             }
+        } else {
+            // mark record as empty in case user reuses prefilled record
+            record.clear();
         }
 
         Ok(())
