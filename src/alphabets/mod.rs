@@ -27,6 +27,7 @@ pub mod rna;
 pub type SymbolRanks = VecMap<u8>;
 
 /// Representation of an alphabet.
+#[derive(Debug, PartialEq)]
 pub struct Alphabet {
     pub symbols: BitSet,
 }
@@ -373,13 +374,14 @@ where
     }
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
-    #[test]
-    fn test_serde() {
-        use serde::{Deserialize, Serialize};
-        fn impls_serde_traits<S: Serialize + Deserialize>() {}
+    use super::*;
 
-        impls_serde_traits::<RankTransform>();
+    #[test]
+    fn test_alphabet_eq() {
+        assert_eq!(Alphabet::new(b"ATCG"), Alphabet::new(b"ATCG"));
+        assert_eq!(Alphabet::new(b"ATCG"), Alphabet::new(b"TAGC"));
+        assert_ne!(Alphabet::new(b"ATCG"), Alphabet::new(b"ATC"));
     }
 }
