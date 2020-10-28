@@ -279,19 +279,26 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
     /// let pattern = b"ATT";
     /// let intervals = fmdindex.smems(pattern, 2);
     ///
-    /// let forward_positions = intervals[0].forward().occ(&sa);
-    ///
-    /// let revcomp_positions = intervals[0].revcomp().occ(&sa);
+    /// let forward_positions = intervals[0].0.forward().occ(&sa);
+    /// let revcomp_positions = intervals[0].0.revcomp().occ(&sa);
+    /// let pattern_position = intervals[0].1;
+    /// let smem_len = intervals[0].2;
     ///
     /// assert_eq!(forward_positions, [0]);
     /// assert_eq!(revcomp_positions, [6]);
+    /// assert_eq!(pattern_position, 0);
+    /// assert_eq!(smem_len, 3);
     /// ```
-    pub fn smems(&self, pattern: &[u8], i: usize) -> Vec<BiInterval> {
-        let curr = &mut Vec::new();
-        let prev = &mut Vec::new();
-        let mut matches = Vec::new();
+    pub fn smems(&self, pattern: &[u8], i: usize) -> Vec<(BiInterval, usize, usize)> {
+        let curr = &mut Vec::new(); // pairs (biinterval, current match length)
+        let prev = &mut Vec::new(); // """
+        let mut matches = Vec::new(); // triples (biinterval, position on pattern, smem length)
 
+        let mut match_len = 0;
         let mut interval = self.init_interval_with(pattern[i]);
+        if interval.size != 0 {
+            match_len += 1;
+        }
 
         for &a in pattern[i + 1..].iter() {
             // forward extend interval
@@ -299,16 +306,17 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
 
             // if size changed, add last interval to list
             if interval.size != forward_interval.size {
-                curr.push(interval);
+                curr.push((interval, match_len));
             }
             // if new interval size is zero, stop, as no further forward extension is possible
             if forward_interval.size == 0 {
                 break;
             }
             interval = forward_interval;
+            match_len += 1;
         }
         // add the last non-zero interval
-        curr.push(interval);
+        curr.push((interval, match_len));
         // reverse intervals such that longest comes first
         curr.reverse();
 
@@ -321,7 +329,7 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
             // size of the last confirmed interval
             let mut last_size = -1;
 
-            for interval in prev.iter() {
+            for (interval, match_len) in prev.iter() {
                 // backward extend interval
                 let forward_interval = self.backward_ext(interval, a);
 
@@ -332,12 +340,12 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
                         curr.is_empty() && k < j
                 {
                     j = k;
-                    matches.push(*interval);
+                    matches.push((*interval, (k + 1) as usize, *match_len));
                 }
                 // add _interval to curr (will be further extended next iteration)
                 if forward_interval.size != 0 && forward_interval.size as isize != last_size {
                     last_size = forward_interval.size as isize;
-                    curr.push(forward_interval);
+                    curr.push((forward_interval, match_len + 1));
                 }
             }
             if curr.is_empty() {
@@ -474,17 +482,23 @@ mod tests {
         {
             let pattern = b"AA";
             let intervals = fmdindex.smems(pattern, 0);
-            let forward = intervals[0].forward();
-            let revcomp = intervals[0].revcomp();
+            let forward = intervals[0].0.forward();
+            let revcomp = intervals[0].0.revcomp();
+            let pattern_position = intervals[0].1;
+            let smem_len = intervals[0].2;
             assert_eq!(forward.occ(&sa), [5, 16]);
             assert_eq!(revcomp.occ(&sa), [3, 14]);
+            assert_eq!(pattern_position, 0);
+            assert_eq!(smem_len, 2);
         }
         {
             let pattern = b"CTTAA";
             let intervals = fmdindex.smems(pattern, 1);
-            assert_eq!(intervals[0].forward().occ(&sa), [2]);
-            assert_eq!(intervals[0].revcomp().occ(&sa), [14]);
-            assert_eq!(intervals[0].match_size, 5)
+            assert_eq!(intervals[0].0.forward().occ(&sa), [2]);
+            assert_eq!(intervals[0].0.revcomp().occ(&sa), [14]);
+            assert_eq!(intervals[0].1, 0);
+            assert_eq!(intervals[0].2, 5);
+            assert_eq!(intervals[0].0.match_size, 5);
         }
     }
 
@@ -583,7 +597,7 @@ mod tests {
             println!("{:?}", intervals);
             let matches = intervals
                 .iter()
-                .flat_map(|interval| interval.forward().occ(&sa))
+                .flat_map(|interval| interval.0.forward().occ(&sa))
                 .collect::<Vec<usize>>();
             assert_eq!(matches, vec![read_pos]);
         }
