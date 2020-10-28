@@ -256,7 +256,7 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> From<FMIndex<DBW
 }
 
 impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, DLess, DOcc> {
-    /// Find supermaximal exact matches of given pattern that overlap position i in the pattern.
+    /// Find supermaximal exact matches (of length >= l) of given pattern that overlap position i in the pattern.
     /// Complexity O(m) with pattern of length m.
     ///
     /// # Example
@@ -277,7 +277,7 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
     /// let fmdindex = FMDIndex::from(fm);
     ///
     /// let pattern = b"ATT";
-    /// let intervals = fmdindex.smems(pattern, 2);
+    /// let intervals = fmdindex.smems(pattern, 2, 0);
     ///
     /// let forward_positions = intervals[0].0.forward().occ(&sa);
     /// let revcomp_positions = intervals[0].0.revcomp().occ(&sa);
@@ -289,7 +289,7 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
     /// assert_eq!(pattern_position, 0);
     /// assert_eq!(smem_len, 3);
     /// ```
-    pub fn smems(&self, pattern: &[u8], i: usize) -> Vec<(BiInterval, usize, usize)> {
+    pub fn smems(&self, pattern: &[u8], i: usize, l: usize) -> Vec<(BiInterval, usize, usize)> {
         let curr = &mut Vec::new(); // pairs (biinterval, current match length)
         let prev = &mut Vec::new(); // """
         let mut matches = Vec::new(); // triples (biinterval, position on pattern, smem length)
@@ -337,7 +337,8 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
                         // interval could not be extended further
                         // if no interval has been extended this iteration,
                         // interval is maximal and can be added to the matches
-                        curr.is_empty() && k < j
+                        curr.is_empty() && k < j &&
+                        match_len >= &l
                 {
                     j = k;
                     matches.push((*interval, (k + 1) as usize, *match_len));
@@ -481,7 +482,7 @@ mod tests {
         let fmdindex = FMDIndex::from(fmindex);
         {
             let pattern = b"AA";
-            let intervals = fmdindex.smems(pattern, 0);
+            let intervals = fmdindex.smems(pattern, 0, 0);
             let forward = intervals[0].0.forward();
             let revcomp = intervals[0].0.revcomp();
             let pattern_position = intervals[0].1;
@@ -493,12 +494,17 @@ mod tests {
         }
         {
             let pattern = b"CTTAA";
-            let intervals = fmdindex.smems(pattern, 1);
+            let intervals = fmdindex.smems(pattern, 1, 0);
             assert_eq!(intervals[0].0.forward().occ(&sa), [2]);
             assert_eq!(intervals[0].0.revcomp().occ(&sa), [14]);
             assert_eq!(intervals[0].1, 0);
             assert_eq!(intervals[0].2, 5);
             assert_eq!(intervals[0].0.match_size, 5);
+        }
+        {
+            let pattern = b"CTTAA";
+            let intervals = fmdindex.smems(pattern, 1, 7);
+            assert!(intervals.is_empty());
         }
     }
 
@@ -593,7 +599,7 @@ mod tests {
 
         for i in 0..read.len() {
             println!("i {}", i);
-            let intervals = fmdindex.smems(read, i);
+            let intervals = fmdindex.smems(read, i, 0);
             println!("{:?}", intervals);
             let matches = intervals
                 .iter()
