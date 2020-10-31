@@ -165,13 +165,9 @@ impl Alphabet {
     ///
     /// assert_eq!(intersect_alpha, alphabets::Alphabet::new(b"atcg"));
     /// ```
-    pub fn intersection(self, other: Alphabet) -> Self {
-        let mut new_symbols = BitSet::new();
-        for symbol_to_add in self.symbols.intersection(&other.symbols) {
-            new_symbols.insert(symbol_to_add);
-        }
+    pub fn intersection(&self, other: &Alphabet) -> Self {
         return Alphabet {
-            symbols: new_symbols,
+            symbols: self.symbols.intersection(&other.symbols).collect(),
         };
     }
 
@@ -187,13 +183,9 @@ impl Alphabet {
     ///
     /// assert_eq!(dna_lower, alphabets::Alphabet::new(b"atcg"));
     /// ```
-    pub fn difference(self, other: Alphabet) -> Self {
-        let mut new_symbols = BitSet::new();
-        for symbol_to_add in self.symbols.difference(&other.symbols) {
-            new_symbols.insert(symbol_to_add);
-        }
+    pub fn difference(&self, other: &Alphabet) -> Self {
         return Alphabet {
-            symbols: new_symbols,
+            symbols: self.symbols.difference(&other.symbols).collect(),
         };
     }
 
@@ -209,13 +201,9 @@ impl Alphabet {
     ///
     /// assert_eq!(alpha, alphabets::Alphabet::new(b"ATCG?|"));
     /// ```
-    pub fn union(self, other: Alphabet) -> Self {
-        let mut new_symbols = BitSet::new();
-        for symbol_to_add in self.symbols.union(&other.symbols) {
-            new_symbols.insert(symbol_to_add);
-        }
+    pub fn union(&self, other: &Alphabet) -> Self {
         return Alphabet {
-            symbols: new_symbols,
+            symbols: self.symbols.union(&other.symbols).collect(),
         };
     }
 }
