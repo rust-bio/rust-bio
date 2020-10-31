@@ -161,7 +161,7 @@ impl Alphabet {
     ///
     /// let alpha_a = alphabets::Alphabet::new(b"acgtACGT");
     /// let alpha_b = alphabets::Alphabet::new(b"atcgMVP");
-    /// let intersect_alpha = alpha_a.intersection(alpha_b);
+    /// let intersect_alpha = alpha_a.intersection(&alpha_b);
     ///
     /// assert_eq!(intersect_alpha, alphabets::Alphabet::new(b"atcg"));
     /// ```
@@ -179,7 +179,7 @@ impl Alphabet {
     ///
     /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
     /// let dna_alphabet_upper = alphabets::Alphabet::new(b"ACGT");
-    /// let dna_lower = dna_alphabet.difference(dna_alphabet_upper);
+    /// let dna_lower = dna_alphabet.difference(&dna_alphabet_upper);
     ///
     /// assert_eq!(dna_lower, alphabets::Alphabet::new(b"atcg"));
     /// ```
@@ -197,7 +197,7 @@ impl Alphabet {
     ///
     /// let dna_alphabet = alphabets::Alphabet::new(b"ATCG");
     /// let tokenize_alpha = alphabets::Alphabet::new(b"?|");
-    /// let alpha = dna_alphabet.union(tokenize_alpha);
+    /// let alpha = dna_alphabet.union(&tokenize_alpha);
     ///
     /// assert_eq!(alpha, alphabets::Alphabet::new(b"ATCG?|"));
     /// ```
