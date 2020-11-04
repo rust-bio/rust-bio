@@ -358,6 +358,58 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
         matches
     }
 
+    /// Find all supermaximal exact matches (of length >= l) of given pattern.
+    /// Complexity O(m^2) with pattern of length m.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::alphabets::dna;
+    /// use bio::data_structures::bwt::{bwt, less, Occ};
+    /// use bio::data_structures::fmindex::{FMDIndex, FMIndex};
+    /// use bio::data_structures::suffix_array::suffix_array;
+    ///
+    /// let text = b"ATTCGGGG$CCCCGAAT$";
+    /// let alphabet = dna::n_alphabet();
+    /// let sa = suffix_array(text);
+    /// let bwt = bwt(text, &sa);
+    /// let less = less(&bwt, &alphabet);
+    /// let occ = Occ::new(&bwt, 3, &alphabet);
+    /// let fm = FMIndex::new(&bwt, &less, &occ);
+    /// let fmdindex = FMDIndex::from(fm);
+    ///
+    /// let pattern = b"ATTGGGG";
+    /// let intervals = fmdindex.all_smems(pattern, 0);
+    /// assert_eq!(intervals.len(), 2);
+    ///
+    /// let solutions = vec![[0,14,0,3], [4,9,3,4]];
+    /// for (i, interval) in intervals.iter().enumerate() {
+    ///     let forward_positions = interval.0.forward().occ(&sa);
+    ///     let revcomp_positions = interval.0.revcomp().occ(&sa);
+    ///     let pattern_position = interval.1;
+    ///     let smem_len = interval.2;
+    ///     assert_eq!([forward_positions[0], revcomp_positions[0], pattern_position, smem_len], solutions[i]);
+    /// }
+    /// ```
+    pub fn all_smems(&self, pattern: &[u8], l: usize) -> Vec<(BiInterval, usize, usize)> {
+        let mut smems = Vec::new();
+        let mut i0 = 0;
+        while i0 < pattern.len() {
+            let mut curr_smems = self.smems(pattern, i0, l);
+            let mut next_i0 = i0 + 1; // this always works since:
+                                      // if we have a SMEM overlapping i0, it is at least 1bp long.
+                                      // If we don't have a smem, then we'll reiterate from i0+1
+            for (_, p, l) in curr_smems.iter() {
+                if p + l > next_i0 {
+                    next_i0 = p + l;
+                }
+            }
+            i0 = next_i0;
+            smems.append(&mut curr_smems);
+        }
+        smems
+    }
+
     /// Initialize interval with given start character.
     pub fn init_interval_with(&self, a: u8) -> BiInterval {
         let comp_a = dna::complement(a);
@@ -505,6 +557,40 @@ mod tests {
             let pattern = b"CTTAA";
             let intervals = fmdindex.smems(pattern, 1, 7);
             assert!(intervals.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_all_smems() {
+        let text = b"ATTCGGGG$CCCCGAAT$";
+        let alphabet = dna::n_alphabet();
+        let sa = suffix_array(text);
+        let bwt = bwt(text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+        let fm = FMIndex::new(&bwt, &less, &occ);
+        let fmdindex = FMDIndex::from(fm);
+
+        {
+            let pattern = b"ATTGGGG";
+            let intervals = fmdindex.all_smems(pattern, 0);
+            assert_eq!(intervals.len(), 2);
+            let solutions = vec![[0, 14, 0, 3], [4, 9, 3, 4]];
+            for (i, interval) in intervals.iter().enumerate() {
+                let forward_positions = interval.0.forward().occ(&sa);
+                let revcomp_positions = interval.0.revcomp().occ(&sa);
+                let pattern_position = interval.1;
+                let smem_len = interval.2;
+                assert_eq!(
+                    [
+                        forward_positions[0],
+                        revcomp_positions[0],
+                        pattern_position,
+                        smem_len
+                    ],
+                    solutions[i]
+                );
+            }
         }
     }
 
