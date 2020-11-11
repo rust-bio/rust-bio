@@ -78,7 +78,7 @@ mod tests {
         assert_relative_eq!(x.fastexp(), 1e-8, epsilon = 0.00000000000002);
         let x = 0.5_f64.ln();
         assert_relative_eq!(x.fastexp(), 0.5, epsilon = 0.01);
-        let x = -159.00000002327861_f64;
-        assert_relative_eq!(x.fastexp(), (-159.00000002327861).exp());
+        let x = -159.000_000_023_278_6_f64;
+        assert_relative_eq!(x.fastexp(), (-159.000_000_023_278_6).exp());
     }
 }

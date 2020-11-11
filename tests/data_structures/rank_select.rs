@@ -42,7 +42,7 @@ impl<T: Hash + Eq + Clone> Select<T> {
                 }
             }
         }
-        return None;
+        None
     }
 }
 
@@ -51,7 +51,7 @@ impl<T: Hash + Eq + Clone> Rank<T> {
         if let Some(prev) = self.ranks.last() {
             let mut nxt: HashMap<_, _> = prev.clone();
             *nxt.entry(val).or_insert(0) += 1;
-            self.ranks.push(nxt.clone());
+            self.ranks.push(nxt);
         } else {
             let mut nxt = HashMap::new();
             nxt.insert(val, 1);

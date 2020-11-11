@@ -531,7 +531,7 @@ mod tests {
     use std::fmt::Write as FmtWrite;
     use std::io;
 
-    const FASTQ_FILE: &'static [u8] = b"@id desc
+    const FASTQ_FILE: &[u8] = b"@id desc
 ACCGTAGGCTGA
 +
 IIIIIIJJJJJJ
