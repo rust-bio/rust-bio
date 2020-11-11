@@ -50,6 +50,8 @@ snafu = ">= 0.5, <= 0.6"
 getset = "0.0.9"
 enum-map = "0.6"
 triple_accel = "0.3"
+packed_simd = { version = "0.3.4", package = "packed_simd_2" }
+
 
 [dependencies.vec_map]
 version = "0.8"
