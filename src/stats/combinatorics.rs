@@ -69,6 +69,8 @@ mod tests {
 
     #[test]
     fn test_comb_scaled() {
-        assert!((scaled_combinations(150, 80, 1e-5) - 6.664_393_816_347_938_4e38).abs() < 0.0000001);
+        assert!(
+            (scaled_combinations(150, 80, 1e-5) - 6.664_393_816_347_938_4e38).abs() < 0.0000001
+        );
     }
 }
