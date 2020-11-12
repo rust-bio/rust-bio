@@ -16,3 +16,4 @@ pub mod qgram_index;
 pub mod rank_select;
 pub mod smallints;
 pub mod suffix_array;
+pub mod wavelet_matrix;
