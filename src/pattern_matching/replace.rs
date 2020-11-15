@@ -9,18 +9,9 @@
 //! # Example
 //!
 //! ```
-//! use bio::pattern_matching::replace;
-//! ut_replace("ACTGuyUNn.-".to_string());
-//! // ACTGtyTNn.-
-//! rand_replace_gap_lowercase("ACTGuyUNn.-".to_string());
-//! // ACTGuyUNnag
-//! rand_replace_n("ACTGuyUNn.-".to_string());
-//! // ACTGuyUAg.-
-//! rand_replace_other("ACTGuyUNn.-".to_string());
-//! // ACTGucUNn.-
-//! //should only be used after other functions if unknown symbols are causing errors:
-//! rand_replace("ACTGuyUNn.-@<^>".to_string()); 
-//! // ACTGuTUGACTCTGA
+//! use bio::pattern_matching::replace::ut_replace;
+//! let ut = ut_replace("ACTGuyUNn.-".to_string());
+//! assert_eq!(ut, "ACTGtyTNn.-");
 //! ```
 
 use rand::seq::SliceRandom;
@@ -172,5 +163,5 @@ pub fn rand_replace_lowercase(nucl: String) -> String {
 #[test]
 fn test_rand_replace() {
     let test = rand_replace("ACTGuyUNn.-@<^>".to_string());
-    assert_eq!(test.len(), "ACTGuyUNn.-@<^>".len());
+    assert_eq!(test.len(), "ACTGuyUNn.-@<^>".to_string().len());
 }
