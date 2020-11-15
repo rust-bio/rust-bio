@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Utilities to replace IUPAC and unknown characters to pseudorandom nucleotides. 
+//! Utilities to replace IUPAC and unknown characters to pseudorandom nucleotides.
 //!
 //!
 //! # Example
@@ -18,26 +18,29 @@ use rand::seq::SliceRandom;
 
 // convert U to T
 pub fn ut_replace(nucl: String) -> String {
-    let dna: String = nucl.chars()
-    .map(|ch| match ch {
+    let dna: String = nucl
+        .chars()
+        .map(|ch| match ch {
             'U' => 'T',
             'u' => 't',
-            _ => ch
-        }).collect();
+            _ => ch,
+        })
+        .collect();
     dna
 }
-
 
 // fill gaps {.,-} with pseudorandom nucleotides ACTG
 pub fn rand_replace_gap(nucl: String) -> String {
     let bases = ['A', 'C', 'T', 'G'];
     let mut rng = rand::thread_rng();
-    let dna: String = nucl.chars()
-    .map(|ch| match ch {
-        '.' => *bases.choose(&mut rng).unwrap(),
-        '-' => *bases.choose(&mut rng).unwrap(),
-        _ => ch
-        }).collect();
+    let dna: String = nucl
+        .chars()
+        .map(|ch| match ch {
+            '.' => *bases.choose(&mut rng).unwrap(),
+            '-' => *bases.choose(&mut rng).unwrap(),
+            _ => ch,
+        })
+        .collect();
     dna
 }
 
@@ -45,12 +48,14 @@ pub fn rand_replace_gap(nucl: String) -> String {
 pub fn rand_replace_gap_lowercase(nucl: String) -> String {
     let bases = ['a', 'c', 't', 'g'];
     let mut rng = rand::thread_rng();
-    let dna: String = nucl.chars()
-    .map(|ch| match ch {
-        '.' => *bases.choose(&mut rng).unwrap(),
-        '-' => *bases.choose(&mut rng).unwrap(),
-        _ => ch
-        }).collect();
+    let dna: String = nucl
+        .chars()
+        .map(|ch| match ch {
+            '.' => *bases.choose(&mut rng).unwrap(),
+            '-' => *bases.choose(&mut rng).unwrap(),
+            _ => ch,
+        })
+        .collect();
     dna
 }
 
@@ -59,12 +64,14 @@ pub fn rand_replace_n(nucl: String) -> String {
     let bases = ['A', 'C', 'T', 'G'];
     let lowercase_bases = ['a', 'c', 't', 'g'];
     let mut rng = rand::thread_rng();
-    let dna: String = nucl.chars()
-    .map(|ch| match ch {
-        'N' => *bases.choose(&mut rng).unwrap(),
-        'n' => *lowercase_bases.choose(&mut rng).unwrap(),
-        _ => ch
-        }).collect();
+    let dna: String = nucl
+        .chars()
+        .map(|ch| match ch {
+            'N' => *bases.choose(&mut rng).unwrap(),
+            'n' => *lowercase_bases.choose(&mut rng).unwrap(),
+            _ => ch,
+        })
+        .collect();
     dna
 }
 
@@ -91,30 +98,32 @@ pub fn rand_replace_other(nucl: String) -> String {
     let h_bases_lowercase = ['a', 'c', 't'];
     let v_bases = ['A', 'C', 'G'];
     let v_bases_lowercase = ['a', 'c', 'g'];
-    let dna: String = nucl.chars()
-    .map(|ch| match ch {
-        'R' => *r_bases.choose(&mut rng).unwrap(),
-        'r' => *r_bases_lowercase.choose(&mut rng).unwrap(),
-        'Y' => *y_bases.choose(&mut rng).unwrap(),
-        'y' => *y_bases_lowercase.choose(&mut rng).unwrap(),
-        'S' => *s_bases.choose(&mut rng).unwrap(),
-        's' => *s_bases_lowercase.choose(&mut rng).unwrap(),
-        'W' => *w_bases.choose(&mut rng).unwrap(),
-        'w' => *w_bases_lowercase.choose(&mut rng).unwrap(),
-        'K' => *k_bases.choose(&mut rng).unwrap(),
-        'k' => *k_bases_lowercase.choose(&mut rng).unwrap(),
-        'M' => *m_bases.choose(&mut rng).unwrap(),
-        'm' => *m_bases_lowercase.choose(&mut rng).unwrap(),
-        'B' => *b_bases.choose(&mut rng).unwrap(),
-        'b' => *b_bases_lowercase.choose(&mut rng).unwrap(),
-        'D' => *d_bases.choose(&mut rng).unwrap(),
-        'd' => *d_bases_lowercase.choose(&mut rng).unwrap(),
-        'H' => *h_bases.choose(&mut rng).unwrap(),
-        'h' => *h_bases_lowercase.choose(&mut rng).unwrap(),
-        'V' => *v_bases.choose(&mut rng).unwrap(),
-        'v' => *v_bases_lowercase.choose(&mut rng).unwrap(),
-        _ => ch
-        }).collect();
+    let dna: String = nucl
+        .chars()
+        .map(|ch| match ch {
+            'R' => *r_bases.choose(&mut rng).unwrap(),
+            'r' => *r_bases_lowercase.choose(&mut rng).unwrap(),
+            'Y' => *y_bases.choose(&mut rng).unwrap(),
+            'y' => *y_bases_lowercase.choose(&mut rng).unwrap(),
+            'S' => *s_bases.choose(&mut rng).unwrap(),
+            's' => *s_bases_lowercase.choose(&mut rng).unwrap(),
+            'W' => *w_bases.choose(&mut rng).unwrap(),
+            'w' => *w_bases_lowercase.choose(&mut rng).unwrap(),
+            'K' => *k_bases.choose(&mut rng).unwrap(),
+            'k' => *k_bases_lowercase.choose(&mut rng).unwrap(),
+            'M' => *m_bases.choose(&mut rng).unwrap(),
+            'm' => *m_bases_lowercase.choose(&mut rng).unwrap(),
+            'B' => *b_bases.choose(&mut rng).unwrap(),
+            'b' => *b_bases_lowercase.choose(&mut rng).unwrap(),
+            'D' => *d_bases.choose(&mut rng).unwrap(),
+            'd' => *d_bases_lowercase.choose(&mut rng).unwrap(),
+            'H' => *h_bases.choose(&mut rng).unwrap(),
+            'h' => *h_bases_lowercase.choose(&mut rng).unwrap(),
+            'V' => *v_bases.choose(&mut rng).unwrap(),
+            'v' => *v_bases_lowercase.choose(&mut rng).unwrap(),
+            _ => ch,
+        })
+        .collect();
     dna
 }
 
@@ -122,20 +131,22 @@ pub fn rand_replace_other(nucl: String) -> String {
 pub fn rand_replace(nucl: String) -> String {
     let bases = ['A', 'C', 'T', 'G'];
     let mut rng = rand::thread_rng();
-    let dna: String = nucl.chars()
-    .map(|ch| match ch {
-        'A' => ch,
-        'a' => ch,
-        'C' => ch,
-        'c' => ch,
-        'T' => ch,
-        't' => ch,
-        'G' => ch,
-        'g' => ch,
-        'U' => ch,
-        'u' => ch,
-        _ => *bases.choose(&mut rng).unwrap()
-        }).collect();
+    let dna: String = nucl
+        .chars()
+        .map(|ch| match ch {
+            'A' => ch,
+            'a' => ch,
+            'C' => ch,
+            'c' => ch,
+            'T' => ch,
+            't' => ch,
+            'G' => ch,
+            'g' => ch,
+            'U' => ch,
+            'u' => ch,
+            _ => *bases.choose(&mut rng).unwrap(),
+        })
+        .collect();
     dna
 }
 
@@ -143,20 +154,22 @@ pub fn rand_replace(nucl: String) -> String {
 pub fn rand_replace_lowercase(nucl: String) -> String {
     let bases = ['a', 'c', 't', 'g'];
     let mut rng = rand::thread_rng();
-    let dna: String = nucl.chars()
-    .map(|ch| match ch {
-        'A' => ch,
-        'a' => ch,
-        'C' => ch,
-        'c' => ch,
-        'T' => ch,
-        't' => ch,
-        'G' => ch,
-        'g' => ch,
-        'U' => ch,
-        'u' => ch,
-        _ => *bases.choose(&mut rng).unwrap()
-        }).collect();
+    let dna: String = nucl
+        .chars()
+        .map(|ch| match ch {
+            'A' => ch,
+            'a' => ch,
+            'C' => ch,
+            'c' => ch,
+            'T' => ch,
+            't' => ch,
+            'G' => ch,
+            'g' => ch,
+            'U' => ch,
+            'u' => ch,
+            _ => *bases.choose(&mut rng).unwrap(),
+        })
+        .collect();
     dna
 }
 
