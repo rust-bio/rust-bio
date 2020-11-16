@@ -4,6 +4,9 @@
 // except according to those terms.
 
 //! Utilities for Bayesian statistics.
+//! For each of the hypothesis tests given as posterior error probabilities
+//! (PEPs, i.e. the posterior probability of the null hypothesis), estimate the FDR
+//! for the case that all null hypotheses with at most this PEP are rejected.
 //! let peps = [LogProb(0.1f64.ln()), LogProb::ln_zero(),LogProb(0.25f64.ln()),];
 //! let fdrs = expected_fdr(&peps);
 //! assert_relative_eq!(*fdrs[2], *LogProb((0.35 / 3.0f64).ln()), epsilon = 0.000001);
