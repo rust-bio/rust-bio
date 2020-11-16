@@ -4,6 +4,9 @@
 // except according to those terms.
 
 //! Utilities for Bayesian statistics.
+//! let peps = [LogProb(0.1f64.ln()), LogProb::ln_zero(),LogProb(0.25f64.ln()),];
+//! let fdrs = expected_fdr(&peps);
+//! assert_relative_eq!(*fdrs[2], *LogProb((0.35 / 3.0f64).ln()), epsilon = 0.000001);
 
 pub mod bayes_factors;
 pub mod model;
