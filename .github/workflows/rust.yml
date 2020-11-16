@@ -99,7 +99,7 @@ jobs:
         uses: actions-rs/install@v0.1
         with:
           crate: cargo-tarpaulin
-          version: latest
+          version: 0.17.0
           use-tool-cache: true
 
       - name: Coverage with tarpaulin
