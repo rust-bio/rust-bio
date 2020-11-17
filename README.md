@@ -29,7 +29,8 @@ If you **find a bug** and don't have the time or in-depth knowledge to fix it, j
 If you want to contribute fixes, documentation or new code, please [open a pull request](https://github.com/rust-bio/rust-bio/compare).
 You have two options to do this:
 1. For one-time contributions, simply [fork](https://help.github.com/en/github/getting-started-with-github/fork-a-repo) the repository, apply your changes to a branch in your fork and then open a pull request.
-2. If you plan on contributing more than once, become a contributor by saying hi [on the `rust-bio` Discord server](https://discord.gg/rssQABT).
+2. If you plan on contributing more than once, become a contributor by saying hi [on the `rust-bio` Discord server](https://discord.gg/rssQABT), 
+    Together with a short sentence saying who you are and mentioning what you want to contribute.
     We'll add you to the team.
     Then, you don't have to create a fork, but can simply push new branches into the main repository and open pull requests there.
  
