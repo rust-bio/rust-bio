@@ -12,10 +12,14 @@
 //! Supply posterior error probabilities and return FDRs.
 //! ```
 //! extern crate approx;
+//! use approx::assert_relative_eq;
 //! use bio::stats::bayesian::expected_fdr;
 //! use bio::stats::LogProb;
-//! use approx::assert_relative_eq;
-//! let peps = [LogProb(0.1f64.ln()), LogProb::ln_zero(),LogProb(0.25f64.ln()),];
+//! let peps = [
+//!     LogProb(0.1f64.ln()),
+//!     LogProb::ln_zero(),
+//!     LogProb(0.25f64.ln()),
+//! ];
 //! let fdrs = expected_fdr(&peps);
 //! assert_relative_eq!(*fdrs[2], *LogProb((0.35 / 3.0f64).ln()), epsilon = 0.000001);
 //! ```

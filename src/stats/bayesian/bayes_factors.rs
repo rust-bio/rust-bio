@@ -3,16 +3,15 @@
 //! Calculate Bayes factor from given probabilities.
 //! ```
 //! extern crate approx;
+//! use approx::assert_relative_eq;
 //! use bio::stats::bayesian::bayes_factors;
 //! use bio::stats::bayesian::BayesFactor;
 //! use bio::stats::LogProb;
-//! use approx::assert_relative_eq;
 //! let bf = BayesFactor::new(LogProb(0.5_f64.ln()), LogProb(0.1_f64.ln()));
 //! assert_relative_eq!(*bf, 5.0, epsilon = 1e-9);
 //! ```
 
 use crate::stats::LogProb;
-
 
 pub mod evidence {
     /// Scale of evidence as defined by
