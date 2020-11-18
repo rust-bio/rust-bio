@@ -880,7 +880,7 @@ mod tests {
     use std::fmt::Write as FmtWrite;
     use std::io;
 
-    const FASTA_FILE: &'static [u8] = b">id desc
+    const FASTA_FILE: &[u8] = b">id desc
 ACCGTAGGCTGA
 CCGTAGGCTGAA
 CGTAGGCTGAAA
@@ -892,13 +892,13 @@ ATTGTTGTTTTA
 ATTGTTGTTTTA
 GGGG
 ";
-    const FAI_FILE: &'static [u8] = b"id\t52\t9\t12\t13
+    const FAI_FILE: &[u8] = b"id\t52\t9\t12\t13
 id2\t40\t71\t12\t13
 ";
 
-    const TRUNCATED_FASTA: &'static [u8] = b">id desc\nACCGTAGGCTGA";
+    const TRUNCATED_FASTA: &[u8] = b">id desc\nACCGTAGGCTGA";
 
-    const FASTA_FILE_CRLF: &'static [u8] = b">id desc\r
+    const FASTA_FILE_CRLF: &[u8] = b">id desc\r
 ACCGTAGGCTGA\r
 CCGTAGGCTGAA\r
 CGTAGGCTGAAA\r
@@ -910,16 +910,16 @@ ATTGTTGTTTTA\r
 ATTGTTGTTTTA\r
 GGGG\r
 ";
-    const FAI_FILE_CRLF: &'static [u8] = b"id\t52\t10\t12\t14\r
+    const FAI_FILE_CRLF: &[u8] = b"id\t52\t10\t12\t14\r
 id2\t40\t78\t12\t14\r
 ";
 
-    const FASTA_FILE_NO_TRAILING_LF: &'static [u8] = b">id desc
+    const FASTA_FILE_NO_TRAILING_LF: &[u8] = b">id desc
 GTAGGCTGAAAA
 CCCC";
-    const FAI_FILE_NO_TRAILING_LF: &'static [u8] = b"id\t16\t9\t12\t13";
+    const FAI_FILE_NO_TRAILING_LF: &[u8] = b"id\t16\t9\t12\t13";
 
-    const WRITE_FASTA_FILE: &'static [u8] = b">id desc
+    const WRITE_FASTA_FILE: &[u8] = b">id desc
 ACCGTAGGCTGA
 >id2
 ATTGTTGTTTTA
