@@ -65,11 +65,11 @@ mod tests {
     #[test]
     fn test_gc_content() {
         let gc0 = b"ATAT";
-        assert_relative_eq!(gc_content(gc0), 0.0);
+        assert_eq!(gc_content(gc0), 0.0);
         let gc50 = b"ATGC";
-        assert_relative_eq!(gc_content(gc50), 0.5);
+        assert_eq!(gc_content(gc50), 0.5);
         let gc100 = b"GCGC";
-        assert_relative_eq!(gc_content(gc100), 1.0);
+        assert_eq!(gc_content(gc100), 1.0);
     }
 
     #[test]
@@ -78,6 +78,6 @@ mod tests {
         let mut s = vec![b'G'; LENGTH];
         s.extend_from_slice(&[b'T'; LENGTH]);
         let gc_content = gc_content(s);
-        assert_relative_eq!(gc_content, 0.5);
+        assert_eq!(gc_content, 0.5);
     }
 }

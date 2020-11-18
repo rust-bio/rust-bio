@@ -180,7 +180,7 @@ mod tests {
     fn test_no_orf() {
         let finder = basic_finder();
         let sequence = b"ACGGCTAGAAAAGGCTAGAAAA";
-        assert!(finder.find_all(sequence).next().is_none());
+        assert!(finder.find_all(sequence).collect::<Vec<Orf>>().is_empty());
     }
 
     #[test]

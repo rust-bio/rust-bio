@@ -772,7 +772,7 @@ mod tests {
         String::from(
             str::from_utf8(&text[sa[index]..])
                 .unwrap()
-                .split('$')
+                .split("$")
                 .next()
                 .unwrap_or(""),
         ) + "$"

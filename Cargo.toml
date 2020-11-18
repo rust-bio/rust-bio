@@ -21,7 +21,6 @@ runtime-dispatch-simd = ["bytecount/runtime-dispatch-simd"]
 generic-simd = ["bytecount/generic-simd"]
 
 [dependencies]
-approx = "0.4.0"
 bytecount = "0.6"
 csv = "1.1"
 num-traits = "0.2"
@@ -34,6 +33,7 @@ ndarray= "0.13"
 lazy_static = "1.4"
 serde = "1.0"
 serde_derive = "1.0"
+approx = "0.3"
 custom_derive = "0.1"
 newtype_derive = "0.1"
 ordered-float = "1.0"
@@ -50,7 +50,6 @@ snafu = ">= 0.5, <= 0.6"
 getset = "0.0.9"
 enum-map = "0.6"
 triple_accel = "0.3"
-rand = "0.7.3"
 
 [dependencies.vec_map]
 version = "0.8"

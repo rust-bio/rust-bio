@@ -386,10 +386,10 @@ mod tests {
     use bio_types::annot::spliced::Spliced;
     use bio_types::strand::ReqStrand;
 
-    const BED_FILE: &[u8] = b"1\t5\t5000\tname1\tup
+    const BED_FILE: &'static [u8] = b"1\t5\t5000\tname1\tup
 2\t3\t5005\tname2\tup
 ";
-    const BED_FILE_COMPACT: &[u8] = b"1\t5\t5000\n2\t3\t5005\n";
+    const BED_FILE_COMPACT: &'static [u8] = b"1\t5\t5000\n2\t3\t5005\n";
 
     #[test]
     fn test_reader() {
@@ -443,8 +443,8 @@ mod tests {
         let tma20 = Spliced::with_lengths_starts(
             "chrV".to_owned(),
             166236,
-            &[535, 11],
-            &[0, 638],
+            &vec![535, 11],
+            &vec![0, 638],
             ReqStrand::Reverse,
         )
         .unwrap();
@@ -464,8 +464,8 @@ mod tests {
         let rpl7b = Spliced::with_lengths_starts(
             "chrXVI".to_owned(),
             173151,
-            &[11, 94, 630],
-            &[0, 420, 921],
+            &vec![11, 94, 630],
+            &vec![0, 420, 921],
             ReqStrand::Forward,
         )
         .unwrap();
@@ -485,8 +485,8 @@ mod tests {
         let tad3 = Spliced::with_lengths_starts(
             "chrXII".to_owned(),
             765265,
-            &[808, 52, 109],
-            &[0, 864, 984],
+            &vec![808, 52, 109],
+            &vec![0, 864, 984],
             ReqStrand::Reverse,
         )
         .unwrap();
