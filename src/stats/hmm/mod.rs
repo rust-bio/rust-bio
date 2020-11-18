@@ -774,10 +774,7 @@ mod tests {
 
         let hmm = GaussianHMM::with_float(&transition, observation, &initial)
             .expect("Dimensions should be consistent");
-        let (path, log_prob) = viterbi(
-            &hmm,
-            &[-0.1, 0.1, -0.2, 0.5, 0.8, 1.1, 1.2, 1.5, 0.5, 0.2],
-        );
+        let (path, log_prob) = viterbi(&hmm, &[-0.1, 0.1, -0.2, 0.5, 0.8, 1.1, 1.2, 1.5, 0.5, 0.2]);
         let prob = Prob::from(log_prob);
 
         let expected = vec![0, 0, 0, 0, 0, 1, 1, 1, 0, 0]

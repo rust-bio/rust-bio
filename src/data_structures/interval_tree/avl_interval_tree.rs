@@ -387,8 +387,12 @@ mod tests {
         validate_height(node);
         validate_intervals(node);
         validate_string_metadata(node);
-        if let Some(n) = node.left.as_ref() { validate(n) }
-        if let Some(n) = node.right.as_ref() { validate(n) }
+        if let Some(n) = node.left.as_ref() {
+            validate(n)
+        }
+        if let Some(n) = node.right.as_ref() {
+            validate(n)
+        }
     }
 
     fn validate_height(node: &Node<i64, String>) {
