@@ -222,7 +222,7 @@ mod tests {
             DNAMotif::from_seqs(vec![b"AAAA".to_vec()].as_ref(), Some(&[0.0, 0.0, 0.0, 0.0]))
                 .unwrap();
         // 4 bases * 2 bits per base = 8
-        assert_eq!(pssm.info_content(), 8.0);
+        assert_relative_eq!(pssm.info_content(), 8.0, epsilon = f32::EPSILON);
     }
 
     #[test]
