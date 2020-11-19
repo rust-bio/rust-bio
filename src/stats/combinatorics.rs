@@ -67,13 +67,19 @@ mod tests {
     fn test_comb() {
         assert_relative_eq!(combinations(10, 3), 120.0, epsilon = f64::EPSILON);
         assert_relative_eq!(combinations_with_repl(10, 3), 220.0, epsilon = f64::EPSILON);
-        assert_relative_eq!(combinations(200, 10), 22451004309013280.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(
+            combinations(200, 10),
+            22451004309013280.0,
+            epsilon = f64::EPSILON
+        );
     }
 
     #[test]
     fn test_comb_scaled() {
         assert_relative_eq!(
-            scaled_combinations(150, 80, 1e-5), 6.664_393_816_347_938_4e38, epsilon = f64::EPSILON
+            scaled_combinations(150, 80, 1e-5),
+            6.664_393_816_347_938_4e38,
+            epsilon = f64::EPSILON
         );
     }
 }
