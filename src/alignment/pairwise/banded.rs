@@ -1402,6 +1402,8 @@ impl Band {
     }
 }
 
+//box creating reverse intervals for test
+
 #[cfg(test)]
 mod banded {
     use crate::alignment::pairwise::{self, banded, Scoring};
