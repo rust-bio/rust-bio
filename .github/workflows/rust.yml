@@ -112,7 +112,7 @@ jobs:
         run: cargo +nightly install cargo-tarpaulin
 
       - name: Coverage with tarpaulin
-        run: cargo +nightly tarpaulin --verbose --all --all-features --timeout 1200 --out Lcov -- --test-threads 1
+        run: RUST_BACKTRACE=full cargo +nightly tarpaulin --verbose --all --all-features --timeout 1200 --out Lcov -- --test-threads 1
 
       - name: Upload coverage
         uses: coverallsapp/github-action@master
