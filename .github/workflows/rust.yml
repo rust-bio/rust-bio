@@ -95,15 +95,24 @@ jobs:
           toolchain: nightly
           override: true
 
-      - name: Install cargo-tarpaulin
-        uses: actions-rs/install@v0.1
+      - name: Get rustc version
+        id: rustc-version
+        run: echo "::set-output name=version::$(cargo +nightly --version | cut -d ' ' -f 2)"
+        shell: bash
+
+      - uses: actions/cache@v2
+        id: tarpaulin-cache
         with:
-          crate: cargo-tarpaulin
-          version: latest
-          use-tool-cache: true
+          path: |
+            ~/.cargo/bin/cargo-tarpaulin
+          key: ${{ runner.os }}-cargo-${{ steps.rustc-version.outputs.version }}
+
+      - name: Install tarpaulin
+        if: steps.tarpaulin-cache.outputs.cache-hit != 'true'
+        run: cargo +nightly install cargo-tarpaulin
 
       - name: Coverage with tarpaulin
-        run: cargo clean; cargo tarpaulin --version; RUST_BACKTRACE=full cargo tarpaulin --verbose --all --all-features --timeout 1200 --out Lcov -- --test-threads 1
+        run: cargo +nightly tarpaulin --verbose --all --all-features --timeout 1200 --out Lcov -- --test-threads 1
 
       - name: Upload coverage
         uses: coverallsapp/github-action@master
