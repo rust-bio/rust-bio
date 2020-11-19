@@ -611,7 +611,6 @@ IIIIIIJJJJJJ
         let mut writer = Writer::new(Vec::new());
         writer
             .write("id", Some("desc"), b"ACCGTAGGCTGA", b"IIIIIIJJJJJJ")
-            .ok()
             .expect("Expected successful write");
         writer.flush().expect("Expected successful write");
         assert_eq!(writer.writer.get_ref(), &FASTQ_FILE);

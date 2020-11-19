@@ -1162,7 +1162,7 @@ ATTGTTGTTTTA
         assert!(read(&mut reader, "id2", 12, 40).is_err()); // seek and read past EOF
     }
 
-    fn _test_indexed_reader_extreme_whitespace<'a, F>(read: F)
+    fn _test_indexed_reader_extreme_whitespace<F>(read: F)
     where
         F: Fn(&mut IndexedReader<io::Cursor<Vec<u8>>>, &str, u64, u64) -> io::Result<Vec<u8>>,
     {
