@@ -71,7 +71,7 @@
 //!         nucleotides[seed % 4]
 //!     }).collect::<Vec<u8>>();
 //!
-//!    writer.write("random", None, seq.as_slice()).ok().expect("Error writing record.");
+//!    writer.write("random", None, seq.as_slice()).expect("Error writing record.");
 //! }
 //! ```
 //!

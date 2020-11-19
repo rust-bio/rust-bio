@@ -13,9 +13,9 @@
 //! let mut reader = bed::Reader::new(&example[..]);
 //! let mut writer = bed::Writer::new(vec![]);
 //! for record in reader.records() {
-//!     let rec = record.ok().expect("Error reading record.");
+//!     let rec = record.expect("Error reading record.");
 //!     println!("{}", rec.chrom());
-//!     writer.write(&rec).ok().expect("Error writing record.");
+//!     writer.write(&rec).expect("Error writing record.");
 //! }
 //! ```
 
@@ -329,7 +329,7 @@ where
 ///     let mut writer = bed::Writer::new(&mut buf);
 ///     let mut tad3_bed = bed::Record::from(tad3);
 ///     tad3_bed.set_name("YLR316C");
-///     writer.write(&tad3_bed).ok().unwrap();
+///     writer.write(&tad3_bed).unwrap();
 /// }
 /// assert_eq!(
 ///     "chrXII\t765265\t766358\tYLR316C\t0\t-\t765265\t766358\t0\t3\t808,52,109,\t0,864,984,\n",
@@ -401,7 +401,7 @@ mod tests {
 
         let mut reader = Reader::new(BED_FILE);
         for (i, r) in reader.records().enumerate() {
-            let record = r.ok().expect("Error reading record");
+            let record = r.expect("Error reading record");
             assert_eq!(record.chrom(), chroms[i]);
             assert_eq!(record.start(), starts[i]);
             assert_eq!(record.end(), ends[i]);
@@ -453,7 +453,7 @@ mod tests {
             let mut writer = Writer::new(&mut buf);
             let mut tma20_bed = Record::from(tma20);
             tma20_bed.set_name("YER007C-A");
-            writer.write(&tma20_bed).ok().unwrap();
+            writer.write(&tma20_bed).unwrap();
         }
         assert_eq!(
             "chrV\t166236\t166885\tYER007C-A\t0\t-\t166236\t166885\t0\t2\t535,11,\t0,638,\n",
@@ -474,7 +474,7 @@ mod tests {
             let mut writer = Writer::new(&mut buf);
             let mut rpl7b_bed = Record::from(rpl7b);
             rpl7b_bed.set_name("YPL198W");
-            writer.write(&rpl7b_bed).ok().unwrap();
+            writer.write(&rpl7b_bed).unwrap();
         }
         assert_eq!(
             "chrXVI\t173151\t174702\tYPL198W\t0\t+\t173151\t174702\t0\t3\t11,94,630,\t0,420,921,\n",
@@ -495,7 +495,7 @@ mod tests {
             let mut writer = Writer::new(&mut buf);
             let mut tad3_bed = Record::from(tad3);
             tad3_bed.set_name("YLR316C");
-            writer.write(&tad3_bed).ok().unwrap();
+            writer.write(&tad3_bed).unwrap();
         }
         assert_eq!("chrXII\t765265\t766358\tYLR316C\t0\t-\t765265\t766358\t0\t3\t808,52,109,\t0,864,984,\n",
                    String::from_utf8(buf).unwrap().as_str());

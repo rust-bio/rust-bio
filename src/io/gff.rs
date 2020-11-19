@@ -581,8 +581,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut writer = Writer::new(vec![], GffType::GFF3);
         for r in reader.records() {
             writer
-                .write(&r.ok().expect("Error reading record"))
-                .ok()
+                .write(&r.expect("Error reading record"))
                 .expect("Error writing record");
         }
         assert_eq!(writer.inner.into_inner().unwrap(), GFF_FILE_ONE_ATTRIB)
@@ -594,8 +593,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut writer = Writer::new(vec![], GffType::GTF2);
         for r in reader.records() {
             writer
-                .write(&r.ok().expect("Error reading record"))
-                .ok()
+                .write(&r.expect("Error reading record"))
                 .expect("Error writing record");
         }
         assert_eq!(writer.inner.into_inner().unwrap(), GTF_FILE_ONE_ATTRIB)
@@ -607,8 +605,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut writer = Writer::new(vec![], GffType::GFF3);
         for r in reader.records() {
             writer
-                .write(&r.ok().expect("Error reading record"))
-                .ok()
+                .write(&r.expect("Error reading record"))
                 .expect("Error writing record");
         }
         assert_eq!(writer.inner.into_inner().unwrap(), GFF_FILE_ONE_ATTRIB)

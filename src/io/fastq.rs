@@ -543,7 +543,7 @@ IIIIIIJJJJJJ
         let records: Vec<io::Result<Record>> = reader.records().collect();
         assert_eq!(records.len(), 1);
         for res in records {
-            let record = res.ok().unwrap();
+            let record = res.unwrap();
             assert_eq!(record.check(), Ok(()));
             assert_eq!(record.id(), "id");
             assert_eq!(record.desc(), Some("desc"));
@@ -613,7 +613,7 @@ IIIIIIJJJJJJ
             .write("id", Some("desc"), b"ACCGTAGGCTGA", b"IIIIIIJJJJJJ")
             .ok()
             .expect("Expected successful write");
-        writer.flush().ok().expect("Expected successful write");
+        writer.flush().expect("Expected successful write");
         assert_eq!(writer.writer.get_ref(), &FASTQ_FILE);
     }
 
