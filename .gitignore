@@ -1,5 +1,4 @@
 /target
-/tests
 /Cargo.lock
 *~
 pybind/target
