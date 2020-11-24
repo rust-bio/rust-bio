@@ -297,7 +297,7 @@ mod tests {
         let qgram_index = QGramIndex::new(q, text, &alphabet);
 
         let exact_matches = qgram_index.exact_matches(text);
-        assert!(exact_matches.len() >= 1);
+        assert!(!exact_matches.is_empty());
     }
 
     #[test]
