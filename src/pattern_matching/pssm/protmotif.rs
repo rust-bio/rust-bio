@@ -163,7 +163,11 @@ mod tests {
     #[test]
     fn test_info_content() {
         let pssm = ProtMotif::from_seqs(vec![b"AAAA".to_vec()].as_ref(), Some(&[0.0; 20])).unwrap();
-        assert_eq!(pssm.info_content(), ProtMotif::get_bits() * 4.0);
+        assert_relative_eq!(
+            pssm.info_content(),
+            ProtMotif::get_bits() * 4.0,
+            epsilon = f32::EPSILON
+        );
     }
 
     #[test]

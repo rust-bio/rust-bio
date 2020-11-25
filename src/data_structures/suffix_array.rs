@@ -768,11 +768,11 @@ mod tests {
         suffix_array(reads);
     }
 
-    fn str_from_pos(sa: &Vec<usize>, text: &[u8], index: usize) -> String {
+    fn str_from_pos(sa: &[usize], text: &[u8], index: usize) -> String {
         String::from(
             str::from_utf8(&text[sa[index]..])
                 .unwrap()
-                .split("$")
+                .split('$')
                 .next()
                 .unwrap_or(""),
         ) + "$"
