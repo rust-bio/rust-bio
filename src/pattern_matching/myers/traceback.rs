@@ -136,7 +136,7 @@ where
 
     /// Returns a slice containing all blocks of the current traceback column
     /// from top to bottom. Used for debugging only.
-    fn column_slice(&self) -> &'a [State<T, D>];
+    fn column_slice(&self) -> &[State<T, D>];
 
     /// Returns true if topmost position in the traceback matrix has been reached,
     /// meaning that the traceback is complete.
