@@ -34,7 +34,6 @@ impl FastExp<f64> for f64 {
         if *self > MIN_VAL {
             let mut x = ONEBYLOG2 * self;
 
-
             let mut bits = x as i64;
 
             x -= bits as f64;
