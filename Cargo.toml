@@ -1,5 +1,4 @@
 [package]
-
 name = "bio"
 version = "0.32.1-alpha.0"
 authors = ["Johannes Köster <johannes.koester@tu-dortmund.de>"]
@@ -19,6 +18,8 @@ tag-message = "Version {{version}} of Rust-Bio."
 [features]
 runtime-dispatch-simd = ["bytecount/runtime-dispatch-simd"]
 generic-simd = ["bytecount/generic-simd"]
+phylogeny = ["pest", "pest_derive", "bio-types/phylogeny"]
+
 
 [dependencies]
 bytecount = "0.6"
@@ -43,6 +44,8 @@ multimap = ">=0.6, <=0.8"
 fxhash = "0.2"
 statrs = ">= 0.11, <= 0.12"
 bio-types = ">=0.5.1"
+pest = { version = "2", optional = true }
+pest_derive = { version = "2", optional = true }
 fnv = "1.0"
 strum = ">= 0.16, <= 0.18"
 strum_macros = ">= 0.16, <= 0.18"
