@@ -4,5 +4,5 @@ pub mod bed;
 pub mod fasta;
 pub mod fastq;
 pub mod gff;
-#[cfg(feature="phylogeny")]
+#[cfg(feature = "phylogeny")]
 pub mod newick;

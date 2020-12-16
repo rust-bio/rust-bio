@@ -138,13 +138,13 @@ fn parse_newick_file(content: &str) -> Result<TreeValue> {
 
             Rule::SubTree => parse_value(pair.into_inner().next().unwrap()),
             Rule::EOI
-                | Rule::WHITESPACE
-                | Rule::Tree
-                | Rule::Length
-                | Rule::BranchSet
-                | Rule::float
-                | Rule::safe
-                | Rule::name => unreachable!(),
+            | Rule::WHITESPACE
+            | Rule::Tree
+            | Rule::Length
+            | Rule::BranchSet
+            | Rule::float
+            | Rule::safe
+            | Rule::name => unreachable!(),
         }
     }
 

@@ -230,7 +230,7 @@ extern crate snafu;
 #[macro_use]
 extern crate getset;
 
-#[cfg(feature="phylogeny")]
+#[cfg(feature = "phylogeny")]
 #[macro_use]
 extern crate pest_derive;
 
