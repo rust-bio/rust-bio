@@ -191,20 +191,20 @@ mod tests {
     #[test]
     fn test_mono_err() {
         let pssm = ProtMotif::from_seqs(vec![b"ARGN".to_vec()].as_ref(), None).unwrap();
-        assert_eq!(
+        assert!(matches!(
             pssm.score(b"AAAABAAAAAAAAA"),
             Err(Error::InvalidMonomer { mono: b'B' })
-        );
+        ));
     }
 
     #[test]
     fn test_inconsist_err() {
-        assert_eq!(
+        assert!(matches!(
             ProtMotif::from_seqs(
                 vec![b"NNNNN".to_vec(), b"RRRRR".to_vec(), b"C".to_vec()].as_ref(),
                 Some(&[0.0; 20])
             ),
             Err(Error::InconsistentLen)
-        );
+        ));
     }
 }

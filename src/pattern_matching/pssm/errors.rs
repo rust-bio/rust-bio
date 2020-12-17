@@ -6,9 +6,8 @@
 //! Error definitions for the `pssm` module.
 use thiserror::Error;
 
-
-#[derive(Error, Debug)]
-pub enum PssmError {
+#[derive(Error, Debug, PartialEq)]
+pub enum Error {
     #[error(
         "query length {} is shorter than motif length {}",
         query_len,
@@ -27,4 +26,4 @@ pub enum PssmError {
     InvalidPseudos { expected: u8, received: u8 },
 }
 
-pub type Result<T, E = PssmError> = std::result::Result<T, E>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;

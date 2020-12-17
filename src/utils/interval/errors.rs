@@ -6,10 +6,9 @@
 //! Error definitions for the `interval` module.
 use thiserror::Error;
 
-
-#[derive(Error, Debug)]
-pub enum IntervalError {
+#[derive(Error, Debug, PartialEq)]
+pub enum Error {
     #[error("an Interval must have a Range with a positive width")]
     InvalidRange,
 }
-pub type Result<T, E = IntervalError> = std::result::Result<T, E>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;

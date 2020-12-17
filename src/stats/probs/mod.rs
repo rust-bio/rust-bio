@@ -21,7 +21,7 @@ use ordered_float::NotNan;
 
 use crate::utils::FastExp;
 
-pub use self::errors::{ProbsError, Result};
+pub use self::errors::{Error, Result};
 
 /// A factor to convert log-probabilities to PHRED-scale (phred = p * `LOG_TO_PHRED_FACTOR`).
 const LOG_TO_PHRED_FACTOR: f64 = -4.342_944_819_032_517_5; // -10 * 1 / ln(10)
@@ -81,7 +81,7 @@ impl Prob {
         if p >= 0.0 && p <= 1.0 {
             Ok(Prob(p))
         } else {
-            Err(ProbsError::InvalidProb { prob: p })
+            Err(Error::InvalidProb { prob: p })
         }
     }
 }

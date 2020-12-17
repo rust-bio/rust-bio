@@ -6,9 +6,9 @@
 //! Error definitions for the `probs` module.
 use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub enum ProbsError {
+#[derive(Error, Debug, PartialEq)]
+pub enum Error {
     #[error("probabilty {} not in interval [0,1]", prob)]
     InvalidProb { prob: f64 },
 }
-pub type Result<T, E = ProbsError> = std::result::Result<T, E>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
