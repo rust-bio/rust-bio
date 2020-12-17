@@ -80,7 +80,7 @@ use num_traits::Zero;
 use ordered_float::OrderedFloat;
 use statrs::distribution::Continuous;
 
-pub use self::errors::{Error, Result};
+pub use self::errors::{HmmError, Result};
 
 use super::LogProb;
 
@@ -476,7 +476,7 @@ pub mod discrete_emission {
             let pin = initial.dim();
 
             if an0 != an1 || an0 != bn || an0 != pin {
-                Err(Error::InvalidDimension {
+                Err(HmmError::InvalidDimension {
                     an0,
                     an1,
                     bn,
@@ -588,7 +588,7 @@ pub mod univariate_continuous_emission {
             let pin = initial.dim();
 
             if an0 != an1 || an0 != bn || an0 != pin {
-                Err(Error::InvalidDimension {
+                Err(HmmError::InvalidDimension {
                     an0,
                     an1,
                     bn,
