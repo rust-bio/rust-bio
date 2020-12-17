@@ -23,10 +23,10 @@ use bio_types::phylogeny::Tree;
 use pest::iterators::Pair;
 use pest::Parser;
 use petgraph::graph::{Graph, NodeIndex};
-use thiserror::Error;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use thiserror::Error;
 
 /// A `thiserror` error type gathering all the potential bad outcomes
 #[derive(Debug, Error)]
@@ -44,7 +44,7 @@ pub enum Error {
     InvalidContent(#[from] std::str::Utf8Error),
 
     #[error("Error while parsing tree: {0}")]
-    ParsingError (#[from] pest::error::Error<crate::io::newick::Rule>),
+    ParsingError(#[from] pest::error::Error<crate::io::newick::Rule>),
 }
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -191,10 +191,12 @@ pub fn from_string<S: AsRef<str>>(content: S) -> Result<Tree> {
 
 /// Reads a tree from a file
 pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Tree> {
-    fs::File::open(&path).map(read).map_err(|e| Error::OpenFile {
-        filename: path.as_ref().to_owned(),
-        source: e,
-    })?
+    fs::File::open(&path)
+        .map(read)
+        .map_err(|e| Error::OpenFile {
+            filename: path.as_ref().to_owned(),
+            source: e,
+        })?
 }
 
 /// Reads a tree from any type implementing `io::Read`
