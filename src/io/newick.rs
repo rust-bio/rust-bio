@@ -23,30 +23,28 @@ use bio_types::phylogeny::Tree;
 use pest::iterators::Pair;
 use pest::Parser;
 use petgraph::graph::{Graph, NodeIndex};
-use snafu::{ResultExt, Snafu};
+use thiserror::Error;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-/// A `snafu` error type gathering all the potential bad outcomes
-#[derive(Debug, Snafu)]
+/// A `thiserror` error type gathering all the potential bad outcomes
+#[derive(Debug, Error)]
 pub enum Error {
-    #[snafu(display("Error while opening {}: {}", filename.display(), source))]
+    #[error("Error while opening {}: {}", filename.display(), source)]
     OpenFile {
         filename: PathBuf,
         source: std::io::Error,
     },
 
-    #[snafu(display("Error while reading tree: {}", source))]
-    ReadFile { source: std::io::Error },
+    #[error("Error while reading tree: {0}")]
+    Read(#[from] std::io::Error),
 
-    #[snafu(display("Tree contains invalid UTF-8: {}", source))]
-    InvalidContent { source: std::str::Utf8Error },
+    #[error("Tree contains invalid UTF-8: {0}")]
+    InvalidContent(#[from] std::str::Utf8Error),
 
-    #[snafu(display("Error while parsing tree: {}", source))]
-    ParsingError {
-        source: pest::error::Error<crate::io::newick::Rule>,
-    },
+    #[error("Error while parsing tree: {0}")]
+    ParsingError (#[from] pest::error::Error<crate::io::newick::Rule>),
 }
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -149,7 +147,7 @@ fn parse_newick_file(content: &str) -> Result<TreeValue> {
     }
 
     let root = NewickParser::parse(Rule::Tree, &content)
-        .context(ParsingError {})?
+        .map_err(Error::ParsingError)?
         .next()
         .unwrap();
 
@@ -193,8 +191,9 @@ pub fn from_string<S: AsRef<str>>(content: S) -> Result<Tree> {
 
 /// Reads a tree from a file
 pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Tree> {
-    fs::File::open(&path).map(read).context(OpenFile {
+    fs::File::open(&path).map(read).map_err(|e| Error::OpenFile {
         filename: path.as_ref().to_owned(),
+        source: e,
     })?
 }
 
@@ -203,7 +202,7 @@ pub fn read<R: io::Read>(reader: R) -> Result<Tree> {
     let content_bytes = reader
         .bytes()
         .collect::<Result<Vec<_>, _>>()
-        .context(ReadFile {})?;
-    let content_str = std::str::from_utf8(&content_bytes).context(InvalidContent {})?;
+        .map_err(Error::Read)?;
+    let content_str = std::str::from_utf8(&content_bytes).map_err(Error::InvalidContent)?;
     from_string(&content_str)
 }
