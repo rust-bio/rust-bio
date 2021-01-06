@@ -19,10 +19,10 @@
 //!  }
 //!  ```
 
-use bio_types::phylogeny::Tree;
+use bio_types::phylogeny::{Tree, TreeGraph};
 use pest::iterators::Pair;
 use pest::Parser;
-use petgraph::graph::{Graph, NodeIndex};
+use petgraph::graph::NodeIndex;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -156,7 +156,7 @@ fn parse_newick_file(content: &str) -> Result<TreeValue> {
 
 /// Convert an intermediary `TreeValue` to the public `Tree` type
 fn newick_to_graph(root: TreeValue) -> Result<Tree> {
-    fn add_node(g: &mut Tree, t: TreeValue) -> NodeIndex {
+    fn add_node(g: &mut TreeGraph, t: TreeValue) -> NodeIndex {
         match t {
             TreeValue::Node { name, children } => {
                 let node_id = g.add_node(name.unwrap_or("N/A".into()).into());
@@ -177,10 +177,10 @@ fn newick_to_graph(root: TreeValue) -> Result<Tree> {
         }
     }
 
-    let mut g = Graph::new();
+    let mut g = TreeGraph::new();
     add_node(&mut g, root);
 
-    Ok(g)
+    Ok(Tree { g })
 }
 
 /// Reads a tree from an `&str`-compatible type
