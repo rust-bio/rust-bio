@@ -465,7 +465,9 @@ impl SequenceRead for Record {
         self.seq().len()
     }
 
-    fn is_empty(&self) -> bool { self.is_empty() }
+    fn is_empty(&self) -> bool {
+        self.is_empty()
+    }
 }
 
 /// An iterator over the records of a FastQ file.
