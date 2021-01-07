@@ -338,9 +338,9 @@ impl Record {
     ///
     /// # Errors
     /// This function will return an `Err` if one of the following conditions is met:
-    /// -   The record identifier is empty.
-    /// -   There is a non-ASCII character found in either the sequence or quality strings.
-    /// -   The sequence and quality strings do not have the same length.
+    /// - The record identifier is empty.
+    /// - There is a non-ASCII character found in either the sequence or quality strings.
+    /// - The sequence and quality strings do not have the same length.
     ///
     /// # Example
     ///

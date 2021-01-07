@@ -10,8 +10,8 @@
 //! In contrast to `PairHMM`, this `HomopolyPairHMM` takes into account homopolymer errors as
 //! often encountered e.g. in Oxford Nanopore Technologies sequencing.
 //!
-//! Time complexity: O(n * m) where `n = seq1.len()`, `m = seq2.len()` (or `m = min(seq2.len(), max_edit_dist)` with banding enabled).
-//! Memory complexity: O(m) where `m = seq2.len()`.
+//! Time complexity: O(n * m) where `n = seq1.len()`, `m = seq2.len()` (or `m = min(seq2.len(),
+//! max_edit_dist)` with banding enabled). Memory complexity: O(m) where `m = seq2.len()`.
 //! Note that if the number of states weren't fixed in this implementation, we would have to include
 //! these in both time and memory complexity above as an additional factor.
 //!
@@ -22,8 +22,8 @@
 //! A, C, G and T (see Details below).
 //!
 //! # Details
-//! The HomopolyPairHMM defined in this module has one Match state for each character from [A, C, G, T],
-//! for each of those Match states two corresponding Hop (homopolymer run) states
+//! The HomopolyPairHMM defined in this module has one Match state for each character from [A, C, G,
+//! T], for each of those Match states two corresponding Hop (homopolymer run) states
 //! (one for a run in sequence `x`, one for a run in `y`),
 //! as well as the usual GapX and GapY states.
 //!
@@ -34,6 +34,8 @@
 //! corresponding state `MatchV`.
 //!
 //! The transition matrix is given below:
+//!
+//! ```ignore
 //!     | MA | MC | MG | MT | HAX | HAY | HCX | HCY | HGX | HGY | HTX | HTY | GX | GY
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
 //! MA  |  x |  x |  x |  x |  x  |  x  |     |     |     |     |     |     |  x |  x
@@ -63,7 +65,7 @@
 //! GX  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |  x |
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
 //! GY  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |    |  x
-//!
+//! ```
 
 use std::cmp;
 use std::fmt::Debug;
@@ -198,7 +200,8 @@ impl HomopolyPairHMM {
     ///
     /// * `emission_params` - parameters for emission
     /// * `alignment_mode` - parameters for free end/start gaps
-    /// * `max_edit_dist` - maximum edit distance to consider; if not `None`, perform banded alignment
+    /// * `max_edit_dist` - maximum edit distance to consider; if not `None`, perform banded
+    ///   alignment
     pub fn prob_related<E, A>(
         &self,
         emission_params: &E,

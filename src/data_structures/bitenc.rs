@@ -61,8 +61,8 @@ fn mask(width: usize) -> u32 {
 }
 
 impl BitEnc {
-    /// Create a new instance with a given encoding width (e.g. width=2 for using two bits per value).
-    /// Supports widths up to 8 bits per character, i.e. `1 <= width <= 8`.
+    /// Create a new instance with a given encoding width (e.g. width=2 for using two bits per
+    /// value). Supports widths up to 8 bits per character, i.e. `1 <= width <= 8`.
     ///
     /// Complexity: O(1)
     ///
@@ -385,7 +385,7 @@ impl BitEnc {
     /// // Add another 2 to create a second block
     /// bitenc.push(2);
     /// assert_eq!(bitenc.nr_blocks(), 2);
-    /// ```    
+    /// ```
     pub fn nr_blocks(&self) -> usize {
         self.storage.len()
     }
@@ -408,7 +408,7 @@ impl BitEnc {
     /// assert_eq!(bitenc.nr_symbols(), 4);
     /// bitenc.push(2);
     /// assert_eq!(bitenc.nr_symbols(), 5);
-    /// ```    
+    /// ```
     pub fn nr_symbols(&self) -> usize {
         self.len
     }

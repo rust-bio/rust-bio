@@ -69,8 +69,9 @@ where
         }
 
         // not faster:
-        // let diff = ((self.mv & pos_mask) != T::zero()) as isize - ((self.pv & pos_mask) != T::zero()) as isize;
-        // self.dist = D::from_usize(self.dist.to_usize().unwrap().wrapping_add(diff as usize)).unwrap();
+        // let diff = ((self.mv & pos_mask) != T::zero()) as isize - ((self.pv & pos_mask) !=
+        // T::zero()) as isize; self.dist =
+        // D::from_usize(self.dist.to_usize().unwrap().wrapping_add(diff as usize)).unwrap();
     }
 
     /// This method may be used for performance comparison instead of adjust_by_mask()

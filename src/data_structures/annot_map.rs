@@ -81,8 +81,8 @@ where
     /// # Arguments
     ///
     /// * `data` - any type of data to be inserted at the location / region
-    /// * `location` - any object with the `Loc` trait implemented, determining
-    ///   the Range at which to insert the `data`
+    /// * `location` - any object with the `Loc` trait implemented, determining the Range at which
+    ///   to insert the `data`
     ///
     /// # Example
     ///

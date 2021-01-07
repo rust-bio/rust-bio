@@ -77,8 +77,8 @@ pub trait SuffixArray {
     //     (&self, bwt: DBWT, less: DLess, occ: DOcc, sampling_rate: usize) ->
     //     SampledSuffixArray<DBWT, DLess, DOcc> {
     //
-    //     let mut sample = Vec::with_capacity((self.len() as f32 / sampling_rate as f32).ceil() as usize);
-    //     for i in 0..self.len() {
+    //     let mut sample = Vec::with_capacity((self.len() as f32 / sampling_rate as f32).ceil() as
+    // usize);     for i in 0..self.len() {
     //         if (i % sampling_rate) == 0 {
     //             sample.push(self.get(i).unwrap());
     //         }
@@ -138,8 +138,8 @@ impl SuffixArray for RawSuffixArray {
     // }
 }
 
-// impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SuffixArray for SampledSuffixArray<DBWT, DLess, DOcc> {
-//     fn get(&self, index: usize) -> Option<usize> {
+// impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SuffixArray for SampledSuffixArray<DBWT,
+// DLess, DOcc> {     fn get(&self, index: usize) -> Option<usize> {
 //         if index < self.len() {
 //             let mut pos = index;
 //             let mut offset = 0;
@@ -336,15 +336,17 @@ pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray
 /// ```
 pub fn shortest_unique_substrings<SA: SuffixArray>(pos: &SA, lcp: &LCPArray) -> Vec<Option<usize>> {
     let n = pos.len();
-    // Initialize array representing the length of the shortest unique substring starting at position i
+    // Initialize array representing the length of the shortest unique substring starting at
+    // position i
     let mut sus = vec![None; n];
     for i in 0..n {
-        // The longest common prefixes (LCP) of suffix pos[i] with its predecessor and successor are not unique.
-        // In turn the their maximum + 1 is the length of the shortest unique substring starting at pos[i].
+        // The longest common prefixes (LCP) of suffix pos[i] with its predecessor and successor are
+        // not unique. In turn the their maximum + 1 is the length of the shortest unique
+        // substring starting at pos[i].
         let len = 1 + cmp::max(lcp.get(i).unwrap(), lcp.get(i + 1).unwrap_or(0)) as usize;
         let p = pos.get(i).unwrap();
-        // Check if the suffix pos[i] is a prefix of pos[i+1]. In that case, there is no unique substring
-        // at this position.
+        // Check if the suffix pos[i] is a prefix of pos[i+1]. In that case, there is no unique
+        // substring at this position.
         if n - p >= len {
             sus[p] = Some(len);
         }
@@ -828,13 +830,17 @@ mod tests {
     //             CAGCC$"[..],
     //             "substring"),
     //          (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
-    //             AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
-    //             "complex"),
+    //
+    // AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"
+    // [..],             "complex"),
     //          (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
-    //             TTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATTATAATTAGGCCTAC$\
-    //             AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
-    //             TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"[..],
-    //             "complex with revcomps"),
+    //
+    // TTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATTATAATTAGGCCTAC$\
+    //
+    // AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
+    //
+    // TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"
+    // [..],             "complex with revcomps"),
     //          ];
     //
     //     for &(text, _) in test_cases.into_iter() {

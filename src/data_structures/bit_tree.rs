@@ -4,8 +4,9 @@
 // except according to those terms.
 
 //! BIT-tree (Binary Indexed Trees, aka Fenwick Tree) maintains a prefix-sum or
-//! prefix-max that can be efficiently queried and updated. From: Peter M. Fenwick (1994). "A new data structure for cumulative frequency tables". Software: Practice and Experience. 24 (3): 327–336.
-//! Implementation outlined here: https://www.topcoder.com/community/data-science/data-science-tutorials/binary-indexed-trees/
+//! prefix-max that can be efficiently queried and updated. From: Peter M. Fenwick (1994). "A new
+//! data structure for cumulative frequency tables". Software: Practice and Experience. 24 (3):
+//! 327–336. Implementation outlined here: https://www.topcoder.com/community/data-science/data-science-tutorials/binary-indexed-trees/
 //!
 //! Time Complexity: O(log n) where `n = tree.len()`.
 //! Memory Complexity: O(n) where `n = tree.len()`.

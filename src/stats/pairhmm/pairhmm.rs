@@ -7,8 +7,8 @@
 //! each other. Depending on the used parameters, this can, e.g., be used to calculate the
 //! probability that a certain sequencing read comes from a given position in a reference genome.
 //!
-//! Time complexity: O(n * m) where `n = seq1.len()`, `m = seq2.len()` (or `m = min(seq2.len(), max_edit_dist)` with banding enabled).
-//! Memory complexity: O(m) where `m = seq2.len()`.
+//! Time complexity: O(n * m) where `n = seq1.len()`, `m = seq2.len()` (or `m = min(seq2.len(),
+//! max_edit_dist)` with banding enabled). Memory complexity: O(m) where `m = seq2.len()`.
 //! Note that if the number of states weren't fixed in this implementation, we would have to include
 //! these in both time and memory complexity above as an additional factor.
 
@@ -102,7 +102,8 @@ impl PairHMM {
     ///
     /// * `gap_params` - parameters for opening or extending gaps
     /// * `emission_params` - parameters for emission
-    /// * `max_edit_dist` - maximum edit distance to consider; if not `None`, perform banded alignment
+    /// * `max_edit_dist` - maximum edit distance to consider; if not `None`, perform banded
+    ///   alignment
     pub fn prob_related<E, A>(
         &mut self,
         emission_params: &E,
@@ -145,7 +146,8 @@ impl PairHMM {
 
             let prob_emit_x = emission_params.prob_emit_x(i);
 
-            // TODO: in the case of no gap extensions, we can reduce the number of columns of y that need to be looked at (by cone).
+            // TODO: in the case of no gap extensions, we can reduce the number of columns of y that
+            // need to be looked at (by cone).
             let (j_min, j_max) = (0, emission_params.len_y());
 
             // iterate over y
