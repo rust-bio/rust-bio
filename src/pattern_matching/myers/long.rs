@@ -473,7 +473,7 @@ impl<'a, T: BitVec + 'a> TracebackHandler<'a, T, usize> for LongTracebackHandler
     }
 
     #[inline]
-    fn column_slice(&self) -> &'a [State<T, usize>] {
+    fn column_slice(&self) -> &[State<T, usize>] {
         self.col
     }
 
