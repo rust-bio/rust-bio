@@ -68,13 +68,13 @@ lazy_static! {
 #[inline]
 fn lookup(a: u8) -> usize {
     if a == b'Y' {
-        23 as usize
+        23_usize
     } else if a == b'Z' {
-        24 as usize
+        24_usize
     } else if a == b'X' {
-        25 as usize
+        25_usize
     } else if a == b'*' {
-        26 as usize
+        26_usize
     } else {
         (a - 65) as usize
     }

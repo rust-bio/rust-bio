@@ -50,8 +50,8 @@ pub fn gc_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 
 /// # Example
 ///
 /// ```
-/// use bio::seq_analysis::gc::gc3_content;
 /// use approx::assert_relative_eq;
+/// use bio::seq_analysis::gc::gc3_content;
 /// const seq: &'static [u8] = b"GATATACA";
 /// //                           ^  ^  ^
 /// assert_relative_eq!(gc3_content(seq), 2. / 3., epsilon = f32::EPSILON);

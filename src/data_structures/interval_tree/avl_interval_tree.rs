@@ -25,7 +25,6 @@
 //!     assert_eq!(r.data(), &"Range_1");
 //! }
 //! ```
-//!
 
 use crate::utils::Interval;
 use std::cmp;

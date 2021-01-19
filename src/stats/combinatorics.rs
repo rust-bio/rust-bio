@@ -13,8 +13,8 @@ use std::cmp;
 ///
 /// # Examples
 /// ```
-/// use bio::stats::combinatorics::scaled_combinations;
 /// use approx::assert_relative_eq;
+/// use bio::stats::combinatorics::scaled_combinations;
 /// assert_relative_eq!(scaled_combinations(5, 3, 0.5), 5., epsilon = f64::EPSILON);
 /// ```
 pub fn scaled_combinations(n: u64, k: u64, scale: f64) -> f64 {
@@ -37,8 +37,8 @@ pub fn scaled_combinations(n: u64, k: u64, scale: f64) -> f64 {
 ///
 /// # Examples
 /// ```
-/// use bio::stats::combinatorics::combinations;
 /// use approx::assert_relative_eq;
+/// use bio::stats::combinatorics::combinations;
 /// assert_relative_eq!(combinations(5, 3), 10., epsilon = f64::EPSILON);
 /// ```
 pub fn combinations(n: u64, k: u64) -> f64 {
@@ -51,8 +51,8 @@ pub fn combinations(n: u64, k: u64) -> f64 {
 ///
 /// # Examples
 /// ```
-/// use bio::stats::combinatorics::combinations_with_repl;
 /// use approx::assert_relative_eq;
+/// use bio::stats::combinatorics::combinations_with_repl;
 /// assert_relative_eq!(combinations_with_repl(5, 3), 35., epsilon = f64::EPSILON);
 /// ```
 pub fn combinations_with_repl(n: u64, k: u64) -> f64 {
