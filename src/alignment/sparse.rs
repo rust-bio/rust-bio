@@ -298,10 +298,10 @@ pub fn sdpkpp_union_lcskpp_path(
     }
     let lcskpp_al = lcskpp(matches, k);
     let sdpkpp_al = sdpkpp(matches, k, match_score, gap_open, gap_extend);
-    let pre_lcskpp = match lcskpp_al.path.binary_search(&sdpkpp_al.path[0]) {
-        Ok(ind) => ind,
-        Err(_) => 0,
-    };
+    let pre_lcskpp = lcskpp_al
+        .path
+        .binary_search(&sdpkpp_al.path[0])
+        .unwrap_or(0);
     let post_lcskpp = match lcskpp_al
         .path
         .binary_search(&sdpkpp_al.path.last().unwrap())
