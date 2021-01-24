@@ -78,7 +78,7 @@ custom_derive! {
 
 impl Prob {
     pub fn checked(p: f64) -> Result<Self> {
-        if p >= 0.0 && p <= 1.0 {
+        if (0.0..=1.0).contains(&p) {
             Ok(Prob(p))
         } else {
             Err(Error::InvalidProb { prob: p })

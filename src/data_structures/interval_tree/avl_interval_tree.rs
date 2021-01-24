@@ -386,8 +386,12 @@ mod tests {
         validate_height(node);
         validate_intervals(node);
         validate_string_metadata(node);
-        node.left.as_ref().map(|n| validate(n));
-        node.right.as_ref().map(|n| validate(n));
+        if let Some(n) = node.left.as_ref() {
+            validate(n)
+        }
+        if let Some(n) = node.right.as_ref() {
+            validate(n)
+        }
     }
 
     fn validate_height(node: &Node<i64, String>) {
@@ -442,7 +446,7 @@ mod tests {
     fn validate_string_metadata(node: &Node<i64, String>) {
         let mut name: String = "".to_string();
         name.push_str(&node.interval.start.to_string());
-        name.push_str(":");
+        name.push(':');
         name.push_str(&node.interval.end.to_string());
         assert_eq!(name, node.value, "Invalid metadata for node {:?}", node);
     }
@@ -450,7 +454,7 @@ mod tests {
     fn insert_and_validate(tree: &mut IntervalTree<i64, String>, start: i64, end: i64) {
         let mut name: String = "".to_string();
         name.push_str(&start.to_string());
-        name.push_str(":");
+        name.push(':');
         name.push_str(&end.to_string());
         tree.insert(start..end, name);
         if let Some(ref n) = tree.root {
@@ -463,7 +467,7 @@ mod tests {
         for interval in intervals {
             let mut data: String = "".to_string();
             data.push_str(&interval.start.to_string());
-            data.push_str(":");
+            data.push(':');
             data.push_str(&interval.end.to_string());
             entries.push((interval.into(), data));
         }
@@ -604,7 +608,7 @@ mod tests {
         assert_eq!(tree.find(&(0..1000)).count(), 3);
         let tree2: IntervalTree<_, _> = tree
             .find(&(11..30))
-            .map(|e| (e.interval().clone(), e.data().clone()))
+            .map(|e| (e.interval().clone(), *e.data()))
             .collect();
         assert_eq!(tree2.find(&(0..1000)).count(), 2);
     }

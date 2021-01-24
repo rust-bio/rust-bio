@@ -46,10 +46,10 @@ bio-types = ">=0.5.1"
 fnv = "1.0"
 strum = ">= 0.16, <= 0.18"
 strum_macros = ">= 0.16, <= 0.18"
-snafu = ">= 0.5, <= 0.6"
 getset = "0.0.9"
 enum-map = "0.6"
 triple_accel = "0.3"
+thiserror = "1"
 
 [dependencies.vec_map]
 version = "0.8"

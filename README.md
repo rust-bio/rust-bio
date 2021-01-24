@@ -26,13 +26,17 @@ Rust-Bio: [![DOI](https://zenodo.org/badge/29821195.svg)](https://zenodo.org/bad
 Any contributions are welcome, from a simple bug report to full-blown new modules:
 
 If you **find a bug** and don't have the time or in-depth knowledge to fix it, just [check if you can add info to an existing issue](https://github.com/rust-bio/rust-bio/issues) and otherwise [file a bug report](https://github.com/rust-bio/rust-bio/issues/new/choose) with as many infos as possible.
-If you want to contribute fixes, documentation or new code, please [open a pull request](https://github.com/rust-bio/rust-bio/compare).
-You have two options to do this:
+Pull requests are welcome if you want to contribute fixes, documentation, or new code. Before making commits, it would be helpful to first install `pre-commit` to avoid failed continuous integration builds due to issues such as formatting:
+1. Install `pre-commit` (see [pre-commit.com/#installation](https://pre-commit.com/#installation))
+2. Run `pre-commit install` in the rust-bio base directory
+
+Depending on your intended contribution frequency, you have two options for opening pull requests:
 1. For one-time contributions, simply [fork](https://help.github.com/en/github/getting-started-with-github/fork-a-repo) the repository, apply your changes to a branch in your fork and then open a pull request.
-2. If you plan on contributing more than once, become a contributor by saying hi in the [`Join the team!` issue](https://github.com/rust-bio/rust-bio/issues/27) or [on the `rust-bio` Discord server](https://discord.gg/rssQABT).
+2. If you plan on contributing more than once, become a contributor by saying hi [on the `rust-bio` Discord server](https://discord.gg/rssQABT),
+    Together with a short sentence saying who you are and mentioning what you want to contribute.
     We'll add you to the team.
     Then, you don't have to create a fork, but can simply push new branches into the main repository and open pull requests there.
- 
+
 If you want to contribute and don't know where to start, have a look at the [roadmap](https://github.com/rust-bio/rust-bio/issues/3).
 
 ### Documentation guidelines

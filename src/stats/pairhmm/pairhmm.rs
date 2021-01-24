@@ -383,7 +383,7 @@ mod tests {
     const EMIT_MATCH: LogProb = LogProb(-0.0021022080918701985);
     const EMIT_GAP_X: LogProb = LogProb(-0.0021022080918701985);
     const EMIT_GAP_Y: LogProb = LogProb(-0.0021022080918701985);
-    const T_MATCH: LogProb = LogProb(-7.900031205113962e-06);
+    const T_MATCH: LogProb = LogProb(-7.900_031_205_113_962e-6);
     const T_GAP_X: LogProb = LogProb(-12.785891140783116);
     const T_GAP_Y: LogProb = LogProb(-12.186270018233994);
 
