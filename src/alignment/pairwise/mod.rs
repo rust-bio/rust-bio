@@ -1,4 +1,5 @@
 // Copyright 2014-2015 Johannes Köster, Vadim Nazarov, Patrick Marks
+// Copyright 2020 Tianyi Shi (PR #354: space-efficiency and speed improvement)
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -17,7 +18,7 @@
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
 //! let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-//! let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+//! let aligner = Aligner::new(-5, -1, &score);
 //! let alignment = aligner.semiglobal(x, y);
 //! // x is global (target sequence) and y is local (reference sequence)
 //! assert_eq!(alignment.ystart, 4);
@@ -26,11 +27,8 @@
 //!     alignment.operations,
 //!     [Match, Match, Match, Match, Match, Subst, Match, Match, Match]
 //! );
-//!
-//! // If you don't know sizes of future sequences, you could
-//! // use Aligner::new().
 //! // Global alignment:
-//! let mut aligner = Aligner::new(-5, -1, &score);
+//! let aligner = Aligner::new(-5, -1, &score);
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
 //! let alignment = aligner.global(x, y);
@@ -48,7 +46,7 @@
 //! let scoring = Scoring::new(-5, -1, &score) // Gap open, gap extend and match score function
 //!     .xclip(MIN_SCORE) // Clipping penalty for x set to 'negative infinity', hence global in x
 //!     .yclip(0); // Clipping penalty for y set to 0, hence local in y
-//! let mut aligner = Aligner::with_scoring(scoring);
+//! let aligner = Aligner::with_scoring(scoring);
 //! let alignment = aligner.custom(x, y); // The custom aligner invocation
 //! assert_eq!(alignment.ystart, 4);
 //! assert_eq!(alignment.xstart, 0);
@@ -74,7 +72,7 @@
 //! let scoring = Scoring::from_scores(-5, -1, 1, -1) // Gap open, extend, match, mismatch score
 //!     .xclip(MIN_SCORE) // Clipping penalty for x set to 'negative infinity', hence global in x
 //!     .yclip(MIN_SCORE); // Clipping penalty for y set to 'negative infinity', hence global in y
-//! let mut aligner = Aligner::with_scoring(scoring);
+//! let aligner = Aligner::with_scoring(scoring);
 //! let alignment = aligner.custom(x, y); // The custom aligner invocation
 //! assert_eq!(alignment.ystart, 0);
 //! assert_eq!(alignment.xstart, 0);
@@ -106,7 +104,7 @@
 //! };
 //! let x = b"GGGGGGACGTACGTACGT";
 //! let y = b"AAAAACGTACGTACGTAAAA";
-//! let mut aligner = Aligner::with_capacity_and_scoring(x.len(), y.len(), scoring);
+//! let aligner = Aligner::with_scoring(scoring);
 //! let alignment = aligner.custom(x, y);
 //! println!("{}", alignment.pretty(x, y));
 //! assert_eq!(alignment.score, 2);
@@ -131,10 +129,58 @@
 //!     ]
 //! );
 //! ```
+//!
+//! # Implementation Details
+//!
+//! All alignment mode are based on the following scoring and traceback matrices.
+//!
+//! `M(i,j)` is the best score such that `x[i]` and `y[j]` ends in a match (or substitution)
+//! ```ignore
+//!              .... A   G  x_i
+//!              .... C   G  y_j
+//! ```
+//! `I(i,j)` is the best score such that `x[i]` is aligned with a gap
+//! ```ignore
+//!              .... A   G  x_i
+//!              .... G  y_j  -
+//! ```
+//! This is interpreted as an insertion into `x` w.r.t reference `y`
+//!
+//! `D(i,j)` is the best score such that `y[j]` is aligned with a gap
+//! ```ignore
+//!              .... A  x_i  -
+//!              .... G   G  y_j
+//! ```
+//! This is interpreted as a deletion from `x` w.r.t reference `y`
+//!
+//! `S(i,j)` is the best score for prefixes `x[0..i]`, `y[0..j]`, and thus
+//! `S(i, j) == max(M(i, j), I(i, j), D(i, j))`
+//!
+//! To save space, `M(i,j)` is not explicitly stored. `I(i, j)` is scored as a single scalar
+//! `e` that keeps overwriting itself. Only one column of the matrices `S` and `D` is stored
+//! at any point — the column `j` is obtained by overwriting column `j - 1`. To do this, two
+//! additional scalars `s` and `c` are needed. Before updating `S(i, j)`, `s` is `S[i - 1][j - 1]`
+//! and `c` is `S[i - 1][j]`. When `S(i, j)` is updated, `s` is updated to `S[i][j - 1]` and
+//! `c` is updated to `S[i][j]` so that they will become `S[i - 1][j - 1]` and `S[i - 1][j]` for
+//! the cell below (Myers & Miller 1988).
+//!
+//! # References
+//!
+//! - [Eugene W. Myers and Webb Miller (1988) Optimal alignments in linear space. _Bioinformatics_ **4**: 11-17.](https://doi.org/10.1093/bioinformatics/4.1.11)
+
+#![allow(non_snake_case)]
+// I, D, S are conventionally used for scoring matrices.
+// Only one row of the matrices are stored, i.e. I, D, S are Vec<_> instead of Vec<Vec<_>> or similar.
+// In addition, single-character variable names are abundant.
+// Therefore, using uppercase letter helps to better signify their meaning.
+#![allow(clippy::many_single_char_names)]
+// Due to the strategy used by this set of algorithms, some variables have different meanings under different
+// contexts, for example: `let mut s: i32; // S[i - 1][j - 1] or S[i][j - 1]`
+// Therefore, it is difficult to give them unchanged and descriptive names.
+// The meanings of these variable names are explained in `Aligner.global`
 
 use std::cmp::max;
 use std::i32;
-use std::iter::repeat;
 
 use crate::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use crate::utils::TextSlice;
@@ -397,58 +443,10 @@ impl<F: MatchFunc> Scoring<F> {
     }
 }
 
-/// A generalized Smith-Waterman aligner.
-///
-/// `M(i,j)` is the best score such that `x[i]` and `y[j]` ends in a match (or substitution)
-/// ```ignore
-///              .... A   G  x_i
-///              .... C   G  y_j
-/// ```
-/// `I(i,j)` is the best score such that `x[i]` is aligned with a gap
-/// ```ignore
-///              .... A   G  x_i
-///              .... G  y_j  -
-/// ```
-/// This is interpreted as an insertion into `x` w.r.t reference `y`
-///
-/// `D(i,j)` is the best score such that `y[j]` is aligned with a gap
-/// ```ignore
-///              .... A  x_i  -
-///              .... G   G  y_j
-/// ```
-/// This is interpreted as a deletion from `x` w.r.t reference `y`
-///
-/// `S(i,j)` is the best score for prefixes `x[0..i]`, `y[0..j]`
-///
-/// To save space, only two columns of these matrices are stored at
-/// any point - the current column and the previous one. Moreover
-/// `M(i,j)` is not explicitly stored
-///
-/// `Lx` is the optimal x suffix clipping lengths from each position of the
-/// sequence y
-///
-/// `Ly` is the optimal y suffix clipping lengths from each position of the
-/// sequence x
-///
-/// `Sn` is the last column of the matrix. This is needed to keep track of
-/// suffix clipping scores
-///
-/// `traceback` - see [`bio::alignment::pairwise::TracebackCell`](struct.TracebackCell.html)
-///
-/// `scoring` - see [`bio::alignment::pairwise::Scoring`](struct.Scoring.html)
-#[allow(non_snake_case)]
+/// A Pairwise aligner with global, semiglobal, local, and custom modes of alignment
 pub struct Aligner<F: MatchFunc> {
-    I: [Vec<i32>; 2],
-    D: [Vec<i32>; 2],
-    S: [Vec<i32>; 2],
-    Lx: Vec<usize>,
-    Ly: Vec<usize>,
-    Sn: Vec<i32>,
-    traceback: Traceback,
     scoring: Scoring<F>,
 }
-
-const DEFAULT_ALIGNER_CAPACITY: usize = 200;
 
 impl<F: MatchFunc> Aligner<F> {
     /// Create new aligner instance with given gap open and gap extend penalties
@@ -461,13 +459,9 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `match_fn` - function that returns the score for substitutions
     ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
-        Aligner::with_capacity(
-            DEFAULT_ALIGNER_CAPACITY,
-            DEFAULT_ALIGNER_CAPACITY,
-            gap_open,
-            gap_extend,
-            match_fn,
-        )
+        Aligner {
+            scoring: Scoring::new(gap_open, gap_extend, match_fn),
+        }
     }
 
     /// Create new aligner instance. The size hints help to
@@ -481,18 +475,13 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `gap_extend` - the score for extending a gap (should be negative)
     /// * `match_fn` - function that returns the score for substitutions
     ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
+    #[deprecated(since = "0.33.0", note = "Please use Aligner::new()")]
+    #[allow(unused_variables)]
     pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         assert!(gap_open <= 0, "gap_open can't be positive");
         assert!(gap_extend <= 0, "gap_extend can't be positive");
 
         Aligner {
-            I: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
-            D: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
-            S: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
-            Lx: Vec::with_capacity(n + 1),
-            Ly: Vec::with_capacity(m + 1),
-            Sn: Vec::with_capacity(m + 1),
-            traceback: Traceback::with_capacity(m, n),
             scoring: Scoring::new(gap_open, gap_extend, match_fn),
         }
     }
@@ -503,11 +492,7 @@ impl<F: MatchFunc> Aligner<F> {
     ///
     /// * `scoring` - the scoring struct (see bio::alignment::pairwise::Scoring)
     pub fn with_scoring(scoring: Scoring<F>) -> Self {
-        Aligner::with_capacity_and_scoring(
-            DEFAULT_ALIGNER_CAPACITY,
-            DEFAULT_ALIGNER_CAPACITY,
-            scoring,
-        )
+        Aligner { scoring }
     }
 
     /// Create new aligner instance with scoring and size hint. The size hints help to
@@ -518,214 +503,191 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `m` - the expected size of x
     /// * `n` - the expected size of y
     /// * `scoring` - the scoring struct
+    #[deprecated(since = "0.33.0", note = "Please use Aligner::with_scoring()")]
+    #[allow(unused_variables)]
     pub fn with_capacity_and_scoring(m: usize, n: usize, scoring: Scoring<F>) -> Self {
-        assert!(scoring.gap_open <= 0, "gap_open can't be positive");
-        assert!(scoring.gap_extend <= 0, "gap_extend can't be positive");
-        assert!(
-            scoring.xclip_prefix <= 0,
-            "Clipping penalty (x prefix) can't be positive"
-        );
-        assert!(
-            scoring.xclip_suffix <= 0,
-            "Clipping penalty (x suffix) can't be positive"
-        );
-        assert!(
-            scoring.yclip_prefix <= 0,
-            "Clipping penalty (y prefix) can't be positive"
-        );
-        assert!(
-            scoring.yclip_suffix <= 0,
-            "Clipping penalty (y suffix) can't be positive"
-        );
-
-        Aligner {
-            I: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
-            D: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
-            S: [Vec::with_capacity(m + 1), Vec::with_capacity(m + 1)],
-            Lx: Vec::with_capacity(n + 1),
-            Ly: Vec::with_capacity(m + 1),
-            Sn: Vec::with_capacity(m + 1),
-            traceback: Traceback::with_capacity(m, n),
-            scoring,
-        }
+        Aligner { scoring }
     }
 
-    /// The core function to compute the alignment
+    /// Alignment with custom clipping scores
     ///
     /// # Arguments
     ///
     /// * `x` - Textslice
     /// * `y` - Textslice
-    pub fn custom(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
+    ///
+    /// # Implementation details
+    ///
+    /// `Lx` is the optimal x suffix clipping lengths from each position of the
+    /// sequence y
+    ///
+    /// `Ly` is the optimal y suffix clipping lengths from each position of the
+    /// sequence x
+    ///
+    /// `Sn` is the last column of the matrix. This is needed to keep track of
+    /// suffix clipping scores
+    ///
+    /// `traceback` - see [`bio::alignment::pairwise::TracebackCell`](struct.TracebackCell.html)
+    ///
+    /// `scoring` - see [`bio::alignment::pairwise::Scoring`](struct.Scoring.html)
+    pub fn custom(self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
+        use traceback_old::*;
         let (m, n) = (x.len(), y.len());
-        self.traceback.init(m, n);
+        let mut I = vec![MIN_SCORE; m + 1];
+        let mut D = vec![MIN_SCORE; m + 1];
+        let mut S = vec![MIN_SCORE; m + 1];
+        let mut Lx = vec![0usize; n + 1];
+        let mut Ly = vec![0usize; m + 1];
+        let mut Sn = vec![MIN_SCORE; m + 1];
+        let mut traceback = Traceback::with_capacity(m + 1, n + 1);
+        traceback.init(m + 1, n + 1);
 
-        // Set the initial conditions
-        // We are repeating some work, but that's okay!
-        for k in 0..2 {
-            self.I[k].clear();
-            self.D[k].clear();
-            self.S[k].clear();
-
-            self.D[k].extend(repeat(MIN_SCORE).take(m + 1));
-            self.I[k].extend(repeat(MIN_SCORE).take(m + 1));
-            self.S[k].extend(repeat(MIN_SCORE).take(m + 1));
-
-            self.S[k][0] = 0;
-
-            if k == 0 {
-                let mut tb = TracebackCell::new();
-                tb.set_all(TB_START);
-                self.traceback.set(0, 0, tb);
-                self.Lx.clear();
-                self.Lx.extend(repeat(0usize).take(n + 1));
-                self.Ly.clear();
-                self.Ly.extend(repeat(0usize).take(m + 1));
-                self.Sn.clear();
-                self.Sn.extend(repeat(MIN_SCORE).take(m + 1));
-                self.Sn[0] = self.scoring.yclip_suffix;
-                self.Ly[0] = n;
-            }
+        {
+            // k = 0 (first row)
+            let mut tb = TracebackCell::new();
+            tb.set_all(TB_START);
+            traceback.set(0, 0, tb);
+            Sn[0] = self.scoring.yclip_suffix;
+            Ly[0] = n;
+        }
+        {
+            // j = 0 (manipulation of S, I, D)
+            S[0] = 0;
 
             for i in 1..=m {
                 let mut tb = TracebackCell::new();
                 tb.set_all(TB_START);
                 if i == 1 {
-                    self.I[k][i] = self.scoring.gap_open + self.scoring.gap_extend;
+                    I[i] = self.scoring.gap_open + self.scoring.gap_extend;
                     tb.set_i_bits(TB_START);
                 } else {
                     // Insert all i characters
                     let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
                     let c_score =
                         self.scoring.xclip_prefix + self.scoring.gap_open + self.scoring.gap_extend; // Clip then insert
-                    if i_score > c_score {
-                        self.I[k][i] = i_score;
+                    I[i] = if i_score > c_score {
                         tb.set_i_bits(TB_INS);
+                        i_score
                     } else {
-                        self.I[k][i] = c_score;
                         tb.set_i_bits(TB_XCLIP_PREFIX);
-                    }
+                        c_score
+                    };
                 }
 
                 if i == m {
                     tb.set_s_bits(TB_XCLIP_SUFFIX);
-                } else {
-                    self.S[k][i] = MIN_SCORE;
                 }
 
-                if self.I[k][i] > self.S[k][i] {
-                    self.S[k][i] = self.I[k][i];
+                if I[i] > S[i] {
+                    S[i] = I[i];
                     tb.set_s_bits(TB_INS);
                 }
 
-                if self.scoring.xclip_prefix > self.S[k][i] {
-                    self.S[k][i] = self.scoring.xclip_prefix;
+                if self.scoring.xclip_prefix > S[i] {
+                    S[i] = self.scoring.xclip_prefix;
                     tb.set_s_bits(TB_XCLIP_PREFIX);
                 }
 
                 // Track the score if we do a suffix clip (x) after this character
-                if i != m && self.S[k][i] + self.scoring.xclip_suffix > self.S[k][m] {
-                    self.S[k][m] = self.S[k][i] + self.scoring.xclip_suffix;
-                    self.Lx[0] = m - i;
+                if i != m && S[i] + self.scoring.xclip_suffix > S[m] {
+                    S[m] = S[i] + self.scoring.xclip_suffix;
+                    Lx[0] = m - i;
                 }
 
-                if k == 0 {
-                    self.traceback.set(i, 0, tb);
-                }
+                traceback.set(i, 0, tb);
+
                 // Track the score if we do suffix clip (y) from here
-                if self.S[k][i] + self.scoring.yclip_suffix > self.Sn[i] {
-                    self.Sn[i] = self.S[k][i] + self.scoring.yclip_suffix;
-                    self.Ly[i] = n;
+                if S[i] + self.scoring.yclip_suffix > Sn[i] {
+                    Sn[i] = S[i] + self.scoring.yclip_suffix;
+                    Ly[i] = n;
                 }
             }
         }
 
+        let mut d0 = self.scoring.gap_open; // gap_open + j * gap_extend
+        let mut s: i32; // becomes prev S[i-1] for the next round of iteration; update s before updating current S[i]
+        let mut c: i32; // becomes curr S[i-1]; update c after updating current S[i]
         for j in 1..=n {
-            let curr = j % 2;
-            let prev = 1 - curr;
-
+            d0 += self.scoring.gap_extend;
             {
                 // Handle i = 0 case
                 let mut tb = TracebackCell::new();
-                self.I[curr][0] = MIN_SCORE;
+                I[0] = MIN_SCORE;
 
                 if j == 1 {
-                    self.D[curr][0] = self.scoring.gap_open + self.scoring.gap_extend;
+                    D[0] = d0;
                     tb.set_d_bits(TB_START);
                 } else {
                     // Delete all j characters
-                    let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
                     let c_score =
                         self.scoring.yclip_prefix + self.scoring.gap_open + self.scoring.gap_extend;
-                    if d_score > c_score {
-                        self.D[curr][0] = d_score;
+                    D[0] = if d0 > c_score {
                         tb.set_d_bits(TB_DEL);
+                        d0
                     } else {
-                        self.D[curr][0] = c_score;
                         tb.set_d_bits(TB_YCLIP_PREFIX);
-                    }
-                }
-                if self.D[curr][0] > self.scoring.yclip_prefix {
-                    self.S[curr][0] = self.D[curr][0];
-                    tb.set_s_bits(TB_DEL);
-                } else {
-                    self.S[curr][0] = self.scoring.yclip_prefix;
-                    tb.set_s_bits(TB_YCLIP_PREFIX);
+                        c_score
+                    };
                 }
 
-                if j == n && self.Sn[0] > self.S[curr][0] {
+                s = S[0];
+                // ! S update start
+                S[0] = if D[0] > self.scoring.yclip_prefix {
+                    tb.set_s_bits(TB_DEL);
+                    D[0]
+                } else {
+                    tb.set_s_bits(TB_YCLIP_PREFIX);
+                    self.scoring.yclip_prefix
+                };
+
+                if j == n && Sn[0] > S[0] {
                     // Check if the suffix clip score is better
-                    self.S[curr][0] = self.Sn[0];
+                    S[0] = Sn[0];
                     tb.set_s_bits(TB_YCLIP_SUFFIX);
                 // Track the score if we do suffix clip (y) from here
-                } else if self.S[curr][0] + self.scoring.yclip_suffix > self.Sn[0] {
-                    self.Sn[0] = self.S[curr][0] + self.scoring.yclip_suffix;
-                    self.Ly[0] = n - j;
+                } else if S[0] + self.scoring.yclip_suffix > Sn[0] {
+                    Sn[0] = S[0] + self.scoring.yclip_suffix;
+                    Ly[0] = n - j;
                 }
+                // ! S update end
+                c = S[0];
 
-                self.traceback.set(0, j, tb);
-            }
-
-            for i in 1..=m {
-                self.S[curr][i] = MIN_SCORE;
+                traceback.set(0, j, tb);
             }
 
             let q = y[j - 1];
-            let xclip_score = self.scoring.xclip_prefix
-                + max(
-                    self.scoring.yclip_prefix,
-                    self.scoring.gap_open + self.scoring.gap_extend * (j as i32),
-                );
-            for i in 1..m + 1 {
+            let xclip_score = self.scoring.xclip_prefix + max(self.scoring.yclip_prefix, d0);
+            let prev_s_m = S[m];
+            S[m] = MIN_SCORE;
+            for i in 1..=m {
                 let p = x[i - 1];
                 let mut tb = TracebackCell::new();
 
-                let m_score = self.S[prev][i - 1] + self.scoring.match_fn.score(p, q);
-
-                let i_score = self.I[curr][i - 1] + self.scoring.gap_extend;
-                let s_score = self.S[curr][i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
-                let best_i_score;
-                if i_score > s_score {
-                    best_i_score = i_score;
+                let m_score = s + self.scoring.match_fn.score(p, q);
+                let i_score = I[i - 1] + self.scoring.gap_extend;
+                let s_score = c + self.scoring.gap_open + self.scoring.gap_extend;
+                let best_i_score = if i_score > s_score {
                     tb.set_i_bits(TB_INS);
+                    i_score
                 } else {
-                    best_i_score = s_score;
-                    tb.set_i_bits(self.traceback.get(i - 1, j).get_s_bits());
-                }
+                    tb.set_i_bits(traceback.get(i - 1, j).get_s_bits());
+                    s_score
+                };
 
-                let d_score = self.D[prev][i] + self.scoring.gap_extend;
-                let s_score = self.S[prev][i] + self.scoring.gap_open + self.scoring.gap_extend;
-                let best_d_score;
-                if d_score > s_score {
-                    best_d_score = d_score;
+                let d_score = D[i] + self.scoring.gap_extend; // D prev i
+                let s_score = self.scoring.gap_open
+                    + self.scoring.gap_extend
+                    + if i != m { S[i] } else { prev_s_m }; // S prev i
+                let best_d_score = if d_score > s_score {
                     tb.set_d_bits(TB_DEL);
+                    d_score
                 } else {
-                    best_d_score = s_score;
-                    tb.set_d_bits(self.traceback.get(i, j - 1).get_s_bits());
-                }
+                    tb.set_d_bits(traceback.get(i, j - 1).get_s_bits());
+                    s_score
+                };
 
                 tb.set_s_bits(TB_XCLIP_SUFFIX);
-                let mut best_s_score = self.S[curr][i];
+                let mut best_s_score = if i != m { MIN_SCORE } else { S[m] };
 
                 if m_score > best_s_score {
                     best_s_score = m_score;
@@ -755,59 +717,57 @@ impl<F: MatchFunc> Aligner<F> {
                     tb.set_s_bits(TB_YCLIP_PREFIX);
                 }
 
-                self.S[curr][i] = best_s_score;
-                self.I[curr][i] = best_i_score;
-                self.D[curr][i] = best_d_score;
+                s = S[i];
+                S[i] = best_s_score; // ! S[i] updated
+                c = best_s_score;
+                I[i] = best_i_score;
+                D[i] = best_d_score;
 
                 // Track the score if we do suffix clip (x) from here
-                if self.S[curr][i] + self.scoring.xclip_suffix > self.S[curr][m] {
-                    self.S[curr][m] = self.S[curr][i] + self.scoring.xclip_suffix;
-                    self.Lx[j] = m - i;
+                if i != m && c + self.scoring.xclip_suffix > S[m] {
+                    S[m] = c + self.scoring.xclip_suffix;
+                    Lx[j] = m - i;
                 }
 
                 // Track the score if we do suffix clip (y) from here
-                if self.S[curr][i] + self.scoring.yclip_suffix > self.Sn[i] {
-                    self.Sn[i] = self.S[curr][i] + self.scoring.yclip_suffix;
-                    self.Ly[i] = n - j;
+                if c + self.scoring.yclip_suffix > Sn[i] {
+                    Sn[i] = c + self.scoring.yclip_suffix;
+                    Ly[i] = n - j;
                 }
 
-                self.traceback.set(i, j, tb);
+                traceback.set(i, j, tb);
             }
         }
 
         // Handle suffix clipping in the j=n case
         for i in 0..=m {
-            let j = n;
-            let curr = j % 2;
-            if self.Sn[i] > self.S[curr][i] {
-                self.S[curr][i] = self.Sn[i];
-                self.traceback.get_mut(i, j).set_s_bits(TB_YCLIP_SUFFIX);
+            if Sn[i] > S[i] {
+                S[i] = Sn[i];
+                traceback.get_mut(i, n).set_s_bits(TB_YCLIP_SUFFIX);
             }
-            if self.S[curr][i] + self.scoring.xclip_suffix > self.S[curr][m] {
-                self.S[curr][m] = self.S[curr][i] + self.scoring.xclip_suffix;
-                self.Lx[j] = m - i;
-                self.traceback.get_mut(m, j).set_s_bits(TB_XCLIP_SUFFIX);
+            if S[i] + self.scoring.xclip_suffix > S[m] {
+                S[m] = S[i] + self.scoring.xclip_suffix;
+                Lx[n] = m - i;
+                traceback.get_mut(m, n).set_s_bits(TB_XCLIP_SUFFIX);
             }
         }
 
         // Since there could be a change in the last column of S,
         // recompute the last column of I as this could also change
         for i in 1..=m {
-            let j = n;
-            let curr = j % 2;
-            let s_score = self.S[curr][i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
-            if s_score > self.I[curr][i] {
-                self.I[curr][i] = s_score;
-                let s_bit = self.traceback.get(i - 1, j).get_s_bits();
-                self.traceback.get_mut(i, j).set_i_bits(s_bit);
+            let s_score = S[i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
+            if s_score > I[i] {
+                I[i] = s_score;
+                let s_bit = traceback.get(i - 1, n).get_s_bits();
+                traceback.get_mut(i, n).set_i_bits(s_bit);
             }
-            if s_score > self.S[curr][i] {
-                self.S[curr][i] = s_score;
-                self.traceback.get_mut(i, j).set_s_bits(TB_INS);
-                if self.S[curr][i] + self.scoring.xclip_suffix > self.S[curr][m] {
-                    self.S[curr][m] = self.S[curr][i] + self.scoring.xclip_suffix;
-                    self.Lx[j] = m - i;
-                    self.traceback.get_mut(m, j).set_s_bits(TB_XCLIP_SUFFIX);
+            if s_score > S[i] {
+                S[i] = s_score;
+                traceback.get_mut(i, n).set_s_bits(TB_INS);
+                if S[i] + self.scoring.xclip_suffix > S[m] {
+                    S[m] = S[i] + self.scoring.xclip_suffix;
+                    Lx[n] = m - i;
+                    traceback.get_mut(m, n).set_s_bits(TB_XCLIP_SUFFIX);
                 }
             }
         }
@@ -820,7 +780,7 @@ impl<F: MatchFunc> Aligner<F> {
         let mut xend = m;
         let mut yend = n;
 
-        let mut last_layer = self.traceback.get(i, j).get_s_bits();
+        let mut last_layer = traceback.get(i, j).get_s_bits();
 
         loop {
             let next_layer: u16;
@@ -828,23 +788,23 @@ impl<F: MatchFunc> Aligner<F> {
                 TB_START => break,
                 TB_INS => {
                     operations.push(AlignmentOperation::Ins);
-                    next_layer = self.traceback.get(i, j).get_i_bits();
+                    next_layer = traceback.get(i, j).get_i_bits();
                     i -= 1;
                 }
                 TB_DEL => {
                     operations.push(AlignmentOperation::Del);
-                    next_layer = self.traceback.get(i, j).get_d_bits();
+                    next_layer = traceback.get(i, j).get_d_bits();
                     j -= 1;
                 }
                 TB_MATCH => {
                     operations.push(AlignmentOperation::Match);
-                    next_layer = self.traceback.get(i - 1, j - 1).get_s_bits();
+                    next_layer = traceback.get(i - 1, j - 1).get_s_bits();
                     i -= 1;
                     j -= 1;
                 }
                 TB_SUBST => {
                     operations.push(AlignmentOperation::Subst);
-                    next_layer = self.traceback.get(i - 1, j - 1).get_s_bits();
+                    next_layer = traceback.get(i - 1, j - 1).get_s_bits();
                     i -= 1;
                     j -= 1;
                 }
@@ -852,25 +812,25 @@ impl<F: MatchFunc> Aligner<F> {
                     operations.push(AlignmentOperation::Xclip(i));
                     xstart = i;
                     i = 0;
-                    next_layer = self.traceback.get(0, j).get_s_bits();
+                    next_layer = traceback.get(0, j).get_s_bits();
                 }
                 TB_XCLIP_SUFFIX => {
-                    operations.push(AlignmentOperation::Xclip(self.Lx[j]));
-                    i -= self.Lx[j];
+                    operations.push(AlignmentOperation::Xclip(Lx[j]));
+                    i -= Lx[j];
                     xend = i;
-                    next_layer = self.traceback.get(i, j).get_s_bits();
+                    next_layer = traceback.get(i, j).get_s_bits();
                 }
                 TB_YCLIP_PREFIX => {
                     operations.push(AlignmentOperation::Yclip(j));
                     ystart = j;
                     j = 0;
-                    next_layer = self.traceback.get(i, 0).get_s_bits();
+                    next_layer = traceback.get(i, 0).get_s_bits();
                 }
                 TB_YCLIP_SUFFIX => {
-                    operations.push(AlignmentOperation::Yclip(self.Ly[i]));
-                    j -= self.Ly[i];
+                    operations.push(AlignmentOperation::Yclip(Ly[i]));
+                    j -= Ly[i];
                     yend = j;
-                    next_layer = self.traceback.get(i, j).get_s_bits();
+                    next_layer = traceback.get(i, j).get_s_bits();
                 }
                 _ => panic!("Dint expect this!"),
             }
@@ -879,7 +839,7 @@ impl<F: MatchFunc> Aligner<F> {
 
         operations.reverse();
         Alignment {
-            score: self.S[n % 2][m],
+            score: S[m],
             ystart,
             xstart,
             yend,
@@ -892,262 +852,640 @@ impl<F: MatchFunc> Aligner<F> {
     }
 
     /// Calculate global alignment of x against y.
-    pub fn global(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
-        // Store the current clip penalties
-        let clip_penalties = [
-            self.scoring.xclip_prefix,
-            self.scoring.xclip_suffix,
-            self.scoring.yclip_prefix,
-            self.scoring.yclip_suffix,
-        ];
+    pub fn global(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
+        use traceback_new::*;
+        let (m, n) = (x.len() + 1, y.len() + 1);
+        let mut S = vec![0; m]; //                                            ! 32 * m bits
+        let mut D = vec![MIN_SCORE; m]; //                                    ! 32 * m bits
+        let mut T: Vec<TracebackCell> = vec![TracebackCell::new(); n * m]; // ! 8 * n * m bits
+        let mut s: i32; // S[i - 1][j - 1] or S[i][j - 1]
+        let mut c: i32; // S[i - 1][j] or S[i][j]
+        let mut e: i32; // I[i - 1] or I [i]
+        let mut idx: usize = 0; // j * m + i
+        let mut p: &u8; // x[i] (x[i - 1]) // TODO: is not using p/q faster?
+        let mut q: &u8; // y[j] (y[j - 1])
+        let mut S_i: &mut i32; // S[i]
+        let mut D_i: &mut i32; // D[i]
+        let mut score_1: i32; // used when determining D[i] and I[i]
+        let mut score_2: i32; // used when determining D[i] and I[i]
 
-        // Temporarily Over-write the clip penalties
-        self.scoring.xclip_prefix = MIN_SCORE;
-        self.scoring.xclip_suffix = MIN_SCORE;
-        self.scoring.yclip_prefix = MIN_SCORE;
-        self.scoring.yclip_suffix = MIN_SCORE;
+        // SAFETY: unchecked indexing is used here. x, y, S, D, T all have a fixed size related to n and/or m;
+        //         it should have been implied by the for loops that all indexing operations are in-bound but
+        //         the compiler wasn't smart enough to notice this as of October 2020.
+        unsafe {
+            // T[0] = TracebackCell::new() // origin at T[0 * n + 0]
+            let mut t = self.scoring.gap_open;
+            for i in 1..m {
+                t += self.scoring.gap_extend;
+                // I[0][j] = t will not be read
+                *S.get_unchecked_mut(i) = t;
+                let mut tb = TracebackCell::new();
+                tb.set_s_bits(TB_UP);
+                idx += 1;
+                *T.get_unchecked_mut(idx) = tb; // T[0 * m + i]
+            }
 
-        // Compute the alignment
-        let mut alignment = self.custom(x, y);
-        alignment.mode = AlignmentMode::Global;
+            t = self.scoring.gap_open;
+            for j in 1..n {
+                s = *S.get_unchecked(0);
+                t += self.scoring.gap_extend;
+                c = t;
+                *S.get_unchecked_mut(0) = c;
+                e = MIN_SCORE;
+                // D[0] = t will not be read
+                let mut tb = TracebackCell::new();
+                tb.set_s_bits(TB_LEFT);
+                idx += 1;
+                *T.get_unchecked_mut(idx) = tb; // T[j * m + 0]
 
-        // Set the clip penalties to the original values
-        self.scoring.xclip_prefix = clip_penalties[0];
-        self.scoring.xclip_suffix = clip_penalties[1];
-        self.scoring.yclip_prefix = clip_penalties[2];
-        self.scoring.yclip_suffix = clip_penalties[3];
+                q = y.get_unchecked(j - 1);
+                for i in 1..m {
+                    S_i = S.get_unchecked_mut(i);
+                    D_i = D.get_unchecked_mut(i);
+                    p = x.get_unchecked(i - 1);
+                    let mut tb = TracebackCell::new();
 
-        alignment
-    }
+                    score_1 = e + self.scoring.gap_extend;
+                    score_2 = c + self.scoring.gap_open + self.scoring.gap_extend;
+                    e = if score_1 > score_2 {
+                        tb.set_i_bits(TB_UP);
+                        score_1
+                    } else {
+                        tb.set_i_bits(T.get_unchecked(idx).get_s_bits()); // T[i-1][j]
+                        score_2
+                    };
 
-    /// Calculate semiglobal alignment of x against y (x is global, y is local).
-    pub fn semiglobal(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
-        // Store the current clip penalties
-        let clip_penalties = [
-            self.scoring.xclip_prefix,
-            self.scoring.xclip_suffix,
-            self.scoring.yclip_prefix,
-            self.scoring.yclip_suffix,
-        ];
+                    idx += 1; // ! update idx
 
-        // Temporarily Over-write the clip penalties
-        self.scoring.xclip_prefix = MIN_SCORE;
-        self.scoring.xclip_suffix = MIN_SCORE;
-        self.scoring.yclip_prefix = 0;
-        self.scoring.yclip_suffix = 0;
+                    score_1 = *D_i + self.scoring.gap_extend;
+                    score_2 = *S_i + self.scoring.gap_open + self.scoring.gap_extend;
+                    *D_i = if score_1 > score_2 {
+                        tb.set_d_bits(TB_LEFT);
+                        score_1
+                    } else {
+                        tb.set_d_bits(T.get_unchecked(idx - m).get_s_bits()); //T[i][j-1]
+                        score_2
+                    };
 
-        // Compute the alignment
-        let mut alignment = self.custom(x, y);
-        alignment.mode = AlignmentMode::Semiglobal;
+                    // c is becoming S[i][j]
+                    c = s + self.scoring.match_fn.score(*p, *q);
+                    tb.set_s_bits(TB_DIAG); // no need to be exact at this stage
 
-        // Filter out Xclip and Yclip from alignment.operations
-        alignment.filter_clip_operations();
+                    if e > c {
+                        c = e;
+                        tb.set_s_bits(TB_UP);
+                    }
 
-        // Set the clip penalties to the original values
-        self.scoring.xclip_prefix = clip_penalties[0];
-        self.scoring.xclip_suffix = clip_penalties[1];
-        self.scoring.yclip_prefix = clip_penalties[2];
-        self.scoring.yclip_suffix = clip_penalties[3];
+                    if *D_i > c {
+                        c = *D_i;
+                        tb.set_s_bits(TB_LEFT);
+                    }
 
-        alignment
-    }
+                    s = *S_i;
+                    *S_i = c;
+                    *T.get_unchecked_mut(idx) = tb;
+                }
+            }
 
-    /// Calculate local alignment of x against y.
-    pub fn local(&mut self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
-        // Store the current clip penalties
-        let clip_penalties = [
-            self.scoring.xclip_prefix,
-            self.scoring.xclip_suffix,
-            self.scoring.yclip_prefix,
-            self.scoring.yclip_suffix,
-        ];
+            let (mut operations, i, j) = Self::traceback(&T, x, y, m - 1, n - 1, m);
+            operations.resize(operations.len() + i, AlignmentOperation::Ins); // reaching at (i, 0)
+            operations.resize(operations.len() + j, AlignmentOperation::Del); // reaching at (0, j)
 
-        // Temporarily Over-write the clip penalties
-        self.scoring.xclip_prefix = 0;
-        self.scoring.xclip_suffix = 0;
-        self.scoring.yclip_prefix = 0;
-        self.scoring.yclip_suffix = 0;
-
-        // Compute the alignment
-        let mut alignment = self.custom(x, y);
-        alignment.mode = AlignmentMode::Local;
-
-        // Filter out Xclip and Yclip from alignment.operations
-        alignment.filter_clip_operations();
-
-        // Set the clip penalties to the original values
-        self.scoring.xclip_prefix = clip_penalties[0];
-        self.scoring.xclip_suffix = clip_penalties[1];
-        self.scoring.yclip_prefix = clip_penalties[2];
-        self.scoring.yclip_suffix = clip_penalties[3];
-
-        alignment
-    }
-}
-
-/// Packed representation of one cell of a Smith-Waterman traceback matrix.
-/// Stores the I, D and S traceback matrix values in two bytes.
-/// Possible traceback moves include : start, insert, delete, match, substitute,
-/// prefix clip and suffix clip for x & y. So we need 4 bits each for matrices I, D, S
-/// to keep track of these 9 moves.
-#[derive(Copy, Clone)]
-pub struct TracebackCell {
-    v: u16,
-}
-
-impl Default for TracebackCell {
-    fn default() -> Self {
-        TracebackCell { v: 0 }
-    }
-}
-
-// Traceback bit positions (LSB)
-const I_POS: u8 = 0; // Meaning bits 0,1,2,3 corresponds to I and so on
-const D_POS: u8 = 4;
-const S_POS: u8 = 8;
-
-// Traceback moves
-const TB_START: u16 = 0b0000;
-const TB_INS: u16 = 0b0001;
-const TB_DEL: u16 = 0b0010;
-const TB_SUBST: u16 = 0b0011;
-const TB_MATCH: u16 = 0b0100;
-
-const TB_XCLIP_PREFIX: u16 = 0b0101; // prefix clip of x
-const TB_XCLIP_SUFFIX: u16 = 0b0110; // suffix clip of x
-const TB_YCLIP_PREFIX: u16 = 0b0111; // prefix clip of y
-const TB_YCLIP_SUFFIX: u16 = 0b1000; // suffix clip of y
-
-const TB_MAX: u16 = 0b1000; // Useful in checking that the
-                            // TB value we got is a valid one
-
-impl TracebackCell {
-    /// Initialize a blank traceback cell
-    #[inline(always)]
-    pub fn new() -> TracebackCell {
-        Default::default()
-    }
-
-    /// Sets 4 bits [pos, pos+4) with the 4 LSBs of value
-    #[inline(always)]
-    fn set_bits(&mut self, pos: u8, value: u16) {
-        let bits: u16 = (0b1111) << pos;
-        assert!(
-            value <= TB_MAX,
-            "Expected a value <= TB_MAX while setting traceback bits"
-        );
-        self.v = (self.v & !bits) // First clear the bits
-            | (value << pos) // And set the bits
-    }
-
-    #[inline(always)]
-    pub fn set_i_bits(&mut self, value: u16) {
-        // Traceback corresponding to matrix I
-        self.set_bits(I_POS, value);
-    }
-
-    #[inline(always)]
-    pub fn set_d_bits(&mut self, value: u16) {
-        // Traceback corresponding to matrix D
-        self.set_bits(D_POS, value);
-    }
-
-    #[inline(always)]
-    pub fn set_s_bits(&mut self, value: u16) {
-        // Traceback corresponding to matrix S
-        self.set_bits(S_POS, value);
-    }
-
-    // Gets 4 bits [pos, pos+4) of v
-    #[inline(always)]
-    fn get_bits(self, pos: u8) -> u16 {
-        (self.v >> pos) & (0b1111)
-    }
-
-    #[inline(always)]
-    pub fn get_i_bits(self) -> u16 {
-        self.get_bits(I_POS)
-    }
-
-    #[inline(always)]
-    pub fn get_d_bits(self) -> u16 {
-        self.get_bits(D_POS)
-    }
-
-    #[inline(always)]
-    pub fn get_s_bits(self) -> u16 {
-        self.get_bits(S_POS)
-    }
-
-    /// Set all matrices to the same value.
-    pub fn set_all(&mut self, value: u16) {
-        self.set_i_bits(value);
-        self.set_d_bits(value);
-        self.set_s_bits(value);
-    }
-}
-
-/// Internal traceback.
-struct Traceback {
-    rows: usize,
-    cols: usize,
-    matrix: Vec<TracebackCell>,
-}
-
-impl Traceback {
-    fn with_capacity(m: usize, n: usize) -> Self {
-        let rows = m + 1;
-        let cols = n + 1;
-        Traceback {
-            rows,
-            cols,
-            matrix: Vec::with_capacity(rows * cols),
+            operations.reverse();
+            Alignment {
+                score: *S.get_unchecked(m - 1),
+                xstart: 0,
+                ystart: 0,
+                xend: m - 1,
+                yend: n - 1,
+                xlen: m - 1,
+                ylen: n - 1,
+                operations,
+                mode: AlignmentMode::Global,
+            }
         }
     }
 
-    fn init(&mut self, m: usize, n: usize) {
-        self.matrix.clear();
-        let mut start = TracebackCell::new();
-        start.set_all(TB_START);
-        // set every cell to start
-        self.resize(m, n, start);
+    /// Calculate semiglobal alignment of x against y (x is global, y is local).
+    pub fn semiglobal(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
+        use traceback_new::*;
+        let (m, n) = (x.len() + 1, y.len() + 1);
+        let mut S = vec![0; m]; //                                            ! 32 * m bits
+        let mut D = vec![MIN_SCORE; m]; //                                    ! 32 * m bits
+        let mut T: Vec<TracebackCell> = vec![TracebackCell::new(); n * m]; // ! 8 * n * m bits
+        let mut s: i32;
+        let mut c: i32;
+        let mut e: i32;
+        let mut idx: usize = 0;
+        let mut p: &u8;
+        let mut q: &u8;
+        let mut S_i: &mut i32;
+        let mut D_i: &mut i32;
+        let mut score_1: i32;
+        let mut score_2: i32;
+        let mut max_last_row: i32 = MIN_SCORE;
+        let mut yend: usize = n;
+
+        unsafe {
+            let mut t = self.scoring.gap_open;
+            for i in 1..m {
+                t += self.scoring.gap_extend;
+                *S.get_unchecked_mut(i) = t;
+                let mut tb = TracebackCell::new();
+                tb.set_s_bits(TB_UP);
+                idx += 1;
+                *T.get_unchecked_mut(idx) = tb; // T[0 * m + i]
+            }
+
+            for j in 1..n {
+                s = 0;
+                c = 0;
+                *S.get_unchecked_mut(0) = 0;
+                e = MIN_SCORE;
+                idx += 1;
+                *T.get_unchecked_mut(idx) = TracebackCell::new(); // T[j * m + 0]
+
+                q = y.get_unchecked(j - 1);
+                for i in 1..m {
+                    S_i = S.get_unchecked_mut(i);
+                    D_i = D.get_unchecked_mut(i);
+                    p = x.get_unchecked(i - 1);
+                    let mut tb = TracebackCell::new();
+
+                    score_1 = e + self.scoring.gap_extend;
+                    score_2 = c + self.scoring.gap_open + self.scoring.gap_extend;
+                    e = if score_1 > score_2 {
+                        tb.set_i_bits(TB_UP);
+                        score_1
+                    } else {
+                        tb.set_i_bits(T.get_unchecked(idx).get_s_bits()); // T[i-1][j]
+                        score_2
+                    };
+
+                    idx += 1; // ! update idx
+
+                    score_1 = *D_i + self.scoring.gap_extend;
+                    score_2 = *S_i + self.scoring.gap_open + self.scoring.gap_extend;
+                    *D_i = if score_1 > score_2 {
+                        tb.set_d_bits(TB_LEFT);
+                        score_1
+                    } else {
+                        tb.set_d_bits(T.get_unchecked(idx - m).get_s_bits()); //T[i][j-1]
+                        score_2
+                    };
+
+                    c = s + self.scoring.match_fn.score(*p, *q);
+                    tb.set_s_bits(TB_DIAG);
+
+                    if e > c {
+                        c = e;
+                        tb.set_s_bits(TB_UP);
+                    }
+
+                    if *D_i > c {
+                        c = *D_i;
+                        tb.set_s_bits(TB_LEFT);
+                    }
+
+                    s = *S_i;
+                    *S_i = c;
+                    *T.get_unchecked_mut(idx) = tb;
+
+                    if i == m - 1 && c > max_last_row {
+                        max_last_row = c;
+                        yend = j;
+                    }
+                }
+            }
+
+            let (mut operations, i, ystart) = Self::traceback(&T, x, y, m - 1, yend, m);
+            operations.resize(operations.len() + i, AlignmentOperation::Ins); // reaching at (i, 0)
+
+            operations.reverse();
+            Alignment {
+                score: max_last_row,
+                xstart: 0,
+                ystart,
+                xend: m - 1,
+                yend,
+                xlen: m - 1,
+                ylen: n - 1,
+                operations,
+                mode: AlignmentMode::Semiglobal,
+            }
+        }
     }
 
-    #[inline(always)]
-    fn set(&mut self, i: usize, j: usize, v: TracebackCell) {
-        debug_assert!(i < self.rows);
-        debug_assert!(j < self.cols);
-        self.matrix[i * self.cols + j] = v;
+    /// Calculate local alignment of x against y.
+    pub fn local(&self, x: TextSlice<'_>, y: TextSlice<'_>) -> Alignment {
+        use traceback_new::*;
+        let (m, n) = (x.len() + 1, y.len() + 1);
+        let mut S = vec![0; m]; //                                            ! 32 * m bits
+        let mut D = vec![MIN_SCORE; m]; //                                    ! 32 * m bits
+        let mut T: Vec<TracebackCell> = vec![TracebackCell::new(); n * m]; // ! 8 * n * m bits
+        let mut s: i32;
+        let mut c: i32;
+        let mut e: i32;
+        let mut idx: usize = m - 1;
+        let mut p: &u8;
+        let mut q: &u8;
+        let mut S_i: &mut i32;
+        let mut D_i: &mut i32;
+        let mut score_1: i32;
+        let mut score_2: i32;
+        let mut max_score: i32 = MIN_SCORE;
+        let mut max_coords: [usize; 2] = [0, 0];
+
+        unsafe {
+            // all cells in the first column can be the origin
+            for j in 1..n {
+                s = 0;
+                c = 0;
+                // *S.get_unchecked_mut(0) = 0; unchanged
+                e = MIN_SCORE;
+                idx += 1;
+                *T.get_unchecked_mut(idx) = TracebackCell::new(); // T[j * m + 0] // all cells in the first row can be the origin
+                q = y.get_unchecked(j - 1);
+                for i in 1..m {
+                    S_i = S.get_unchecked_mut(i);
+                    D_i = D.get_unchecked_mut(i);
+                    p = x.get_unchecked(i - 1);
+                    let mut tb = TracebackCell::new();
+
+                    score_1 = e + self.scoring.gap_extend;
+                    score_2 = c + self.scoring.gap_open + self.scoring.gap_extend;
+                    e = if score_1 > score_2 {
+                        tb.set_i_bits(TB_UP);
+                        score_1
+                    } else {
+                        tb.set_i_bits(T.get_unchecked(idx).get_s_bits()); // T[i-1][j]
+                        score_2
+                    };
+
+                    idx += 1; // ! update idx
+
+                    score_1 = *D_i + self.scoring.gap_extend;
+                    score_2 = *S_i + self.scoring.gap_open + self.scoring.gap_extend;
+                    *D_i = if score_1 > score_2 {
+                        tb.set_d_bits(TB_LEFT);
+                        score_1
+                    } else {
+                        tb.set_d_bits(T.get_unchecked(idx - m).get_s_bits()); //T[i][j-1]
+                        score_2
+                    };
+
+                    c = s + self.scoring.match_fn.score(*p, *q);
+                    tb.set_s_bits(TB_DIAG); // no need to be exact at this stage
+
+                    if e > c {
+                        c = e;
+                        tb.set_s_bits(TB_UP);
+                    }
+
+                    if *D_i > c {
+                        c = *D_i;
+                        tb.set_s_bits(TB_LEFT);
+                    }
+
+                    if c < 0 {
+                        c = 0;
+                        tb = TracebackCell::new(); // reset origin
+                    }
+
+                    if c >= max_score {
+                        max_score = c;
+                        max_coords = [i, j];
+                    }
+
+                    s = *S_i;
+                    *S_i = c;
+                    *T.get_unchecked_mut(idx) = tb;
+                }
+            }
+
+            let (xend, yend) = (max_coords[0], max_coords[1]);
+
+            let (mut operations, xstart, ystart) = Self::traceback(&T, x, y, xend, yend, m);
+
+            operations.reverse();
+            Alignment {
+                score: max_score,
+                xstart,
+                ystart,
+                xend,
+                yend,
+                xlen: m - 1,
+                ylen: n - 1,
+                operations,
+                mode: AlignmentMode::Local,
+            }
+        }
     }
 
-    #[inline(always)]
-    fn get(&self, i: usize, j: usize) -> &TracebackCell {
-        debug_assert!(i < self.rows);
-        debug_assert!(j < self.cols);
-        &self.matrix[i * self.cols + j]
-    }
-
-    fn get_mut(&mut self, i: usize, j: usize) -> &mut TracebackCell {
-        debug_assert!(i < self.rows);
-        debug_assert!(j < self.cols);
-        &mut self.matrix[i * self.cols + j]
-    }
-
-    fn resize(&mut self, m: usize, n: usize, v: TracebackCell) {
-        self.rows = m + 1;
-        self.cols = n + 1;
-        self.matrix.resize(self.rows * self.cols, v);
+    pub fn traceback(
+        T: &[traceback_new::TracebackCell],
+        x: TextSlice,
+        y: TextSlice,
+        mut i: usize,
+        mut j: usize,
+        m: usize,
+    ) -> (Vec<AlignmentOperation>, usize, usize) {
+        use traceback_new::*;
+        let mut operations = Vec::with_capacity(m);
+        unsafe {
+            let mut next_layer = T.get_unchecked(j * m + i).get_s_bits(); // start from the last tb cell
+            loop {
+                match next_layer {
+                    TB_ORIGIN => break,
+                    TB_UP => {
+                        operations.push(AlignmentOperation::Ins);
+                        next_layer = T.get_unchecked(j * m + i).get_i_bits();
+                        i -= 1;
+                    }
+                    TB_LEFT => {
+                        operations.push(AlignmentOperation::Del);
+                        next_layer = T.get_unchecked(j * m + i).get_d_bits();
+                        j -= 1;
+                    }
+                    TB_DIAG => {
+                        i -= 1;
+                        j -= 1;
+                        next_layer = T.get_unchecked(j * m + i).get_s_bits(); // T[i - 1][j - 1]
+                        operations.push(if *y.get_unchecked(j) == *x.get_unchecked(i) {
+                            AlignmentOperation::Match
+                        } else {
+                            AlignmentOperation::Subst
+                        });
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+        (operations, i, j)
     }
 }
 
+mod traceback_new {
+
+    /// ```ignore
+    /// 0b00   0b01    0b10    0b11
+    /// start  insert  delete  match_or_subst
+    /// ```
+    ///
+    /// ```ignore
+    /// 0b00101101
+    ///     / |  \
+    ///    S  D   I
+    /// ```
+    #[derive(Copy, Clone)]
+    pub struct TracebackCell(u8);
+
+    pub const TB_ORIGIN: u8 = 0b00;
+    pub const TB_UP: u8 = 0b01;
+    pub const TB_LEFT: u8 = 0b10;
+    pub const TB_DIAG: u8 = 0b11;
+
+    // Traceback bit positions (LSB)
+    const I_POS: u8 = 0; // Meaning bits 0,1 corresponds to I and so on
+    const D_POS: u8 = 2;
+    const S_POS: u8 = 4;
+
+    impl std::default::Default for TracebackCell {
+        #[inline(always)]
+        fn default() -> Self {
+            TracebackCell(0u8)
+        }
+    }
+
+    impl TracebackCell {
+        /// Initialize a blank traceback cell
+        #[inline(always)]
+        pub fn new() -> Self {
+            Self::default()
+        }
+
+        /// Sets 2 bits [pos, pos+2) with the 2 LSBs of value
+        #[inline(always)]
+        fn set_bits(&mut self, pos: u8, value: u8) {
+            let bits: u8 = (0b11) << pos;
+            self.0 = (self.0 & !bits) // First clear the bits
+            | (value << pos) // And set the bits
+        }
+
+        #[inline(always)]
+        pub fn set_i_bits(&mut self, value: u8) {
+            // Traceback corresponding to matrix I
+            self.set_bits(I_POS, value);
+        }
+
+        #[inline(always)]
+        pub fn set_d_bits(&mut self, value: u8) {
+            // Traceback corresponding to matrix D
+            self.set_bits(D_POS, value);
+        }
+
+        #[inline(always)]
+        pub fn set_s_bits(&mut self, value: u8) {
+            // Traceback corresponding to matrix S
+            self.set_bits(S_POS, value);
+        }
+
+        // Gets 4 bits [pos, pos+4) of v
+        #[inline(always)]
+        fn get_bits(self, pos: u8) -> u8 {
+            (self.0 >> pos) & (0b11)
+        }
+
+        #[inline(always)]
+        pub fn get_i_bits(self) -> u8 {
+            self.get_bits(I_POS)
+        }
+
+        #[inline(always)]
+        pub fn get_d_bits(self) -> u8 {
+            self.get_bits(D_POS)
+        }
+
+        #[inline(always)]
+        pub fn get_s_bits(self) -> u8 {
+            self.get_bits(S_POS)
+        }
+    }
+
+    impl std::fmt::Debug for TracebackCell {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct(&format!("{:06b}", self.0)).finish()
+        }
+    }
+}
+
+pub mod traceback_old {
+
+    /// Packed representation of one cell of a Smith-Waterman traceback matrix.
+    /// Stores the I, D and S traceback matrix values in two bytes.
+    /// Possible traceback moves include : start, insert, delete, match, substitute,
+    /// prefix clip and suffix clip for x & y. So we need 4 bits each for matrices I, D, S
+    /// to keep track of these 9 moves.
+    #[derive(Copy, Clone)]
+    pub struct TracebackCell {
+        v: u16,
+    }
+
+    impl Default for TracebackCell {
+        fn default() -> Self {
+            TracebackCell { v: 0 }
+        }
+    }
+
+    // Traceback bit positions (LSB)
+    const I_POS: u8 = 0; // Meaning bits 0,1,2,3 corresponds to I and so on
+    const D_POS: u8 = 4;
+    const S_POS: u8 = 8;
+
+    // Traceback moves
+    pub const TB_START: u16 = 0b0000;
+    pub const TB_INS: u16 = 0b0001;
+    pub const TB_DEL: u16 = 0b0010;
+    pub const TB_SUBST: u16 = 0b0011;
+    pub const TB_MATCH: u16 = 0b0100;
+
+    pub const TB_XCLIP_PREFIX: u16 = 0b0101; // prefix clip of x
+    pub const TB_XCLIP_SUFFIX: u16 = 0b0110; // suffix clip of x
+    pub const TB_YCLIP_PREFIX: u16 = 0b0111; // prefix clip of y
+    pub const TB_YCLIP_SUFFIX: u16 = 0b1000; // suffix clip of y
+
+    const TB_MAX: u16 = 0b1000; // Useful in checking that the
+                                // TB value we got is a valid one
+
+    impl TracebackCell {
+        /// Initialize a blank traceback cell
+        #[inline(always)]
+        pub fn new() -> TracebackCell {
+            Default::default()
+        }
+
+        /// Sets 4 bits [pos, pos+4) with the 4 LSBs of value
+        #[inline(always)]
+        fn set_bits(&mut self, pos: u8, value: u16) {
+            let bits: u16 = (0b1111) << pos;
+            assert!(
+                value <= TB_MAX,
+                "Expected a value <= TB_MAX while setting traceback bits"
+            );
+            self.v = (self.v & !bits) // First clear the bits
+        | (value << pos) // And set the bits
+        }
+
+        #[inline(always)]
+        pub fn set_i_bits(&mut self, value: u16) {
+            // Traceback corresponding to matrix I
+            self.set_bits(I_POS, value);
+        }
+
+        #[inline(always)]
+        pub fn set_d_bits(&mut self, value: u16) {
+            // Traceback corresponding to matrix D
+            self.set_bits(D_POS, value);
+        }
+
+        #[inline(always)]
+        pub fn set_s_bits(&mut self, value: u16) {
+            // Traceback corresponding to matrix S
+            self.set_bits(S_POS, value);
+        }
+
+        // Gets 4 bits [pos, pos+4) of v
+        #[inline(always)]
+        fn get_bits(self, pos: u8) -> u16 {
+            (self.v >> pos) & (0b1111)
+        }
+
+        #[inline(always)]
+        pub fn get_i_bits(self) -> u16 {
+            self.get_bits(I_POS)
+        }
+
+        #[inline(always)]
+        pub fn get_d_bits(self) -> u16 {
+            self.get_bits(D_POS)
+        }
+
+        #[inline(always)]
+        pub fn get_s_bits(self) -> u16 {
+            self.get_bits(S_POS)
+        }
+
+        /// Set all matrices to the same value.
+        pub fn set_all(&mut self, value: u16) {
+            self.set_i_bits(value);
+            self.set_d_bits(value);
+            self.set_s_bits(value);
+        }
+    }
+
+    /// Internal traceback.
+    pub struct Traceback {
+        rows: usize,
+        cols: usize,
+        matrix: Vec<TracebackCell>,
+    }
+
+    impl Traceback {
+        pub fn with_capacity(m: usize, n: usize) -> Self {
+            let rows = m + 1;
+            let cols = n + 1;
+            Traceback {
+                rows,
+                cols,
+                matrix: Vec::with_capacity(rows * cols),
+            }
+        }
+
+        pub fn init(&mut self, m: usize, n: usize) {
+            self.matrix.clear();
+            let mut start = TracebackCell::new();
+            start.set_all(TB_START);
+            // set every cell to start
+            self.resize(m, n, start);
+        }
+
+        #[inline(always)]
+        pub fn set(&mut self, i: usize, j: usize, v: TracebackCell) {
+            debug_assert!(i < self.rows);
+            debug_assert!(j < self.cols);
+            self.matrix[i * self.cols + j] = v;
+        }
+
+        #[inline(always)]
+        pub fn get(&self, i: usize, j: usize) -> &TracebackCell {
+            debug_assert!(i < self.rows);
+            debug_assert!(j < self.cols);
+            &self.matrix[i * self.cols + j]
+        }
+
+        pub fn get_mut(&mut self, i: usize, j: usize) -> &mut TracebackCell {
+            debug_assert!(i < self.rows);
+            debug_assert!(j < self.cols);
+            &mut self.matrix[i * self.cols + j]
+        }
+
+        pub fn resize(&mut self, m: usize, n: usize, v: TracebackCell) {
+            self.rows = m + 1;
+            self.cols = n + 1;
+            self.matrix.resize(self.rows * self.cols, v);
+        }
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::alignment::AlignmentOperation::*;
     use crate::scores::blosum62;
+    use std::iter::repeat;
 
     #[test]
-    fn traceback_cell() {
+    fn traceback_cell_old() {
+        use super::traceback_old::*;
         let mut tb = TracebackCell::new();
 
         tb.set_all(TB_SUBST);
@@ -1177,7 +1515,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
@@ -1193,7 +1531,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -5i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -1, -1, score);
+        let aligner = Aligner::new(-1, -1, score);
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
@@ -1208,7 +1546,7 @@ mod tests {
         let x = b"ACGAGAACA";
         let y = b"ACGACA";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -3i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
 
         println!("aln:\n{}", alignment.pretty(x, y));
@@ -1223,7 +1561,7 @@ mod tests {
         let x = b"AGATAGATAGATAGGGAGTTGTGTAGATGATCCACAGT";
         let y = b"AGATAGATAGATGTAGATGATCCACAGT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
 
         println!("aln:\n{}", alignment.pretty(x, y));
@@ -1241,7 +1579,7 @@ mod tests {
         let x = b"ACGTATCATAGATAGATAGGGTTGTGTAGATGATCCACAG";
         let y = b"CGTATCATAGATAGATGTAGATGATCCACAGT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.local(x, y);
         assert_eq!(alignment.xstart, 1);
         assert_eq!(alignment.ystart, 0);
@@ -1252,7 +1590,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.local(x, y);
         assert_eq!(alignment.ystart, 4);
         assert_eq!(alignment.xstart, 0);
@@ -1267,7 +1605,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
 
         println!("\naln:\n{}", alignment.pretty(x, y));
@@ -1284,7 +1622,7 @@ mod tests {
         let x = b"AAAA";
         let y = b"AAAA";
         let score = &blosum62;
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
+        let aligner = Aligner::new(-5, -1, score);
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
@@ -1297,7 +1635,7 @@ mod tests {
         let y = b"TACC"; //GTGGAC";
         let x = b"AAAAACC"; //GTTGACGCAA";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.global(x, y);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
@@ -1312,7 +1650,7 @@ mod tests {
         let x = b"CCGGCA";
         let y = b"ACCGTTGACGC";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.ystart, 1);
@@ -1327,7 +1665,7 @@ mod tests {
         let y = b"CCGGCA";
         let x = b"ACCGTTGACGC";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.ystart, 0);
@@ -1343,7 +1681,7 @@ mod tests {
         let y = b"CCGTCCGGCAA";
         let x = b"AAAAACCGTTGACGCAA";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.semiglobal(x, y);
 
         assert_eq!(alignment.xstart, 0);
@@ -1355,7 +1693,7 @@ mod tests {
             ]
         );
 
-        let mut aligner = Aligner::with_capacity(y.len(), x.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.semiglobal(y, x);
 
         assert_eq!(alignment.xstart, 0);
@@ -1370,7 +1708,7 @@ mod tests {
         let x = b"GTGCATCATGTG";
         let y = b"GTGCATCATCATGTG";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.global(x, y);
         println!("\naln:\n{}", alignment.pretty(x, y));
 
@@ -1393,7 +1731,7 @@ mod tests {
         let y = b"CCACGTACGT";
 
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.global(x, y);
 
         println!("\naln:\n{}", alignment.pretty(x, y));
@@ -1416,7 +1754,7 @@ mod tests {
         let x = b"GTGCATCATCATGTG";
         let y = b"GTGCATCATGTG";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.global(x, y);
         println!("\naln:\n{}", alignment.pretty(x, y));
 
@@ -1436,7 +1774,7 @@ mod tests {
         let x = b"ACCGTGGAT";
         let y = b"AAAAACCGTTGAT";
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::new(-5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
 
         let alignment = aligner.semiglobal(x, y);
         assert_eq!(alignment.ystart, 4);
@@ -1469,7 +1807,7 @@ mod tests {
         let y = b"ACCGTGGATGGG";
 
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
-        let mut aligner = Aligner::new(-5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.semiglobal(x, y);
 
         assert_eq!(
@@ -1484,7 +1822,7 @@ mod tests {
         let y = b"AAAA";
 
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -3i32 };
-        let mut aligner = Aligner::new(-5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.semiglobal(x, y);
 
         assert_eq!(alignment.operations, [Ins, Ins, Ins, Ins]);
@@ -1496,7 +1834,7 @@ mod tests {
         let y = b"GGTAGGG";
 
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -3i32 };
-        let mut aligner = Aligner::new(-5, -1, &score);
+        let aligner = Aligner::new(-5, -1, &score);
         let alignment = aligner.semiglobal(x, y);
 
         assert_eq!(
@@ -1513,7 +1851,7 @@ mod tests {
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
         let scoring = Scoring::new(-5, -1, &score).xclip(-5);
 
-        let mut aligner = Aligner::with_scoring(scoring);
+        let aligner = Aligner::with_scoring(scoring);
         let alignment = aligner.custom(x, y);
 
         assert_eq!(alignment.operations, [Xclip(6), Match, Match, Match]);
@@ -1527,7 +1865,7 @@ mod tests {
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
         let scoring = Scoring::new(-5, -1, &score).yclip(-5);
 
-        let mut aligner = Aligner::with_scoring(scoring);
+        let aligner = Aligner::with_scoring(scoring);
         let alignment = aligner.custom(x, y);
 
         assert_eq!(alignment.operations, [Yclip(6), Match, Match, Match]);
@@ -1541,7 +1879,7 @@ mod tests {
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
         let scoring = Scoring::new(-5, -1, &score).xclip(-5).yclip(0);
 
-        let mut aligner = Aligner::with_scoring(scoring);
+        let aligner = Aligner::with_scoring(scoring);
         let alignment = aligner.custom(x, y);
 
         assert_eq!(alignment.operations, [Yclip(1), Match, Xclip(4)]);
@@ -1555,7 +1893,7 @@ mod tests {
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -3i32 };
         let scoring = Scoring::new(-5, -1, &score).yclip(-5).xclip(0);
 
-        let mut aligner = Aligner::with_scoring(scoring);
+        let aligner = Aligner::with_scoring(scoring);
         let alignment = aligner.custom(x, y);
 
         assert_eq!(alignment.operations, [Xclip(1), Match, Yclip(4)]);
@@ -1569,7 +1907,7 @@ mod tests {
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -3i32 };
         let scoring = Scoring::new(-5, -1, &score).xclip(-5).yclip(0);
 
-        let mut aligner = Aligner::with_scoring(scoring);
+        let aligner = Aligner::with_scoring(scoring);
         let alignment = aligner.custom(x, y);
 
         println!("{}", alignment.pretty(x, y));
@@ -1583,7 +1921,7 @@ mod tests {
 
         let scoring = Scoring::from_scores(-5, -1, 1, -1).yclip(-5);
 
-        let mut aligner = Aligner::with_scoring(scoring);
+        let aligner = Aligner::with_scoring(scoring);
         let alignment = aligner.custom(x, y);
 
         assert_eq!(alignment.operations, [Yclip(6), Match, Match, Match]);
@@ -1600,8 +1938,8 @@ mod tests {
             yclip_suffix: 0,
             ..base_score
         };
-        let mut al = Aligner::with_scoring(scoring);
-        let alignment = al.custom(x, y);
+        let aligner = Aligner::with_scoring(scoring);
+        let alignment = aligner.custom(x, y);
         assert_eq!(alignment.score, 0);
     }
 
@@ -1616,8 +1954,8 @@ mod tests {
                 yclip_prefix: 0,
                 ..base_score.clone()
             };
-            let mut al = Aligner::with_scoring(scoring);
-            let alignment = al.custom(x, y);
+            let aligner = Aligner::with_scoring(scoring);
+            let alignment = aligner.custom(x, y);
             assert_eq!(alignment.score, 0);
         }
 
@@ -1627,8 +1965,8 @@ mod tests {
                 yclip_suffix: 0,
                 ..base_score.clone()
             };
-            let mut al = Aligner::with_scoring(scoring);
-            let alignment = al.custom(x, y);
+            let aligner = Aligner::with_scoring(scoring);
+            let alignment = aligner.custom(x, y);
             assert_eq!(alignment.score, 0);
         }
 
@@ -1638,8 +1976,8 @@ mod tests {
                 yclip_prefix: 0,
                 ..base_score.clone()
             };
-            let mut al = Aligner::with_scoring(scoring);
-            let alignment = al.custom(x, y);
+            let aligner = Aligner::with_scoring(scoring);
+            let alignment = aligner.custom(x, y);
             assert_eq!(alignment.score, 0);
         }
 
@@ -1649,8 +1987,8 @@ mod tests {
                 yclip_suffix: 0,
                 ..base_score
             };
-            let mut al = Aligner::with_scoring(scoring);
-            let alignment = al.custom(x, y);
+            let aligner = Aligner::with_scoring(scoring);
+            let alignment = aligner.custom(x, y);
             assert_eq!(alignment.score, 0);
         }
     }

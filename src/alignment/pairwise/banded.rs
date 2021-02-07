@@ -80,14 +80,14 @@
 //! // aligner.custom_with_prehash(x, y, &y_kmers_hash) is also supported
 //! ```
 
-use crate::alignment::{Alignment, AlignmentOperation};
 use crate::utils::TextSlice;
 use std::cmp::{max, min, Ordering};
 use std::i32;
+use std::iter::repeat;
 use std::ops::Range;
 
-use super::*;
-use crate::alignment::pairwise::Scoring;
+use super::traceback_old::*;
+use super::{Alignment, AlignmentMode, AlignmentOperation, MatchFunc, Scoring, MIN_SCORE};
 use crate::alignment::sparse;
 use crate::alignment::sparse::HashMapFx;
 
@@ -1419,7 +1419,7 @@ mod banded {
         let banded_alignment = banded_aligner.local(x, y);
         // banded_aligner.visualize(&banded_alignment);
 
-        let mut full_aligner = pairwise::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let full_aligner = pairwise::Aligner::new(-5, -1, &score);
         let full_alignment = full_aligner.local(x, y);
 
         assert_eq!(banded_alignment, full_alignment);
@@ -1433,7 +1433,7 @@ mod banded {
         let banded_alignment = banded_aligner.global(x, y);
         banded_aligner.visualize(&banded_alignment);
 
-        let mut full_aligner = pairwise::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let full_aligner = pairwise::Aligner::new(-5, -1, &score);
         let full_alignment = full_aligner.global(x, y);
 
         assert_eq!(banded_alignment, full_alignment);
@@ -1447,7 +1447,7 @@ mod banded {
         let banded_alignment = banded_aligner.semiglobal(x, y);
         banded_aligner.visualize(&banded_alignment);
 
-        let mut full_aligner = pairwise::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
+        let full_aligner = pairwise::Aligner::new(-5, -1, &score);
         let full_alignment = full_aligner.semiglobal(x, y);
         // banded_aligner.visualize(&full_alignment);
 

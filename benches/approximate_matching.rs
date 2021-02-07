@@ -245,7 +245,7 @@ fn pairwise_align(b: &mut Bencher) {
     use bio::alignment::pairwise;
 
     let s = pairwise::Scoring::new(-1, -1, |a, b| if a == b { 1 } else { -1 });
-    let mut aligner = pairwise::Aligner::with_scoring(s);
+    let aligner = pairwise::Aligner::with_scoring(s);
 
     b.iter(|| {
         let _ = aligner.semiglobal(PATTERN, TEXT);
