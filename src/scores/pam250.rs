@@ -80,6 +80,14 @@ fn lookup(a: u8) -> usize {
     }
 }
 
+/// Return the PAM250 substitution matrix score of [a, b]
+///
+/// # Example
+///
+/// ```
+/// use bio::scores::pam250;
+/// assert_eq!(pam250(b'H', b'A'), -1);
+/// ```
 pub fn pam250(a: u8, b: u8) -> i32 {
     let a = lookup(a);
     let b = lookup(b);
