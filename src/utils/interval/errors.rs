@@ -4,12 +4,11 @@
 // except according to those terms.
 
 //! Error definitions for the `interval` module.
+use thiserror::Error;
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-#[derive(Snafu, Debug, PartialEq)]
-#[snafu(visibility = "pub")]
+#[derive(Error, Debug, PartialEq)]
 pub enum Error {
-    #[snafu(display("an Interval must have a Range with a positive width"))]
+    #[error("an Interval must have a Range with a positive width")]
     InvalidRange,
 }
+pub type Result<T, E = Error> = std::result::Result<T, E>;

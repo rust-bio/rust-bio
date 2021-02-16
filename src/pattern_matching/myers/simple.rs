@@ -272,8 +272,8 @@ where
     }
 
     #[inline]
-    fn column_slice(&self) -> &'a [State<T, T::DistType>] {
-        unsafe { std::slice::from_raw_parts(&self.state, 1) }
+    fn column_slice(&self) -> &[State<T, T::DistType>] {
+        std::slice::from_ref(&self.state)
     }
 
     #[inline]

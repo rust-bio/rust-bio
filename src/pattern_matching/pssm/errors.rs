@@ -4,26 +4,26 @@
 // except according to those terms.
 
 //! Error definitions for the `pssm` module.
+use thiserror::Error;
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-#[derive(Snafu, Debug, PartialEq)]
-#[snafu(visibility = "pub")]
+#[derive(Error, Debug, PartialEq)]
 pub enum Error {
-    #[snafu(display(
+    #[error(
         "query length {} is shorter than motif length {}",
         query_len,
         motif_len
-    ))]
+    )]
     QueryTooShort { motif_len: usize, query_len: usize },
-    #[snafu(display("attempted to build a motif from sequences with mismatched lengths"))]
+    #[error("attempted to build a motif from sequences with mismatched lengths")]
     InconsistentLen,
-    #[snafu(display("monomer '{}' is invalid", char::from(*mono)))]
+    #[error("monomer '{}' is invalid", char::from(*mono))]
     InvalidMonomer { mono: u8 },
-    #[snafu(display("motif cannot be created from zero sequences"))]
+    #[error("motif cannot be created from zero sequences")]
     EmptyMotif,
-    #[snafu(display("information-free motif: a motif in which every monomer is equally likely at every position will result in a divide-by-zero exception"))]
+    #[error("information-free motif: a motif in which every monomer is equally likely at every position will result in a divide-by-zero exception")]
     NullMotif,
-    #[snafu(display("expected pseudo-score array of length {}; got {}", expected, received))]
+    #[error("expected pseudo-score array of length {}; got {}", expected, received)]
     InvalidPseudos { expected: u8, received: u8 },
 }
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;

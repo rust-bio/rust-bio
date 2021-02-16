@@ -32,7 +32,6 @@
 //! assert_eq!(i2.interval().end, 34);
 //! assert_eq!(i2.data(), &0u32);
 //! ```
-//!
 
 use crate::utils::Interval;
 use std::cmp::min;

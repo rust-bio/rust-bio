@@ -8,6 +8,7 @@
 //!
 //! - Expected score = -1.64, Entropy = 0.979 bits
 //! - Lowest score = -8, Highest score = 12
+
 use crate::scores::lookup;
 
 const MAT: [i32; 729] = [

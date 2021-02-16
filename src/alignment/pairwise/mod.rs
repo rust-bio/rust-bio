@@ -1647,7 +1647,7 @@ mod tests {
             let scoring = Scoring {
                 xclip_suffix: 0,
                 yclip_suffix: 0,
-                ..base_score.clone()
+                ..base_score
             };
             let mut al = Aligner::with_scoring(scoring);
             let alignment = al.custom(x, y);

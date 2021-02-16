@@ -298,10 +298,10 @@ pub fn sdpkpp_union_lcskpp_path(
     }
     let lcskpp_al = lcskpp(matches, k);
     let sdpkpp_al = sdpkpp(matches, k, match_score, gap_open, gap_extend);
-    let pre_lcskpp = match lcskpp_al.path.binary_search(&sdpkpp_al.path[0]) {
-        Ok(ind) => ind,
-        Err(_) => 0,
-    };
+    let pre_lcskpp = lcskpp_al
+        .path
+        .binary_search(&sdpkpp_al.path[0])
+        .unwrap_or(0);
     let post_lcskpp = match lcskpp_al
         .path
         .binary_search(&sdpkpp_al.path.last().unwrap())
@@ -602,12 +602,12 @@ mod sparse_alignment {
     // TRs is arbitrary, and way the implementation breaks ties may introduce
     // a gap while maintaining the same score.
     // The SDP code with gap open & extend penalties should resolve this.
-    const QUERY_REPEAT: &'static [u8] = b"CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCATGAGTGA\
+    const QUERY_REPEAT: &[u8] = b"CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAGGTCATGAGTGA\
 CAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGCAGAACAGGAGGCCCCATCTCC\
 CGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTCCCCAGCTCTTGCTTCAGGGCCTCACGTTTCG\
 CCCCCTGAGGCCTGGGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACATCTGGTG";
 
-    const TARGET_REPEAT: &'static [u8] = b"CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAG\
+    const TARGET_REPEAT: &[u8] = b"CCTCCCATCTCCACCCACCCTATCCAACCCTGGGGTGGCAG\
 GTCATGAGTGACAGCCCCAAGGACACCAAGGGATGAAGCTTCTCCTGTGCTGAGATCCTTCTCGGACTTTCTGAGAGGCCACGC\
 AGAACAGGAGGCCCCATCTCCCGTTCTTACTCAGAAGCTGTCAGCAGGGCTGGGCTCAAGATGAACCCGTGGCCGGCCCCACTC\
 CCCAGCTCTTGCTTCAGGGCCTCACGTTTCGCCCCCTGAGGCCTGGGGGCTCCGTCCTCACGGCTGGAGGGGCTCTCAGAACAT\

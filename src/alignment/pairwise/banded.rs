@@ -1402,6 +1402,8 @@ impl Band {
     }
 }
 
+//box creating reverse intervals for test
+
 #[cfg(test)]
 mod banded {
     use crate::alignment::pairwise::{self, banded, Scoring};
@@ -1612,7 +1614,7 @@ mod banded {
         let x =
             b"ACGTATCATAGACCCTAGATAGGGTTGTGTAGATGATCCACAGACGTATCATAGATTAGATAGGGTTGTGTAGATGATTCC\
         ACAG";
-        let y = x.clone();
+        let y = *x;
         compare_to_full_alignment_local(x, &y);
         compare_to_full_alignment_global(x, &y);
         compare_to_full_alignment_semiglobal(x, &y);
@@ -2181,7 +2183,7 @@ mod banded {
             yclip_suffix: 0,
             ..base_score
         };
-        let mut aligner = banded::Aligner::with_scoring(scoring.clone(), 6, 5);
+        let mut aligner = banded::Aligner::with_scoring(scoring, 6, 5);
         let alignment = aligner.custom(x, y);
         assert_eq!(alignment.ystart, 0);
     }
@@ -2197,7 +2199,7 @@ mod banded {
             yclip_prefix: 0,
             ..base_score
         };
-        let mut aligner = banded::Aligner::with_scoring(scoring.clone(), 6, 5);
+        let mut aligner = banded::Aligner::with_scoring(scoring, 6, 5);
         let alignment = aligner.custom(x, y);
         assert_eq!(alignment.yend, alignment.ylen);
     }
@@ -2215,7 +2217,7 @@ mod banded {
         };
         let kmer_len = 5;
         let window_len = 5;
-        let mut al = pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+        let mut al = pairwise::banded::Aligner::with_scoring(scoring, kmer_len, window_len);
         let alignment = al.custom(x, y);
         assert_eq!(alignment.ystart, 0);
     }
@@ -2234,7 +2236,7 @@ mod banded {
         };
         let kmer_len = 5;
         let window_len = 8;
-        let mut al = pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+        let mut al = pairwise::banded::Aligner::with_scoring(scoring, kmer_len, window_len);
         let alignment = al.custom(x, y);
         assert_eq!(alignment.score, -13);
         assert_eq!(
@@ -2327,7 +2329,7 @@ mod banded {
         };
         let kmer_len = 5;
         let window_len = 7;
-        let mut al = pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+        let mut al = pairwise::banded::Aligner::with_scoring(scoring, kmer_len, window_len);
         let alignment = al.custom(x, y);
         assert_eq!(alignment.score, 24);
     }
@@ -2346,7 +2348,7 @@ mod banded {
         };
         let kmer_len = 10;
         let window_len = 10;
-        let mut al = pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+        let mut al = pairwise::banded::Aligner::with_scoring(scoring, kmer_len, window_len);
         let alignment = al.custom(x, y);
         assert_eq!(alignment.score, -72);
     }
@@ -2365,8 +2367,7 @@ mod banded {
                 yclip_prefix: 0,
                 ..base_score.clone()
             };
-            let mut al =
-                pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+            let mut al = pairwise::banded::Aligner::with_scoring(scoring, kmer_len, window_len);
             let alignment = al.custom(x, y);
             assert_eq!(alignment.score, 0);
         }
@@ -2377,8 +2378,7 @@ mod banded {
                 yclip_suffix: 0,
                 ..base_score.clone()
             };
-            let mut al =
-                pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+            let mut al = pairwise::banded::Aligner::with_scoring(scoring, kmer_len, window_len);
             let alignment = al.custom(x, y);
             assert_eq!(alignment.score, 0);
         }
@@ -2389,8 +2389,7 @@ mod banded {
                 yclip_prefix: 0,
                 ..base_score.clone()
             };
-            let mut al =
-                pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+            let mut al = pairwise::banded::Aligner::with_scoring(scoring, kmer_len, window_len);
             let alignment = al.custom(x, y);
             assert_eq!(alignment.score, 0);
         }
@@ -2399,10 +2398,9 @@ mod banded {
             let scoring = Scoring {
                 xclip_suffix: 0,
                 yclip_suffix: 0,
-                ..base_score.clone()
+                ..base_score
             };
-            let mut al =
-                pairwise::banded::Aligner::with_scoring(scoring.clone(), kmer_len, window_len);
+            let mut al = pairwise::banded::Aligner::with_scoring(scoring, kmer_len, window_len);
             let alignment = al.custom(x, y);
             assert_eq!(alignment.score, 0);
         }
