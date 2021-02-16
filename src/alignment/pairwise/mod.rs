@@ -13,10 +13,12 @@
 //! ```
 //! use bio::alignment::pairwise::*;
 //! use bio::alignment::AlignmentOperation::*;
+//! use bio::scores::blosum62;
 //!
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
 //! let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+//! // gap open score: -5, gap extension score: -1
 //! let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
 //! let alignment = aligner.semiglobal(x, y);
 //! // x is global (target sequence) and y is local (reference sequence)
@@ -26,6 +28,22 @@
 //!     alignment.operations,
 //!     [Match, Match, Match, Match, Match, Subst, Match, Match, Match]
 //! );
+//!
+//! // You can use predefined scoring matrices such as BLOSUM62
+//! let x = b"LSPADKTNVKAA";
+//! let y = b"PEEKSAV";
+//! // gap open score: -10, gap extension score: -1
+//! let mut aligner = Aligner::with_capacity(x.len(), y.len(), -10, -1, &blosum62);
+//! let alignment = aligner.local(x, y);
+//! assert_eq!(alignment.xstart, 2);
+//! assert_eq!(alignment.xend, 9);
+//! assert_eq!(alignment.ystart, 0);
+//! assert_eq!(alignment.yend, 7);
+//! assert_eq!(
+//!     alignment.operations,
+//!     [Match, Subst, Subst, Match, Subst, Subst, Match]
+//! );
+//! assert_eq!(alignment.score, 16);
 //!
 //! // If you don't know sizes of future sequences, you could
 //! // use Aligner::new().
@@ -1290,6 +1308,23 @@ mod tests {
         assert_eq!(alignment.xstart, 0);
         assert_eq!(alignment.score, 16);
         assert_eq!(alignment.operations, [Match, Match, Match, Match]);
+    }
+
+    #[test]
+    fn test_blosum62_local() {
+        let x = b"LSPADKTNVKAA";
+        let y = b"PEEKSAV";
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -10, -1, &blosum62);
+        let alignment = aligner.local(x, y);
+        assert_eq!(alignment.xstart, 2);
+        assert_eq!(alignment.xend, 9);
+        assert_eq!(alignment.ystart, 0);
+        assert_eq!(alignment.yend, 7);
+        assert_eq!(
+            alignment.operations,
+            [Match, Subst, Subst, Match, Subst, Subst, Match]
+        );
+        assert_eq!(alignment.score, 16);
     }
 
     #[test]
