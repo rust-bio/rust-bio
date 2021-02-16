@@ -11,7 +11,7 @@
 //! | :-------: | :-----------: | :-------------------------------------: |
 //! |     B     |      Asx      | Asparagine or Aspartic acid (Aspartate) |
 //! |     Z     |      Glx      | Glutamine or Glutamic acid (Glutamate)  |
-//! |     X     |      Xaa      |        Any amino acid	All codons        |
+//! |     X     |      Xaa      |        Any amino acid, all codons       |
 //! |     *     |      END      |  Termination codon (translation stop)   |
 //!
 //! # References
@@ -39,7 +39,7 @@ pub use pam40::pam40;
 #[inline]
 fn lookup(a: u8) -> usize {
     if a == b'*' {
-        26 as usize
+        26_usize
     } else {
         (a - 65) as usize
     }
