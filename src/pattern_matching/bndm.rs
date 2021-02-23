@@ -119,4 +119,12 @@ mod tests {
         let bndm = BNDM::new(pattern);
         assert_eq!(bndm.find_all(text).collect_vec(), [8]);
     }
+
+    #[test]
+    fn test_long_pattern() {
+        let text = b"dhjABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB";
+        let pattern = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB";
+        let bndm = BNDM::new(pattern);
+        assert_eq!(bndm.find_all(text).collect_vec(), [3]); // panics
+    }
 }
