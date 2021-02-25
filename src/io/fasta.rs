@@ -112,6 +112,7 @@ use std::path::Path;
 
 use crate::utils::{Text, TextSlice};
 use std::fmt;
+use anyhow::Context;
 
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
@@ -130,8 +131,8 @@ pub struct Reader<R: io::Read> {
 
 impl Reader<fs::File> {
     /// Read FASTA from given file path.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::open(path).map(Reader::new)
+    pub fn from_file<P: AsRef<Path> + std::fmt::Display>(path: P) -> anyhow::Result<Self> {
+        fs::File::open(&path).map(Reader::new).context(format!("Failed to read fasta from {}", path))
     }
 }
 
@@ -280,15 +281,16 @@ impl Index {
     }
 
     /// Open a FASTA index from a given file path.
-    pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
-        fs::File::open(path)
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> anyhow::Result<Self> {
+        fs::File::open(&path)
             .map_err(csv::Error::from)
             .and_then(Self::new)
+            .context(format!("Failed to read fasta index from {:#?}", path))
     }
 
     /// Open a FASTA index given the corresponding FASTA file path.
     /// That is, for ref.fasta we expect ref.fasta.fai.
-    pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> csv::Result<Self> {
+    pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> anyhow::Result<Self> {
         let mut fai_path = fasta_path.as_ref().as_os_str().to_owned();
         fai_path.push(".fai");
 
@@ -321,11 +323,12 @@ pub struct IndexedReader<R: io::Read + io::Seek> {
 impl IndexedReader<fs::File> {
     /// Read from a given file path. This assumes the index ref.fasta.fai to be
     /// present for FASTA ref.fasta.
-    pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
+    pub fn from_file<P: AsRef<Path> + std::fmt::Display>(path: &P) -> anyhow::Result<Self> {
         let index = Index::with_fasta_file(path)?;
-        fs::File::open(path)
+        fs::File::open(&path)
             .map(|f| Self::with_index(f, index))
             .map_err(csv::Error::from)
+            .context(format!("Failed to read fasta from {}", path))
     }
 }
 
