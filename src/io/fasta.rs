@@ -131,10 +131,10 @@ pub struct Reader<R: io::Read> {
 
 impl Reader<fs::File> {
     /// Read FASTA from given file path.
-    pub fn from_file<P: AsRef<Path> + std::fmt::Display>(path: P) -> anyhow::Result<Self> {
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
         fs::File::open(&path)
             .map(Reader::new)
-            .with_context(|| format!("Failed to read fasta from {}", path))
+            .with_context(|| format!("Failed to read fasta from {:#?}", path))
     }
 }
 
@@ -325,12 +325,12 @@ pub struct IndexedReader<R: io::Read + io::Seek> {
 impl IndexedReader<fs::File> {
     /// Read from a given file path. This assumes the index ref.fasta.fai to be
     /// present for FASTA ref.fasta.
-    pub fn from_file<P: AsRef<Path> + std::fmt::Display>(path: &P) -> anyhow::Result<Self> {
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> anyhow::Result<Self> {
         let index = Index::with_fasta_file(path)?;
         fs::File::open(&path)
             .map(|f| Self::with_index(f, index))
             .map_err(csv::Error::from)
-            .with_context(|| format!("Failed to read fasta from {}", path))
+            .with_context(|| format!("Failed to read fasta from {:#?}", path))
     }
 }
 
