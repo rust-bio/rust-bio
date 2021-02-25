@@ -111,8 +111,8 @@ use std::io::prelude::*;
 use std::path::Path;
 
 use crate::utils::{Text, TextSlice};
-use std::fmt;
 use anyhow::Context;
+use std::fmt;
 
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
@@ -132,7 +132,9 @@ pub struct Reader<R: io::Read> {
 impl Reader<fs::File> {
     /// Read FASTA from given file path.
     pub fn from_file<P: AsRef<Path> + std::fmt::Display>(path: P) -> anyhow::Result<Self> {
-        fs::File::open(&path).map(Reader::new).context(format!("Failed to read fasta from {}", path))
+        fs::File::open(&path)
+            .map(Reader::new)
+            .with_context(|| format!("Failed to read fasta from {}", path))
     }
 }
 
@@ -285,7 +287,7 @@ impl Index {
         fs::File::open(&path)
             .map_err(csv::Error::from)
             .and_then(Self::new)
-            .context(format!("Failed to read fasta index from {:#?}", path))
+            .with_context(|| format!("Failed to read fasta index from {:#?}", path))
     }
 
     /// Open a FASTA index given the corresponding FASTA file path.
@@ -328,7 +330,7 @@ impl IndexedReader<fs::File> {
         fs::File::open(&path)
             .map(|f| Self::with_index(f, index))
             .map_err(csv::Error::from)
-            .context(format!("Failed to read fasta from {}", path))
+            .with_context(|| format!("Failed to read fasta from {}", path))
     }
 }
 
