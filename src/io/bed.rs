@@ -27,10 +27,10 @@ use std::marker::Copy;
 use std::ops::Deref;
 use std::path::Path;
 
+use anyhow::Context;
 use bio_types::annot;
 use bio_types::annot::loc::Loc;
 use bio_types::strand;
-use anyhow::Context;
 
 /// A BED reader.
 #[derive(Debug)]
@@ -41,7 +41,9 @@ pub struct Reader<R: io::Read> {
 impl Reader<fs::File> {
     /// Read from a given file path.
     pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
-        fs::File::open(&path).map(Reader::new).with_context(|| format!("Failed to read bed from {:#?}", path))
+        fs::File::open(&path)
+            .map(Reader::new)
+            .with_context(|| format!("Failed to read bed from {:#?}", path))
     }
 }
 
