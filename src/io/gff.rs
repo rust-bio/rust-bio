@@ -24,6 +24,7 @@
 //! }
 //! ```
 
+use anyhow::Context;
 use itertools::Itertools;
 use multimap::MultiMap;
 use regex::Regex;
@@ -99,8 +100,13 @@ pub struct Reader<R: io::Read> {
 
 impl Reader<fs::File> {
     /// Read GFF from given file path in given format.
-    pub fn from_file<P: AsRef<Path>>(path: P, fileformat: GffType) -> io::Result<Self> {
-        fs::File::open(path).map(|f| Reader::new(f, fileformat))
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(
+        path: P,
+        fileformat: GffType,
+    ) -> anyhow::Result<Self> {
+        fs::File::open(&path)
+            .map(|f| Reader::new(f, fileformat))
+            .with_context(|| format!("Failed to read GFF from {:#?}", path))
     }
 }
 
