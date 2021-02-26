@@ -101,6 +101,7 @@
 //! }
 //! ```
 
+use anyhow::Context;
 use std::convert::AsRef;
 use std::fmt;
 use std::fs;
@@ -143,13 +144,14 @@ pub struct Reader<R: io::Read> {
 
 impl Reader<fs::File> {
     /// Read from a given file.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
         fs::File::open(path.as_ref())
             .map_err(|e| Error::FileOpen {
                 path: path.as_ref().to_owned(),
                 source: e,
             })
             .map(Reader::new)
+            .with_context(|| format!("Failed to read fastq from {:#?}", path))
     }
 }
 
@@ -760,9 +762,12 @@ IIIIIIJJJJJJ
     #[test]
     fn test_reader_from_file_path_doesnt_exist_returns_err() {
         let path = Path::new("/I/dont/exist.fq");
-        let error = Reader::from_file(path).unwrap_err();
+        let error = Reader::from_file(path)
+            .unwrap_err()
+            .downcast::<String>()
+            .unwrap();
 
-        assert!(matches!(error, Error::FileOpen { .. }));
+        assert_eq!(&error, "Failed to read fastq from \"/I/dont/exist.fq\"")
     }
 
     #[test]

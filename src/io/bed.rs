@@ -27,6 +27,7 @@ use std::marker::Copy;
 use std::ops::Deref;
 use std::path::Path;
 
+use anyhow::Context;
 use bio_types::annot;
 use bio_types::annot::loc::Loc;
 use bio_types::strand;
@@ -39,8 +40,10 @@ pub struct Reader<R: io::Read> {
 
 impl Reader<fs::File> {
     /// Read from a given file path.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::open(path).map(Reader::new)
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
+        fs::File::open(&path)
+            .map(Reader::new)
+            .with_context(|| format!("Failed to read bed from {:#?}", path))
     }
 }
 
@@ -423,6 +426,17 @@ mod tests {
             assert_eq!(record.start(), starts[i]);
             assert_eq!(record.end(), ends[i]);
         }
+    }
+
+    #[test]
+    fn test_reader_from_file_path_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.bed");
+        let error = Reader::from_file(path)
+            .unwrap_err()
+            .downcast::<String>()
+            .unwrap();
+
+        assert_eq!(&error, "Failed to read bed from \"/I/dont/exist.bed\"")
     }
 
     #[test]
