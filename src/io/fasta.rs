@@ -1063,6 +1063,17 @@ ATTGTTGTTTTA
     }
 
     #[test]
+    fn test_reader_from_file_path_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.fasta");
+        let error = Reader::from_file(path)
+            .unwrap_err()
+            .downcast::<String>()
+            .unwrap();
+
+        assert_eq!(&error, "Failed to read fasta from \"/I/dont/exist.fasta\"")
+    }
+
+    #[test]
     fn test_record_with_attrs_without_description() {
         let record = Record::with_attrs("id_str", None, b"ATGCGGG");
         assert_eq!(record.id(), "id_str");

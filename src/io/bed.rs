@@ -429,6 +429,17 @@ mod tests {
     }
 
     #[test]
+    fn test_reader_from_file_path_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.bed");
+        let error = Reader::from_file(path)
+            .unwrap_err()
+            .downcast::<String>()
+            .unwrap();
+
+        assert_eq!(&error, "Failed to read bed from \"/I/dont/exist.bed\"")
+    }
+
+    #[test]
     fn test_writer() {
         let mut reader = Reader::new(BED_FILE);
         let mut writer = Writer::new(vec![]);

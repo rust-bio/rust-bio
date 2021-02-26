@@ -482,6 +482,17 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
     }
 
     #[test]
+    fn test_reader_from_file_path_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.gff");
+        let error = Reader::from_file(path, GffType::GFF3)
+            .unwrap_err()
+            .downcast::<String>()
+            .unwrap();
+
+        assert_eq!(&error, "Failed to read GFF from \"/I/dont/exist.gff\"")
+    }
+
+    #[test]
     fn test_gff_type_from_str() {
         let gff3 = GffType::from_str("gff3").expect("Error parsing");
         assert_eq!(gff3, GffType::GFF3);
