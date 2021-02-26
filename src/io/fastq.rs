@@ -762,9 +762,9 @@ IIIIIIJJJJJJ
     #[test]
     fn test_reader_from_file_path_doesnt_exist_returns_err() {
         let path = Path::new("/I/dont/exist.fq");
-        let error = Reader::from_file(path).unwrap_err();
+        let error = Reader::from_file(path).unwrap_err().downcast::<String>().unwrap();
 
-        assert!(matches!(error, anyhow::Error { .. })); // TODO: Assert specific error type
+        assert_eq!(&error, "Failed to read fastq from \"/I/dont/exist.fq\"")
     }
 
     #[test]
