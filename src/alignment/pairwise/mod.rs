@@ -158,6 +158,7 @@ use crate::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use crate::utils::TextSlice;
 
 pub mod banded;
+pub mod myers_miller;
 
 /// Value to use as a 'negative infinity' score. Should be close to `i32::MIN`,
 /// but avoid underflow when used with reasonable scoring parameters or even

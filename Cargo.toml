@@ -17,8 +17,10 @@ pre-release-commit-message = "release version {{version}}"
 tag-message = "Version {{version}} of Rust-Bio."
 
 [features]
+default = ["parallel"]
 runtime-dispatch-simd = ["bytecount/runtime-dispatch-simd"]
 generic-simd = ["bytecount/generic-simd"]
+parallel = ["rayon"]
 
 [dependencies]
 bytecount = "0.6"
@@ -46,6 +48,7 @@ strum = ">= 0.16, <= 0.20"
 strum_macros = ">= 0.16, <= 0.20"
 getset = "0.0.9"
 enum-map = "0.6"
+rayon = {version = "1.4.0", optional = true}
 triple_accel = "0.3"
 thiserror = "1"
 anyhow = "1"
