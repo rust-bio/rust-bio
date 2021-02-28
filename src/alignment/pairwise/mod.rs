@@ -1597,6 +1597,30 @@ mod tests {
     }
 
     #[test]
+    fn test_xclip_prefix_suffix() {
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let scoring1 = Scoring::new(-5, -1, &score).xclip(-5);
+        let scoring2 = Scoring::new(-5, -1, &score)
+            .xclip_prefix(-5)
+            .xclip_suffix(-5);
+
+        assert_eq!(scoring1.xclip_prefix, scoring2.xclip_prefix);
+        assert_eq!(scoring1.xclip_suffix, scoring2.xclip_suffix);
+    }
+
+    #[test]
+    fn test_yclip_prefix_suffix() {
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let scoring1 = Scoring::new(-5, -1, &score).yclip(-5);
+        let scoring2 = Scoring::new(-5, -1, &score)
+            .yclip_prefix(-5)
+            .yclip_suffix(-5);
+
+        assert_eq!(scoring1.yclip_prefix, scoring2.yclip_prefix);
+        assert_eq!(scoring1.yclip_suffix, scoring2.yclip_suffix);
+    }
+
+    #[test]
     fn test_longer_string_all_operations() {
         let x = b"TTTTTGGGGGGATGGCCCCCCTTTTTTTTTTGGGAAAAAAAAAGGGGGG";
         let y = b"GGGGGGATTTCCCCCCCCCTTTTTTTTTTAAAAAAAAA";

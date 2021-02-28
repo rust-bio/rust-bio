@@ -627,4 +627,12 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         }
         assert_eq!(writer.inner.into_inner().unwrap(), GFF_FILE_ONE_ATTRIB)
     }
+
+    #[test]
+    fn test_unknown_gff_type() {
+        assert_eq!(
+            GffType::from_str("xtf9"),
+            Err("String 'xtf9' is not a valid GFFType (GFF/GTF format version).".to_string())
+        )
+    }
 }

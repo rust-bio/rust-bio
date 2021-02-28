@@ -386,8 +386,8 @@ where
 mod tests {
     use super::*;
 
-    use bio_types::annot::spliced::Spliced;
-    use bio_types::strand::ReqStrand;
+    use bio_types::annot::{contig::Contig, pos::Pos, spliced::Spliced};
+    use bio_types::strand::{ReqStrand, Strand};
 
     const BED_FILE: &[u8] = b"1\t5\t5000\tname1\tup
 2\t3\t5005\tname2\tup
@@ -513,5 +513,38 @@ mod tests {
         }
         assert_eq!("chrXII\t765265\t766358\tYLR316C\t0\t-\t765265\t766358\t0\t3\t808,52,109,\t0,864,984,\n",
                    String::from_utf8(buf).unwrap().as_str());
+    }
+
+    #[test]
+    fn test_bed_from_contig() {
+        let contig = Contig::new(
+            "chrXI".to_owned(),
+            334412,
+            334916 - 334412,
+            ReqStrand::Reverse,
+        );
+
+        let record = Record::from(contig);
+
+        assert_eq!(record.chrom(), String::from("chrXI"));
+        assert_eq!(record.start(), 334412);
+        assert_eq!(record.end(), 334412 + (334916 - 334412));
+        assert_eq!(record.name(), Some(""));
+        assert_eq!(record.score(), Some("0"));
+        assert_eq!(record.strand(), Some(Strand::Reverse));
+    }
+
+    #[test]
+    fn test_bed_from_pos() {
+        let pos = Pos::new("chrXI".to_owned(), 334412, ReqStrand::Reverse);
+
+        let record = Record::from(pos);
+
+        assert_eq!(record.chrom(), String::from("chrXI"));
+        assert_eq!(record.start(), 334412);
+        assert_eq!(record.end(), 334412 + 1);
+        assert_eq!(record.name(), Some(""));
+        assert_eq!(record.score(), Some("0"));
+        assert_eq!(record.strand(), Some(Strand::Reverse));
     }
 }
