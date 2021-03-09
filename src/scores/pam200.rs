@@ -68,18 +68,26 @@ lazy_static! {
 #[inline]
 fn lookup(a: u8) -> usize {
     if a == b'Y' {
-        23 as usize
+        23
     } else if a == b'Z' {
-        24 as usize
+        24
     } else if a == b'X' {
-        25 as usize
+        25
     } else if a == b'*' {
-        26 as usize
+        26
     } else {
         (a - 65) as usize
     }
 }
 
+/// Return the PAM200 substitution matrix score of [a, b]
+///
+/// # Example
+///
+/// ```
+/// use bio::scores::pam200;
+/// assert_eq!(pam200(b'H', b'A'), -2);
+/// ```
 pub fn pam200(a: u8, b: u8) -> i32 {
     let a = lookup(a);
     let b = lookup(b);
