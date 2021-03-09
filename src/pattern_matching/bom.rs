@@ -174,4 +174,12 @@ mod tests {
         let bom = BOM::new(pattern);
         assert_eq!(bom.find_all(text).collect_vec(), [8]);
     }
+
+    #[test]
+    fn test_find_all_at_start() {
+        let text = b"dhjalkjwqnnnannanaflkjdklfj";
+        let pattern = b"dhjalk";
+        let bom = BOM::new(pattern);
+        assert_eq!(bom.find_all(text).collect_vec(), [0]);
+    }
 }

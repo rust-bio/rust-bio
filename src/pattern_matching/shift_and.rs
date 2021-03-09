@@ -127,4 +127,12 @@ mod tests {
         let shiftand = ShiftAnd::new(pattern);
         assert_eq!(shiftand.find_all(text_pos_0).collect_vec(), [0]);
     }
+
+    #[test]
+    fn test_multiple_finds() {
+        let text = b"CCTCCTCC";
+        let pattern = b"CC";
+        let shiftand = ShiftAnd::new(pattern);
+        assert_eq!(shiftand.find_all(text).collect_vec(), [0, 3, 6]);
+    }
 }

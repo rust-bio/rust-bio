@@ -207,4 +207,24 @@ mod tests {
             Err(Error::InconsistentLen)
         ));
     }
+
+    #[test]
+    fn test_degenerate_consensus_same_bases() {
+        let pssm = ProtMotif::from_seqs(
+            vec![b"QVTYNDSA".to_vec(), b"QVTYNDSA".to_vec()].as_ref(),
+            Some(&[0.0; 20]),
+        )
+        .unwrap();
+        assert_eq!(pssm.degenerate_consensus(), b"QVTYNDSA".to_vec());
+    }
+
+    #[test]
+    fn test_degenerate_consensus_x() {
+        let pssm = ProtMotif::from_seqs(
+            vec![b"QVTYNDSA".to_vec(), b"ASDNYTVQ".to_vec()].as_ref(),
+            Some(&[0.0; 20]),
+        )
+        .unwrap();
+        assert_eq!(pssm.degenerate_consensus(), b"XXXXXXXX".to_vec());
+    }
 }
