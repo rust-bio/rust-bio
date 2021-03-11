@@ -206,7 +206,7 @@ mod tests {
     use crate::alphabets::Alphabet;
     use crate::alphabets::dna;
     use crate::data_structures::suffix_array::suffix_array;
-    use crate::data_structures::wavelet_matrix::wavelet_matrix;
+    use crate::data_structures::wavelet_matrix::WaveletMatrix;
 
     #[test]
     fn test_bwtfind() {
@@ -239,17 +239,17 @@ mod tests {
 
     #[test]
     fn test_occwm() {
-	let text = b"GCCTTAACATTATTACGCCTA$";
+        let text = b"GCCTTAACATTATTACGCCTA$";
         let alphabet = dna::n_alphabet();
         let sa = suffix_array(text);
         let bwt = bwt(text, &sa);
         let occ = Occ::new(&bwt, 3, &alphabet);
-	let wm = wavelet_matrix(&bwt);
+        let wm = WaveletMatrix::new(&bwt);
 
-	for c in vec![b'A', b'C', b'G', b'T', b'$'] {
-	    for p in 0..text.len() {
-		assert_eq!(occ.get(&bwt, p, c) as u64, wm.rank(c, p as u64));
-	    }
-	}
+        for c in vec![b'A', b'C', b'G', b'T', b'$'] {
+            for p in 0..text.len() {
+                assert_eq!(occ.get(&bwt, p, c) as u64, wm.rank(c, p as u64));
+            }
+        }
     }
 }
