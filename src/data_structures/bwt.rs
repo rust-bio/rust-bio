@@ -203,8 +203,8 @@ pub fn bwtfind(bwt: &BWTSlice, alphabet: &Alphabet) -> BWTFind {
 #[cfg(test)]
 mod tests {
     use super::{bwt, bwtfind, invert_bwt, Occ};
-    use crate::alphabets::Alphabet;
     use crate::alphabets::dna;
+    use crate::alphabets::Alphabet;
     use crate::data_structures::suffix_array::suffix_array;
     use crate::data_structures::wavelet_matrix::WaveletMatrix;
 
