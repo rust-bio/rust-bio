@@ -14,8 +14,9 @@ use std::cmp;
 ///
 /// # Examples
 /// ```
+/// use approx::assert_relative_eq;
 /// use bio::stats::combinatorics::scaled_combinations;
-/// assert_eq!(scaled_combinations(5, 3, 0.5), 5.);
+/// assert_relative_eq!(scaled_combinations(5, 3, 0.5), 5., epsilon = f64::EPSILON);
 /// ```
 pub fn scaled_combinations(n: u64, k: u64, scale: f64) -> f64 {
     if k > n {
@@ -38,8 +39,9 @@ pub fn scaled_combinations(n: u64, k: u64, scale: f64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// use approx::assert_relative_eq;
 /// use bio::stats::combinatorics::combinations;
-/// assert_eq!(combinations(5, 3), 10.);
+/// assert_relative_eq!(combinations(5, 3), 10., epsilon = f64::EPSILON);
 /// ```
 pub fn combinations(n: u64, k: u64) -> f64 {
     scaled_combinations(n, k, 1.0)
@@ -52,8 +54,9 @@ pub fn combinations(n: u64, k: u64) -> f64 {
 ///
 /// # Examples
 /// ```
+/// use approx::assert_relative_eq;
 /// use bio::stats::combinatorics::combinations_with_repl;
-/// assert_eq!(combinations_with_repl(5, 3), 35.);
+/// assert_relative_eq!(combinations_with_repl(5, 3), 35., epsilon = f64::EPSILON);
 /// ```
 pub fn combinations_with_repl(n: u64, k: u64) -> f64 {
     combinations(n + k - 1, k)
@@ -65,13 +68,21 @@ mod tests {
 
     #[test]
     fn test_comb() {
-        assert_eq!(combinations(10, 3), 120.0);
-        assert_eq!(combinations_with_repl(10, 3), 220.0);
-        assert_eq!(combinations(200, 10), 22451004309013280.0);
+        assert_relative_eq!(combinations(10, 3), 120.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(combinations_with_repl(10, 3), 220.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(
+            combinations(200, 10),
+            22451004309013280.0,
+            epsilon = f64::EPSILON
+        );
     }
 
     #[test]
     fn test_comb_scaled() {
-        assert!((scaled_combinations(150, 80, 1e-5) - 6.6643938163479384e+38).abs() < 0.0000001);
+        assert_relative_eq!(
+            scaled_combinations(150, 80, 1e-5),
+            6.664_393_816_347_938_4e38,
+            epsilon = f64::EPSILON
+        );
     }
 }

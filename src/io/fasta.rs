@@ -71,7 +71,7 @@
 //!         nucleotides[seed % 4]
 //!     }).collect::<Vec<u8>>();
 //!
-//!    writer.write("random", None, seq.as_slice()).ok().expect("Error writing record.");
+//!    writer.write("random", None, seq.as_slice()).expect("Error writing record.");
 //! }
 //! ```
 //!
@@ -111,6 +111,7 @@ use std::io::prelude::*;
 use std::path::Path;
 
 use crate::utils::{Text, TextSlice};
+use anyhow::Context;
 use std::fmt;
 
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
@@ -130,8 +131,10 @@ pub struct Reader<R: io::Read> {
 
 impl Reader<fs::File> {
     /// Read FASTA from given file path.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::open(path).map(Reader::new)
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
+        fs::File::open(&path)
+            .map(Reader::new)
+            .with_context(|| format!("Failed to read fasta from {:#?}", path))
     }
 }
 
@@ -280,15 +283,16 @@ impl Index {
     }
 
     /// Open a FASTA index from a given file path.
-    pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
-        fs::File::open(path)
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> anyhow::Result<Self> {
+        fs::File::open(&path)
             .map_err(csv::Error::from)
             .and_then(Self::new)
+            .with_context(|| format!("Failed to read fasta index from {:#?}", path))
     }
 
     /// Open a FASTA index given the corresponding FASTA file path.
     /// That is, for ref.fasta we expect ref.fasta.fai.
-    pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> csv::Result<Self> {
+    pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> anyhow::Result<Self> {
         let mut fai_path = fasta_path.as_ref().as_os_str().to_owned();
         fai_path.push(".fai");
 
@@ -321,11 +325,12 @@ pub struct IndexedReader<R: io::Read + io::Seek> {
 impl IndexedReader<fs::File> {
     /// Read from a given file path. This assumes the index ref.fasta.fai to be
     /// present for FASTA ref.fasta.
-    pub fn from_file<P: AsRef<Path>>(path: &P) -> csv::Result<Self> {
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> anyhow::Result<Self> {
         let index = Index::with_fasta_file(path)?;
-        fs::File::open(path)
+        fs::File::open(&path)
             .map(|f| Self::with_index(f, index))
             .map_err(csv::Error::from)
+            .with_context(|| format!("Failed to read fasta from {:#?}", path))
     }
 }
 
@@ -880,7 +885,7 @@ mod tests {
     use std::fmt::Write as FmtWrite;
     use std::io;
 
-    const FASTA_FILE: &'static [u8] = b">id desc
+    const FASTA_FILE: &[u8] = b">id desc
 ACCGTAGGCTGA
 CCGTAGGCTGAA
 CGTAGGCTGAAA
@@ -892,13 +897,13 @@ ATTGTTGTTTTA
 ATTGTTGTTTTA
 GGGG
 ";
-    const FAI_FILE: &'static [u8] = b"id\t52\t9\t12\t13
+    const FAI_FILE: &[u8] = b"id\t52\t9\t12\t13
 id2\t40\t71\t12\t13
 ";
 
-    const TRUNCATED_FASTA: &'static [u8] = b">id desc\nACCGTAGGCTGA";
+    const TRUNCATED_FASTA: &[u8] = b">id desc\nACCGTAGGCTGA";
 
-    const FASTA_FILE_CRLF: &'static [u8] = b">id desc\r
+    const FASTA_FILE_CRLF: &[u8] = b">id desc\r
 ACCGTAGGCTGA\r
 CCGTAGGCTGAA\r
 CGTAGGCTGAAA\r
@@ -910,16 +915,16 @@ ATTGTTGTTTTA\r
 ATTGTTGTTTTA\r
 GGGG\r
 ";
-    const FAI_FILE_CRLF: &'static [u8] = b"id\t52\t10\t12\t14\r
+    const FAI_FILE_CRLF: &[u8] = b"id\t52\t10\t12\t14\r
 id2\t40\t78\t12\t14\r
 ";
 
-    const FASTA_FILE_NO_TRAILING_LF: &'static [u8] = b">id desc
+    const FASTA_FILE_NO_TRAILING_LF: &[u8] = b">id desc
 GTAGGCTGAAAA
 CCCC";
-    const FAI_FILE_NO_TRAILING_LF: &'static [u8] = b"id\t16\t9\t12\t13";
+    const FAI_FILE_NO_TRAILING_LF: &[u8] = b"id\t16\t9\t12\t13";
 
-    const WRITE_FASTA_FILE: &'static [u8] = b">id desc
+    const WRITE_FASTA_FILE: &[u8] = b">id desc
 ACCGTAGGCTGA
 >id2
 ATTGTTGTTTTA
@@ -1058,6 +1063,17 @@ ATTGTTGTTTTA
     }
 
     #[test]
+    fn test_reader_from_file_path_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.fasta");
+        let error = Reader::from_file(path)
+            .unwrap_err()
+            .downcast::<String>()
+            .unwrap();
+
+        assert_eq!(&error, "Failed to read fasta from \"/I/dont/exist.fasta\"")
+    }
+
+    #[test]
     fn test_record_with_attrs_without_description() {
         let record = Record::with_attrs("id_str", None, b"ATGCGGG");
         assert_eq!(record.id(), "id_str");
@@ -1162,7 +1178,7 @@ ATTGTTGTTTTA
         assert!(read(&mut reader, "id2", 12, 40).is_err()); // seek and read past EOF
     }
 
-    fn _test_indexed_reader_extreme_whitespace<'a, F>(read: F)
+    fn _test_indexed_reader_extreme_whitespace<F>(read: F)
     where
         F: Fn(&mut IndexedReader<io::Cursor<Vec<u8>>>, &str, u64, u64) -> io::Result<Vec<u8>>,
     {

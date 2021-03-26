@@ -33,7 +33,8 @@ fn gcn_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T, step: usiz
 /// use bio::seq_analysis::gc::gc_content;
 ///
 /// const seq: &'static [u8] = b"GATATACA";
-/// assert_eq!(gc_content(seq), 2. / 8.);
+/// use approx::assert_relative_eq;
+/// assert_relative_eq!(gc_content(seq), 2. / 8., epsilon = f32::EPSILON);
 /// ```
 pub fn gc_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 {
     gcn_content(sequence, 1usize)
@@ -49,10 +50,11 @@ pub fn gc_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 
 /// # Example
 ///
 /// ```
+/// use approx::assert_relative_eq;
 /// use bio::seq_analysis::gc::gc3_content;
 /// const seq: &'static [u8] = b"GATATACA";
 /// //                           ^  ^  ^
-/// assert_eq!(gc3_content(seq), 2. / 3.);
+/// assert_relative_eq!(gc3_content(seq), 2. / 3., epsilon = f32::EPSILON);
 /// ```
 pub fn gc3_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 {
     gcn_content(sequence, 3usize)
@@ -65,11 +67,11 @@ mod tests {
     #[test]
     fn test_gc_content() {
         let gc0 = b"ATAT";
-        assert_eq!(gc_content(gc0), 0.0);
+        assert_relative_eq!(gc_content(gc0), 0.0, epsilon = f32::EPSILON);
         let gc50 = b"ATGC";
-        assert_eq!(gc_content(gc50), 0.5);
+        assert_relative_eq!(gc_content(gc50), 0.5, epsilon = f32::EPSILON);
         let gc100 = b"GCGC";
-        assert_eq!(gc_content(gc100), 1.0);
+        assert_relative_eq!(gc_content(gc100), 1.0, epsilon = f32::EPSILON);
     }
 
     #[test]
@@ -78,6 +80,6 @@ mod tests {
         let mut s = vec![b'G'; LENGTH];
         s.extend_from_slice(&[b'T'; LENGTH]);
         let gc_content = gc_content(s);
-        assert_eq!(gc_content, 0.5);
+        assert_relative_eq!(gc_content, 0.5, epsilon = f32::EPSILON);
     }
 }

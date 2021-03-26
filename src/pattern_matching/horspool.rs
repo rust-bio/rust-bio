@@ -20,9 +20,9 @@
 //! 1. test phase: compare the last symbol of the window.
 //!    If it matches, compare the whole pattern.
 //!    If it does not match, continue with the shift phase.
-//! 2. shift phase: let l[a] be the rightmost position of a in
+//! 2. shift phase: let `l[a]` be the rightmost position of a in
 //!    the pattern without the last symbol. If it does not occur
-//!    let l[a] be -1. Shift the window by m - 1 - l[a]. I.e.
+//!    let `l[a]` be -1. Shift the window by `m - 1 - l[a]`. i.e.
 //!    we shift the window such that the rightmost a matches
 //!    the a at the end of the last window.
 //!    If a does not occur in the pattern, we shift by the whole length.
@@ -132,5 +132,13 @@ mod tests {
         let pattern = b"qnnnannan";
         let horspool = Horspool::new(pattern);
         assert_eq!(horspool.find_all(text).collect_vec(), [8]);
+    }
+
+    #[test]
+    fn test_find_all_at_start() {
+        let text = b"dhjalkjwqnnnannanaflkjdklfj";
+        let pattern = b"dhjalk";
+        let horspool = Horspool::new(pattern);
+        assert_eq!(horspool.find_all(text).collect_vec(), [0]);
     }
 }

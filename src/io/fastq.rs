@@ -101,12 +101,30 @@
 //! }
 //! ```
 
+use anyhow::Context;
 use std::convert::AsRef;
 use std::fmt;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("expected '@' at record start")]
+    MissingAt,
+
+    #[error("can't open {path} file: {source}")]
+    FileOpen { path: PathBuf, source: io::Error },
+
+    #[error("can't read input")]
+    ReadError(#[from] io::Error),
+
+    #[error("Incomplete record. Each FastQ record has to consist of 4 lines: header, sequence, separator and qualities.")]
+    IncompleteRecord,
+}
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 use bio_types::sequence::SequenceRead;
 
@@ -114,7 +132,7 @@ use crate::utils::TextSlice;
 
 /// Trait for FastQ readers.
 pub trait FastqRead {
-    fn read(&mut self, record: &mut Record) -> io::Result<()>;
+    fn read(&mut self, record: &mut Record) -> Result<()>;
 }
 
 /// A FastQ reader.
@@ -126,8 +144,14 @@ pub struct Reader<R: io::Read> {
 
 impl Reader<fs::File> {
     /// Read from a given file.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::open(path).map(Reader::new)
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
+        fs::File::open(path.as_ref())
+            .map_err(|e| Error::FileOpen {
+                path: path.as_ref().to_owned(),
+                source: e,
+            })
+            .map(Reader::new)
+            .with_context(|| format!("Failed to read fastq from {:#?}", path))
     }
 }
 
@@ -207,7 +231,7 @@ where
     /// assert_eq!(record.seq().to_vec(), b"AAAA");
     /// assert_eq!(record.qual().to_vec(), b"IIII");
     /// ```
-    fn read(&mut self, record: &mut Record) -> io::Result<()> {
+    fn read(&mut self, record: &mut Record) -> Result<()> {
         record.clear();
         self.line_buffer.clear();
 
@@ -215,10 +239,7 @@ where
 
         if !self.line_buffer.is_empty() {
             if !self.line_buffer.starts_with('@') {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Expected @ at record start.",
-                ));
+                return Err(Error::MissingAt);
             }
             let mut header_fields = self.line_buffer[1..].trim_end().splitn(2, ' ');
             record.id = header_fields.next().unwrap_or_default().to_owned();
@@ -237,17 +258,14 @@ where
 
             for _ in 0..lines_read {
                 self.line_buffer.clear();
-                self.reader.read_line(&mut self.line_buffer)?;
+                self.reader
+                    .read_line(&mut self.line_buffer)
+                    .map_err(Error::ReadError)?;
                 record.qual.push_str(self.line_buffer.trim_end());
             }
 
             if record.qual.is_empty() {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Incomplete record. Each FastQ record has to consist \
-                     of 4 lines: header, sequence, separator and \
-                     qualities.",
-                ));
+                return Err(Error::IncompleteRecord);
             }
         }
 
@@ -457,9 +475,9 @@ pub struct Records<R: io::Read> {
 }
 
 impl<R: io::Read> Iterator for Records<R> {
-    type Item = io::Result<Record>;
+    type Item = Result<Record>;
 
-    fn next(&mut self) -> Option<io::Result<Record>> {
+    fn next(&mut self) -> Option<Result<Record>> {
         let mut record = Record::new();
         match self.reader.read(&mut record) {
             Ok(()) if record.is_empty() => None,
@@ -531,7 +549,7 @@ mod tests {
     use std::fmt::Write as FmtWrite;
     use std::io;
 
-    const FASTQ_FILE: &'static [u8] = b"@id desc
+    const FASTQ_FILE: &[u8] = b"@id desc
 ACCGTAGGCTGA
 +
 IIIIIIJJJJJJ
@@ -540,10 +558,10 @@ IIIIIIJJJJJJ
     #[test]
     fn test_reader() {
         let reader = Reader::new(FASTQ_FILE);
-        let records: Vec<io::Result<Record>> = reader.records().collect();
+        let records: Vec<Result<Record>> = reader.records().collect();
         assert_eq!(records.len(), 1);
         for res in records {
-            let record = res.ok().unwrap();
+            let record = res.unwrap();
             assert_eq!(record.check(), Ok(()));
             assert_eq!(record.id(), "id");
             assert_eq!(record.desc(), Some("desc"));
@@ -611,9 +629,8 @@ IIIIIIJJJJJJ
         let mut writer = Writer::new(Vec::new());
         writer
             .write("id", Some("desc"), b"ACCGTAGGCTGA", b"IIIIIIJJJJJJ")
-            .ok()
             .expect("Expected successful write");
-        writer.flush().ok().expect("Expected successful write");
+        writer.flush().expect("Expected successful write");
         assert_eq!(writer.writer.get_ref(), &FASTQ_FILE);
     }
 
@@ -670,11 +687,9 @@ IIIIIIJJJJJJ
         let mut reader = Reader::new(fq);
         let mut record = Record::new();
 
-        let actual = reader.read(&mut record).unwrap_err();
-        let expected = io::Error::new(io::ErrorKind::Other, "Expected @ at record start.");
+        let error = reader.read(&mut record).unwrap_err();
 
-        assert_eq!(actual.kind(), expected.kind());
-        assert_eq!(actual.to_string(), expected.to_string())
+        assert!(matches!(error, Error::MissingAt))
     }
 
     #[test]
@@ -683,11 +698,9 @@ IIIIIIJJJJJJ
         let mut reader = Reader::new(fq);
         let mut record = Record::new();
 
-        let actual = reader.read(&mut record).unwrap_err();
-        let expected = io::Error::new(io::ErrorKind::Other, "Incomplete record. Each FastQ record has to consist of 4 lines: header, sequence, separator and qualities.");
+        let error = reader.read(&mut record).unwrap_err();
 
-        assert_eq!(actual.kind(), expected.kind());
-        assert_eq!(actual.to_string(), expected.to_string())
+        assert!(matches!(error, Error::IncompleteRecord))
     }
 
     #[test]
@@ -731,11 +744,9 @@ IIIIIIJJJJJJ
 
         let mut record = Record::new();
         reader.read(&mut record).unwrap();
-        let actual = reader.read(&mut record).unwrap_err();
-        let expected = io::Error::new(io::ErrorKind::Other, "Expected @ at record start.");
+        let error = reader.read(&mut record).unwrap_err();
 
-        assert_eq!(actual.kind(), expected.kind());
-        assert_eq!(actual.to_string(), expected.to_string())
+        assert!(matches!(error, Error::MissingAt))
     }
 
     #[test]
@@ -743,21 +754,20 @@ IIIIIIJJJJJJ
         let fq: &'static [u8] = b"@id description\nACGT\n+\n";
         let mut records = Reader::new(fq).records();
 
-        let actual = records.next().unwrap().unwrap_err();
-        let expected = io::Error::new(io::ErrorKind::Other, "Incomplete record. Each FastQ record has to consist of 4 lines: header, sequence, separator and qualities.");
+        let error = records.next().unwrap().unwrap_err();
 
-        assert_eq!(actual.kind(), expected.kind());
-        assert_eq!(actual.to_string(), expected.to_string())
+        assert!(matches!(error, Error::IncompleteRecord));
     }
 
     #[test]
     fn test_reader_from_file_path_doesnt_exist_returns_err() {
         let path = Path::new("/I/dont/exist.fq");
+        let error = Reader::from_file(path)
+            .unwrap_err()
+            .downcast::<String>()
+            .unwrap();
 
-        let actual = Reader::from_file(path).unwrap_err();
-        let expected = io::Error::new(io::ErrorKind::NotFound, "foo");
-
-        assert_eq!(actual.kind(), expected.kind());
+        assert_eq!(&error, "Failed to read fastq from \"/I/dont/exist.fq\"")
     }
 
     #[test]

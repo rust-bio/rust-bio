@@ -3,6 +3,11 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/rust-bio/rust-bio/master/img/bioferris.svg",
+    html_favicon_url = "https://raw.githubusercontent.com/rust-bio/rust-bio/master/img/bioferris.svg"
+)]
+
 //! # Rust-bio, a bioinformatics library for Rust.
 //! This library provides implementations of many algorithms and data structures
 //! that are useful for bioinformatics.
@@ -220,10 +225,11 @@ extern crate serde_derive;
 extern crate strum_macros;
 
 #[macro_use]
-extern crate snafu;
-
-#[macro_use]
 extern crate getset;
+
+#[cfg(feature = "phylogeny")]
+#[macro_use]
+extern crate pest_derive;
 
 pub mod alignment;
 pub mod alphabets;

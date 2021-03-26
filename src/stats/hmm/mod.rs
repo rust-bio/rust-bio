@@ -694,7 +694,7 @@ mod tests {
 
         let hmm = DiscreteEmissionHMM::with_float(&transition, &observation, &initial)
             .expect("Dimensions should be consistent");
-        let (path, log_prob) = viterbi(&hmm, &vec![2, 2, 1, 0, 1, 3, 2, 0, 0]);
+        let (path, log_prob) = viterbi(&hmm, &[2, 2, 1, 0, 1, 3, 2, 0, 0]);
         let prob = Prob::from(log_prob);
 
         let expected = vec![0, 0, 0, 1, 1, 1, 1, 1, 1]
@@ -714,7 +714,7 @@ mod tests {
 
         let hmm = DiscreteEmissionHMM::with_float(&transition, &observation, &initial)
             .expect("Dimensions should be consistent");
-        let log_prob = forward(&hmm, &vec![2, 2, 1, 0]).1;
+        let log_prob = forward(&hmm, &[2, 2, 1, 0]).1;
         let prob = Prob::from(log_prob);
 
         assert_relative_eq!(0.0038432_f64, *prob, epsilon = 0.0001);
@@ -729,7 +729,7 @@ mod tests {
 
         let hmm = DiscreteEmissionHMM::with_float(&transition, &observation, &initial)
             .expect("Dimensions should be consistent");
-        let log_prob = backward(&hmm, &vec![2, 2, 1, 0]).1;
+        let log_prob = backward(&hmm, &[2, 2, 1, 0]).1;
         let prob = Prob::from(log_prob);
 
         assert_relative_eq!(0.0038432_f64, *prob, epsilon = 0.0001);
@@ -774,10 +774,7 @@ mod tests {
 
         let hmm = GaussianHMM::with_float(&transition, observation, &initial)
             .expect("Dimensions should be consistent");
-        let (path, log_prob) = viterbi(
-            &hmm,
-            &vec![-0.1, 0.1, -0.2, 0.5, 0.8, 1.1, 1.2, 1.5, 0.5, 0.2],
-        );
+        let (path, log_prob) = viterbi(&hmm, &[-0.1, 0.1, -0.2, 0.5, 0.8, 1.1, 1.2, 1.5, 0.5, 0.2]);
         let prob = Prob::from(log_prob);
 
         let expected = vec![0, 0, 0, 0, 0, 1, 1, 1, 0, 0]
@@ -799,7 +796,7 @@ mod tests {
 
         let hmm = GaussianHMM::with_float(&transition, observation, &initial)
             .expect("Dimensions should be consistent");
-        let log_prob = forward(&hmm, &vec![0.1, 1.5, 1.8, 2.2, 0.5]).1;
+        let log_prob = forward(&hmm, &[0.1, 1.5, 1.8, 2.2, 0.5]).1;
         let prob = Prob::from(log_prob);
 
         assert_relative_eq!(7.820e-4_f64, *prob, epsilon = 1e-5_f64);
@@ -816,7 +813,7 @@ mod tests {
 
         let hmm = GaussianHMM::with_float(&transition, observation, &initial)
             .expect("Dimensions should be consistent");
-        let log_prob = backward(&hmm, &vec![0.1, 1.5, 1.8, 2.2, 0.5]).1;
+        let log_prob = backward(&hmm, &[0.1, 1.5, 1.8, 2.2, 0.5]).1;
         let prob = Prob::from(log_prob);
 
         assert_relative_eq!(7.820e-4_f64, *prob, epsilon = 1e-5_f64);

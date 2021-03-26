@@ -13,10 +13,12 @@
 //! ```
 //! use bio::alignment::pairwise::*;
 //! use bio::alignment::AlignmentOperation::*;
+//! use bio::scores::blosum62;
 //!
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
 //! let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+//! // gap open score: -5, gap extension score: -1
 //! let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
 //! let alignment = aligner.semiglobal(x, y);
 //! // x is global (target sequence) and y is local (reference sequence)
@@ -26,6 +28,22 @@
 //!     alignment.operations,
 //!     [Match, Match, Match, Match, Match, Subst, Match, Match, Match]
 //! );
+//!
+//! // You can use predefined scoring matrices such as BLOSUM62
+//! let x = b"LSPADKTNVKAA";
+//! let y = b"PEEKSAV";
+//! // gap open score: -10, gap extension score: -1
+//! let mut aligner = Aligner::with_capacity(x.len(), y.len(), -10, -1, &blosum62);
+//! let alignment = aligner.local(x, y);
+//! assert_eq!(alignment.xstart, 2);
+//! assert_eq!(alignment.xend, 9);
+//! assert_eq!(alignment.ystart, 0);
+//! assert_eq!(alignment.yend, 7);
+//! assert_eq!(
+//!     alignment.operations,
+//!     [Match, Subst, Subst, Match, Subst, Subst, Match]
+//! );
+//! assert_eq!(alignment.score, 16);
 //!
 //! // If you don't know sizes of future sequences, you could
 //! // use Aligner::new().
@@ -1293,6 +1311,23 @@ mod tests {
     }
 
     #[test]
+    fn test_blosum62_local() {
+        let x = b"LSPADKTNVKAA";
+        let y = b"PEEKSAV";
+        let mut aligner = Aligner::with_capacity(x.len(), y.len(), -10, -1, &blosum62);
+        let alignment = aligner.local(x, y);
+        assert_eq!(alignment.xstart, 2);
+        assert_eq!(alignment.xend, 9);
+        assert_eq!(alignment.ystart, 0);
+        assert_eq!(alignment.yend, 7);
+        assert_eq!(
+            alignment.operations,
+            [Match, Subst, Subst, Match, Subst, Subst, Match]
+        );
+        assert_eq!(alignment.score, 16);
+    }
+
+    #[test]
     fn test_issue11() {
         let y = b"TACC"; //GTGGAC";
         let x = b"AAAAACC"; //GTTGACGCAA";
@@ -1562,6 +1597,30 @@ mod tests {
     }
 
     #[test]
+    fn test_xclip_prefix_suffix() {
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let scoring1 = Scoring::new(-5, -1, &score).xclip(-5);
+        let scoring2 = Scoring::new(-5, -1, &score)
+            .xclip_prefix(-5)
+            .xclip_suffix(-5);
+
+        assert_eq!(scoring1.xclip_prefix, scoring2.xclip_prefix);
+        assert_eq!(scoring1.xclip_suffix, scoring2.xclip_suffix);
+    }
+
+    #[test]
+    fn test_yclip_prefix_suffix() {
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let scoring1 = Scoring::new(-5, -1, &score).yclip(-5);
+        let scoring2 = Scoring::new(-5, -1, &score)
+            .yclip_prefix(-5)
+            .yclip_suffix(-5);
+
+        assert_eq!(scoring1.yclip_prefix, scoring2.yclip_prefix);
+        assert_eq!(scoring1.yclip_suffix, scoring2.yclip_suffix);
+    }
+
+    #[test]
     fn test_longer_string_all_operations() {
         let x = b"TTTTTGGGGGGATGGCCCCCCTTTTTTTTTTGGGAAAAAAAAAGGGGGG";
         let y = b"GGGGGGATTTCCCCCCCCCTTTTTTTTTTAAAAAAAAA";
@@ -1647,7 +1706,7 @@ mod tests {
             let scoring = Scoring {
                 xclip_suffix: 0,
                 yclip_suffix: 0,
-                ..base_score.clone()
+                ..base_score
             };
             let mut al = Aligner::with_scoring(scoring);
             let alignment = al.custom(x, y);

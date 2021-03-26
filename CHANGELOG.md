@@ -2,6 +2,21 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.33.0] - 2021-03-09
+- Fixed a floating point error in gcn_content (@tedil).
+- Improved error messages in io module (@fxwiegand).
+- Better memory usage of HomopolypairHMM (@tedil).
+- Improved documentation (@TianShi2001, @m0ssc0de, @dcroote).
+- Support for reading compact BED files (@manzt).
+- API improvements for `Alphabet` and GFF reader (@tshauck).
+- Switched to thiserror for error handling (@delehef).
+- Removed unsafe code (@huonw).
+- Fixed overflow in ShiftAnd algorithm (@dcroote).
+- Various additional test cases (@dcroote).
+- Extended API for SMEM computation on FMDIndex (@Identi).
+- Added a parser for Newick phylogenetic trees (@delehef).
+
+
 # [0.32.0] - 2020-07-28
 This release mostly comprises of the documentation improvements made
 by the recent Docathon. Lots of new doctests and a bunch of time and
@@ -13,6 +28,7 @@ Further additions in this release are:
 - SIMD-accelerated edit distance routines (thanks to @Daniel-Liu-c0deb0t).
 - BitEnc derives more traits (thanks to @FelixMoelder).
 - wider pinning of some dependencies' version numbers (thanks to @pmarks).
+
 
 # [0.31.0] - 2020-06-02
 - Bugfix for pHMM implementation (thanks to @tedil).

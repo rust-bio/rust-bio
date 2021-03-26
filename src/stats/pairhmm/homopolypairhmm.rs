@@ -572,7 +572,7 @@ mod tests {
     const T_HOP_X_TO_HOP_X: LogProb = LogProb(-2.3025850929940455);
     const T_HOP_Y_TO_HOP_Y: LogProb = LogProb(-2.3025850929940455);
 
-    const T_MATCH_TO_MATCH: LogProb = LogProb(-7.900031205113962e-06);
+    const T_MATCH_TO_MATCH: LogProb = LogProb(-7.900_031_205_113_962e-6);
     const T_MATCH_TO_GAP_Y: LogProb = LogProb(-12.785_891_140_783_116);
     const T_MATCH_TO_GAP_X: LogProb = LogProb(-12.186_270_018_233_994);
     const T_GAP_TO_GAP: LogProb = LogProb(-9.210340371976182);
