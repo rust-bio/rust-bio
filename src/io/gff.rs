@@ -24,6 +24,7 @@
 //! }
 //! ```
 
+use anyhow::Context;
 use itertools::Itertools;
 use multimap::MultiMap;
 use regex::Regex;
@@ -99,8 +100,13 @@ pub struct Reader<R: io::Read> {
 
 impl Reader<fs::File> {
     /// Read GFF from given file path in given format.
-    pub fn from_file<P: AsRef<Path>>(path: P, fileformat: GffType) -> io::Result<Self> {
-        fs::File::open(path).map(|f| Reader::new(f, fileformat))
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(
+        path: P,
+        fileformat: GffType,
+    ) -> anyhow::Result<Self> {
+        fs::File::open(&path)
+            .map(|f| Reader::new(f, fileformat))
+            .with_context(|| format!("Failed to read GFF from {:#?}", path))
     }
 }
 
@@ -385,35 +391,35 @@ mod tests {
     use bio_types::strand::Strand;
     use multimap::MultiMap;
 
-    const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t\
+    const GFF_FILE: &[u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t\
 Note=Removed,Obsolete;ID=test
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV;\
 ID=PRO_0000148105";
-    const GFF_FILE_WITH_COMMENT: &'static [u8] = b"#comment
+    const GFF_FILE_WITH_COMMENT: &[u8] = b"#comment
 P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t\
 Note=Removed,Obsolete;ID=test
 #comment
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV;\
 ID=PRO_0000148105";
     //required because MultiMap iter on element randomly
-    const GFF_FILE_ONE_ATTRIB: &'static [u8] =
+    const GFF_FILE_ONE_ATTRIB: &[u8] =
         b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105
 ";
 
-    const GTF_FILE: &'static [u8] =
+    const GTF_FILE: &[u8] =
         b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed;ID test
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote ATP-dependent;ID PRO_0000148105
 ";
 
     // Another variant of GTF file, modified from a published GENCODE GTF file.
-    const GTF_FILE_2: &'static [u8] = b"chr1\tHAVANA\tgene\t11869\t14409\t.\t+\t.\t\
+    const GTF_FILE_2: &[u8] = b"chr1\tHAVANA\tgene\t11869\t14409\t.\t+\t.\t\
 gene_id \"ENSG00000223972.5\"; gene_type \"transcribed_unprocessed_pseudogene\";
 chr1\tHAVANA\ttranscript\t11869\t14409\t.\t+\t.\tgene_id \"ENSG00000223972.5\";\
 transcript_id \"ENST00000456328.2\"; gene_type \"transcribed_unprocessed_pseudogene\"";
 
     // GTF file with duplicate attribute keys, taken from a published GENCODE GTF file.
-    const GTF_FILE_DUP_ATTR_KEYS: &'static [u8] = b"chr1\tENSEMBL\ttranscript\t182393\t\
+    const GTF_FILE_DUP_ATTR_KEYS: &[u8] = b"chr1\tENSEMBL\ttranscript\t182393\t\
 184158\t.\t+\t.\tgene_id \"ENSG00000279928.1\"; transcript_id \"ENST00000624431.1\";\
 gene_type \"protein_coding\"; gene_status \"KNOWN\"; gene_name \"FO538757.2\";\
 transcript_type \"protein_coding\"; transcript_status \"KNOWN\";\
@@ -421,7 +427,7 @@ transcript_name \"FO538757.2-201\"; level 3; protein_id \"ENSP00000485457.1\";\
 transcript_support_level \"1\"; tag \"basic\"; tag \"appris_principal_1\";";
 
     //required because MultiMap iter on element randomly
-    const GTF_FILE_ONE_ATTRIB: &'static [u8] =
+    const GTF_FILE_ONE_ATTRIB: &[u8] =
         b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 ";
@@ -473,6 +479,17 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
             assert_eq!(record.frame(), frame[i]);
             assert_eq!(record.attributes(), &attributes[i]);
         }
+    }
+
+    #[test]
+    fn test_reader_from_file_path_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.gff");
+        let error = Reader::from_file(path, GffType::GFF3)
+            .unwrap_err()
+            .downcast::<String>()
+            .unwrap();
+
+        assert_eq!(&error, "Failed to read GFF from \"/I/dont/exist.gff\"")
     }
 
     #[test]
@@ -581,8 +598,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut writer = Writer::new(vec![], GffType::GFF3);
         for r in reader.records() {
             writer
-                .write(&r.ok().expect("Error reading record"))
-                .ok()
+                .write(&r.expect("Error reading record"))
                 .expect("Error writing record");
         }
         assert_eq!(writer.inner.into_inner().unwrap(), GFF_FILE_ONE_ATTRIB)
@@ -594,8 +610,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut writer = Writer::new(vec![], GffType::GTF2);
         for r in reader.records() {
             writer
-                .write(&r.ok().expect("Error reading record"))
-                .ok()
+                .write(&r.expect("Error reading record"))
                 .expect("Error writing record");
         }
         assert_eq!(writer.inner.into_inner().unwrap(), GTF_FILE_ONE_ATTRIB)
@@ -607,10 +622,17 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut writer = Writer::new(vec![], GffType::GFF3);
         for r in reader.records() {
             writer
-                .write(&r.ok().expect("Error reading record"))
-                .ok()
+                .write(&r.expect("Error reading record"))
                 .expect("Error writing record");
         }
         assert_eq!(writer.inner.into_inner().unwrap(), GFF_FILE_ONE_ATTRIB)
+    }
+
+    #[test]
+    fn test_unknown_gff_type() {
+        assert_eq!(
+            GffType::from_str("xtf9"),
+            Err("String 'xtf9' is not a valid GFFType (GFF/GTF format version).".to_string())
+        )
     }
 }

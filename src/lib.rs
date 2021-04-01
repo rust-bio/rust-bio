@@ -225,10 +225,11 @@ extern crate serde_derive;
 extern crate strum_macros;
 
 #[macro_use]
-extern crate snafu;
-
-#[macro_use]
 extern crate getset;
+
+#[cfg(feature = "phylogeny")]
+#[macro_use]
+extern crate pest_derive;
 
 pub mod alignment;
 pub mod alphabets;

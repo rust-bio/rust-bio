@@ -209,7 +209,7 @@ mod tests {
         }) = pssm.score(seq)
         {
             assert_eq!(*loc, 4);
-            assert_eq!(*sum, 1.0);
+            assert_relative_eq!(*sum, 1.0, epsilon = f32::EPSILON);
         } else {
             assert!(false);
         }
@@ -222,7 +222,7 @@ mod tests {
             DNAMotif::from_seqs(vec![b"AAAA".to_vec()].as_ref(), Some(&[0.0, 0.0, 0.0, 0.0]))
                 .unwrap();
         // 4 bases * 2 bits per base = 8
-        assert_eq!(pssm.info_content(), 8.0);
+        assert_relative_eq!(pssm.info_content(), 8.0, epsilon = f32::EPSILON);
     }
 
     #[test]
@@ -243,5 +243,51 @@ mod tests {
             ),
             Err(Error::InconsistentLen)
         );
+    }
+
+    #[test]
+    fn test_degenerate_consensus_same_bases() {
+        let pssm: DNAMotif = DNAMotif::from_seqs(
+            vec![b"ATGC".to_vec(), b"ATGC".to_vec()].as_ref(),
+            Some(&[0., 0., 0., 0.]),
+        )
+        .unwrap();
+        assert_eq!(pssm.degenerate_consensus(), b"ATGC".to_vec());
+    }
+
+    #[test]
+    fn test_degenerate_consensus_two_bases() {
+        let pssm: DNAMotif = DNAMotif::from_seqs(
+            vec![b"AAACCG".to_vec(), b"CGTGTT".to_vec()].as_ref(),
+            Some(&[0., 0., 0., 0.]),
+        )
+        .unwrap();
+        assert_eq!(pssm.degenerate_consensus(), b"MRWSYK".to_vec());
+    }
+
+    #[test]
+    fn test_degenerate_consensus_three_bases() {
+        let pssm: DNAMotif = DNAMotif::from_seqs(
+            vec![b"AAAC".to_vec(), b"CCGG".to_vec(), b"GTTT".to_vec()].as_ref(),
+            Some(&[0., 0., 0., 0.]),
+        )
+        .unwrap();
+        assert_eq!(pssm.degenerate_consensus(), b"VHDB".to_vec());
+    }
+
+    #[test]
+    fn test_degenerate_consensus_n() {
+        let pssm: DNAMotif = DNAMotif::from_seqs(
+            vec![
+                b"AAAA".to_vec(),
+                b"GGGG".to_vec(),
+                b"CCCC".to_vec(),
+                b"TTTT".to_vec(),
+            ]
+            .as_ref(),
+            None,
+        )
+        .unwrap();
+        assert_eq!(pssm.degenerate_consensus(), b"NNNN".to_vec());
     }
 }

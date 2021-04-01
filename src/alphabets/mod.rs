@@ -152,6 +152,60 @@ impl Alphabet {
     pub fn is_empty(&self) -> bool {
         self.symbols.is_empty()
     }
+
+    /// Return a new alphabet taking the intersect between this and other.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::alphabets;
+    ///
+    /// let alpha_a = alphabets::Alphabet::new(b"acgtACGT");
+    /// let alpha_b = alphabets::Alphabet::new(b"atcgMVP");
+    /// let intersect_alpha = alpha_a.intersection(&alpha_b);
+    ///
+    /// assert_eq!(intersect_alpha, alphabets::Alphabet::new(b"atcg"));
+    /// ```
+    pub fn intersection(&self, other: &Alphabet) -> Self {
+        return Alphabet {
+            symbols: self.symbols.intersection(&other.symbols).collect(),
+        };
+    }
+
+    /// Return a new alphabet taking the difference between this and other.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::alphabets;
+    ///
+    /// let dna_alphabet = alphabets::Alphabet::new(b"acgtACGT");
+    /// let dna_alphabet_upper = alphabets::Alphabet::new(b"ACGT");
+    /// let dna_lower = dna_alphabet.difference(&dna_alphabet_upper);
+    ///
+    /// assert_eq!(dna_lower, alphabets::Alphabet::new(b"atcg"));
+    /// ```
+    pub fn difference(&self, other: &Alphabet) -> Self {
+        return Alphabet {
+            symbols: self.symbols.difference(&other.symbols).collect(),
+        };
+    }
+
+    /// Return a new alphabet taking the union between this and other.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::alphabets;
+    ///
+    /// let dna_alphabet = alphabets::Alphabet::new(b"ATCG");
+    /// let tokenize_alpha = alphabets::Alphabet::new(b"?|");
+    /// let alpha = dna_alphabet.union(&tokenize_alpha);
+    ///
+    /// assert_eq!(alpha, alphabets::Alphabet::new(b"ATCG?|"));
+    /// ```
+    pub fn union(&self, other: &Alphabet) -> Self {
+        return Alphabet {
+            symbols: self.symbols.union(&other.symbols).collect(),
+        };
+    }
 }
 
 /// Tools based on transforming the alphabet symbols to their lexicographical ranks.
@@ -372,6 +426,16 @@ where
             None => None,
         }
     }
+}
+
+/// Returns the english ascii lower case alphabet.
+pub fn english_ascii_lower_alphabet() -> Alphabet {
+    Alphabet::new(&b"abcdefghijklmnopqrstuvwxyz"[..])
+}
+
+/// Returns the english ascii upper case alphabet.
+pub fn english_ascii_upper_alphabet() -> Alphabet {
+    Alphabet::new(&b"ABCDEFGHIJKLMNOPQRSTUVWXYZ"[..])
 }
 
 #[cfg(test)]
