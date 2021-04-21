@@ -361,7 +361,25 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 
     /// Fetch an interval from the sequence with the given name for reading.
-    /// (stop position is exclusive).
+    ///
+    /// `start` and `stop` are 0-based and `stop` is exclusive - i.e. `[start, stop)`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use bio::io::fasta::IndexedReader;
+    ///
+    /// // indexed FASTA file
+    /// let path = std::path::PathBuf::from("in.fa");
+    /// let mut faidx = IndexedReader::from_file(&path).expect("Couldn't open FASTA index");
+    /// faidx.fetch("chrom1", 5, 10).expect("Couldn't fetch interval");
+    /// let mut seq: Vec<u8> = vec![];
+    /// faidx.read(&mut seq);
+    /// ```
+    ///
+    /// # Errors
+    /// If the `seq_name` does not exist within the index.
+    ///
     pub fn fetch(&mut self, seq_name: &str, start: u64, stop: u64) -> io::Result<()> {
         let idx = self.idx(seq_name)?;
         self.start = Some(start);
