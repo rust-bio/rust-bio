@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# unreleased
+- Improved documentation for FASTA index (@mbhall88)
+
 # [0.33.0] - 2021-03-09
 - Fixed a floating point error in gcn_content (@tedil).
 - Improved error messages in io module (@fxwiegand).

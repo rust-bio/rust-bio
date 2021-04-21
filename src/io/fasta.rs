@@ -107,22 +107,25 @@
 //! Random access to FASTA files is facilitated by [`Index`] and [`IndexedReader`]. The FASTA files
 //! must already be indexed with [`samtools faidx`](https://www.htslib.org/doc/faidx.html).
 //!
-//! In this example, we read in the first 20 bases of the sequence named "chr1".
+//! In this example, we read in the first 10 bases of the sequence named "chr1".
 //!
 //! ```rust
 //! use bio::io::fasta::IndexedReader;
+//! // create dummy files
+//! const FASTA_FILE: &[u8] = b">chr1\nGTAGGCTGAAAA\nCCCC";
+//! const FAI_FILE: &[u8] = b"chr1\t16\t6\t12\t13";
 //!
 //! let seq_name = "chr1";
 //! let start: u64 = 0;  // start is 0-based, inclusive
-//! let stop: u64 = 20;  // stop is 0-based, exclusive
-//! let path = std::path::PathBuf::from("in.fa");  // in.fa.fai must exist
+//! let stop: u64 = 10;  // stop is 0-based, exclusive
 //! // load the index
-//! let mut faidx = IndexedReader::from_file(&path).expect("Couldn't open FASTA index");
+//! let mut faidx = IndexedReader::new(std::io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
 //! // move the pointer in the index to the desired sequence and interval
 //! faidx.fetch(seq_name, start, stop).expect("Couldn't fetch interval");
 //! // read the subsequence defined by the interval into a vector
-//! let mut seq: Vec<u8> = vec![];
-//! faidx.read(&mut seq);
+//! let mut seq = Vec::new();
+//! faidx.read(&mut seq).expect("Couldn't read the interval");
+//! assert_eq!(seq, b"GTAGGCTGAA");
 //! ```
 //!
 
@@ -392,13 +395,21 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     ///
     /// ```rust
     /// use bio::io::fasta::IndexedReader;
+    /// // create dummy files
+    /// const FASTA_FILE: &[u8] = b">chr1\nGTAGGCTGAAAA\nCCCC";
+    /// const FAI_FILE: &[u8] = b"chr1\t16\t6\t12\t13";
     ///
-    /// // indexed FASTA file
-    /// let path = std::path::PathBuf::from("in.fa");
-    /// let mut faidx = IndexedReader::from_file(&path).expect("Couldn't open FASTA index");
-    /// faidx.fetch("chrom1", 5, 10).expect("Couldn't fetch interval");
-    /// let mut seq: Vec<u8> = vec![];
-    /// faidx.read(&mut seq);
+    /// let seq_name = "chr1";
+    /// let start: u64 = 0;  // start is 0-based, inclusive
+    /// let stop: u64 = 10;  // stop is 0-based, exclusive
+    /// // load the index
+    /// let mut faidx = IndexedReader::new(std::io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
+    /// // move the pointer in the index to the desired sequence and interval
+    /// faidx.fetch(seq_name, start, stop).expect("Couldn't fetch interval");
+    /// // read the subsequence defined by the interval into a vector
+    /// let mut seq = Vec::new();
+    /// faidx.read(&mut seq).expect("Couldn't read the interval");
+    /// assert_eq!(seq, b"GTAGGCTGAA");
     /// ```
     ///
     /// # Errors
@@ -420,13 +431,21 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     ///
     /// ```rust
     /// use bio::io::fasta::IndexedReader;
+    /// // create dummy files
+    /// const FASTA_FILE: &[u8] = b">chr1\nGTAGGCTGAAAA\nCCCC";
+    /// const FAI_FILE: &[u8] = b"chr1\t16\t6\t12\t13";
     ///
-    /// // indexed FASTA file
-    /// let path = std::path::PathBuf::from("in.fa");
-    /// let mut faidx = IndexedReader::from_file(&path).expect("Couldn't open FASTA index");
-    /// faidx.fetch_by_rid(0, 5, 10).expect("Couldn't fetch interval");
-    /// let mut seq: Vec<u8> = vec![];
-    /// faidx.read(&mut seq);
+    /// let rid: usize = 0;
+    /// let start: u64 = 0;  // start is 0-based, inclusive
+    /// let stop: u64 = 10;  // stop is 0-based, exclusive
+    /// // load the index
+    /// let mut faidx = IndexedReader::new(std::io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
+    /// // move the pointer in the index to the desired sequence and interval
+    /// faidx.fetch_by_rid(rid, start, stop).expect("Couldn't fetch interval");
+    /// // read the subsequence defined by the interval into a vector
+    /// let mut seq = Vec::new();
+    /// faidx.read(&mut seq).expect("Couldn't read the interval");
+    /// assert_eq!(seq, b"GTAGGCTGAA");
     /// ```
     ///
     /// # Errors
