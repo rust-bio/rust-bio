@@ -101,6 +101,30 @@
 //!     }
 //! }
 //! ```
+//!
+//! ## Index
+//!
+//! Random access to FASTA files is facilitated by [`Index`] and [`IndexedReader`]. The FASTA files
+//! must already be indexed with [`samtools faidx`](https://www.htslib.org/doc/faidx.html).
+//!
+//! In this example, we read in the first 20 bases of the sequence named "chr1".
+//!
+//! ```rust
+//! use bio::io::fasta::IndexedReader;
+//!
+//! let seq_name = "chr1";
+//! let start: u64 = 0;  // start is 0-based, inclusive
+//! let stop: u64 = 20;  // stop is 0-based, exclusive
+//! let path = std::path::PathBuf::from("in.fa");  // in.fa.fai must exist
+//! // load the index
+//! let mut faidx = IndexedReader::from_file(&path).expect("Couldn't open FASTA index");
+//! // move the pointer in the index to the desired sequence and interval
+//! faidx.fetch(seq_name, start, stop).expect("Couldn't fetch interval");
+//! // read the subsequence defined by the interval into a vector
+//! let mut seq: Vec<u8> = vec![];
+//! faidx.read(&mut seq);
+//! ```
+//!
 
 use std::cmp::min;
 use std::collections;
