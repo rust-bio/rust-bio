@@ -343,6 +343,27 @@ impl LogProb {
         LogProb(*Self::ln_sum_exp(&probs) + width.ln() - ((n - 1) as f64).ln() - 3.0f64.ln())
     }
 
+    /// Integrate numerically stable over given log-space density and grid points. Uses the trapezoidal rule.
+    pub fn ln_trapezoidal_integrate_grid_exp<T, D>(mut density: D, grid: &[T]) -> LogProb
+    where
+        T: Copy + Add<Output = T> + Sub<Output = T> + Div<Output = T> + Mul<Output = T> + Float,
+        D: FnMut(usize, T) -> LogProb,
+        f64: From<T>,
+    {
+        let probs = grid
+            .iter()
+            .enumerate()
+            .dropping(1)
+            .map(|(i, v)| {
+                LogProb(
+                    *(density(i - 1, grid[i - 1]).ln_add_exp(density(i, *v))) - 2.0f64.ln()
+                        + f64::from(*v - grid[i - 1]).ln(),
+                )
+            })
+            .collect_vec();
+        LogProb::ln_sum_exp(&probs)
+    }
+
     fn scan_ln_add_exp(s: &mut LogProb, p: LogProb) -> Option<LogProb> {
         *s = s.ln_add_exp(p);
         Some(*s)
