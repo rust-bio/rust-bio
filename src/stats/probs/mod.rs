@@ -545,6 +545,14 @@ mod tests {
     }
 
     #[test]
+    fn test_trapezoidal_integrate_grid() {
+        let grid: Vec<_> = linspace(0.0, 10.0, 5).collect();
+        let density = |_, _| LogProb(0.1f64.ln());
+        let prob = LogProb::ln_trapezoidal_integrate_grid_exp(density, &grid);
+        assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon = 0.0000001);
+    }
+
+    #[test]
     fn test_simpsons_integrate() {
         let density = |_, _| LogProb(0.1f64.ln());
         let prob = LogProb::ln_simpsons_integrate_exp(density, 0.0, 10.0, 5);
