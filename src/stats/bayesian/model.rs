@@ -5,8 +5,9 @@
 
 //! A trait system for Bayesian statistical modelling.
 
-use std::cmp::Ord;
-use std::collections::BTreeMap;
+use std::cmp::Eq;
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::marker::PhantomData;
 
 use itertools::Itertools;
@@ -14,7 +15,7 @@ use ordered_float::NotNan;
 
 use crate::stats::LogProb;
 
-pub type JointProbUniverse<Event> = BTreeMap<Event, LogProb>;
+pub type JointProbUniverse<Event> = HashMap<Event, LogProb>;
 
 /// Likelihood model.
 pub trait Likelihood<Payload = ()> {
@@ -75,8 +76,8 @@ where
 impl<Event, PosteriorEvent, Data, L, Pr, Po, Payload> Model<L, Pr, Po, Payload>
 where
     Payload: Default,
-    Event: Ord + Clone,
-    PosteriorEvent: Ord + Clone,
+    Event: Hash + Eq + Clone,
+    PosteriorEvent: Hash + Eq + Clone,
     L: Likelihood<Payload, Event = Event, Data = Data>,
     Pr: Prior<Event = Event>,
     Po: Posterior<BaseEvent = Event, Event = PosteriorEvent, Data = Data>,
@@ -102,7 +103,7 @@ where
         universe: U,
         data: &Data,
     ) -> ModelInstance<Event, PosteriorEvent> {
-        let mut joint_probs = BTreeMap::new();
+        let mut joint_probs = HashMap::new();
         let mut payload = Payload::default();
         let (posterior_probs, marginal) = {
             let mut joint_prob = |event: &Event, data: &Data| {
@@ -111,7 +112,7 @@ where
                 p
             };
 
-            let posterior_probs: BTreeMap<PosteriorEvent, LogProb> = universe
+            let posterior_probs: HashMap<PosteriorEvent, LogProb> = universe
                 .into_iter()
                 .map(|event| {
                     let p = self.posterior.compute(&event, data, &mut joint_prob);
@@ -135,18 +136,18 @@ where
 /// From the instance, posterior, marginal and MAP can be computed.
 pub struct ModelInstance<Event, PosteriorEvent>
 where
-    Event: Ord,
-    PosteriorEvent: Ord,
+    Event: Hash + Eq,
+    PosteriorEvent: Hash + Eq,
 {
-    joint_probs: BTreeMap<Event, LogProb>,
-    posterior_probs: BTreeMap<PosteriorEvent, LogProb>,
+    joint_probs: HashMap<Event, LogProb>,
+    posterior_probs: HashMap<PosteriorEvent, LogProb>,
     marginal: LogProb,
 }
 
 impl<Event, PosteriorEvent> ModelInstance<Event, PosteriorEvent>
 where
-    Event: Ord,
-    PosteriorEvent: Ord,
+    Event: Hash + Eq,
+    PosteriorEvent: Hash + Eq,
 {
     /// Posterior probability of given event.
     pub fn posterior(&self, event: &PosteriorEvent) -> Option<LogProb> {
@@ -169,7 +170,7 @@ where
 
 impl<PosteriorEvent> ModelInstance<NotNan<f64>, PosteriorEvent>
 where
-    PosteriorEvent: Ord,
+    PosteriorEvent: Hash + Eq,
 {
     pub fn expected_value(&self) -> NotNan<f64> {
         self.joint_probs
