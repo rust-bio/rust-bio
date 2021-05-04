@@ -11,8 +11,7 @@
 //! * Lee, Christopher. "Generating consensus sequences from partial order multiple sequence
 //! alignment graphs." Bioinformatics 19.8 (2003): 999-1008.
 //!
-//! For a modern reference implementation, see poapy:
-//! https://github.com/ljdursi/poapy
+//! For a modern reference implementation, see [poapy](https://github.com/ljdursi/poapy)
 //!
 //! # Example
 //!

@@ -18,8 +18,9 @@ pub type BWTSlice = [u8];
 pub type Less = Vec<usize>;
 pub type BWTFind = Vec<usize>;
 
-/// Calculate Burrows-Wheeler-Transform of the given text of length n.
-/// Complexity: O(n).
+/// Calculate Burrows-Wheeler-Transform of the given text of length $n$.
+///
+/// Complexity: $O(n)$.
 ///
 /// # Arguments
 ///
@@ -49,7 +50,7 @@ pub fn bwt(text: &[u8], pos: RawSuffixArraySlice) -> BWT {
 }
 
 /// Calculate the inverse of a BWT of length n, which is the original text.
-/// Complexity: O(n).
+/// Complexity: $O(n)$.
 ///
 /// This only works if the last sentinel in the original text is unique
 /// and lexicographically the smallest.
@@ -81,8 +82,10 @@ pub struct Occ {
 
 impl Occ {
     /// Calculate occ array with sampling from BWT of length n.
-    /// Time complexity: O(n).
-    /// Space complexity: O(n / k * A) with A being the alphabet size.
+    ///
+    /// - Time complexity: $O(n)$.
+    /// - Space complexity: $O(\dfrac{n}{k \cdot A}$ with $A$ being the alphabet size.
+    ///
     /// Alphabet size is determined on the fly from the BWT.
     /// For large texts, it is therefore advisable to transform
     /// the text before calculating the BWT (see alphabets::rank_transform).
@@ -109,8 +112,9 @@ impl Occ {
         Occ { occ, k }
     }
 
-    /// Get occurrence count of symbol a in BWT[..r+1].
-    /// Complexity: O(k).
+    /// Get occurrence count of symbol a in `BWT[..r+1]`.
+    ///
+    /// Complexity: $O(k)$.
     pub fn get(&self, bwt: &BWTSlice, r: usize, a: u8) -> usize {
         // NOTE:
         //
@@ -130,14 +134,14 @@ impl Occ {
         //    than the iterator adapter version.
         // 2) Manually accumulating the byte match count in a single chunk can allows
         //    us to use a `u32` for that count, which has faster arithmetic on common arches.
-        //    This does necessitate storing `k` as a u32.
+        //    This does necessitate storing `k` as a `u32`.
         //
         // See the conversation in these issues for some of the history here:
         //
         // https://github.com/rust-bio/rust-bio/pull/74
         // https://github.com/rust-bio/rust-bio/pull/76
 
-        // self.k is our sampling rate, so find the checkpoints either side of r.
+        // `self.k` is our sampling rate, so find the checkpoints either side of `r`.
         let lo_checkpoint = r / self.k as usize;
         // Get the occurences at the low checkpoint
         let lo_occ = self.occ[lo_checkpoint][a as usize];
@@ -170,7 +174,7 @@ impl Occ {
     }
 }
 
-/// Calculate the less array for a given BWT. Complexity O(n).
+/// Calculate the less array for a given BWT. Complexity $O(n)$.
 pub fn less(bwt: &BWTSlice, alphabet: &Alphabet) -> Less {
     let m = alphabet
         .max_symbol()
@@ -186,7 +190,7 @@ pub fn less(bwt: &BWTSlice, alphabet: &Alphabet) -> Less {
     less
 }
 
-/// Calculate the bwtfind array needed for inverting the BWT. Complexity O(n).
+/// Calculate the bwtfind array needed for inverting the BWT. Complexity $O(n)$.
 pub fn bwtfind(bwt: &BWTSlice, alphabet: &Alphabet) -> BWTFind {
     let n = bwt.len();
     let mut less = less(bwt, alphabet);

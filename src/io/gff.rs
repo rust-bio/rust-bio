@@ -43,9 +43,9 @@ use bio_types::strand::Strand;
 /// For each type we have key value separator and field separator
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GffType {
-    /// Attribute format is: key1=value; key2=value1,value2
+    /// Attribute format is: `key1=value; key2=value1,value2`
     GFF3,
-    /// Attribute format is: key1 value; key2 value1; key2 value2
+    /// Attribute format is: `key1 value; key2 value1; key2 value2`
     GFF2,
     /// Same as GFF2 just possible keyword and possible value change
     GTF2,

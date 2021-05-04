@@ -5,7 +5,7 @@
 
 //! One-way open reading frame (ORF) finder algorithm.
 //!
-//! Complexity: O(n).
+//! Complexity: $O(n)$.
 //!
 //! # Example
 //!

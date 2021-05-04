@@ -4,8 +4,11 @@
 // except according to those terms.
 
 //! Backward nondeterministic DAWG matching (BNDM).
-//! Best-case complexity: O(n / m) with pattern of length m <= 64 and text of length n.
-//! Worst case complexity: O(n * m).
+//!
+//! # Complexity
+//!
+//! - Best-case complexity: $O\left(\dfrac{n}{m}\right)$ with pattern of length $m \le 64$ and text of length $n$.
+//! - Worst case complexity: $O(nm)$.
 //!
 //! # Example
 //!

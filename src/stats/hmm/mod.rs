@@ -183,8 +183,8 @@ impl Iterator for StateTransitionIter {
 
 /// A trait for Hidden Markov Models (HMM) with generic `Observation` type.
 ///
-/// Rabiner (1989) defines a Hidden Markov Model λ as the tiple (*A*, *B*, π) of transition matrix
-/// *A*, emission probabilities *B*, and initial state distribution π.  This has been generalized
+/// Rabiner (1989) defines a Hidden Markov Model $\lambda$ as the tiple ($A$, $B$, $\pi$) of transition matrix
+/// $A$, emission probabilities $B$, and initial state distribution $\pi$.  This has been generalized
 /// in `Model` such that you implement `transition_prob()`, `observation_prob()`, and
 /// `initial_prob()` (and the other methods; implementation of `transition_prob_idx()` can
 /// optionally be implemented and your implementation of `transition_prob()` can then panic).

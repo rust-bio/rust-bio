@@ -6,7 +6,7 @@
 //! Myers bit-parallel approximate pattern matching algorithm.
 //! Finds all matches up to a given edit distance. The pattern has to fit into a bitvector,
 //! and is thus limited to 64 or (since stable Rust version 1.26) to 128 symbols.
-//! Complexity: O(n)
+//! Complexity: $O(n)$
 //!
 //! Traceback allows obtaining the starting position and the alignment path of the hit.
 //! Its implementation is somehow similar to the one by Edlib (Šošić and Šikić 2017),
@@ -15,12 +15,6 @@
 //! and deletions to the pattern (query) over substitutions
 //! (Insertion > Deletion > Substitution) while our implementation prefers substitutions
 //! (Substitution > Insertion > Deletion).
-//!
-//! *Myers, G. (1999). A fast bit-vector algorithm for approximate string matching based on dynamic
-//!  programming. Journal of the ACM (JACM) 46, 395–415.*
-//!
-//! *Šošić, M., and Šikić, M. (2017). Edlib: a C/C ++ library for fast, exact sequence alignment
-//! using edit distance. Bioinformatics 33, 1394–1395.*
 //!
 //! # Example
 //!
@@ -227,6 +221,13 @@
 //! ```
 //!
 //! For more examples see the documentation of [`MyersBuilder`](struct.MyersBuilder.html).
+//!
+//! # References
+//!
+//! - Myers, G. (1999). *A fast bit-vector algorithm for approximate string matching based on dynamic
+//!  programming.* Journal of the ACM (JACM) **46**, 395–415.
+//! - Šošić, M., and Šikić, M. (2017). *Edlib: a C/C ++ library for fast, exact sequence alignment
+//! using edit distance.* Bioinformatics **33**, 1394–1395.
 
 #[macro_use]
 mod myers_impl;

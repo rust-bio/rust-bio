@@ -4,7 +4,7 @@
 // except according to those terms.
 
 //! Calculate alignments with a generalized variant of the Smith Waterman algorithm.
-//! Complexity: O(n * m) for strings of length m and n.
+//! Complexity: $O(nm)$ for strings of length $m$ and $n$.
 //!
 //! For quick computation of alignments and alignment scores there are 6 simple functions.
 //!

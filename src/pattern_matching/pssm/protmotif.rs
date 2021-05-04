@@ -24,7 +24,7 @@ impl ProtMotif {
     /// # Arguments
     /// * `seqs` - sequences incorporated into motif
     /// * `pseudos` - array slice with a pseudocount for each monomer;
-    ///    defaults to pssm::DEF_PSEUDO for all if None is supplied
+    ///    defaults to `pssm::DEF_PSEUDO` for all if None is supplied
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently impossible - see
@@ -63,7 +63,7 @@ impl ProtMotif {
         // FIXME: iter ...
         self.min_score = 0.0;
         for i in 0..pssm_len {
-            // can't use the regular min/max on f32, so we use f32::min
+            // can't use the regular `min/max` on `f32`, so we use `f32::min`
             let min_sc = (0..20)
                 .map(|b| self.scores[[i, b]])
                 .fold(INFINITY, f32::min);

@@ -4,7 +4,7 @@
 // except according to those terms.
 
 //! Rank/Select data structure based on Gonzalez, Grabowski, Mäkinen, Navarro (2005).
-//! This implementation uses only a single level of blocks, and performs well for large n.
+//! This implementation uses only a single level of blocks, and performs well for large $n$.
 //!
 //! Example
 //!
@@ -49,12 +49,12 @@ impl RankSelect {
     /// # Arguments
     ///
     /// * `bits` - A bit vector.
-    /// * `k` - Determines the size (k * 32 bits) of the superblocks.
-    ///   A small k means faster rank query times at the expense of using more
+    /// * `k` - Determines the size (`k * 32` bits) of the superblocks.
+    ///   A small `k` means faster rank query times at the expense of using more
     ///   space and slower select query times.
-    ///   The data structure needs O(n + n log n / (k * 32)) bits with n being the bits of the given bitvector.
-    ///   The data structure is succinct if k is chosen as a sublinear function of n
-    ///   (e.g. k = (log n)² / 32).
+    ///   The data structure needs $n + \dfrac{n\log n}{32k}$ bits with $n$ being the bits of the given bitvector.
+    ///   The data structure is succinct if `k` is chosen as a sublinear function of $n$
+    ///   (e.g. $k = \dfrac{(\log n)^2}{32}$).
     pub fn new(bits: BitVec<u8>, k: usize) -> RankSelect {
         let n = bits.len() as usize;
         let s = k * 32;
@@ -69,7 +69,7 @@ impl RankSelect {
         }
     }
 
-    /// Return the used k (see `RankSelect::new()`).
+    /// Return the used `k` (see `RankSelect::new()`).
     pub fn k(&self) -> usize {
         self.k
     }
@@ -79,13 +79,13 @@ impl RankSelect {
         &self.bits
     }
 
-    /// Return i-th bit.
+    /// Return `i`-th bit.
     pub fn get(&self, i: u64) -> bool {
         self.bits.get_bit(i)
     }
 
-    /// Get the 1-rank of a given bit, i.e. the number of 1-bits in the bitvector up to i (inclusive).
-    /// Complexity: O(k).
+    /// Get the 1-rank of a given bit, i.e. the number of 1-bits in the bitvector up to `i` (inclusive).
+    /// Complexity: $O(k)$.
     ///
     /// # Arguments
     ///
@@ -113,8 +113,9 @@ impl RankSelect {
         }
     }
 
-    /// Get the 0-rank of a given bit, i.e. the number of 0-bits in the bitvector up to i (inclusive).
-    /// Complexity: O(k).
+    /// Get the 0-rank of a given bit, i.e. the number of 0-bits in the bitvector up to `i` (inclusive).
+    ///
+    /// Complexity: $O(k)$.
     ///
     /// # Arguments
     ///
@@ -129,7 +130,7 @@ impl RankSelect {
     }
 
     /// Get the smallest bit with a given 1-rank.
-    /// Complexity: O(log (n / k) + k).
+    /// Complexity: $O\left(\log\left(\dfrac{n}{k}\right) + k\right)$
     ///
     /// # Arguments
     ///
@@ -144,7 +145,8 @@ impl RankSelect {
     }
 
     /// Get the smallest bit with a given 0-rank.
-    /// Complexity: O(log (n / k) + k).
+    ///
+    /// Complexity: $O\left(\log\left(\dfrac{n}{k}\right) + k\right)$
     ///
     /// # Arguments
     ///

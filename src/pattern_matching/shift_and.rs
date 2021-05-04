@@ -5,7 +5,7 @@
 
 //! `ShiftAnd` algorithm for pattern matching.
 //! Patterns may contain at most 64 symbols.
-//! Complexity: O(n) with text length n.
+//! Complexity: $O(n)$ with text length $n$.
 //!
 //! # Example
 //!

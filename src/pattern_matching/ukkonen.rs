@@ -4,13 +4,14 @@
 // except according to those terms.
 
 //! Bounded version of Ukkonens DP algorithm for approximate pattern matching.
-//! Complexity: O(n * k) on random texts.
 //!
-//! The algorithm finds all matches of a pattern in a text with up to k errors.
+//! Complexity: $O(nk)$ on random texts.
+//!
+//! The algorithm finds all matches of a pattern in a text with up to $k$ errors.
 //! Idea is to use dynamic programming to column-wise explore the edit matrix, but to omit
-//! parts of the matrix for which the error exceeds k. To achieve this, a value `lastk` is
+//! parts of the matrix for which the error exceeds $k$. To achieve this, a value `lastk` is
 //! maintained that provides the lower feasible boundary of the matrix.
-//! Initially, lastk = min(k, m). In each iteration (over a column), lastk can increase by at most 1.
+//! Initially, lastk = $\min(k, m)$. In each iteration (over a column), lastk can increase by at most 1.
 //!
 //! # Example
 //!

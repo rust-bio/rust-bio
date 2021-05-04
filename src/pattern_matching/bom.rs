@@ -4,8 +4,8 @@
 // except according to those terms.
 
 //! Backward oracle matching algorithm.
-//! Best-case complexity: O(n / m) with pattern of length m and text of length n.
-//! Worst case complexity: O(n * m).
+//! Best-case complexity: $O\left(\dfrac{n}{m}\right)$ with pattern of length $m$ and text of length $n$.
+//! Worst case complexity: $O(nm)$.
 //!
 //! # Example
 //!
