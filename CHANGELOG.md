@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# [0.34.0] - 2021-05-04
+- Bayesian model framework now relies on Hash instead of Ord for accessing events (@johanneskoester).
+- Added wavelet matrix datastructure (@Identi, @tedil).
+
 # [0.33.0] - 2021-03-09
 - Fixed a floating point error in gcn_content (@tedil).
 - Improved error messages in io module (@fxwiegand).
