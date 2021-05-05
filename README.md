@@ -55,37 +55,6 @@ For extra credit, feel free to familiarize yourself with:
 * the Rust [documentation conventions](https://rust-lang.github.io/rfcs/1574-more-api-documentation-conventions.html#appendix-a-full-conventions-text)
 * the Rust [API documentation guidelines](https://rust-lang.github.io/api-guidelines/documentation.html)
 
-### Contributors
-
-Main author:
-* [Johannes Köster](https://github.com/johanneskoester)
-
-Other contributors:
-* [Christopher Schröder](https://github.com/christopher-schroeder)
-* [Peer Aramillo Irizar](https://github.com/parir)
-* [Fedor Gusev](https://github.com/gusevfe)
-* [Vadim Nazarov](https://github.com/vadimnazarov)
-* [Brad Chapman](https://github.com/chapmanb)
-* [Florian Gilcher](https://github.com/skade)
-* [Erik Clarke](https://github.com/eclarke)
-* [Rizky Luthfianto](https://github.com/rilut)
-* [Adam Perry](https://github.com/dikaiosune)
-* [Taylor Cramer](https://github.com/cramertj)
-* [Andre Bogus](https://github.com/llogiq)
-* [Martin Larralde](https://github.com/althonos)
-* Philipp Angerer
-* [Pierre Marijon](https://github.com/natir)
-* [Franklin Delehelle](https://github.com/delehef)
-* [Marcin Fatyga](https://github.com/rednum)
-* [Patrick Marks](https://github.com/pmarks)
-* [Henning Timm](https://github.com/HenningTimm)
-* [Kieran Hervold](https://github.com/hervold)
-* [Brett Bowman](https://github.com/bnbowman)
-* [Jeff Knaggs](https://github.com/jeff-k)
-* [David Lähnemann](https://github.com/dlaehnemann)
-* [Till Hartmann](https://github.com/tedil)
-* [Michael Hall](https://github.com/mbhall88)
-
 ## License
 
 Licensed under the MIT license http://opensource.org/licenses/MIT. This project may not be copied, modified, or distributed except according to those terms.
