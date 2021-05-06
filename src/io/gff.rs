@@ -5,7 +5,8 @@
 
 //! [GFF3] format reading and writing. [GFF2] is currently not supported.
 //!
-//! [GFF2]: http://gmod.org/wiki/GFF2
+//! [GFF2]: http://gmod.org/wiki/GFF2 (not supported)
+//! [GTF2]: http://mblab.wustl.edu/GTF2.html (not supported)
 //! [GFF3]: http://gmod.org/wiki/GFF3#GFF3_Format
 //!
 //! # Example
