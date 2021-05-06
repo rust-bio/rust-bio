@@ -101,6 +101,33 @@
 //!     }
 //! }
 //! ```
+//!
+//! ## Index
+//!
+//! Random access to FASTA files is facilitated by [`Index`] and [`IndexedReader`]. The FASTA files
+//! must already be indexed with [`samtools faidx`](https://www.htslib.org/doc/faidx.html).
+//!
+//! In this example, we read in the first 10 bases of the sequence named "chr1".
+//!
+//! ```rust
+//! use bio::io::fasta::IndexedReader;
+//! // create dummy files
+//! const FASTA_FILE: &[u8] = b">chr1\nGTAGGCTGAAAA\nCCCC";
+//! const FAI_FILE: &[u8] = b"chr1\t16\t6\t12\t13";
+//!
+//! let seq_name = "chr1";
+//! let start: u64 = 0;  // start is 0-based, inclusive
+//! let stop: u64 = 10;  // stop is 0-based, exclusive
+//! // load the index
+//! let mut faidx = IndexedReader::new(std::io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
+//! // move the pointer in the index to the desired sequence and interval
+//! faidx.fetch(seq_name, start, stop).expect("Couldn't fetch interval");
+//! // read the subsequence defined by the interval into a vector
+//! let mut seq = Vec::new();
+//! faidx.read(&mut seq).expect("Couldn't read the interval");
+//! assert_eq!(seq, b"GTAGGCTGAA");
+//! ```
+//!
 
 use std::cmp::min;
 use std::collections;
@@ -361,7 +388,33 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 
     /// Fetch an interval from the sequence with the given name for reading.
-    /// (stop position is exclusive).
+    ///
+    /// `start` and `stop` are 0-based and `stop` is exclusive - i.e. `[start, stop)`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use bio::io::fasta::IndexedReader;
+    /// // create dummy files
+    /// const FASTA_FILE: &[u8] = b">chr1\nGTAGGCTGAAAA\nCCCC";
+    /// const FAI_FILE: &[u8] = b"chr1\t16\t6\t12\t13";
+    ///
+    /// let seq_name = "chr1";
+    /// let start: u64 = 0;  // start is 0-based, inclusive
+    /// let stop: u64 = 10;  // stop is 0-based, exclusive
+    /// // load the index
+    /// let mut faidx = IndexedReader::new(std::io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
+    /// // move the pointer in the index to the desired sequence and interval
+    /// faidx.fetch(seq_name, start, stop).expect("Couldn't fetch interval");
+    /// // read the subsequence defined by the interval into a vector
+    /// let mut seq = Vec::new();
+    /// faidx.read(&mut seq).expect("Couldn't read the interval");
+    /// assert_eq!(seq, b"GTAGGCTGAA");
+    /// ```
+    ///
+    /// # Errors
+    /// If the `seq_name` does not exist within the index.
+    ///
     pub fn fetch(&mut self, seq_name: &str, start: u64, stop: u64) -> io::Result<()> {
         let idx = self.idx(seq_name)?;
         self.start = Some(start);
@@ -371,7 +424,33 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 
     /// Fetch an interval from the sequence with the given record index for reading.
-    /// (stop position is exclusive).
+    ///
+    /// `start` and `stop` are 0-based and `stop` is exclusive - i.e. `[start, stop)`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use bio::io::fasta::IndexedReader;
+    /// // create dummy files
+    /// const FASTA_FILE: &[u8] = b">chr1\nGTAGGCTGAAAA\nCCCC";
+    /// const FAI_FILE: &[u8] = b"chr1\t16\t6\t12\t13";
+    ///
+    /// let rid: usize = 0;
+    /// let start: u64 = 0;  // start is 0-based, inclusive
+    /// let stop: u64 = 10;  // stop is 0-based, exclusive
+    /// // load the index
+    /// let mut faidx = IndexedReader::new(std::io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
+    /// // move the pointer in the index to the desired sequence and interval
+    /// faidx.fetch_by_rid(rid, start, stop).expect("Couldn't fetch interval");
+    /// // read the subsequence defined by the interval into a vector
+    /// let mut seq = Vec::new();
+    /// faidx.read(&mut seq).expect("Couldn't read the interval");
+    /// assert_eq!(seq, b"GTAGGCTGAA");
+    /// ```
+    ///
+    /// # Errors
+    /// If `rid` does not exist within the index.
+    ///
     pub fn fetch_by_rid(&mut self, rid: usize, start: u64, stop: u64) -> io::Result<()> {
         let idx = self.idx_by_rid(rid)?;
         self.start = Some(start);

@@ -3,11 +3,11 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! GFF3 format reading and writing.
+//! [GFF3] format reading and writing. [GFF2] is currently not supported.
 //!
-//! GFF2 definition : http://gmod.org/wiki/GFF2#The_GFF2_File_Format (not yet support)
-//! GTF2 definition : http://mblab.wustl.edu/GTF2.html (not yet support)
-//! GFF3 definition : http://gmod.org/wiki/GFF3#GFF3_Format
+//! [GFF2]: http://gmod.org/wiki/GFF2 (not supported)
+//! [GTF2]: http://mblab.wustl.edu/GTF2.html (not supported)
+//! [GFF3]: http://gmod.org/wiki/GFF3#GFF3_Format
 //!
 //! # Example
 //!
