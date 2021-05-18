@@ -154,7 +154,7 @@ pub fn get_type<R: io::Read + io::Seek>(reader: &mut R) -> Result<FastxType, io:
         _ => {
             let msg = format!("first character was '{}' which is not a valid first character for a fastq or fasta file", first[0]);
             Err(io::Error::new(io::ErrorKind::InvalidData, msg))
-        },
+        }
     }
 }
 
