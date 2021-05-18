@@ -164,6 +164,22 @@ impl<R: io::Read> Reader<R> {
         }
     }
 
+    /// Create a new Fastq reader given a capacity and an instance of `io::Read`.
+    pub fn with_capacity(capacity: usize, reader: R) -> Self {
+        Reader {
+            reader: io::BufReader::with_capacity(capacity, reader),
+            line_buffer: String::new(),
+        }
+    }
+
+    /// Create a new Fasta reader given a `io::BufReader`.
+    pub fn from_bufreader(bufreader: io::BufReader<R>) -> Self {
+        Reader {
+            reader: bufreader,
+            line_buffer: String::new(),
+        }
+    }
+
     /// Return an iterator over the records of this FastQ file.
     ///
     /// # Errors
@@ -499,6 +515,11 @@ impl Writer<fs::File> {
     pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::create(path).map(Writer::new)
     }
+
+    /// Write to the given file path and a buffer capacity
+    pub fn to_file_with_capacity<P: AsRef<Path>>(capacity: usize, path: P) -> io::Result<Self> {
+        fs::File::create(path).map(|file| Writer::with_capacity(capacity, file))
+    }
 }
 
 impl<W: io::Write> Writer<W> {
@@ -507,6 +528,18 @@ impl<W: io::Write> Writer<W> {
         Writer {
             writer: io::BufWriter::new(writer),
         }
+    }
+
+    /// Create a new Fastq writer with a capacity of write buffer
+    pub fn with_capacity(capacity: usize, writer: W) -> Self {
+        Writer {
+            writer: io::BufWriter::with_capacity(capacity, writer),
+        }
+    }
+
+    /// Create a new Fastq writer with a given BufWriter
+    pub fn from_bufwriter(bufwriter: io::BufWriter<W>) -> Self {
+        Writer { writer: bufwriter }
     }
 
     /// Directly write a FastQ record.
@@ -558,6 +591,30 @@ IIIIIIJJJJJJ
     #[test]
     fn test_reader() {
         let reader = Reader::new(FASTQ_FILE);
+        let records: Vec<Result<Record>> = reader.records().collect();
+        assert_eq!(records.len(), 1);
+        for res in records {
+            let record = res.unwrap();
+            assert_eq!(record.check(), Ok(()));
+            assert_eq!(record.id(), "id");
+            assert_eq!(record.desc(), Some("desc"));
+            assert_eq!(record.seq(), b"ACCGTAGGCTGA");
+            assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
+        }
+
+        let reader = Reader::with_capacity(100, FASTQ_FILE);
+        let records: Vec<Result<Record>> = reader.records().collect();
+        assert_eq!(records.len(), 1);
+        for res in records {
+            let record = res.unwrap();
+            assert_eq!(record.check(), Ok(()));
+            assert_eq!(record.id(), "id");
+            assert_eq!(record.desc(), Some("desc"));
+            assert_eq!(record.seq(), b"ACCGTAGGCTGA");
+            assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
+        }
+
+        let reader = Reader::from_bufreader(io::BufReader::new(FASTQ_FILE));
         let records: Vec<Result<Record>> = reader.records().collect();
         assert_eq!(records.len(), 1);
         for res in records {
@@ -627,6 +684,20 @@ IIIIIIJJJJJJ
     #[test]
     fn test_writer() {
         let mut writer = Writer::new(Vec::new());
+        writer
+            .write("id", Some("desc"), b"ACCGTAGGCTGA", b"IIIIIIJJJJJJ")
+            .expect("Expected successful write");
+        writer.flush().expect("Expected successful write");
+        assert_eq!(writer.writer.get_ref(), &FASTQ_FILE);
+
+        let mut writer = Writer::with_capacity(100, Vec::new());
+        writer
+            .write("id", Some("desc"), b"ACCGTAGGCTGA", b"IIIIIIJJJJJJ")
+            .expect("Expected successful write");
+        writer.flush().expect("Expected successful write");
+        assert_eq!(writer.writer.get_ref(), &FASTQ_FILE);
+
+        let mut writer = Writer::from_bufwriter(std::io::BufWriter::with_capacity(100, Vec::new()));
         writer
             .write("id", Some("desc"), b"ACCGTAGGCTGA", b"IIIIIIJJJJJJ")
             .expect("Expected successful write");
