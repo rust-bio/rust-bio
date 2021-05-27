@@ -805,15 +805,13 @@ mod tests {
 
                 assert!(
                     cur <= next,
-                    format!(
-                        "Failed:\n{}\n{}\nat positions {} and {} are out of order in \
+                    "Failed:\n{}\n{}\nat positions {} and {} are out of order in \
                          test: {}",
-                        cur,
-                        next,
-                        pos[i],
-                        pos[i + 1],
-                        test_name
-                    )
+                    cur,
+                    next,
+                    pos[i],
+                    pos[i + 1],
+                    test_name
                 );
             }
         }
