@@ -85,55 +85,44 @@ use std::io::SeekFrom;
 
 use crate::utils::TextSlice;
 
+macro_rules! passthrough {
+    ($name:ident, $t:ty) => {
+        fn $name(&self) -> $t {
+            self.$name()
+        }
+    };
+}
+
 pub trait Record {
     fn is_empty(&self) -> bool;
     fn check(&self) -> Result<(), &str>;
     fn id(&self) -> &str;
     fn desc(&self) -> Option<&str>;
     fn seq(&self) -> TextSlice<'_>;
+    fn qual(&self) -> Option<&[u8]>;
 }
 
 impl Record for super::fasta::Record {
-    fn is_empty(&self) -> bool {
-        self.is_empty()
-    }
+    passthrough!(is_empty, bool);
+    passthrough!(check, Result<(), &str>);
+    passthrough!(id, &str);
+    passthrough!(desc, Option<&str>);
+    passthrough!(seq, TextSlice<'_>);
 
-    fn check(&self) -> Result<(), &str> {
-        self.check()
-    }
-
-    fn id(&self) -> &str {
-        self.id()
-    }
-
-    fn desc(&self) -> Option<&str> {
-        self.desc()
-    }
-
-    fn seq(&self) -> TextSlice<'_> {
-        self.seq()
+    fn qual(&self) -> Option<&[u8]> {
+        None
     }
 }
 
 impl Record for super::fastq::Record {
-    fn is_empty(&self) -> bool {
-        self.is_empty()
-    }
+    passthrough!(is_empty, bool);
+    passthrough!(check, Result<(), &str>);
+    passthrough!(id, &str);
+    passthrough!(desc, Option<&str>);
+    passthrough!(seq, TextSlice<'_>);
 
-    fn check(&self) -> Result<(), &str> {
-        self.check()
-    }
-
-    fn id(&self) -> &str {
-        self.id()
-    }
-
-    fn desc(&self) -> Option<&str> {
-        self.desc()
-    }
-
-    fn seq(&self) -> TextSlice<'_> {
-        self.seq()
+    fn qual(&self) -> Option<&[u8]> {
+        Some(self.qual())
     }
 }
 
