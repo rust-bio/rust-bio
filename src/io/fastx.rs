@@ -99,7 +99,6 @@ pub trait Record {
     fn id(&self) -> &str;
     fn desc(&self) -> Option<&str>;
     fn seq(&self) -> TextSlice<'_>;
-    fn qual(&self) -> Option<&[u8]>;
 }
 
 impl Record for super::fasta::Record {
@@ -108,10 +107,6 @@ impl Record for super::fasta::Record {
     passthrough!(id, &str);
     passthrough!(desc, Option<&str>);
     passthrough!(seq, TextSlice<'_>);
-
-    fn qual(&self) -> Option<&[u8]> {
-        None
-    }
 }
 
 impl Record for super::fastq::Record {
@@ -120,10 +115,6 @@ impl Record for super::fastq::Record {
     passthrough!(id, &str);
     passthrough!(desc, Option<&str>);
     passthrough!(seq, TextSlice<'_>);
-
-    fn qual(&self) -> Option<&[u8]> {
-        Some(self.qual())
-    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
