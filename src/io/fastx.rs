@@ -82,13 +82,26 @@
 //!
 use std::io;
 use std::io::SeekFrom;
+use std::io::prelude::*;
 
+use crate::io::{fasta, fastq};
 use crate::utils::TextSlice;
 
 macro_rules! passthrough {
     ($name:ident, $t:ty) => {
         fn $name(&self) -> $t {
             self.$name()
+        }
+    };
+}
+
+macro_rules! matchthrough {
+    ($name:ident, $t:ty) => {
+        fn $name(&self) -> $t {
+            match self {
+                EitherRecord::FASTA(f) => f.$name(),
+                EitherRecord::FASTQ(f) => f.$name(),
+            }
         }
     };
 }
@@ -115,6 +128,75 @@ impl Record for super::fastq::Record {
     passthrough!(id, &str);
     passthrough!(desc, Option<&str>);
     passthrough!(seq, TextSlice<'_>);
+}
+
+pub enum EitherRecord {
+    FASTA(fasta::Record),
+    FASTQ(fastq::Record),
+}
+
+impl From<fasta::Record> for EitherRecord {
+    fn from(record: fasta::Record) -> Self {
+       EitherRecord::FASTA(record) 
+    }
+}
+
+impl From<fastq::Record> for EitherRecord {
+    fn from(record: fastq::Record) -> Self {
+       EitherRecord::FASTQ(record) 
+    }
+}
+
+impl Record for EitherRecord {
+    matchthrough!(is_empty, bool);
+    matchthrough!(check, Result<(), &str>);
+    matchthrough!(id, &str);
+    matchthrough!(desc, Option<&str>);
+    matchthrough!(seq, TextSlice<'_>);
+}
+
+enum EitherRecords<R: io::Read> {
+    FASTA(fasta::Records<R>),
+    FASTQ(fastq::Records<R>),
+}
+
+pub struct Records<R: io::Read> {
+    records: EitherRecords<R>,
+}
+
+impl<R: io::Read> Iterator for Records<R> {
+    type Item = io::Result<EitherRecord>;
+    fn next(&mut self) -> Option<Self::Item> {
+       match &mut self.records {
+           EitherRecords::FASTA(r) => r
+               .next()
+               .map(|record_res| record_res.map(EitherRecord::from)),
+           EitherRecords::FASTQ(r) => r
+               .next()
+               .map(|record_res| record_res
+                    .map(EitherRecord::from)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e)),
+                )
+       }
+    }
+}
+
+impl<R: io::Read> From<R> for Records<R> {
+    fn from(reader: R) -> Self {
+        let mut reader: io::BufReader<R> = io::BufReader::new(reader);
+        let mut line = String::new();
+        // TODO: lazy errors
+        reader.read_line(&mut line).unwrap();
+        let records = if line.starts_with('>') {
+            EitherRecords::FASTA(fasta::Reader::new_with_line(reader, line).records())
+        } else if line.starts_with('@') {
+            EitherRecords::FASTQ(fastq::Reader::new_with_line_buffer(reader, line).records())
+        } else {
+            // TODO: lazy errors
+            panic!()
+        };
+        Records { records }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -172,6 +254,14 @@ ACCGTAGGCTGA
 +
 IIIIIIJJJJJJ
 ";
+    #[test]
+    fn gest_fasta_records() {
+        let reader = Cursor::new(FASTA_FILE);
+        let mut records = Records::from(reader);
+        assert_eq!(records.next().unwrap().unwrap().id(), "id");
+        assert_eq!(records.next().unwrap().unwrap().id(), "id2");
+        assert!(records.next().is_none());
+    }
 
     #[test]
     fn test_get_type_fasta() {

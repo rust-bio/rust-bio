@@ -212,6 +212,10 @@ impl<R: io::Read> Reader<R> {
             error_has_occured: false,
         }
     }
+
+    pub(crate) fn new_with_line(reader: io::BufReader<R>, line: String) -> Self {
+        Reader { reader, line }
+    }
 }
 
 impl<R> FastaRead for Reader<R>
