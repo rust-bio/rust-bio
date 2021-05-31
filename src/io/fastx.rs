@@ -88,6 +88,54 @@
 //! }
 //! ```
 //!
+//! # Unknown file type examples
+//!
+//! ## Type Detection
+//!
+//! This module provides utilities for detecting if some data is a FASTA/FASTQ.
+//!
+//!
+//! ```
+//! use bio::io::fastx::{get_kind, get_kind_seek, get_kind_file, FastxKind};
+//! use std::io;
+//! use std::io::Read;
+//! use std::fs::File;
+//! use std::io::prelude::*;
+//!
+//! // From a Read
+//! 
+//! let reader = io::stdin();
+//! let mut get_kind_res = get_kind(reader);
+//!
+//! assert!(matches!(get_kind_res.as_ref().err().unwrap().kind(), io::ErrorKind::UnexpectedEof));
+//!
+//! if let Ok((mut new_reader, kind)) = get_kind_res {
+//!     println!("{}", kind);
+//!     // Read from start of your old reader
+//!     let mut buf = [0u8; 8];
+//!     new_reader.read(&mut buf);
+//! }
+//!
+//!
+//! // From a Read + Seek
+//!
+//! let mut read_seek = io::Cursor::new(b">id desc
+//! ACTG
+//! ");
+//!
+//! assert!(matches!(get_kind_seek(&mut read_seek).unwrap(), FastxKind::Fasta));
+//!
+//! // From a file path
+//!
+//! {
+//!     let mut file = File::create("foo.fasta").unwrap();
+//!     file.write_all(b">id desc
+//! ACTG").unwrap();
+//! }
+//!
+//! assert!(matches!(get_kind_file("foo.fasta").unwrap(), FastxKind::Fasta));
+//! ```
+//!
 use std::convert::AsRef;
 use std::fs;
 use std::io::SeekFrom;
