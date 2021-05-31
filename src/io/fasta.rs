@@ -937,6 +937,7 @@ impl fmt::Display for Record {
 }
 
 /// An iterator over the records of a Fasta file.
+#[derive(Debug)]
 pub struct Records<R: io::Read> {
     reader: Reader<R>,
     error_has_occured: bool,

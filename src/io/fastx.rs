@@ -119,7 +119,6 @@
 //!
 //! This module provides utilities for detecting if some data is a FASTA/FASTQ.
 //!
-//!
 //! ```
 //! use bio::io::fastx::{get_kind, get_kind_seek, get_kind_file, FastxKind};
 //! use std::io;
@@ -159,6 +158,7 @@
 //! ```
 //!
 use std::convert::AsRef;
+use anyhow::Context;
 use std::fs;
 use std::io::SeekFrom;
 use std::io::prelude::*;
@@ -290,17 +290,32 @@ impl Record for EitherRecord {
     matchthrough!(kind, FastxKind);
 }
 
+#[derive(Debug)]
 enum EitherRecords<R: io::Read> {
     FASTA(fasta::Records<R>),
     FASTQ(fastq::Records<R>),
 }
 
+#[derive(Debug)]
 pub struct Records<R: io::Read> {
     records: Option<EitherRecords<R>>,
     reader: Option<R>,
 }
 
+impl Records<fs::File> {
+    /// Read from a given file.
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
+        fs::File::open(path.as_ref())
+            .map(Records::from)
+            .with_context(|| format!("Failed to read fastq from {:#?}", path))
+    }
+}
+
 impl <R: io::Read> Records<R> {
+    pub fn new(reader: R) -> Self {
+        Records::from(reader)
+    }
+
     pub fn kind(&mut self) -> io::Result<FastxKind> {
         self.initialize()?;
         match self.records {
