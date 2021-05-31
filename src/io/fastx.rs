@@ -83,6 +83,7 @@
 use std::io;
 use std::io::SeekFrom;
 use std::io::prelude::*;
+use std::mem;
 
 use crate::io::{fasta, fastq};
 use crate::utils::TextSlice;
@@ -161,41 +162,49 @@ enum EitherRecords<R: io::Read> {
 }
 
 pub struct Records<R: io::Read> {
-    records: EitherRecords<R>,
+    // This isn't as type safe as I'd like it to be
+    records: Option<EitherRecords<R>>,
+    reader: Option<R>,
 }
 
 impl<R: io::Read> Iterator for Records<R> {
     type Item = io::Result<EitherRecord>;
     fn next(&mut self) -> Option<Self::Item> {
-       match &mut self.records {
-           EitherRecords::FASTA(r) => r
-               .next()
-               .map(|record_res| record_res.map(EitherRecord::from)),
-           EitherRecords::FASTQ(r) => r
-               .next()
-               .map(|record_res| record_res
-                    .map(EitherRecord::from)
-                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e)),
-                )
-       }
+        if let Some(reader) = mem::replace(&mut self.reader, None) {
+            let mut reader: io::BufReader<R> = io::BufReader::new(reader);
+            let mut line = String::new();
+            if let Err(e) = reader.read_line(&mut line) {
+                return Some(Err(e));
+            }
+            if line.starts_with('>') {
+                self.records = Some(EitherRecords::FASTA(fasta::Reader::new_with_line(reader, line).records()));
+            } else if line.starts_with('@') {
+                self.records = Some(EitherRecords::FASTQ(fastq::Reader::new_with_line_buffer(reader, line).records()));
+            } else if line.is_empty() {
+                return None;
+            } else {
+                let c = line.chars().next().unwrap();
+                return Some(Err(io::Error::new(io::ErrorKind::InvalidData, format!("File is not a valid FASTA/FASTQ, illegal start character '{}'", c))));
+            };
+        }
+        match &mut self.records {
+            Some(EitherRecords::FASTA(r)) => r
+                .next()
+                .map(|record_res| record_res.map(EitherRecord::from)),
+            Some(EitherRecords::FASTQ(r)) => r
+                .next()
+                .map(|record_res| record_res
+                     .map(EitherRecord::from)
+                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e)),
+                 ),
+             None => None,
+        }
     }
 }
 
 impl<R: io::Read> From<R> for Records<R> {
     fn from(reader: R) -> Self {
-        let mut reader: io::BufReader<R> = io::BufReader::new(reader);
-        let mut line = String::new();
-        // TODO: lazy errors
-        reader.read_line(&mut line).unwrap();
-        let records = if line.starts_with('>') {
-            EitherRecords::FASTA(fasta::Reader::new_with_line(reader, line).records())
-        } else if line.starts_with('@') {
-            EitherRecords::FASTQ(fastq::Reader::new_with_line_buffer(reader, line).records())
-        } else {
-            // TODO: lazy errors
-            panic!()
-        };
-        Records { records }
+        Records { records: None, reader: Some(reader) }
     }
 }
 
@@ -255,11 +264,30 @@ ACCGTAGGCTGA
 IIIIIIJJJJJJ
 ";
     #[test]
-    fn gest_fasta_records() {
+    fn get_fasta_records() {
         let reader = Cursor::new(FASTA_FILE);
         let mut records = Records::from(reader);
         assert_eq!(records.next().unwrap().unwrap().id(), "id");
         assert_eq!(records.next().unwrap().unwrap().id(), "id2");
+        assert!(records.next().is_none());
+        assert!(records.next().is_none());
+    }
+
+    #[test]
+    fn get_empty_records() {
+        let reader = Cursor::new("");
+        let mut records = Records::from(reader);
+        assert!(records.next().is_none());
+        // this second check is intentional
+        assert!(records.next().is_none());
+    }
+
+    #[test]
+    fn get_invalid_records() {
+        let reader = Cursor::new("(");
+        let mut records = Records::from(reader);
+        assert!(records.next().unwrap().is_err());
+        // this second check is intentional
         assert!(records.next().is_none());
     }
 
