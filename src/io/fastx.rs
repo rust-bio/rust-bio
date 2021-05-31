@@ -192,10 +192,7 @@ impl<R: io::Read> Iterator for Records<R> {
                 .map(|record_res| record_res.map(EitherRecord::from)),
             Some(EitherRecords::FASTQ(r)) => r
                 .next()
-                .map(|record_res| record_res
-                     .map(EitherRecord::from)
-                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e)),
-                 ),
+                .map(|record_res| record_res.map(EitherRecord::from)),
              None => None,
         }
     }
