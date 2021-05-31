@@ -242,6 +242,31 @@ pub enum EitherRecord {
     FASTQ(fastq::Record),
 }
 
+impl EitherRecord {
+    pub fn to_fasta(self) -> fasta::Record {
+        return self.into()
+    }
+
+    pub fn to_fastq(self, default_qual: u8) -> fastq::Record {
+        match self {
+            EitherRecord::FASTQ(f) => f,
+            EitherRecord::FASTA(f) => {
+                let qual = &vec![default_qual; f.seq().len()];
+                fastq::Record::with_attrs(f.id(), f.desc(), f.seq(), qual)
+            }
+        }
+    }
+}
+
+impl Into<fasta::Record> for EitherRecord {
+    fn into(self) -> fasta::Record {
+        match self {
+            EitherRecord::FASTA(f) => f,
+            EitherRecord::FASTQ(f) => fasta::Record::with_attrs(f.id(), f.desc(), f.seq()),
+        }
+    }
+}
+
 impl From<fasta::Record> for EitherRecord {
     fn from(record: fasta::Record) -> Self {
        EitherRecord::FASTA(record) 
@@ -282,7 +307,6 @@ pub struct Records<R: io::Read> {
 }
 
 impl <R: io::Read> Records<R> {
-
     pub fn kind(&mut self) -> io::Result<FastxKind> {
         self.initialize()?;
         match self.records {
