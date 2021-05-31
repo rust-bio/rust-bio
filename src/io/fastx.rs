@@ -36,13 +36,13 @@
 //! ACTG
 //! ");
 //!
-//! match fastx::get_type(&mut raw_reader) {
-//!     Ok(fastx::FastxType::Fasta) => {
+//! match fastx::get_kind(&mut raw_reader) {
+//!     Ok(fastx::FastxKind::Fasta) => {
 //!         let mut reader = fasta::Reader::new(raw_reader);
 //!         let nb_bases = count_bases(reader.records()).unwrap();
 //!         println!("Number of bases: {}", nb_bases);
 //!     },
-//!     Ok(fastx::FastxType::Fastq) => {
+//!     Ok(fastx::FastxKind::Fastq) => {
 //!         let mut reader = fastq::Reader::new(raw_reader);
 //!         let nb_bases = count_bases(reader.records()).unwrap();
 //!         println!("Number of bases: {}", nb_bases);
@@ -80,10 +80,13 @@
 //! }
 //! ```
 //!
-use std::io;
+use std::convert::AsRef;
+use std::fs;
 use std::io::SeekFrom;
 use std::io::prelude::*;
+use std::io;
 use std::mem;
+use std::path::Path;
 
 use crate::io::{fasta, fastq};
 use crate::utils::TextSlice;
@@ -113,6 +116,8 @@ pub trait Record {
     fn id(&self) -> &str;
     fn desc(&self) -> Option<&str>;
     fn seq(&self) -> TextSlice<'_>;
+    fn qual(&self) -> Option<&[u8]>;
+    fn kind(&self) -> FastxKind;
 }
 
 impl Record for super::fasta::Record {
@@ -121,6 +126,15 @@ impl Record for super::fasta::Record {
     passthrough!(id, &str);
     passthrough!(desc, Option<&str>);
     passthrough!(seq, TextSlice<'_>);
+
+    fn qual(&self) -> Option<&[u8]> {
+        None
+    }
+
+    fn kind(&self) -> FastxKind {
+        FastxKind::Fasta
+    }
+
 }
 
 impl Record for super::fastq::Record {
@@ -129,6 +143,14 @@ impl Record for super::fastq::Record {
     passthrough!(id, &str);
     passthrough!(desc, Option<&str>);
     passthrough!(seq, TextSlice<'_>);
+
+    fn qual(&self) -> Option<&[u8]> {
+        Some(self.qual())
+    }
+
+    fn kind(&self) -> FastxKind {
+        FastxKind::Fastq
+    }
 }
 
 pub enum EitherRecord {
@@ -154,6 +176,15 @@ impl Record for EitherRecord {
     matchthrough!(id, &str);
     matchthrough!(desc, Option<&str>);
     matchthrough!(seq, TextSlice<'_>);
+
+    fn qual(&self) -> Option<&[u8]> {
+        match &self {
+            EitherRecord::FASTA(f) => Record::qual(f),
+            EitherRecord::FASTQ(f) => Record::qual(f),
+        }
+    }
+
+    matchthrough!(kind, FastxKind);
 }
 
 enum EitherRecords<R: io::Read> {
@@ -205,33 +236,53 @@ impl<R: io::Read> From<R> for Records<R> {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum FastxType {
+pub enum FastxKind {
     Fastq,
     Fasta,
 }
 
-pub fn get_type<R: io::Read + io::Seek>(reader: &mut R) -> Result<FastxType, io::Error> {
-    let mut first = [0];
-    reader.read_exact(&mut first)?;
-    reader.seek(SeekFrom::Current(-1))?;
+pub fn get_kind<R: io::Read>(mut reader: R) -> Result<(impl io::Read, FastxKind), io::Error> {
+    let mut buf = [0];
+    reader.read_exact(&mut buf)?;
+    let first = char::from(buf[0]);
+    let new_reader = io::Cursor::new(buf).chain(reader);
 
-    match first[0] as char {
-        '>' => Ok(FastxType::Fasta),
-        '@' => Ok(FastxType::Fastq),
-        _ => {
-            let msg = format!("first character was '{}' which is not a valid first character for a fastq or fasta file", first[0]);
-            Err(io::Error::new(io::ErrorKind::InvalidData, msg))
-        }
+    match first {
+        '>' => Ok((new_reader, FastxKind::Fasta)),
+        '@' => Ok((new_reader, FastxKind::Fastq)),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("first character was '{}' which is not a valid first character for a fastq or fasta file", first),
+        )),
     }
 }
 
-impl std::fmt::Display for FastxType {
+pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> Result<FastxKind, io::Error> {
+    let mut buf = [0];
+    reader.read_exact(&mut buf)?;
+    reader.seek(SeekFrom::Current(-1))?;
+    let first = char::from(buf[0]);
+
+    match first {
+        '>' => Ok(FastxKind::Fasta),
+        '@' => Ok(FastxKind::Fastq),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("first character was '{}' which is not a valid first character for a fastq or fasta file", first),
+        )),
+    }
+}
+
+pub fn get_kind_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> Result<FastxKind, io::Error> {
+    fs::File::open(&path).and_then(|mut f| get_kind_seek(&mut f))
+}
+
+impl std::fmt::Display for FastxKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            FastxType::Fasta => "fasta",
-            FastxType::Fastq => "fastq",
-        };
-        write!(f, "{}", s)
+        write!(f, "{}", match self {
+            FastxKind::Fasta => "fasta",
+            FastxKind::Fastq => "fastq",
+        })
     }
 }
 
@@ -288,32 +339,32 @@ IIIIIIJJJJJJ
     }
 
     #[test]
-    fn test_get_type_fasta() {
+    fn test_get_kind_fasta() {
         let mut read_seeker = Cursor::new(FASTA_FILE);
-        let fastx_type = get_type(&mut read_seeker).unwrap();
-        assert_eq!(FastxType::Fasta, fastx_type);
+        let fastx_kind = get_kind_seek(&mut read_seeker).unwrap();
+        assert_eq!(FastxKind::Fasta, fastx_kind);
         assert_eq!(read_seeker.position(), 0);
     }
 
     #[test]
-    fn test_get_type_fastq() {
+    fn test_get_kind_fastq() {
         let mut read_seeker = Cursor::new(FASTQ_FILE);
-        let fastq_type = get_type(&mut read_seeker).unwrap();
-        assert_eq!(FastxType::Fastq, fastq_type);
+        let fastq_kind = get_kind_seek(&mut read_seeker).unwrap();
+        assert_eq!(FastxKind::Fastq, fastq_kind);
         assert_eq!(read_seeker.position(), 0);
     }
 
     #[test]
-    fn test_get_type_empty() {
+    fn test_get_kind_empty() {
         let mut read_seeker = Cursor::new(b"");
-        let e = get_type(&mut read_seeker).unwrap_err();
+        let e = get_kind_seek(&mut read_seeker).unwrap_err();
         assert_eq!(io::ErrorKind::UnexpectedEof, e.kind());
     }
 
     #[test]
-    fn test_get_type_invalid() {
+    fn test_get_kind_invalid() {
         let mut read_seeker = Cursor::new(b"*");
-        let e = get_type(&mut read_seeker).unwrap_err();
+        let e = get_kind_seek(&mut read_seeker).unwrap_err();
         assert_eq!(io::ErrorKind::InvalidData, e.kind());
     }
 }
