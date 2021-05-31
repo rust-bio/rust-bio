@@ -124,6 +124,7 @@
 //! use bio::io::fastx::{get_kind, get_kind_seek, get_kind_file, FastxKind};
 //! use std::io;
 //! use std::io::Read;
+//! use std::fs;
 //! use std::fs::File;
 //! use std::io::prelude::*;
 //!
@@ -159,6 +160,8 @@
 //! }
 //!
 //! assert!(matches!(get_kind_file("foo.fasta").unwrap(), FastxKind::FASTA));
+//!
+//! fs::remove_file("foo.fasta").unwrap();
 //! ```
 //!
 use std::convert::AsRef;
