@@ -362,6 +362,28 @@ pub enum FastxKind {
     FASTA,
 }
 
+/// Determine whether a [`Read`](#Read) is a FastA or FastQ.
+///
+/// This method takes ownership of the [`Read`](#Read) and returns
+/// a new [`Read`](#Read) with position identical to the position
+/// of the input [`Read`](#Read). This allows you to pass the
+/// returned [`Read`](#Read) directly into [`fasta::Reader::new`](#super::fasta::Reader::new) or [`fastq::Reader::new`](#super::fastq::Reader::new).
+///
+/// # Example
+///
+/// ```rust
+/// use bio::io::{fasta, fastq};
+/// use bio::io::fastx::{FastxKind, get_kind};
+/// use std::io;
+///
+/// fn count_records() -> io::Result<usize> {
+///     let (reader, kind) = get_kind(io::stdin())?;
+///     match kind {
+///         FastxKind::FASTA => Ok(fasta::Reader::new(reader).records().count()),
+///         FastxKind::FASTQ => Ok(fastq::Reader::new(reader).records().count()),
+///     }
+/// }
+/// ```
 pub fn get_kind<R: io::Read>(mut reader: R) -> Result<(impl io::Read, FastxKind), io::Error> {
     let mut buf = [0];
     reader.read_exact(&mut buf)?;
@@ -378,6 +400,11 @@ pub fn get_kind<R: io::Read>(mut reader: R) -> Result<(impl io::Read, FastxKind)
     }
 }
 
+/// Determine whether a [`Read`](#Read) + [`Seek`](#Seek) is a FastA or FastQ.
+///
+/// The benefit of this this function compared to [`get_kind`](#get_kind) is that
+/// this function does not take ownership of the [`Read`](#Read) so it can
+/// be slightly more convenient to use.
 pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> Result<FastxKind, io::Error> {
     let mut buf = [0];
     reader.read_exact(&mut buf)?;
@@ -394,6 +421,7 @@ pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> Result<FastxKind
     }
 }
 
+/// Determine whether a file is a FastA or FastQ.
 pub fn get_kind_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> Result<FastxKind, io::Error> {
     fs::File::open(&path).and_then(|mut f| get_kind_seek(&mut f))
 }
