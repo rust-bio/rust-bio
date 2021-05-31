@@ -45,12 +45,12 @@
 //! ");
 //!
 //! match fastx::get_kind_seek(&mut raw_reader) {
-//!     Ok(fastx::FastxKind::Fasta) => {
+//!     Ok(fastx::FastxKind::FASTA) => {
 //!         let mut reader = fasta::Reader::new(raw_reader);
 //!         let nb_bases = count_bases(reader.records()).unwrap();
 //!         println!("Number of bases: {}", nb_bases);
 //!     },
-//!     Ok(fastx::FastxKind::Fastq) => {
+//!     Ok(fastx::FastxKind::FASTQ) => {
 //!         let mut reader = fastq::Reader::new(raw_reader);
 //!         let nb_bases = count_bases(reader.records()).unwrap();
 //!         println!("Number of bases: {}", nb_bases);
@@ -87,8 +87,33 @@
 //!     writer.write_record(&record.unwrap());
 //! }
 //! ```
+//! # Unknown Type Examples
 //!
-//! # Unknown file type examples
+//! If the type of a record is not known at compile time the record is a `fastx::EitherRecord`.
+//! This type is an enum containing either a `fasta::Record` or a `fastq::Record`. There are also
+//! utility functions defined on the enum so you can work with it without detecting the type.
+//!
+//! ## Parsing data of unknown type
+//!
+//! ```
+//! use bio::io::fastx::{Record, Records};
+//! use std::io;
+//! use std::str;
+//!
+//! let mut records = Records::from(io::stdin());
+//! while let Some(Ok(record)) = records.next() {
+//!     println!("id  : {}", record.id());
+//!     println!("desc: {}", record.desc().unwrap_or("none"));
+//!     println!("seq : {}", str::from_utf8(record.seq()).unwrap_or("error"));
+//!     // Add a default quality in case we have a FASTA record
+//!     let default_qual = vec![b'I' ; record.seq().len()];
+//!     let qual = record.qual().unwrap_or(&default_qual);
+//!     println!("qual: {}", str::from_utf8(qual).unwrap_or("error"));
+//!     println!("")
+//! }
+//! ```
+//!
+//! # Utility Examples
 //!
 //! ## Type Detection
 //!
@@ -123,7 +148,7 @@
 //! ACTG
 //! ");
 //!
-//! assert!(matches!(get_kind_seek(&mut read_seek).unwrap(), FastxKind::Fasta));
+//! assert!(matches!(get_kind_seek(&mut read_seek).unwrap(), FastxKind::FASTA));
 //!
 //! // From a file path
 //!
@@ -133,7 +158,7 @@
 //! ACTG").unwrap();
 //! }
 //!
-//! assert!(matches!(get_kind_file("foo.fasta").unwrap(), FastxKind::Fasta));
+//! assert!(matches!(get_kind_file("foo.fasta").unwrap(), FastxKind::FASTA));
 //! ```
 //!
 use std::convert::AsRef;
@@ -188,7 +213,7 @@ impl Record for super::fasta::Record {
     }
 
     fn kind(&self) -> FastxKind {
-        FastxKind::Fasta
+        FastxKind::FASTA
     }
 
 }
@@ -205,7 +230,7 @@ impl Record for super::fastq::Record {
     }
 
     fn kind(&self) -> FastxKind {
-        FastxKind::Fastq
+        FastxKind::FASTQ
     }
 }
 
@@ -258,8 +283,8 @@ impl <R: io::Read> Records<R> {
     pub fn kind(&mut self) -> io::Result<FastxKind> {
         self.initialize()?;
         match self.records {
-            Some(EitherRecords::FASTA(_)) => Ok(FastxKind::Fasta),
-            Some(EitherRecords::FASTQ(_)) => Ok(FastxKind::Fastq),
+            Some(EitherRecords::FASTA(_)) => Ok(FastxKind::FASTA),
+            Some(EitherRecords::FASTQ(_)) => Ok(FastxKind::FASTQ),
             None => Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
                 "Data is empty",
@@ -312,8 +337,8 @@ impl<R: io::Read> From<R> for Records<R> {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum FastxKind {
-    Fastq,
-    Fasta,
+    FASTQ,
+    FASTA,
 }
 
 pub fn get_kind<R: io::Read>(mut reader: R) -> Result<(impl io::Read, FastxKind), io::Error> {
@@ -323,8 +348,8 @@ pub fn get_kind<R: io::Read>(mut reader: R) -> Result<(impl io::Read, FastxKind)
     let new_reader = io::Cursor::new(buf).chain(reader);
 
     match first {
-        '>' => Ok((new_reader, FastxKind::Fasta)),
-        '@' => Ok((new_reader, FastxKind::Fastq)),
+        '>' => Ok((new_reader, FastxKind::FASTA)),
+        '@' => Ok((new_reader, FastxKind::FASTQ)),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidData,
             format!("Data is not a valid FASTA/FASTQ, illegal start character '{}'", first),
@@ -339,8 +364,8 @@ pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> Result<FastxKind
     let first = char::from(buf[0]);
 
     match first {
-        '>' => Ok(FastxKind::Fasta),
-        '@' => Ok(FastxKind::Fastq),
+        '>' => Ok(FastxKind::FASTA),
+        '@' => Ok(FastxKind::FASTQ),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidData,
             format!("Data is not a valid FASTA/FASTQ, illegal start character '{}'", first),
@@ -355,8 +380,8 @@ pub fn get_kind_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> Result<FastxK
 impl std::fmt::Display for FastxKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", match self {
-            FastxKind::Fasta => "fasta",
-            FastxKind::Fastq => "fastq",
+            FastxKind::FASTA => "fasta",
+            FastxKind::FASTQ => "fastq",
         })
     }
 }
@@ -417,7 +442,7 @@ IIIIIIJJJJJJ
     fn test_get_kind_fasta() {
         let mut read_seeker = Cursor::new(FASTA_FILE);
         let fastx_kind = get_kind_seek(&mut read_seeker).unwrap();
-        assert_eq!(FastxKind::Fasta, fastx_kind);
+        assert_eq!(FastxKind::FASTA, fastx_kind);
         assert_eq!(read_seeker.position(), 0);
     }
 
@@ -425,7 +450,7 @@ IIIIIIJJJJJJ
     fn test_get_kind_fastq() {
         let mut read_seeker = Cursor::new(FASTQ_FILE);
         let fastq_kind = get_kind_seek(&mut read_seeker).unwrap();
-        assert_eq!(FastxKind::Fastq, fastq_kind);
+        assert_eq!(FastxKind::FASTQ, fastq_kind);
         assert_eq!(read_seeker.position(), 0);
     }
 
