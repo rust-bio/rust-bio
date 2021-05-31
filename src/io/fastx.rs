@@ -252,7 +252,7 @@ pub fn get_kind<R: io::Read>(mut reader: R) -> Result<(impl io::Read, FastxKind)
         '@' => Ok((new_reader, FastxKind::Fastq)),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("first character was '{}' which is not a valid first character for a fastq or fasta file", first),
+            format!("File is not a valid FASTA/FASTQ, illegal start character '{}'", first),
         )),
     }
 }
@@ -268,7 +268,7 @@ pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> Result<FastxKind
         '@' => Ok(FastxKind::Fastq),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("first character was '{}' which is not a valid first character for a fastq or fasta file", first),
+            format!("File is not a valid FASTA/FASTQ, illegal start character '{}'", first),
         )),
     }
 }
