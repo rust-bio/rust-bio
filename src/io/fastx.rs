@@ -176,15 +176,15 @@ impl<R: io::Read> Iterator for Records<R> {
             if let Err(e) = reader.read_line(&mut line) {
                 return Some(Err(e));
             }
-            if line.starts_with('>') {
+            let first = line.chars().next();
+            if let Some('>') = first {
                 self.records = Some(EitherRecords::FASTA(fasta::Reader::new_with_line(reader, line).records()));
-            } else if line.starts_with('@') {
+            } else if let Some('@') = first {
                 self.records = Some(EitherRecords::FASTQ(fastq::Reader::new_with_line_buffer(reader, line).records()));
-            } else if line.is_empty() {
-                return None;
-            } else {
-                let c = line.chars().next().unwrap();
+            } else if let Some(c) = first {
                 return Some(Err(io::Error::new(io::ErrorKind::InvalidData, format!("File is not a valid FASTA/FASTQ, illegal start character '{}'", c))));
+            } else {
+                return None;
             };
         }
         match &mut self.records {
