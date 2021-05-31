@@ -130,38 +130,32 @@
 //!
 //! // From a Read
 //! 
-//! let reader = io::stdin();
-//! let mut get_kind_res = get_kind(reader);
-//!
-//! assert!(matches!(get_kind_res.as_ref().err().unwrap().kind(), io::ErrorKind::UnexpectedEof));
-//!
-//! if let Ok((mut new_reader, kind)) = get_kind_res {
+//! fn from_read() -> io::Result<FastxKind> {
+//!     let reader = io::stdin();
+//!     let (mut new_reader, kind) = get_kind(reader)?;
 //!     println!("{}", kind);
 //!     // Read from start of your old reader
 //!     let mut buf = [0u8; 8];
-//!     new_reader.read(&mut buf);
+//!     new_reader.read(&mut buf)?;
+//!     Ok(kind)
 //! }
 //!
 //!
 //! // From a Read + Seek
 //!
-//! let mut read_seek = io::Cursor::new(b">id desc
+//! fn from_read_seek() -> io::Result<FastxKind> {
+//!     let mut read_seek = io::Cursor::new(b">id desc
 //! ACTG
 //! ");
 //!
-//! assert!(matches!(get_kind_seek(&mut read_seek).unwrap(), FastxKind::FASTA));
+//!     get_kind_seek(&mut read_seek)
+//! }
 //!
 //! // From a file path
 //!
-//! {
-//!     let mut file = File::create("foo.fasta").unwrap();
-//!     file.write_all(b">id desc
-//! ACTG").unwrap();
+//! fn from_file_path() -> io::Result<FastxKind> {
+//!     get_kind_file("foo.fasta")
 //! }
-//!
-//! assert!(matches!(get_kind_file("foo.fasta").unwrap(), FastxKind::FASTA));
-//!
-//! fs::remove_file("foo.fasta").unwrap();
 //! ```
 //!
 use std::convert::AsRef;
