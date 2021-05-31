@@ -9,7 +9,15 @@
 //! These utilities can be used to implement algorithms that only require these fields for files
 //! that are in either format.
 //!
-//! # Example
+//! This module serves two use cases:
+//!
+//! 1. Implementing functions that can be used generically with FASTA/FASTQ records. In this use
+//! case the type may be known at compile time by the caller of your function.
+//! 2. Processing data that may be either in the FASTA/FASTQ format. In this use case the type
+//! cannot be known at compile time and you may or may not want to treat FASTA/FASTQ data
+//! differently.
+//!
+//! # Generic Implementation Examples
 //!
 //! ## Common Statistics
 //!
@@ -36,7 +44,7 @@
 //! ACTG
 //! ");
 //!
-//! match fastx::get_kind(&mut raw_reader) {
+//! match fastx::get_kind_seek(&mut raw_reader) {
 //!     Ok(fastx::FastxKind::Fasta) => {
 //!         let mut reader = fasta::Reader::new(raw_reader);
 //!         let nb_bases = count_bases(reader.records()).unwrap();
@@ -53,10 +61,10 @@
 //!
 //! ## Filtration
 //!
-//! In this example, we define an at_least_n_bases function that can filter fasta or fastq
-//! records based on their sequence lengths. It works seemlessly with fasta records as if
-//! it was implemented just on fasta records. In a realistic scenario this function might be
-//! defined in a library so callers could use it with both fasta and fastq files as needed.
+//! In this example, we define an at_least_n_bases function that can filter FASTA or FASTQ
+//! records based on their sequence lengths. It works seemlessly with `fasta::Record`s as if
+//! it was implemented just for them. In a realistic scenario this function might be
+//! defined in a library so callers could use it with both FASTA and FASTQ files as needed.
 //!
 //! ```
 //! use bio::io::{fasta, fastq, fastx};
@@ -193,29 +201,48 @@ enum EitherRecords<R: io::Read> {
 }
 
 pub struct Records<R: io::Read> {
-    // This isn't as type safe as I'd like it to be
     records: Option<EitherRecords<R>>,
     reader: Option<R>,
+}
+
+impl <R: io::Read> Records<R> {
+
+    pub fn kind(&mut self) -> io::Result<FastxKind> {
+        self.initialize()?;
+        match self.records {
+            Some(EitherRecords::FASTA(_)) => Ok(FastxKind::Fasta),
+            Some(EitherRecords::FASTQ(_)) => Ok(FastxKind::Fastq),
+            None => Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "Data is empty",
+            )),
+        }
+    }
+
+    fn initialize(&mut self) -> io::Result<()> {
+        if let Some(reader) = mem::replace(&mut self.reader, None) {
+            let mut reader: io::BufReader<R> = io::BufReader::new(reader);
+            let mut line = String::new();
+            reader.read_line(&mut line)?;
+            match line.chars().next() {
+                Some('>') => self.records = Some(EitherRecords::FASTA(fasta::Reader::new_with_line(reader, line).records())),
+                Some('@') => self.records = Some(EitherRecords::FASTQ(fastq::Reader::new_with_line_buffer(reader, line).records())),
+                Some(c) => return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("Data is not a valid FASTA/FASTQ, illegal start character '{}'", c),
+                )),
+                None => (),
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<R: io::Read> Iterator for Records<R> {
     type Item = io::Result<EitherRecord>;
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(reader) = mem::replace(&mut self.reader, None) {
-            let mut reader: io::BufReader<R> = io::BufReader::new(reader);
-            let mut line = String::new();
-            if let Err(e) = reader.read_line(&mut line) {
-                return Some(Err(e));
-            }
-            match line.chars().next() {
-                Some('>') => self.records = Some(EitherRecords::FASTA(fasta::Reader::new_with_line(reader, line).records())),
-                Some('@') => self.records = Some(EitherRecords::FASTQ(fastq::Reader::new_with_line_buffer(reader, line).records())),
-                Some(c) => return Some(Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("File is not a valid FASTA/FASTQ, illegal start character '{}'", c),
-                ))),
-                None => return None,
-            }
+        if let Err(e) = self.initialize() {
+            return Some(Err(e));
         }
         match &mut self.records {
             Some(EitherRecords::FASTA(r)) => r
@@ -252,7 +279,7 @@ pub fn get_kind<R: io::Read>(mut reader: R) -> Result<(impl io::Read, FastxKind)
         '@' => Ok((new_reader, FastxKind::Fastq)),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("File is not a valid FASTA/FASTQ, illegal start character '{}'", first),
+            format!("Data is not a valid FASTA/FASTQ, illegal start character '{}'", first),
         )),
     }
 }
@@ -268,7 +295,7 @@ pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> Result<FastxKind
         '@' => Ok(FastxKind::Fastq),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("File is not a valid FASTA/FASTQ, illegal start character '{}'", first),
+            format!("Data is not a valid FASTA/FASTQ, illegal start character '{}'", first),
         )),
     }
 }
