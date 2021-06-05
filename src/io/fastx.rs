@@ -349,18 +349,24 @@ impl <R: io::Read> Records<R> {
 }
 
 impl<R: io::Read> Iterator for Records<R> {
-    type Item = io::Result<EitherRecord>;
+    type Item = Result<EitherRecord>;
     fn next(&mut self) -> Option<Self::Item> {
         if let Err(e) = self.initialize() {
-            return Some(Err(e));
+            return Some(Err(Error::IO(e)));
         }
         match &mut self.records {
             Some(EitherRecords::FASTA(r)) => r
                 .next()
-                .map(|record_res| record_res.map(EitherRecord::from)),
+                .map(|record_res| record_res
+                     .map(EitherRecord::from)
+                     .map_err(Error::from)
+                ),
             Some(EitherRecords::FASTQ(r)) => r
                 .next()
-                .map(|record_res| record_res.map(EitherRecord::from)),
+                .map(|record_res| record_res
+                     .map(EitherRecord::from)
+                     .map_err(Error::from)
+                ),
              None => None,
         }
     }
@@ -371,6 +377,26 @@ impl<R: io::Read> From<R> for Records<R> {
         Records { records: None, reader: Some(reader) }
     }
 }
+
+#[derive(Debug)]
+pub enum Error {
+    IO(io::Error),
+    FASTQ(fastq::Error),
+}
+
+impl From<io::Error> for Error {
+    fn from(err: io::Error) -> Self {
+       Error::IO(err) 
+    }
+}
+
+impl From<fastq::Error> for Error {
+    fn from(err: fastq::Error) -> Self {
+       Error::FASTQ(err) 
+    }
+}
+
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum FastxKind {
@@ -425,7 +451,7 @@ pub fn get_kind(mut reader: Box<dyn io::Read>) -> (Box<dyn io::Read>, io::Result
 /// The benefit of this this function compared to [`get_kind`](#get_kind) is that
 /// this function does not take ownership of the [`Read`](#Read) so it can
 /// be slightly more convenient to use.
-pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> Result<FastxKind, io::Error> {
+pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> io::Result<FastxKind> {
     let mut buf = [0];
     reader.read_exact(&mut buf)?;
     reader.seek(SeekFrom::Current(-1))?;
@@ -442,7 +468,7 @@ pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> Result<FastxKind
 }
 
 /// Determine whether a file is a FastA or FastQ.
-pub fn get_kind_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> Result<FastxKind, io::Error> {
+pub fn get_kind_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> io::Result<FastxKind> {
     fs::File::open(&path).and_then(|mut f| get_kind_seek(&mut f))
 }
 
@@ -525,7 +551,7 @@ IIIIIIJJJJJJ
 
     #[test]
     fn test_get_kind_empty() {
-        let (mut new_read, kind_res) = get_kind(Box::new(Cursor::new(b"")));
+        let (_, kind_res) = get_kind(Box::new(Cursor::new(b"")));
         assert_eq!(kind_res.err().unwrap().kind(), io::ErrorKind::UnexpectedEof);
     }
 
