@@ -574,9 +574,6 @@ ATTGTTGTTTTA
 ATTGTTGTTTTA
 GGGG
 ";
-    const INCOMPLETE_FASTA_FILE: &[u8] = b">id desc
->id2
-";
 
     const FASTQ_FILE: &[u8] = b"@id desc
 ACCGTAGGCTGA
@@ -586,8 +583,7 @@ IIIIIIJJJJJJ
 
     const INCOMPLETE_FASTQ_FILE: &[u8] = b"@id desc
 ACCGTAGGCTGA
-@id2 desc
-CGTAAAATGA
++
 ";
 
     struct MockReader<R: Read> {
@@ -632,7 +628,11 @@ CGTAAAATGA
 
     #[test]
     fn get_fasta_either_records_err() {
-        let mut records = EitherRecords::from(INCOMPLETE_FASTA_FILE);
+        let reader = MockReader {
+            reader: FASTA_FILE,
+            error: Some(io::Error::new(io::ErrorKind::Other, "error")),
+        };
+        let mut records = EitherRecords::from(reader);
         assert!(matches!(records.next().unwrap().unwrap_err(), Error::IO(_)));
     }
 
