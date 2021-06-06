@@ -96,11 +96,11 @@
 //! ## Parsing data of unknown type
 //!
 //! ```
-//! use bio::io::fastx::{Record, Records};
+//! use bio::io::fastx::{Record, EitherRecords};
 //! use std::io;
 //! use std::str;
 //!
-//! let mut records = Records::from(io::stdin());
+//! let mut records = EitherRecords::from(io::stdin());
 //! while let Some(Ok(record)) = records.next() {
 //!     println!("id  : {}", record.id());
 //!     println!("desc: {}", record.desc().unwrap_or("none"));
@@ -291,36 +291,36 @@ impl Record for EitherRecord {
 }
 
 #[derive(Debug)]
-enum EitherRecords<R: io::Read> {
+enum EitherRecordsInner<R: io::Read> {
     FASTA(fasta::Records<R>),
     FASTQ(fastq::Records<R>),
 }
 
 #[derive(Debug)]
-pub struct Records<R: io::Read> {
-    records: Option<EitherRecords<R>>,
+pub struct EitherRecords<R: io::Read> {
+    records: Option<EitherRecordsInner<R>>,
     reader: Option<R>,
 }
 
-impl Records<fs::File> {
+impl EitherRecords<fs::File> {
     /// Read from a given file.
     pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
         fs::File::open(path.as_ref())
-            .map(Records::from)
+            .map(EitherRecords::from)
             .with_context(|| format!("Failed to read fastq from {:#?}", path))
     }
 }
 
-impl <R: io::Read> Records<R> {
+impl <R: io::Read> EitherRecords<R> {
     pub fn new(reader: R) -> Self {
-        Records::from(reader)
+        EitherRecords::from(reader)
     }
 
     pub fn kind(&mut self) -> io::Result<Kind> {
         self.initialize()?;
         match self.records {
-            Some(EitherRecords::FASTA(_)) => Ok(Kind::FASTA),
-            Some(EitherRecords::FASTQ(_)) => Ok(Kind::FASTQ),
+            Some(EitherRecordsInner::FASTA(_)) => Ok(Kind::FASTA),
+            Some(EitherRecordsInner::FASTQ(_)) => Ok(Kind::FASTQ),
             None => Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
                 "Data is empty",
@@ -334,8 +334,8 @@ impl <R: io::Read> Records<R> {
             let mut line = String::new();
             reader.read_line(&mut line)?;
             match line.chars().next() {
-                Some('>') => self.records = Some(EitherRecords::FASTA(fasta::Reader::new_with_line(reader, line).records())),
-                Some('@') => self.records = Some(EitherRecords::FASTQ(fastq::Reader::new_with_line_buffer(reader, line).records())),
+                Some('>') => self.records = Some(EitherRecordsInner::FASTA(fasta::Reader::new_with_line(reader, line).records())),
+                Some('@') => self.records = Some(EitherRecordsInner::FASTQ(fastq::Reader::new_with_line_buffer(reader, line).records())),
                 Some(c) => return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     format!("Data is not a valid FASTA/FASTQ, illegal start character '{}'", c),
@@ -347,20 +347,20 @@ impl <R: io::Read> Records<R> {
     }
 }
 
-impl<R: io::Read> Iterator for Records<R> {
+impl<R: io::Read> Iterator for EitherRecords<R> {
     type Item = Result<EitherRecord>;
     fn next(&mut self) -> Option<Self::Item> {
         if let Err(e) = self.initialize() {
             return Some(Err(Error::IO(e)));
         }
         match &mut self.records {
-            Some(EitherRecords::FASTA(r)) => r
+            Some(EitherRecordsInner::FASTA(r)) => r
                 .next()
                 .map(|record_res| record_res
                      .map(EitherRecord::from)
                      .map_err(Error::from)
                 ),
-            Some(EitherRecords::FASTQ(r)) => r
+            Some(EitherRecordsInner::FASTQ(r)) => r
                 .next()
                 .map(|record_res| record_res
                      .map(EitherRecord::from)
@@ -371,9 +371,9 @@ impl<R: io::Read> Iterator for Records<R> {
     }
 }
 
-impl<R: io::Read> From<R> for Records<R> {
+impl<R: io::Read> From<R> for EitherRecords<R> {
     fn from(reader: R) -> Self {
-        Records { records: None, reader: Some(reader) }
+        EitherRecords { records: None, reader: Some(reader) }
     }
 }
 
@@ -404,15 +404,15 @@ pub enum Kind {
 }
 
 
-/// Determine whether a [`Read`](#Read) is a FastA or FastQ.
+/// Determine whether a [`Read`](Read) is a FastA or FastQ.
 ///
-/// This method takes ownership of the [`Read`](#Read) and returns a new [`Read`](#Read)
-/// with position identical to the position of the input [`Read`](#Read).
-/// This allows you to pass the returned [`Read`](#Read) directly into
-/// [`fasta::Reader::new`](#super::fasta::Reader::new) or [`fastq::Reader::new`](#super::fastq::Reader::new).
+/// This method takes ownership of the [`Read`](Read) and returns a new [`Read`](Read)
+/// with position identical to the position of the input [`Read`](Read).
+/// This allows you to pass the returned [`Read`]#Read) directly into
+/// [`fasta::Reader::new`](fasta::Reader::new) or [`fastq::Reader::new`](fastq::Reader::new).
 ///
-/// In general this function is superior to [`get_kind_preserve_read`](#get_kind) unless
-/// you would like to do something with the [`Read`](#Read) in cases where
+/// In general this function is superior to [`get_kind_preserve_read`](get_kind) unless
+/// you would like to do something with the [`Read`](Read) in cases where
 /// there is an error determining the type.
 ///
 /// Due to the implementation of the function it is sometimes impossible to return 
@@ -448,20 +448,20 @@ pub fn get_kind<R: io::Read>(mut reader: R) -> io::Result<(impl io::Read, Kind)>
     }
 }
 
-/// Determine whether a [`Read`](#Read) is a FastA or FastQ.
+/// Determine whether a [`Read`](Read) is a FastA or FastQ.
 ///
-/// You should only use this function if you would like to use your input [`Read`](#Read)
+/// You should only use this function if you would like to use your input [`Read`](Read)
 /// for something else if there is an error determining the data type. Otherwise,
-/// [`get_kind`](#get_kind) is preferred.
+/// [`get_kind`](get_kind) is preferred.
 ///
-/// This function is very similar to [`get_kind`](#get_kind) with the
-/// differences being that [`get_kind_preserve_read`](#get_kind_preserve_read):
+/// This function is very similar to [`get_kind`](get_kind) with the
+/// differences being that [`get_kind_preserve_read`](get_kind_preserve_read):
 ///
-/// - Returns the [`Read`](#Read) in the correct location if there is an
+/// - Returns the [`Read`](Read) in the correct location if there is an
 ///   error in determining the data type
-/// - Returns a tuple containing a [`Result`](#Result) instead of a
-///   [`Result`](#Result), which can be less convenient to work with
-/// - Requires [`Box`](#Box) and `dyn`
+/// - Returns a tuple containing a [`Result`](Result) instead of a
+///   [`Result`](Result), which can be less convenient to work with
+/// - Requires [`Box`](Box) and `dyn`
 ///
 /// # Example
 ///
@@ -502,10 +502,10 @@ pub fn get_kind_preserve_read(mut reader: Box<dyn io::Read>) -> (Box<dyn io::Rea
     }
 }
 
-/// Determine whether a [`Read`](#Read) + [`Seek`](#Seek) is a FastA or FastQ.
+/// Determine whether a [`Read`](Read) + [`Seek`](Seek) is a FastA or FastQ.
 ///
-/// The benefit of this this function compared to [`get_kind`](#get_kind) is that
-/// this function does not take ownership of the [`Read`](#Read) so it can
+/// The benefit of this this function compared to [`get_kind`](get_kind) is that
+/// this function does not take ownership of the [`Read`](Read) so it can
 /// be slightly more convenient to use.
 pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> io::Result<Kind> {
     let mut buf = [0];
@@ -562,8 +562,8 @@ ACCGTAGGCTGA
 IIIIIIJJJJJJ
 ";
     #[test]
-    fn get_fasta_records() {
-        let mut records = Records::from(FASTA_FILE);
+    fn get_fasta_either_records() {
+        let mut records = EitherRecords::from(FASTA_FILE);
         assert_eq!(records.next().unwrap().unwrap().id(), "id");
         assert_eq!(records.next().unwrap().unwrap().id(), "id2");
         assert!(records.next().is_none());
@@ -571,16 +571,16 @@ IIIIIIJJJJJJ
     }
 
     #[test]
-    fn get_empty_records() {
-        let mut records = Records::from(b"".as_ref());
+    fn get_empty_either_records() {
+        let mut records = EitherRecords::from(b"".as_ref());
         assert!(records.next().is_none());
         // this second check is intentional
         assert!(records.next().is_none());
     }
 
     #[test]
-    fn get_invalid_records() {
-        let mut records = Records::from(b"(".as_ref());
+    fn get_invalid_either_records() {
+        let mut records = EitherRecords::from(b"(".as_ref());
         assert!(records.next().unwrap().is_err());
         // this second check is intentional
         assert!(records.next().is_none());
