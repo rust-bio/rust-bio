@@ -45,12 +45,12 @@
 //! ");
 //!
 //! match fastx::get_kind_seek(&mut raw_reader) {
-//!     Ok(fastx::FastxKind::FASTA) => {
+//!     Ok(fastx::Kind::FASTA) => {
 //!         let mut reader = fasta::Reader::new(raw_reader);
 //!         let nb_bases = count_bases(reader.records()).unwrap();
 //!         println!("Number of bases: {}", nb_bases);
 //!     },
-//!     Ok(fastx::FastxKind::FASTQ) => {
+//!     Ok(fastx::Kind::FASTQ) => {
 //!         let mut reader = fastq::Reader::new(raw_reader);
 //!         let nb_bases = count_bases(reader.records()).unwrap();
 //!         println!("Number of bases: {}", nb_bases);
@@ -120,7 +120,7 @@
 //! This module provides utilities for detecting if some data is a FASTA/FASTQ.
 //!
 //! ```
-//! use bio::io::fastx::{get_kind, get_kind_seek, get_kind_file, FastxKind};
+//! use bio::io::fastx::{get_kind, get_kind_seek, get_kind_file, Kind};
 //! use std::io;
 //! use std::io::Read;
 //! use std::fs;
@@ -129,7 +129,7 @@
 //!
 //! // From a Read
 //! 
-//! fn from_read() -> io::Result<FastxKind> {
+//! fn from_read() -> io::Result<Kind> {
 //!     let reader = io::stdin();
 //!     let (mut new_reader, kind) = get_kind(reader)?;
 //!     println!("{}", kind);
@@ -142,7 +142,7 @@
 //!
 //! // From a Read + Seek
 //!
-//! fn from_read_seek() -> io::Result<FastxKind> {
+//! fn from_read_seek() -> io::Result<Kind> {
 //!     let mut read_seek = io::Cursor::new(b">id desc
 //! ACTG
 //! ");
@@ -152,7 +152,7 @@
 //!
 //! // From a file path
 //!
-//! fn from_file_path() -> io::Result<FastxKind> {
+//! fn from_file_path() -> io::Result<Kind> {
 //!     get_kind_file("foo.fasta")
 //! }
 //! ```
@@ -181,8 +181,8 @@ macro_rules! matchthrough {
     ($name:ident, $t:ty) => {
         fn $name(&self) -> $t {
             match self {
-                EitherRecord::FASTA(f) => f.$name(),
-                EitherRecord::FASTQ(f) => f.$name(),
+                EitherRecord::FASTA(f) => Record::$name(f),
+                EitherRecord::FASTQ(f) => Record::$name(f),
             }
         }
     };
@@ -195,7 +195,7 @@ pub trait Record {
     fn desc(&self) -> Option<&str>;
     fn seq(&self) -> TextSlice<'_>;
     fn qual(&self) -> Option<&[u8]>;
-    fn kind(&self) -> FastxKind;
+    fn kind(&self) -> Kind;
 }
 
 impl Record for super::fasta::Record {
@@ -209,8 +209,8 @@ impl Record for super::fasta::Record {
         None
     }
 
-    fn kind(&self) -> FastxKind {
-        FastxKind::FASTA
+    fn kind(&self) -> Kind {
+        Kind::FASTA
     }
 
 }
@@ -226,8 +226,8 @@ impl Record for super::fastq::Record {
         Some(self.qual())
     }
 
-    fn kind(&self) -> FastxKind {
-        FastxKind::FASTQ
+    fn kind(&self) -> Kind {
+        Kind::FASTQ
     }
 }
 
@@ -287,7 +287,7 @@ impl Record for EitherRecord {
         }
     }
 
-    matchthrough!(kind, FastxKind);
+    matchthrough!(kind, Kind);
 }
 
 #[derive(Debug)]
@@ -316,11 +316,11 @@ impl <R: io::Read> Records<R> {
         Records::from(reader)
     }
 
-    pub fn kind(&mut self) -> io::Result<FastxKind> {
+    pub fn kind(&mut self) -> io::Result<Kind> {
         self.initialize()?;
         match self.records {
-            Some(EitherRecords::FASTA(_)) => Ok(FastxKind::FASTA),
-            Some(EitherRecords::FASTQ(_)) => Ok(FastxKind::FASTQ),
+            Some(EitherRecords::FASTA(_)) => Ok(Kind::FASTA),
+            Some(EitherRecords::FASTQ(_)) => Ok(Kind::FASTQ),
             None => Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
                 "Data is empty",
@@ -398,7 +398,7 @@ impl From<fastq::Error> for Error {
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum FastxKind {
+pub enum Kind {
     FASTQ,
     FASTA,
 }
@@ -421,26 +421,26 @@ pub enum FastxKind {
 ///
 /// ```rust
 /// use bio::io::{fasta, fastq};
-/// use bio::io::fastx::{FastxKind, get_kind};
+/// use bio::io::fastx::{Kind, get_kind};
 /// use std::io;
 ///
 /// fn count_records() -> io::Result<usize> {
 ///     let (reader, kind) = get_kind(io::stdin())?;
 ///     match kind {
-///         FastxKind::FASTA => Ok(fasta::Reader::new(reader).records().count()),
-///         FastxKind::FASTQ => Ok(fastq::Reader::new(reader).records().count()),
+///         Kind::FASTA => Ok(fasta::Reader::new(reader).records().count()),
+///         Kind::FASTQ => Ok(fastq::Reader::new(reader).records().count()),
 ///     }
 /// }
 /// ```
-pub fn get_kind<R: io::Read>(mut reader: R) -> io::Result<(impl io::Read, FastxKind)> {
+pub fn get_kind<R: io::Read>(mut reader: R) -> io::Result<(impl io::Read, Kind)> {
     let mut buf = [0];
     reader.read_exact(&mut buf)?;
     let first = char::from(buf[0]);
     let new_reader = Box::new(io::Cursor::new(buf).chain(reader));
 
     match first {
-        '>' => Ok((new_reader, FastxKind::FASTA)),
-        '@' => Ok((new_reader, FastxKind::FASTQ)),
+        '>' => Ok((new_reader, Kind::FASTA)),
+        '@' => Ok((new_reader, Kind::FASTQ)),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidData,
             format!("Data is not a valid FASTA/FASTQ, illegal start character '{}'", first),
@@ -467,14 +467,14 @@ pub fn get_kind<R: io::Read>(mut reader: R) -> io::Result<(impl io::Read, FastxK
 ///
 /// ```rust
 /// use bio::io::{fasta, fastq};
-/// use bio::io::fastx::{FastxKind, get_kind_preserve_read};
+/// use bio::io::fastx::{Kind, get_kind_preserve_read};
 /// use std::io;
 ///
 /// fn print_type() -> io::Result<()> {
 ///     let (mut reader, kind) = get_kind_preserve_read(Box::new(io::stdin()));
 ///     match kind {
-///         Ok(FastxKind::FASTA) => println!("{}", FastxKind::FASTA),
-///         Ok(FastxKind::FASTQ) => println!("{}", FastxKind::FASTQ),
+///         Ok(Kind::FASTA) => println!("{}", Kind::FASTA),
+///         Ok(Kind::FASTQ) => println!("{}", Kind::FASTQ),
 ///         Err(e) => {
 ///             println!("Error determining FastA/FastQ: {}", e);
 ///             println!("Data:");
@@ -484,7 +484,7 @@ pub fn get_kind<R: io::Read>(mut reader: R) -> io::Result<(impl io::Read, FastxK
 ///     Ok(())
 /// }
 /// ```
-pub fn get_kind_preserve_read(mut reader: Box<dyn io::Read>) -> (Box<dyn io::Read>, io::Result<FastxKind>) {
+pub fn get_kind_preserve_read(mut reader: Box<dyn io::Read>) -> (Box<dyn io::Read>, io::Result<Kind>) {
     let mut buf = [0];
     if let Err(e) = reader.read_exact(&mut buf) {
         return (reader, Err(e));
@@ -493,8 +493,8 @@ pub fn get_kind_preserve_read(mut reader: Box<dyn io::Read>) -> (Box<dyn io::Rea
     let new_reader = Box::new(io::Cursor::new(buf).chain(reader));
 
     match first {
-        '>' => (new_reader, Ok(FastxKind::FASTA)),
-        '@' => (new_reader, Ok(FastxKind::FASTQ)),
+        '>' => (new_reader, Ok(Kind::FASTA)),
+        '@' => (new_reader, Ok(Kind::FASTQ)),
         _ => (new_reader, Err(io::Error::new(
             io::ErrorKind::InvalidData,
             format!("Data is not a valid FASTA/FASTQ, illegal start character '{}'", first),
@@ -507,15 +507,15 @@ pub fn get_kind_preserve_read(mut reader: Box<dyn io::Read>) -> (Box<dyn io::Rea
 /// The benefit of this this function compared to [`get_kind`](#get_kind) is that
 /// this function does not take ownership of the [`Read`](#Read) so it can
 /// be slightly more convenient to use.
-pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> io::Result<FastxKind> {
+pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> io::Result<Kind> {
     let mut buf = [0];
     reader.read_exact(&mut buf)?;
     reader.seek(SeekFrom::Current(-1))?;
     let first = char::from(buf[0]);
 
     match first {
-        '>' => Ok(FastxKind::FASTA),
-        '@' => Ok(FastxKind::FASTQ),
+        '>' => Ok(Kind::FASTA),
+        '@' => Ok(Kind::FASTQ),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidData,
             format!("Data is not a valid FASTA/FASTQ, illegal start character '{}'", first),
@@ -524,15 +524,15 @@ pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> io::Result<Fastx
 }
 
 /// Determine whether a file is a FastA or FastQ.
-pub fn get_kind_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> io::Result<FastxKind> {
+pub fn get_kind_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> io::Result<Kind> {
     fs::File::open(&path).and_then(|mut f| get_kind_seek(&mut f))
 }
 
-impl std::fmt::Display for FastxKind {
+impl std::fmt::Display for Kind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", match self {
-            FastxKind::FASTA => "fasta",
-            FastxKind::FASTQ => "fastq",
+            Kind::FASTA => "fasta",
+            Kind::FASTQ => "fastq",
         })
     }
 }
@@ -589,7 +589,7 @@ IIIIIIJJJJJJ
     #[test]
     fn test_get_kind_preserve_read_fasta() {
         let (mut new_read, fastx_kind) = get_kind_preserve_read(Box::new(FASTA_FILE));
-        assert_eq!(FastxKind::FASTA, fastx_kind.unwrap());
+        assert_eq!(Kind::FASTA, fastx_kind.unwrap());
         let mut buf = [0u8; 1];
         new_read.read_exact(&mut buf).unwrap();
         assert_eq!(buf[0], FASTA_FILE[0]);
@@ -599,7 +599,7 @@ IIIIIIJJJJJJ
     #[test]
     fn test_get_kind_preserve_read_fastq() {
         let (mut new_read, fastx_kind) = get_kind_preserve_read(Box::new(FASTQ_FILE));
-        assert_eq!(FastxKind::FASTQ, fastx_kind.unwrap());
+        assert_eq!(Kind::FASTQ, fastx_kind.unwrap());
         let mut buf = [0u8; 1];
         new_read.read_exact(&mut buf).unwrap();
         assert_eq!(buf[0], FASTQ_FILE[0]);
@@ -625,7 +625,7 @@ IIIIIIJJJJJJ
     fn test_get_kind_seek_fasta() {
         let mut read_seeker = Cursor::new(FASTA_FILE);
         let fastx_kind = get_kind_seek(&mut read_seeker).unwrap();
-        assert_eq!(FastxKind::FASTA, fastx_kind);
+        assert_eq!(Kind::FASTA, fastx_kind);
         assert_eq!(read_seeker.position(), 0);
     }
 
@@ -633,7 +633,7 @@ IIIIIIJJJJJJ
     fn test_get_kind_seek_fastq() {
         let mut read_seeker = Cursor::new(FASTQ_FILE);
         let fastq_kind = get_kind_seek(&mut read_seeker).unwrap();
-        assert_eq!(FastxKind::FASTQ, fastq_kind);
+        assert_eq!(Kind::FASTQ, fastq_kind);
         assert_eq!(read_seeker.position(), 0);
     }
 
