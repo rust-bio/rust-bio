@@ -231,7 +231,7 @@ impl Record for super::fastq::Record {
     }
 }
 
-#[derive(Display, Debug)]
+#[derive(Clone, Display, Debug, Serialize, Deserialize)]
 pub enum EitherRecord {
     FASTA(fasta::Record),
     FASTQ(fastq::Record),
@@ -328,10 +328,7 @@ impl<R: Read> EitherRecords<R> {
         match self.records {
             Some(EitherRecordsInner::FASTA(_)) => Ok(Kind::FASTA),
             Some(EitherRecordsInner::FASTQ(_)) => Ok(Kind::FASTQ),
-            None => Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Data is empty",
-            )),
+            None => Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Data is empty")),
         }
     }
 
@@ -545,14 +542,10 @@ pub fn get_kind_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> io::Result<Ki
 
 impl std::fmt::Display for Kind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Kind::FASTA => "FastA",
-                Kind::FASTQ => "FastQ",
-            }
-        )
+        match self {
+            Kind::FASTA => write!(f, "{}", "FastA"),
+            Kind::FASTQ => write!(f, "{}", "FastQ"),
+        }
     }
 }
 
@@ -601,6 +594,34 @@ ACCGTAGGCTGA
     }
 
     #[test]
+    fn fasta_either_record() {
+        let record = EitherRecord::FASTA(
+            fasta::Record::with_attrs("id", Some("desc"), b"ACTG")
+        );
+        assert!(matches!(record.kind(), Kind::FASTA));
+        assert!(matches!(record.qual(), None));
+        let fastq = record.clone().to_fastq(b'I');
+        assert_eq!(fastq.id(), "id");
+        assert_eq!(fastq.qual(), b"IIII");
+        let fasta = record.to_fasta();
+        assert_eq!(fasta.id(), "id");
+    }
+
+    #[test]
+    fn fastq_either_record() {
+        let record = EitherRecord::FASTQ(
+            fastq::Record::with_attrs("id", Some("desc"), b"ACTG", b"JJJJ")
+        );
+        assert!(matches!(record.kind(), Kind::FASTQ));
+        assert!(matches!(record.qual(), Some(_)));
+        let fastq = record.clone().to_fastq(b'I');
+        assert_eq!(fastq.id(), "id");
+        assert_eq!(fastq.qual(), b"JJJJ");
+        let fasta = record.to_fasta();
+        assert_eq!(fasta.id(), "id");
+    }
+
+    #[test]
     fn records_trait() {
         fn count_records<R: Record, E, I: Records<R, E>>(records: I) -> usize {
             records.count()
@@ -628,11 +649,13 @@ ACCGTAGGCTGA
 
     #[test]
     fn get_fasta_either_records_err() {
-        let reader = MockReader {
+        let mut reader = MockReader {
             reader: FASTA_FILE,
-            error: Some(io::Error::new(io::ErrorKind::Other, "error")),
+            error: None,
         };
         let mut records = EitherRecords::from(reader);
+        records.next();
+        reader.error = Some(io::Error::new(io::ErrorKind::Other, "error"));
         assert!(matches!(records.next().unwrap().unwrap_err(), Error::IO(_)));
     }
 
@@ -649,6 +672,24 @@ ACCGTAGGCTGA
     fn get_fastq_either_records_err() {
         let mut records = EitherRecords::from(INCOMPLETE_FASTQ_FILE);
         assert!(matches!(records.next().unwrap().unwrap_err(), Error::FASTQ(_)));
+    }
+
+    #[test]
+    fn get_fasta_either_records_kind() {
+        let mut records = EitherRecords::from(FASTA_FILE);
+        assert!(matches!(records.kind(), Ok(Kind::FASTA)));
+    }
+
+    #[test]
+    fn get_fastq_either_records_kind() {
+        let mut records = EitherRecords::from(FASTQ_FILE);
+        assert!(matches!(records.kind(), Ok(Kind::FASTQ)));
+    }
+
+    #[test]
+    fn get_empty_either_records_kind() {
+        let mut records = EitherRecords::from(b"".as_ref());
+        assert!(matches!(records.kind(), Err(_)));
     }
 
     #[test]
