@@ -31,7 +31,7 @@
 //! fn count_bases<T, E, I>(mut records: I) -> Result<usize, E>
 //! where T: fastx::Record,
 //!     E: std::error::Error,
-//!     I: Iterator<Item = Result<T, E>> {
+//!     I: fastx::Records<T, E> {
 //!     let mut nb_bases = 0;
 //!     for result in records {
 //!         let record = result?;
@@ -73,7 +73,7 @@
 //! fn at_least_n_bases<T, E, I>(mut records: I, n: usize) -> impl Iterator<Item = Result<T, E>>
 //! where T: fastx::Record,
 //!     E: std::error::Error,
-//!     I: Iterator<Item = Result<T, E>> {
+//!     I: fastx::Records<T, E> {
 //!     records.filter(move |rr| match rr {
 //!         Ok(r) => r.seq().len() > n,
 //!         _ => true,
@@ -290,6 +290,12 @@ impl Record for EitherRecord {
     matchthrough!(kind, Kind);
 }
 
+pub trait Records<R: Record, E>: Iterator<Item = Result<R, E>> {}
+
+impl<T: io::Read> Records<fasta::Record, io::Error> for fasta::Records<T> {}
+
+impl<T: io::Read> Records<fastq::Record, fastq::Error> for fastq::Records<T> {}
+
 #[derive(Debug)]
 enum EitherRecordsInner<R: io::Read> {
     FASTA(fasta::Records<R>),
@@ -377,10 +383,19 @@ impl<R: io::Read> From<R> for EitherRecords<R> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Display, Debug)]
 pub enum Error {
     IO(io::Error),
     FASTQ(fastq::Error),
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::IO(e) => e.source(),
+            Error::FASTQ(e) => e.source(),
+        }
+    }
 }
 
 impl From<io::Error> for Error {
@@ -561,6 +576,16 @@ ACCGTAGGCTGA
 +
 IIIIIIJJJJJJ
 ";
+    #[test]
+    fn records_trait() {
+        fn count_records<R: Record, E, I: Records<R, E>>(records: I) -> usize {
+            records.count()
+        }
+        let records = fasta::Reader::new(FASTA_FILE).records();
+        let count = count_records(records);
+        assert_eq!(count, 2);
+    }
+
     #[test]
     fn get_fasta_either_records() {
         let mut records = EitherRecords::from(FASTA_FILE);
