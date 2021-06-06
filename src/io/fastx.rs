@@ -128,7 +128,7 @@
 //! use std::io::prelude::*;
 //!
 //! // From a Read
-//! 
+//!
 //! fn from_read() -> io::Result<Kind> {
 //!     let reader = io::stdin();
 //!     let (mut new_reader, kind) = get_kind(reader)?;
@@ -157,12 +157,12 @@
 //! }
 //! ```
 //!
-use std::convert::AsRef;
 use anyhow::Context;
+use std::convert::AsRef;
 use std::fs;
-use std::io::SeekFrom;
-use std::io::prelude::*;
 use std::io;
+use std::io::prelude::*;
+use std::io::SeekFrom;
 use std::mem;
 use std::path::Path;
 
@@ -212,7 +212,6 @@ impl Record for super::fasta::Record {
     fn kind(&self) -> Kind {
         Kind::FASTA
     }
-
 }
 
 impl Record for super::fastq::Record {
@@ -238,7 +237,7 @@ pub enum EitherRecord {
 
 impl EitherRecord {
     pub fn to_fasta(self) -> fasta::Record {
-        return self.into()
+        return self.into();
     }
 
     pub fn to_fastq(self, default_qual: u8) -> fastq::Record {
@@ -263,13 +262,13 @@ impl Into<fasta::Record> for EitherRecord {
 
 impl From<fasta::Record> for EitherRecord {
     fn from(record: fasta::Record) -> Self {
-       EitherRecord::FASTA(record) 
+        EitherRecord::FASTA(record)
     }
 }
 
 impl From<fastq::Record> for EitherRecord {
     fn from(record: fastq::Record) -> Self {
-       EitherRecord::FASTQ(record) 
+        EitherRecord::FASTQ(record)
     }
 }
 
@@ -317,7 +316,7 @@ impl EitherRecords<fs::File> {
     }
 }
 
-impl <R: io::Read> EitherRecords<R> {
+impl<R: io::Read> EitherRecords<R> {
     pub fn new(reader: R) -> Self {
         EitherRecords::from(reader)
     }
@@ -340,12 +339,25 @@ impl <R: io::Read> EitherRecords<R> {
             let mut line = String::new();
             reader.read_line(&mut line)?;
             match line.chars().next() {
-                Some('>') => self.records = Some(EitherRecordsInner::FASTA(fasta::Reader::new_with_line(reader, line).records())),
-                Some('@') => self.records = Some(EitherRecordsInner::FASTQ(fastq::Reader::new_with_line_buffer(reader, line).records())),
-                Some(c) => return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("Data is not a valid FASTA/FASTQ, illegal start character '{}'", c),
-                )),
+                Some('>') => {
+                    self.records = Some(EitherRecordsInner::FASTA(
+                        fasta::Reader::new_with_line(reader, line).records(),
+                    ))
+                }
+                Some('@') => {
+                    self.records = Some(EitherRecordsInner::FASTQ(
+                        fastq::Reader::new_with_line_buffer(reader, line).records(),
+                    ))
+                }
+                Some(c) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!(
+                            "Data is not a valid FASTA/FASTQ, illegal start character '{}'",
+                            c
+                        ),
+                    ))
+                }
                 None => (),
             }
         }
@@ -362,24 +374,21 @@ impl<R: io::Read> Iterator for EitherRecords<R> {
         match &mut self.records {
             Some(EitherRecordsInner::FASTA(r)) => r
                 .next()
-                .map(|record_res| record_res
-                     .map(EitherRecord::from)
-                     .map_err(Error::from)
-                ),
+                .map(|record_res| record_res.map(EitherRecord::from).map_err(Error::from)),
             Some(EitherRecordsInner::FASTQ(r)) => r
                 .next()
-                .map(|record_res| record_res
-                     .map(EitherRecord::from)
-                     .map_err(Error::from)
-                ),
-             None => None,
+                .map(|record_res| record_res.map(EitherRecord::from).map_err(Error::from)),
+            None => None,
         }
     }
 }
 
 impl<R: io::Read> From<R> for EitherRecords<R> {
     fn from(reader: R) -> Self {
-        EitherRecords { records: None, reader: Some(reader) }
+        EitherRecords {
+            records: None,
+            reader: Some(reader),
+        }
     }
 }
 
@@ -400,13 +409,13 @@ impl std::error::Error for Error {
 
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Self {
-       Error::IO(err) 
+        Error::IO(err)
     }
 }
 
 impl From<fastq::Error> for Error {
     fn from(err: fastq::Error) -> Self {
-       Error::FASTQ(err) 
+        Error::FASTQ(err)
     }
 }
 
@@ -417,7 +426,6 @@ pub enum Kind {
     FASTQ,
     FASTA,
 }
-
 
 /// Determine whether a [`Read`](Read) is a FastA or FastQ.
 ///
@@ -430,7 +438,7 @@ pub enum Kind {
 /// you would like to do something with the [`Read`](Read) in cases where
 /// there is an error determining the type.
 ///
-/// Due to the implementation of the function it is sometimes impossible to return 
+/// Due to the implementation of the function it is sometimes impossible to return
 ///
 /// # Example
 ///
@@ -458,7 +466,10 @@ pub fn get_kind<R: io::Read>(mut reader: R) -> io::Result<(impl io::Read, Kind)>
         '@' => Ok((new_reader, Kind::FASTQ)),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("Data is not a valid FASTA/FASTQ, illegal start character '{}'", first),
+            format!(
+                "Data is not a valid FASTA/FASTQ, illegal start character '{}'",
+                first
+            ),
         )),
     }
 }
@@ -499,7 +510,9 @@ pub fn get_kind<R: io::Read>(mut reader: R) -> io::Result<(impl io::Read, Kind)>
 ///     Ok(())
 /// }
 /// ```
-pub fn get_kind_preserve_read(mut reader: Box<dyn io::Read>) -> (Box<dyn io::Read>, io::Result<Kind>) {
+pub fn get_kind_preserve_read(
+    mut reader: Box<dyn io::Read>,
+) -> (Box<dyn io::Read>, io::Result<Kind>) {
     let mut buf = [0];
     if let Err(e) = reader.read_exact(&mut buf) {
         return (reader, Err(e));
@@ -510,10 +523,16 @@ pub fn get_kind_preserve_read(mut reader: Box<dyn io::Read>) -> (Box<dyn io::Rea
     match first {
         '>' => (new_reader, Ok(Kind::FASTA)),
         '@' => (new_reader, Ok(Kind::FASTQ)),
-        _ => (new_reader, Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("Data is not a valid FASTA/FASTQ, illegal start character '{}'", first),
-        ))),
+        _ => (
+            new_reader,
+            Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "Data is not a valid FASTA/FASTQ, illegal start character '{}'",
+                    first
+                ),
+            )),
+        ),
     }
 }
 
@@ -533,7 +552,10 @@ pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> io::Result<Kind>
         '@' => Ok(Kind::FASTQ),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("Data is not a valid FASTA/FASTQ, illegal start character '{}'", first),
+            format!(
+                "Data is not a valid FASTA/FASTQ, illegal start character '{}'",
+                first
+            ),
         )),
     }
 }
@@ -545,10 +567,14 @@ pub fn get_kind_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> io::Result<Ki
 
 impl std::fmt::Display for Kind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            Kind::FASTA => "fasta",
-            Kind::FASTQ => "fastq",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Kind::FASTA => "fasta",
+                Kind::FASTQ => "fastq",
+            }
+        )
     }
 }
 
@@ -618,7 +644,6 @@ IIIIIIJJJJJJ
         let mut buf = [0u8; 1];
         new_read.read_exact(&mut buf).unwrap();
         assert_eq!(buf[0], FASTA_FILE[0]);
-
     }
 
     #[test]

@@ -189,7 +189,10 @@ impl<R: io::Read> Reader<R> {
     }
 
     pub(crate) fn new_with_line_buffer(reader: io::BufReader<R>, line_buffer: String) -> Self {
-        Reader { reader, line_buffer }
+        Reader {
+            reader,
+            line_buffer,
+        }
     }
 }
 
