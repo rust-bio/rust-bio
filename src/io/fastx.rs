@@ -580,16 +580,30 @@ ACCGTAGGCTGA
 ";
 
     struct MockReader<R: Read> {
+        bytes_read: usize,
         error: Option<io::Error>,
+        error_at_byte: usize,
         reader: R,
     }
 
+    impl<R: Read> MockReader<R> {
+        fn new(error: io::Error, error_at_byte: usize, reader: R) -> Self {
+            MockReader { bytes_read: 0, error: Some(error), error_at_byte, reader }
+        }
+    }
+
+
     impl<R: Read> Read for MockReader<R> {
         fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-            match mem::replace(&mut self.error, None) {
-                Some(e) => Err(e),
-                None => self.reader.read(buf),
-           }
+            if buf.len() + self.bytes_read >= self.error_at_byte {
+                match mem::replace(&mut self.error, None) {
+                    Some(err) => { return Err(err) },
+                    None => (),
+                }
+            }
+            let bytes_read = self.reader.read(buf)?;
+            self.bytes_read += bytes_read;
+            Ok(bytes_read)
         }
     }
 
@@ -649,13 +663,20 @@ ACCGTAGGCTGA
 
     #[test]
     fn get_fasta_either_records_err() {
-        let mut reader = MockReader {
-            reader: FASTA_FILE,
-            error: None,
-        };
+        // Error on second read
+        // If the error is on the first read it won't test our error conversion as the error
+        // will occur during initialization
+        let error_at_byte = FASTA_FILE
+            .bytes()
+            .enumerate()
+            .find(move |(i, c)| *i > 0 as usize && c.as_ref().map_or(false, |c| *c == b'>'))
+            .unwrap().0 + 1;
+        let reader = MockReader::new(
+            io::Error::new(io::ErrorKind::Other, "error"),
+            error_at_byte,
+            FASTA_FILE,
+        );
         let mut records = EitherRecords::from(reader);
-        records.next();
-        reader.error = Some(io::Error::new(io::ErrorKind::Other, "error"));
         assert!(matches!(records.next().unwrap().unwrap_err(), Error::IO(_)));
     }
 
@@ -744,8 +765,7 @@ ACCGTAGGCTGA
 
     #[test]
     fn test_get_kind_preserve_read_error() {
-        let reader = Cursor::new(FASTA_FILE);
-        let mock_reader = MockReader { reader, error: Some(io::Error::new(io::ErrorKind::Other, "error")) };
+        let mock_reader = MockReader::new(io::Error::new(io::ErrorKind::Other, "error"), 0, FASTA_FILE);
         let (mut new_reader, res) = get_kind_preserve_read(Box::new(mock_reader));
         assert!(matches!(res.unwrap_err().kind(), io::ErrorKind::Other));
         let mut buf = [0u8; 1];
