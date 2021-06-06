@@ -160,11 +160,12 @@
 use anyhow::Context;
 use std::convert::AsRef;
 use std::fs;
-use std::io;
-use std::io::prelude::*;
 use std::io::SeekFrom;
+use std::io::prelude::*;
+use std::io;
 use std::mem;
 use std::path::Path;
+use thiserror::Error;
 
 use crate::io::{fasta, fastq};
 use crate::utils::TextSlice;
@@ -392,19 +393,10 @@ impl<R: io::Read> From<R> for EitherRecords<R> {
     }
 }
 
-#[derive(Display, Debug)]
+#[derive(Display, Debug, Error)]
 pub enum Error {
     IO(io::Error),
     FASTQ(fastq::Error),
-}
-
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Error::IO(e) => e.source(),
-            Error::FASTQ(e) => e.source(),
-        }
-    }
 }
 
 impl From<io::Error> for Error {
