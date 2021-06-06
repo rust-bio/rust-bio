@@ -1,4 +1,3 @@
-// Copyright 2014-2018 Johannes Köster, Christopher Schröder, Henning Timm.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -211,10 +210,6 @@ impl<R: io::Read> Reader<R> {
             reader: self,
             error_has_occured: false,
         }
-    }
-
-    pub(crate) fn new_with_line(reader: io::BufReader<R>, line: String) -> Self {
-        Reader { reader, line }
     }
 }
 

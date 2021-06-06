@@ -187,13 +187,6 @@ impl<R: io::Read> Reader<R> {
     pub fn records(self) -> Records<R> {
         Records { reader: self }
     }
-
-    pub(crate) fn new_with_line_buffer(reader: io::BufReader<R>, line_buffer: String) -> Self {
-        Reader {
-            reader,
-            line_buffer,
-        }
-    }
 }
 
 impl<R> FastqRead for Reader<R>
