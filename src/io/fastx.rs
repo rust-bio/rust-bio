@@ -28,7 +28,7 @@
 //! use bio::io::{fasta, fastq, fastx};
 //! use std::io;
 //!
-//! fn count_bases<T, E, I>(mut records: I) -> Result<usize, E>
+//! fn count_bases<T, E, I>(records: I) -> Result<usize, E>
 //! where T: fastx::Record,
 //!     E: std::error::Error,
 //!     I: fastx::Records<T, E> {
@@ -70,7 +70,7 @@
 //! use bio::io::{fasta, fastq, fastx};
 //! use std::io;
 //!
-//! fn at_least_n_bases<T, E, I>(mut records: I, n: usize) -> impl Iterator<Item = Result<T, E>>
+//! fn at_least_n_bases<T, E, I>(records: I, n: usize) -> impl Iterator<Item = Result<T, E>>
 //! where T: fastx::Record,
 //!     E: std::error::Error,
 //!     I: fastx::Records<T, E> {
@@ -296,6 +296,8 @@ pub trait Records<R: Record, E>: Iterator<Item = Result<R, E>> {}
 impl<T: Read> Records<fasta::Record, io::Error> for fasta::Records<T> {}
 
 impl<T: Read> Records<fastq::Record, fastq::Error> for fastq::Records<T> {}
+
+impl<T: Read> Records<EitherRecord, Error> for EitherRecords<T> {}
 
 #[derive(Debug)]
 enum EitherRecordsInner<R: Read> {
