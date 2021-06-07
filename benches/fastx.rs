@@ -4,8 +4,7 @@ extern crate test;
 
 use test::{black_box, Bencher};
 use std::io;
-use std::fs;
-use std::path::Path;
+use std::io::prelude::*;
 use tempfile::NamedTempFile;
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
@@ -20,9 +19,9 @@ const FASTA_SIZE: usize = 200;
 
 const ITERS: usize = 5000;
 
-fn gen_random_fasta<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    let file = fs::File::create(path)?;
-    let mut w = fasta::Writer::new(file);
+fn gen_random_fasta() -> io::Result<io::Cursor<Vec<u8>>> {
+    let mut file = NamedTempFile::new()?;
+    let mut w = fasta::Writer::to_file(file.path())?;
     let mut rng = thread_rng();
     for _ in 0..FASTA_SIZE {
         let id: String = thread_rng()
@@ -46,7 +45,9 @@ fn gen_random_fasta<P: AsRef<Path>>(path: P) -> io::Result<()> {
 
         w.write_record(&fasta::Record::with_attrs(&id, Some(&desc), &seq))?;
     }
-    Ok(())
+    let mut data: Vec<u8> = Vec::new();
+    file.read_to_end(&mut data)?;
+    Ok(io::Cursor::new(data))
 }
 
 fn fastx_count_bases<T, E, I>(records: I) -> Result<usize, E>
@@ -94,14 +95,13 @@ where R: io::Read {
 
 #[bench]
 fn bench_fasta_count(b: &mut Bencher) -> io::Result<()> {
-    let file = NamedTempFile::new()?;
-    gen_random_fasta(file.path()).unwrap();
-    b.iter(move || {
+    let data = gen_random_fasta()?;
+    b.iter(|| {
         for _ in 0..ITERS {
             black_box({
-                fasta_count_bases(fasta::Reader::from_file(file.path())
-                    .unwrap()
-                    .records()).unwrap();
+                let data = data.clone();
+                let records = fasta::Reader::new(data).records();
+                fasta_count_bases(records).unwrap();
             });
         }
     });
@@ -110,14 +110,13 @@ fn bench_fasta_count(b: &mut Bencher) -> io::Result<()> {
 
 #[bench]
 fn bench_fastx_fasta_count(b: &mut Bencher) -> io::Result<()> {
-    let file = NamedTempFile::new()?;
-    gen_random_fasta(file.path()).unwrap();
-    b.iter(move || {
+    let data = gen_random_fasta()?;
+    b.iter(|| {
         for _ in 0..ITERS {
             black_box({
-                fastx_count_bases(fasta::Reader::from_file(file.path())
-                    .unwrap()
-                    .records()).unwrap();
+                let data = data.clone();
+                let records = fasta::Reader::new(data).records();
+                fastx_count_bases(records).unwrap();
             });
         }
     });
@@ -126,14 +125,13 @@ fn bench_fastx_fasta_count(b: &mut Bencher) -> io::Result<()> {
 
 #[bench]
 fn bench_either_fasta_count(b: &mut Bencher) -> io::Result<()> {
-    let file = NamedTempFile::new()?;
-    gen_random_fasta(file.path()).unwrap();
-    b.iter(move || {
+    let data = gen_random_fasta()?;
+    b.iter(|| {
         for _ in 0..ITERS {
             black_box({
-                fastx_count_bases(fasta::Reader::from_file(file.path())
-                    .unwrap()
-                    .records()).unwrap();
+                let data = data.clone();
+                let records = fastx::EitherRecords::new(data);
+                fastx_count_bases(records).unwrap();
             });
         }
     });
@@ -142,14 +140,13 @@ fn bench_either_fasta_count(b: &mut Bencher) -> io::Result<()> {
 
 #[bench]
 fn bench_fasta_check(b: &mut Bencher) -> io::Result<()> {
-    let file = NamedTempFile::new()?;
-    gen_random_fasta(file.path()).unwrap();
-    b.iter(move || {
+    let data = gen_random_fasta()?;
+    b.iter(|| {
         for _ in 0..ITERS {
             black_box({
-                fasta_check(fasta::Reader::from_file(file.path())
-                    .unwrap()
-                    .records()).unwrap();
+                let data = data.clone();
+                let records = fasta::Reader::new(data.clone()).records();
+                fasta_check(records).unwrap();
             });
         }
     });
@@ -158,14 +155,13 @@ fn bench_fasta_check(b: &mut Bencher) -> io::Result<()> {
 
 #[bench]
 fn bench_fastx_fasta_check(b: &mut Bencher) -> io::Result<()> {
-    let file = NamedTempFile::new()?;
-    gen_random_fasta(file.path()).unwrap();
-    b.iter(move || {
+    let data = gen_random_fasta()?;
+    b.iter(|| {
         for _ in 0..ITERS {
             black_box({
-                fastx_check(fasta::Reader::from_file(file.path())
-                    .unwrap()
-                    .records()).unwrap();
+                let data = data.clone();
+                let records = fasta::Reader::new(data.clone()).records();
+                fastx_check(records).unwrap();
             });
         }
     });
@@ -174,14 +170,13 @@ fn bench_fastx_fasta_check(b: &mut Bencher) -> io::Result<()> {
 
 #[bench]
 fn bench_either_fasta_check(b: &mut Bencher) -> io::Result<()> {
-    let file = NamedTempFile::new()?;
-    gen_random_fasta(file.path()).unwrap();
-    b.iter(move || {
+    let data = gen_random_fasta()?;
+    b.iter(|| {
         for _ in 0..ITERS {
             black_box({
-                fastx_check(fasta::Reader::from_file(file.path())
-                    .unwrap()
-                    .records()).unwrap();
+                let data = data.clone();
+                let records = fastx::EitherRecords::new(data);
+                fastx_check(records).unwrap();
             });
         }
     });
