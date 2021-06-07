@@ -819,7 +819,7 @@ ACCGTAGGCTGA
         let mut f = fs::File::create("get_kind_file.fasta").unwrap();
         f.write_all(FASTQ_FILE).unwrap();
         let res = get_kind_file("get_kind_file.fasta").unwrap();
-        assert_eq!(res, Kind::FASTA);
+        assert_eq!(res, Kind::FASTQ);
         fs::remove_file("get_kind_file.fasta").unwrap();
     }
 }
