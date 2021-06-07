@@ -610,7 +610,7 @@ ACCGTAGGCTGA
     }
 
     #[test]
-    fn fasta_either_record() {
+    fn test_fasta_either_record() {
         let record = EitherRecord::FASTA(
             fasta::Record::with_attrs("id", Some("desc"), b"ACTG")
         );
@@ -624,7 +624,7 @@ ACCGTAGGCTGA
     }
 
     #[test]
-    fn fastq_either_record() {
+    fn test_fastq_either_record() {
         let record = EitherRecord::FASTQ(
             fastq::Record::with_attrs("id", Some("desc"), b"ACTG", b"JJJJ")
         );
@@ -638,7 +638,7 @@ ACCGTAGGCTGA
     }
 
     #[test]
-    fn records_trait() {
+    fn test_records_trait() {
         fn count_records<R: Record, E, I: Records<R, E>>(records: I) -> usize {
             records.count()
         }
@@ -648,14 +648,14 @@ ACCGTAGGCTGA
     }
 
     #[test]
-    fn kind_display() {
+    fn test_kind_display() {
         assert_eq!(format!("{}", Kind::FASTA), "FastA");
         assert_eq!(format!("{}", Kind::FASTQ), "FastQ");
     }
 
     #[test]
-    fn get_fasta_either_records() {
-        let mut records = EitherRecords::from(FASTA_FILE);
+    fn test_fasta_either_records() {
+        let mut records = EitherRecords::new(FASTA_FILE);
         assert_eq!(records.next().unwrap().unwrap().id(), "id");
         assert_eq!(records.next().unwrap().unwrap().id(), "id2");
         assert!(records.next().is_none());
@@ -664,7 +664,7 @@ ACCGTAGGCTGA
     }
 
     #[test]
-    fn get_fasta_either_records_err() {
+    fn test_fasta_either_records_err() {
         // Error on second read
         // If the error is on the first read it won't test our error conversion as the error
         // will occur during initialization
@@ -678,13 +678,13 @@ ACCGTAGGCTGA
             error_at_byte,
             FASTA_FILE,
         );
-        let mut records = EitherRecords::from(reader);
+        let mut records = EitherRecords::new(reader);
         assert!(matches!(records.next().unwrap().unwrap_err(), Error::IO(_)));
     }
 
     #[test]
-    fn get_fastq_either_records() {
-        let mut records = EitherRecords::from(FASTQ_FILE);
+    fn test_fastq_either_records() {
+        let mut records = EitherRecords::new(FASTQ_FILE);
         assert_eq!(records.next().unwrap().unwrap().id(), "id");
         assert!(records.next().is_none());
         // this second check is intentional
@@ -692,43 +692,52 @@ ACCGTAGGCTGA
     }
 
     #[test]
-    fn get_fastq_either_records_err() {
-        let mut records = EitherRecords::from(INCOMPLETE_FASTQ_FILE);
+    fn test_fastq_either_records_err() {
+        let mut records = EitherRecords::new(INCOMPLETE_FASTQ_FILE);
         assert!(matches!(records.next().unwrap().unwrap_err(), Error::FASTQ(_)));
     }
 
     #[test]
-    fn get_fasta_either_records_kind() {
-        let mut records = EitherRecords::from(FASTA_FILE);
+    fn test_fasta_either_records_kind() {
+        let mut records = EitherRecords::new(FASTA_FILE);
         assert!(matches!(records.kind(), Ok(Kind::FASTA)));
     }
 
     #[test]
-    fn get_fastq_either_records_kind() {
-        let mut records = EitherRecords::from(FASTQ_FILE);
+    fn test_fastq_either_records_kind() {
+        let mut records = EitherRecords::new(FASTQ_FILE);
         assert!(matches!(records.kind(), Ok(Kind::FASTQ)));
     }
 
     #[test]
-    fn get_empty_either_records_kind() {
-        let mut records = EitherRecords::from(b"".as_ref());
+    fn test_empty_either_records_kind() {
+        let mut records = EitherRecords::new(b"".as_ref());
         assert!(matches!(records.kind(), Err(_)));
     }
 
     #[test]
-    fn get_empty_either_records() {
-        let mut records = EitherRecords::from(b"".as_ref());
+    fn test_empty_either_records() {
+        let mut records = EitherRecords::new(b"".as_ref());
         assert!(records.next().is_none());
         // this second check is intentional
         assert!(records.next().is_none());
     }
 
     #[test]
-    fn get_invalid_either_records() {
-        let mut records = EitherRecords::from(b"(".as_ref());
+    fn test_invalid_either_records() {
+        let mut records = EitherRecords::new(b"(".as_ref());
         assert!(records.next().unwrap().is_err());
         // this second check is intentional
         assert!(records.next().is_none());
+    }
+
+    #[test]
+    fn test_either_records_from_file() {
+        let mut f = fs::File::create("either_records_from_file.fasta").unwrap();
+        f.write_all(FASTQ_FILE).unwrap();
+        let mut records = EitherRecords::from_file("either_records_from_file.fasta").unwrap();
+        assert_eq!(records.next().unwrap().unwrap().id(), "id");
+        fs::remove_file("either_records_from_file.fasta").unwrap();
     }
 
     #[test]
@@ -762,7 +771,7 @@ ACCGTAGGCTGA
         assert!(matches!(kind_res.unwrap_err().kind(), io::ErrorKind::InvalidData));
         let mut buf = [0u8; 1];
         reader.read_exact(&mut buf).unwrap();
-        assert_eq!(b'*', buf[0]);
+        assert_eq!(buf[0], b'*');
     }
 
     #[test]
@@ -779,7 +788,7 @@ ACCGTAGGCTGA
     fn test_get_kind_seek_fasta() {
         let mut read_seeker = Cursor::new(FASTA_FILE);
         let fastx_kind = get_kind_seek(&mut read_seeker).unwrap();
-        assert_eq!(Kind::FASTA, fastx_kind);
+        assert_eq!(fastx_kind, Kind::FASTA);
         assert_eq!(read_seeker.position(), 0);
     }
 
@@ -787,7 +796,7 @@ ACCGTAGGCTGA
     fn test_get_kind_seek_fastq() {
         let mut read_seeker = Cursor::new(FASTQ_FILE);
         let fastq_kind = get_kind_seek(&mut read_seeker).unwrap();
-        assert_eq!(Kind::FASTQ, fastq_kind);
+        assert_eq!(fastq_kind, Kind::FASTQ);
         assert_eq!(read_seeker.position(), 0);
     }
 
@@ -795,13 +804,22 @@ ACCGTAGGCTGA
     fn test_get_kind_seek_empty() {
         let mut read_seeker = Cursor::new(b"");
         let e = get_kind_seek(&mut read_seeker).unwrap_err();
-        assert_eq!(io::ErrorKind::UnexpectedEof, e.kind());
+        assert_eq!(e.kind(), io::ErrorKind::UnexpectedEof);
     }
 
     #[test]
     fn test_get_kind_seek_invalid() {
         let mut read_seeker = Cursor::new(b"*");
         let e = get_kind_seek(&mut read_seeker).unwrap_err();
-        assert_eq!(io::ErrorKind::InvalidData, e.kind());
+        assert_eq!(e.kind(), io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn test_get_kind_file() {
+        let mut f = fs::File::create("get_kind_file.fasta").unwrap();
+        f.write_all(FASTQ_FILE).unwrap();
+        let res = get_kind_file("get_kind_file.fasta").unwrap();
+        assert_eq!(res, Kind::FASTA);
+        fs::remove_file("get_kind_file.fasta").unwrap();
     }
 }
