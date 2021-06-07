@@ -122,7 +122,6 @@
 //! ```
 //! use bio::io::fastx::{get_kind, get_kind_seek, get_kind_file, Kind};
 //! use std::io;
-//! use std::io::Read;
 //! use std::fs;
 //! use std::fs::File;
 //! use std::io::prelude::*;
@@ -293,18 +292,18 @@ impl Record for EitherRecord {
 
 pub trait Records<R: Record, E>: Iterator<Item = Result<R, E>> {}
 
-impl<T: io::Read> Records<fasta::Record, io::Error> for fasta::Records<T> {}
+impl<T: Read> Records<fasta::Record, io::Error> for fasta::Records<T> {}
 
-impl<T: io::Read> Records<fastq::Record, fastq::Error> for fastq::Records<T> {}
+impl<T: Read> Records<fastq::Record, fastq::Error> for fastq::Records<T> {}
 
 #[derive(Debug)]
-enum EitherRecordsInner<R: io::Read> {
+enum EitherRecordsInner<R: Read> {
     FASTA(fasta::Records<R>),
     FASTQ(fastq::Records<R>),
 }
 
 #[derive(Debug)]
-pub struct EitherRecords<R: io::Read> {
+pub struct EitherRecords<R: Read> {
     records: Option<EitherRecordsInner<io::Chain<io::Cursor<[u8; 1]>, R>>>,
     reader: Option<R>,
 }
@@ -404,16 +403,20 @@ pub enum Kind {
 
 /// Determine whether a [`Read`](Read) is a FastA or FastQ.
 ///
+/// This function is a wrapper around [`get_kind_detailed`](get_kind_detailed) for more convenient
+/// use if you don't want to:
+///
+/// - Access your input [`Read`](Read) in the event of an error
+/// - Explicitly handle errors resulting from reading from your [`Read`](Read) differently
+///   from errors resulting from an invalid FastA/FastQ
+///
+/// You should also only use this function if your [`Read`](Read) does not implement [`Seek`](Seek)
+/// othwerwise [`get_kind_seek`](get_kind_seek) is more convenient.
+///
 /// This method takes ownership of the [`Read`](Read) and returns a new [`Read`](Read)
-/// with position identical to the position of the input [`Read`](Read).
-/// This allows you to pass the returned [`Read`]#Read) directly into
-/// [`fasta::Reader::new`](fasta::Reader::new) or [`fastq::Reader::new`](fastq::Reader::new).
-///
-/// In general this function is superior to [`get_kind_preserve_read`](get_kind) unless
-/// you would like to do something with the [`Read`](Read) in cases where
-/// there is an error determining the type.
-///
-/// Due to the implementation of the function it is sometimes impossible to return
+/// that is equivalent in content to the input [`Read`](Read). This allows you to pass the returned
+/// [`Read`]#Read) directly into [`fasta::Reader::new`](fasta::Reader::new) or
+/// [`fastq::Reader::new`](fastq::Reader::new).
 ///
 /// # Example
 ///
@@ -430,84 +433,83 @@ pub enum Kind {
 ///     }
 /// }
 /// ```
-pub fn get_kind<R: io::Read>(mut reader: R) -> io::Result<(io::Chain<io::Cursor<[u8; 1]>, R>, Kind)> {
-    let mut buf = [0];
-    reader.read_exact(&mut buf)?;
-    let first = char::from(buf[0]);
-    let new_reader = io::Cursor::new(buf).chain(reader);
-
-    match first {
-        '>' => Ok((new_reader, Kind::FASTA)),
-        '@' => Ok((new_reader, Kind::FASTQ)),
-        _ => Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!(
-                "Data is not a valid FASTA/FASTQ, illegal start character '{}'",
-                first
-            ),
-        )),
+pub fn get_kind<R: Read>(reader: R) -> io::Result<(io::Chain<io::Cursor<[u8; 1]>, R>, Kind)> {
+    match get_kind_detailed(reader) {
+        Ok((reader, Ok(kind))) => Ok((reader, kind)),
+        Ok((_, Err(err))) => Err(err),
+        Err((_, err)) => Err(err),
     }
 }
 
 /// Determine whether a [`Read`](Read) is a FastA or FastQ.
 ///
-/// You should only use this function if you would like to use your input [`Read`](Read)
-/// for something else if there is an error determining the data type. Otherwise,
-/// [`get_kind`](get_kind) is preferred.
+/// You should only use this function if you would like to:
 ///
-/// This function is very similar to [`get_kind`](get_kind) with the
-/// differences being that [`get_kind_preserve_read`](get_kind_preserve_read):
+/// - Access your input [`Read`](Read) in the event of an error
+/// - Explicitly handle errors resulting from reading from your [`Read`](Read) differently
+///   from errors resulting from an invalid FastA/FastQ
 ///
-/// - Returns the [`Read`](Read) in the correct location if there is an
-///   error in determining the data type
-/// - Returns a tuple containing a [`Result`](Result) instead of a
-///   [`Result`](Result), which can be less convenient to work with
-/// - Requires [`Box`](Box) and `dyn`
+/// Otherwise [`get_kind`](get_kind) will be more convenient.
+///
+/// You should also only use this function if your [`Read`](Read) does not implement [`Seek`](Seek)
+/// othwerwise [`get_kind_seek`](get_kind_seek) is more convenient.
+///
+/// This method takes ownership of the input [`Read`](Read). It reads from the [`Read`](Read)
+/// to determine whether the data is in the FastA or FastQ format. If this read fails the
+/// function returns an [`Err`](Err) containing a tuple of the input read and the error it
+/// encountered (`return Err((read, err))`). Note that in this case there are no guarantee
+/// about the position in the returned reader and some data may become unreadable if the position
+/// was advanced. Based on the contents of the error the caller can determine how best to recover.
+/// If the read is successful this function will always return [`Ok`](Ok) for the outer
+/// [`Result`](Result) with a tuple containing a new [`Read`](Read) and a [`Result`](io::Result)
+/// containing the [`fastx::Kind`](Kind) if the data was a valid FastA or FastQ file or an
+/// [`io::Error`](io::Error) if the format was invalid (ex. `Ok((new_reader), Ok(Kind::FastA))`).
+/// The new [`Read`](Read) has the character this function read prepended to it so the
+/// resulting [`Read`](Read) should be equivalent in content to the input [`Read`](Read).
 ///
 /// # Example
 ///
 /// ```rust
 /// use bio::io::{fasta, fastq};
-/// use bio::io::fastx::{Kind, get_kind_preserve_read};
+/// use bio::io::fastx::{Kind, get_kind_detailed};
 /// use std::io;
 ///
-/// fn print_type() -> io::Result<()> {
-///     let (mut reader, kind) = get_kind_preserve_read(Box::new(io::stdin()));
-///     match kind {
-///         Ok(Kind::FASTA) => println!("{}", Kind::FASTA),
-///         Ok(Kind::FASTQ) => println!("{}", Kind::FASTQ),
-///         Err(e) => {
+/// fn print_type() {
+///     let res = get_kind_detailed(io::stdin());
+///     match res {
+///         Ok((_reader, Ok(Kind::FASTA))) => println!("{}", Kind::FASTA),
+///         Ok((_reader, Ok(Kind::FASTQ))) => println!("{}", Kind::FASTQ),
+///         Ok((mut reader, Err(e))) => {
 ///             println!("Error determining FastA/FastQ: {}", e);
 ///             println!("Data:");
 ///             io::copy(&mut reader, &mut io::stdout());
-///         }
+///         },
+///         Err((mut reader, e)) => {
+///             println!("Encountered an error while determining FastA/FastQ: {}", e);
+///             println!("Remaing data:");
+///             io::copy(&mut reader, &mut io::stdout());
+///         },
 ///     }
-///     Ok(())
 /// }
 /// ```
-pub fn get_kind_preserve_read(
-    mut reader: Box<dyn io::Read>,
-) -> (Box<dyn io::Read>, io::Result<Kind>) {
+pub fn get_kind_detailed<R: Read>(mut reader: R) -> std::result::Result<(io::Chain<io::Cursor<[u8; 1]>, R>, io::Result<Kind>), (R, io::Error)> {
     let mut buf = [0];
-    if let Err(e) = reader.read_exact(&mut buf) {
-        return (reader, Err(e));
+    if let Err(err) = reader.read_exact(&mut buf) {
+        return Err((reader, err));
     }
     let first = char::from(buf[0]);
-    let new_reader = Box::new(io::Cursor::new(buf).chain(reader));
+    let new_reader = io::Cursor::new(buf).chain(reader);
 
     match first {
-        '>' => (new_reader, Ok(Kind::FASTA)),
-        '@' => (new_reader, Ok(Kind::FASTQ)),
-        _ => (
-            new_reader,
-            Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!(
-                    "Data is not a valid FASTA/FASTQ, illegal start character '{}'",
-                    first
-                ),
-            )),
-        ),
+        '>' => Ok((new_reader, Ok(Kind::FASTA))),
+        '@' => Ok((new_reader, Ok(Kind::FASTQ))),
+        _ => Ok((new_reader, Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!(
+                "Data is not a valid FASTA/FASTQ, illegal start character '{}'",
+                first
+            ),
+        )))),
     }
 }
 
@@ -516,7 +518,7 @@ pub fn get_kind_preserve_read(
 /// The benefit of this this function compared to [`get_kind`](get_kind) is that
 /// this function does not take ownership of the [`Read`](Read) so it can
 /// be slightly more convenient to use.
-pub fn get_kind_seek<R: io::Read + io::Seek>(reader: &mut R) -> io::Result<Kind> {
+pub fn get_kind_seek<R: Read + io::Seek>(reader: &mut R) -> io::Result<Kind> {
     let mut buf = [0];
     reader.read_exact(&mut buf)?;
     reader.seek(SeekFrom::Current(-1))?;
@@ -730,46 +732,46 @@ ACCGTAGGCTGA
     }
 
     #[test]
-    fn test_get_kind_preserve_read_fasta() {
-        let (mut new_read, fastx_kind) = get_kind_preserve_read(Box::new(FASTA_FILE));
-        assert_eq!(Kind::FASTA, fastx_kind.unwrap());
+    fn test_get_kind_detailed_read_fasta() {
+        let res = get_kind_detailed(FASTA_FILE);
+        assert!(matches!(res, Ok((_, Ok(Kind::FASTA)))));
         let mut buf = [0u8; 1];
-        new_read.read_exact(&mut buf).unwrap();
+        res.unwrap().0.read_exact(&mut buf).unwrap();
         assert_eq!(buf[0], FASTA_FILE[0]);
     }
 
     #[test]
-    fn test_get_kind_preserve_read_fastq() {
-        let (mut new_read, fastx_kind) = get_kind_preserve_read(Box::new(FASTQ_FILE));
-        assert_eq!(Kind::FASTQ, fastx_kind.unwrap());
+    fn test_get_kind_detailed_read_fastq() {
+        let (mut reader, kind_res) = get_kind_detailed(FASTQ_FILE).unwrap();
+        assert!(matches!(kind_res, Ok(Kind::FASTQ)));
         let mut buf = [0u8; 1];
-        new_read.read_exact(&mut buf).unwrap();
+        reader.read_exact(&mut buf).unwrap();
         assert_eq!(buf[0], FASTQ_FILE[0]);
     }
 
     #[test]
-    fn test_get_kind_preserve_read_empty() {
-        let (_, kind_res) = get_kind_preserve_read(Box::new(Cursor::new(b"")));
-        assert_eq!(kind_res.err().unwrap().kind(), io::ErrorKind::UnexpectedEof);
+    fn test_get_kind_detailed_read_empty() {
+        let (_, err) = get_kind_detailed(Cursor::new(b"")).unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::UnexpectedEof);
     }
 
     #[test]
-    fn test_get_kind_preserve_read_invalid() {
-        let read = Cursor::new(b"*");
-        let (mut new_read, res) = get_kind_preserve_read(Box::new(read));
-        assert_eq!(io::ErrorKind::InvalidData, res.err().unwrap().kind());
+    fn test_get_kind_detailed_read_invalid() {
+        let (mut reader, kind_res) = get_kind_detailed(Cursor::new(b"*")).unwrap();
+
+        assert!(matches!(kind_res.unwrap_err().kind(), io::ErrorKind::InvalidData));
         let mut buf = [0u8; 1];
-        new_read.read_exact(&mut buf).unwrap();
+        reader.read_exact(&mut buf).unwrap();
         assert_eq!(b'*', buf[0]);
     }
 
     #[test]
-    fn test_get_kind_preserve_read_error() {
+    fn test_get_kind_detailed_error() {
         let mock_reader = MockReader::new(io::Error::new(io::ErrorKind::Other, "error"), 0, FASTA_FILE);
-        let (mut new_reader, res) = get_kind_preserve_read(Box::new(mock_reader));
-        assert!(matches!(res.unwrap_err().kind(), io::ErrorKind::Other));
+        let (mut reader, err) = get_kind_detailed(mock_reader).err().unwrap();
+        assert!(matches!(err.kind(), io::ErrorKind::Other));
         let mut buf = [0u8; 1];
-        new_reader.read_exact(&mut buf).unwrap();
+        reader.read_exact(&mut buf).unwrap();
         assert_eq!(buf[0], FASTA_FILE[0]);
     }
 
