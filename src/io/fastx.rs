@@ -21,7 +21,7 @@
 //!
 //! ## Common Statistics
 //!
-//! In this example, we implement a count_bases function that for supports both the FASTA and FASTQ
+//! In this example, we implement a `count_bases` function that for supports both the FASTA and FASTQ
 //! format.
 //!
 //! ```
@@ -61,7 +61,7 @@
 //!
 //! ## Filtration
 //!
-//! In this example, we define an at_least_n_bases function that can filter FASTA or FASTQ
+//! In this example, we define an `at_least_n_bases` function that can filter FASTA or FASTQ
 //! records based on their sequence lengths. It works seemlessly with `fasta::Record`s as if
 //! it was implemented just for them. In a realistic scenario this function might be
 //! defined in a library so callers could use it with both FASTA and FASTQ files as needed.
@@ -87,13 +87,14 @@
 //!     writer.write_record(&record.unwrap());
 //! }
 //! ```
-//! # Unknown Type Examples
+//! # Dynamic Type Examples
 //!
-//! If the type of a record is not known at compile time the record is a `fastx::EitherRecord`.
+//! If the type of a record is not known at compile time you can represent it with `fastx::EitherRecord`.
 //! This type is an enum containing either a `fasta::Record` or a `fastq::Record`. There are also
-//! utility functions defined on the enum so you can work with it without detecting the type.
+//! utility functions defined on the enum so you can work with them without converting to the
+//! underlying type.
 //!
-//! ## Parsing data of unknown type
+//! ## Parsing data of either the FASTA of FASTQ type
 //!
 //! ```
 //! use bio::io::fastx::{Record, EitherRecords};
@@ -401,14 +402,14 @@ pub enum Kind {
     FASTA,
 }
 
-/// Determine whether a [`Read`](Read) is a FastA or FastQ.
+/// Determine whether a [`Read`](Read) is a FASTA or FASTQ.
 ///
 /// This function is a wrapper around [`get_kind_detailed`](get_kind_detailed) for more convenient
 /// use if you don't want to:
 ///
 /// - Access your input [`Read`](Read) in the event of an error
 /// - Explicitly handle errors resulting from reading from your [`Read`](Read) differently
-///   from errors resulting from an invalid FastA/FastQ
+///   from errors resulting from an invalid FASTA/FASTQ
 ///
 /// You should also only use this function if your [`Read`](Read) does not implement [`Seek`](Seek)
 /// othwerwise [`get_kind_seek`](get_kind_seek) is more convenient.
@@ -441,13 +442,13 @@ pub fn get_kind<R: Read>(reader: R) -> io::Result<(io::Chain<io::Cursor<[u8; 1]>
     }
 }
 
-/// Determine whether a [`Read`](Read) is a FastA or FastQ.
+/// Determine whether a [`Read`](Read) is a FASTA or FASTQ.
 ///
 /// You should only use this function if you would like to:
 ///
 /// - Access your input [`Read`](Read) in the event of an error
 /// - Explicitly handle errors resulting from reading from your [`Read`](Read) differently
-///   from errors resulting from an invalid FastA/FastQ
+///   from errors resulting from an invalid FASTA/FASTQ
 ///
 /// Otherwise [`get_kind`](get_kind) will be more convenient.
 ///
@@ -455,15 +456,15 @@ pub fn get_kind<R: Read>(reader: R) -> io::Result<(io::Chain<io::Cursor<[u8; 1]>
 /// othwerwise [`get_kind_seek`](get_kind_seek) is more convenient.
 ///
 /// This method takes ownership of the input [`Read`](Read). It reads from the [`Read`](Read)
-/// to determine whether the data is in the FastA or FastQ format. If this read fails the
+/// to determine whether the data is in the FASTA or FASTQ format. If this read fails the
 /// function returns an [`Err`](Err) containing a tuple of the input read and the error it
 /// encountered (`return Err((read, err))`). Note that in this case there are no guarantee
 /// about the position in the returned reader and some data may become unreadable if the position
 /// was advanced. Based on the contents of the error the caller can determine how best to recover.
 /// If the read is successful this function will always return [`Ok`](Ok) for the outer
 /// [`Result`](Result) with a tuple containing a new [`Read`](Read) and a [`Result`](io::Result)
-/// containing the [`fastx::Kind`](Kind) if the data was a valid FastA or FastQ file or an
-/// [`io::Error`](io::Error) if the format was invalid (ex. `Ok((new_reader), Ok(Kind::FastA))`).
+/// containing the [`fastx::Kind`](Kind) if the data was a valid FASTA or FASTQ file or an
+/// [`io::Error`](io::Error) if the format was invalid (ex. `Ok((new_reader), Ok(Kind::FASTA))`).
 /// The new [`Read`](Read) has the character this function read prepended to it so the
 /// resulting [`Read`](Read) should be equivalent in content to the input [`Read`](Read).
 ///
@@ -480,12 +481,12 @@ pub fn get_kind<R: Read>(reader: R) -> io::Result<(io::Chain<io::Cursor<[u8; 1]>
 ///         Ok((_reader, Ok(Kind::FASTA))) => println!("{}", Kind::FASTA),
 ///         Ok((_reader, Ok(Kind::FASTQ))) => println!("{}", Kind::FASTQ),
 ///         Ok((mut reader, Err(e))) => {
-///             println!("Error determining FastA/FastQ: {}", e);
+///             println!("Error determining FASTA/FASTQ: {}", e);
 ///             println!("Data:");
 ///             io::copy(&mut reader, &mut io::stdout());
 ///         },
 ///         Err((mut reader, e)) => {
-///             println!("Encountered an error while determining FastA/FastQ: {}", e);
+///             println!("Encountered an error while determining FASTA/FASTQ: {}", e);
 ///             println!("Remaing data:");
 ///             io::copy(&mut reader, &mut io::stdout());
 ///         },
@@ -513,7 +514,7 @@ pub fn get_kind_detailed<R: Read>(mut reader: R) -> std::result::Result<(io::Cha
     }
 }
 
-/// Determine whether a [`Read`](Read) + [`Seek`](Seek) is a FastA or FastQ.
+/// Determine whether a [`Read`](Read) + [`Seek`](Seek) is a FASTA or FASTQ.
 ///
 /// The benefit of this this function compared to [`get_kind`](get_kind) is that
 /// this function does not take ownership of the [`Read`](Read) so it can
@@ -537,7 +538,7 @@ pub fn get_kind_seek<R: Read + io::Seek>(reader: &mut R) -> io::Result<Kind> {
     }
 }
 
-/// Determine whether a file is a FastA or FastQ.
+/// Determine whether a file is a FASTA or FASTQ.
 pub fn get_kind_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> io::Result<Kind> {
     fs::File::open(&path).and_then(|mut f| get_kind_seek(&mut f))
 }
@@ -545,8 +546,8 @@ pub fn get_kind_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> io::Result<Ki
 impl std::fmt::Display for Kind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Kind::FASTA => write!(f, "{}", "FastA"),
-            Kind::FASTQ => write!(f, "{}", "FastQ"),
+            Kind::FASTA => write!(f, "{}", "FASTA"),
+            Kind::FASTQ => write!(f, "{}", "FASTQ"),
         }
     }
 }
@@ -649,8 +650,8 @@ ACCGTAGGCTGA
 
     #[test]
     fn test_kind_display() {
-        assert_eq!(format!("{}", Kind::FASTA), "FastA");
-        assert_eq!(format!("{}", Kind::FASTQ), "FastQ");
+        assert_eq!(format!("{}", Kind::FASTA), "FASTA");
+        assert_eq!(format!("{}", Kind::FASTQ), "FASTQ");
     }
 
     #[test]
