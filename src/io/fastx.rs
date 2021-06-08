@@ -29,9 +29,11 @@
 //! use std::io;
 //!
 //! fn count_bases<T, E, I>(records: I) -> Result<usize, E>
-//! where T: fastx::Record,
+//! where
+//!     T: fastx::Record,
 //!     E: std::error::Error,
-//!     I: fastx::Records<T, E> {
+//!     I: fastx::Records<T, E>,
+//! {
 //!     let mut nb_bases = 0;
 //!     for result in records {
 //!         let record = result?;
@@ -40,21 +42,23 @@
 //!     Ok(nb_bases)
 //! }
 //!
-//! let mut raw_reader = io::Cursor::new(b">id desc
+//! let mut raw_reader = io::Cursor::new(
+//!     b">id desc
 //! ACTG
-//! ");
+//! ",
+//! );
 //!
 //! match fastx::get_kind_seek(&mut raw_reader) {
 //!     Ok(fastx::Kind::FASTA) => {
 //!         let mut reader = fasta::Reader::new(raw_reader);
 //!         let nb_bases = count_bases(reader.records()).unwrap();
 //!         println!("Number of bases: {}", nb_bases);
-//!     },
+//!     }
 //!     Ok(fastx::Kind::FASTQ) => {
 //!         let mut reader = fastq::Reader::new(raw_reader);
 //!         let nb_bases = count_bases(reader.records()).unwrap();
 //!         println!("Number of bases: {}", nb_bases);
-//!     },
+//!     }
 //!     _ => println!("Encountered an error"),
 //! }
 //! ```
@@ -71,9 +75,11 @@
 //! use std::io;
 //!
 //! fn at_least_n_bases<T, E, I>(records: I, n: usize) -> impl Iterator<Item = Result<T, E>>
-//! where T: fastx::Record,
+//! where
+//!     T: fastx::Record,
 //!     E: std::error::Error,
-//!     I: fastx::Records<T, E> {
+//!     I: fastx::Records<T, E>,
+//! {
 //!     records.filter(move |rr| match rr {
 //!         Ok(r) => r.seq().len() > n,
 //!         _ => true,
@@ -97,7 +103,7 @@
 //! ## Parsing data of either the FASTA of FASTQ type
 //!
 //! ```
-//! use bio::io::fastx::{Record, EitherRecords};
+//! use bio::io::fastx::{EitherRecords, Record};
 //! use std::io;
 //! use std::str;
 //!
@@ -107,7 +113,7 @@
 //!     println!("desc: {}", record.desc().unwrap_or("none"));
 //!     println!("seq : {}", str::from_utf8(record.seq()).unwrap_or("error"));
 //!     // Add a default quality in case we have a FASTA record
-//!     let default_qual = vec![b'I' ; record.seq().len()];
+//!     let default_qual = vec![b'I'; record.seq().len()];
 //!     let qual = record.qual().unwrap_or(&default_qual);
 //!     println!("qual: {}", str::from_utf8(qual).unwrap_or("error"));
 //!     println!("")
@@ -121,10 +127,10 @@
 //! This module provides utilities for detecting if some data is a FASTA/FASTQ.
 //!
 //! ```
-//! use bio::io::fastx::{get_kind, get_kind_seek, get_kind_file, Kind};
-//! use std::io;
+//! use bio::io::fastx::{get_kind, get_kind_file, get_kind_seek, Kind};
 //! use std::fs;
 //! use std::fs::File;
+//! use std::io;
 //! use std::io::prelude::*;
 //!
 //! // From a Read
@@ -139,13 +145,14 @@
 //!     Ok(kind)
 //! }
 //!
-//!
 //! // From a Read + Seek
 //!
 //! fn from_read_seek() -> io::Result<Kind> {
-//!     let mut read_seek = io::Cursor::new(b">id desc
+//!     let mut read_seek = io::Cursor::new(
+//!         b">id desc
 //! ACTG
-//! ");
+//! ",
+//!     );
 //!
 //!     get_kind_seek(&mut read_seek)
 //! }
@@ -156,13 +163,12 @@
 //!     get_kind_file("foo.fasta")
 //! }
 //! ```
-//!
 use anyhow::Context;
 use std::convert::AsRef;
 use std::fs;
-use std::io::SeekFrom;
-use std::io::prelude::*;
 use std::io;
+use std::io::prelude::*;
+use std::io::SeekFrom;
 use std::mem;
 use std::path::Path;
 use thiserror::Error;
@@ -330,7 +336,10 @@ impl<R: Read> EitherRecords<R> {
         match self.records {
             Some(EitherRecordsInner::FASTA(_)) => Ok(Kind::FASTA),
             Some(EitherRecordsInner::FASTQ(_)) => Ok(Kind::FASTQ),
-            None => Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Data is empty")),
+            None => Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "Data is empty",
+            )),
         }
     }
 
@@ -339,12 +348,16 @@ impl<R: Read> EitherRecords<R> {
             match get_kind(reader) {
                 Err(err) if err.kind() == io::ErrorKind::UnexpectedEof => (),
                 Err(err) => return Err(err),
-                Ok((reader, Kind::FASTA)) => self.records = Some(
-                    EitherRecordsInner::FASTA(fasta::Reader::new(reader).records())
-                ),
-                Ok((reader, Kind::FASTQ)) => self.records = Some(
-                    EitherRecordsInner::FASTQ(fastq::Reader::new(reader).records())
-                ),
+                Ok((reader, Kind::FASTA)) => {
+                    self.records = Some(EitherRecordsInner::FASTA(
+                        fasta::Reader::new(reader).records(),
+                    ))
+                }
+                Ok((reader, Kind::FASTQ)) => {
+                    self.records = Some(EitherRecordsInner::FASTQ(
+                        fastq::Reader::new(reader).records(),
+                    ))
+                }
             }
         }
         Ok(())
@@ -424,8 +437,8 @@ pub enum Kind {
 /// # Example
 ///
 /// ```rust
+/// use bio::io::fastx::{get_kind, Kind};
 /// use bio::io::{fasta, fastq};
-/// use bio::io::fastx::{Kind, get_kind};
 /// use std::io;
 ///
 /// fn count_records() -> io::Result<usize> {
@@ -473,8 +486,8 @@ pub fn get_kind<R: Read>(reader: R) -> io::Result<(io::Chain<io::Cursor<[u8; 1]>
 /// # Example
 ///
 /// ```rust
+/// use bio::io::fastx::{get_kind_detailed, Kind};
 /// use bio::io::{fasta, fastq};
-/// use bio::io::fastx::{Kind, get_kind_detailed};
 /// use std::io;
 ///
 /// fn print_type() {
@@ -486,16 +499,18 @@ pub fn get_kind<R: Read>(reader: R) -> io::Result<(io::Chain<io::Cursor<[u8; 1]>
 ///             println!("Error determining FASTA/FASTQ: {}", e);
 ///             println!("Data:");
 ///             io::copy(&mut reader, &mut io::stdout());
-///         },
+///         }
 ///         Err((mut reader, e)) => {
 ///             println!("Encountered an error while determining FASTA/FASTQ: {}", e);
 ///             println!("Remaing data:");
 ///             io::copy(&mut reader, &mut io::stdout());
-///         },
+///         }
 ///     }
 /// }
 /// ```
-pub fn get_kind_detailed<R: Read>(mut reader: R) -> std::result::Result<(io::Chain<io::Cursor<[u8; 1]>, R>, io::Result<Kind>), (R, io::Error)> {
+pub fn get_kind_detailed<R: Read>(
+    mut reader: R,
+) -> std::result::Result<(io::Chain<io::Cursor<[u8; 1]>, R>, io::Result<Kind>), (R, io::Error)> {
     let mut buf = [0];
     if let Err(err) = reader.read_exact(&mut buf) {
         return Err((reader, err));
@@ -506,13 +521,16 @@ pub fn get_kind_detailed<R: Read>(mut reader: R) -> std::result::Result<(io::Cha
     match first {
         '>' => Ok((new_reader, Ok(Kind::FASTA))),
         '@' => Ok((new_reader, Ok(Kind::FASTQ))),
-        _ => Ok((new_reader, Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!(
-                "Data is not a valid FASTA/FASTQ, illegal start character '{}'",
-                first
-            ),
-        )))),
+        _ => Ok((
+            new_reader,
+            Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "Data is not a valid FASTA/FASTQ, illegal start character '{}'",
+                    first
+                ),
+            )),
+        )),
     }
 }
 
@@ -593,16 +611,20 @@ ACCGTAGGCTGA
 
     impl<R: Read> MockReader<R> {
         fn new(error: io::Error, error_at_byte: usize, reader: R) -> Self {
-            MockReader { bytes_read: 0, error: Some(error), error_at_byte, reader }
+            MockReader {
+                bytes_read: 0,
+                error: Some(error),
+                error_at_byte,
+                reader,
+            }
         }
     }
-
 
     impl<R: Read> Read for MockReader<R> {
         fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
             if buf.len() + self.bytes_read >= self.error_at_byte {
                 match mem::replace(&mut self.error, None) {
-                    Some(err) => { return Err(err) },
+                    Some(err) => return Err(err),
                     None => (),
                 }
             }
@@ -614,9 +636,7 @@ ACCGTAGGCTGA
 
     #[test]
     fn test_fasta_either_record() {
-        let record = EitherRecord::FASTA(
-            fasta::Record::with_attrs("id", Some("desc"), b"ACTG")
-        );
+        let record = EitherRecord::FASTA(fasta::Record::with_attrs("id", Some("desc"), b"ACTG"));
         assert!(matches!(record.kind(), Kind::FASTA));
         assert!(matches!(record.qual(), None));
         let fastq = record.clone().to_fastq(b'I');
@@ -628,9 +648,12 @@ ACCGTAGGCTGA
 
     #[test]
     fn test_fastq_either_record() {
-        let record = EitherRecord::FASTQ(
-            fastq::Record::with_attrs("id", Some("desc"), b"ACTG", b"JJJJ")
-        );
+        let record = EitherRecord::FASTQ(fastq::Record::with_attrs(
+            "id",
+            Some("desc"),
+            b"ACTG",
+            b"JJJJ",
+        ));
         assert!(matches!(record.kind(), Kind::FASTQ));
         assert!(matches!(record.qual(), Some(_)));
         let fastq = record.clone().to_fastq(b'I');
@@ -675,7 +698,9 @@ ACCGTAGGCTGA
             .bytes()
             .enumerate()
             .find(move |(i, c)| *i > 0 as usize && c.as_ref().map_or(false, |c| *c == b'>'))
-            .unwrap().0 + 1;
+            .unwrap()
+            .0
+            + 1;
         let reader = MockReader::new(
             io::Error::new(io::ErrorKind::Other, "error"),
             error_at_byte,
@@ -697,7 +722,10 @@ ACCGTAGGCTGA
     #[test]
     fn test_fastq_either_records_err() {
         let mut records = EitherRecords::new(INCOMPLETE_FASTQ_FILE);
-        assert!(matches!(records.next().unwrap().unwrap_err(), Error::FASTQ(_)));
+        assert!(matches!(
+            records.next().unwrap().unwrap_err(),
+            Error::FASTQ(_)
+        ));
     }
 
     #[test]
@@ -771,7 +799,10 @@ ACCGTAGGCTGA
     fn test_get_kind_detailed_read_invalid() {
         let (mut reader, kind_res) = get_kind_detailed(Cursor::new(b"*")).unwrap();
 
-        assert!(matches!(kind_res.unwrap_err().kind(), io::ErrorKind::InvalidData));
+        assert!(matches!(
+            kind_res.unwrap_err().kind(),
+            io::ErrorKind::InvalidData
+        ));
         let mut buf = [0u8; 1];
         reader.read_exact(&mut buf).unwrap();
         assert_eq!(buf[0], b'*');
@@ -779,7 +810,8 @@ ACCGTAGGCTGA
 
     #[test]
     fn test_get_kind_detailed_error() {
-        let mock_reader = MockReader::new(io::Error::new(io::ErrorKind::Other, "error"), 0, FASTA_FILE);
+        let mock_reader =
+            MockReader::new(io::Error::new(io::ErrorKind::Other, "error"), 0, FASTA_FILE);
         let (mut reader, err) = get_kind_detailed(mock_reader).err().unwrap();
         assert!(matches!(err.kind(), io::ErrorKind::Other));
         let mut buf = [0u8; 1];

@@ -2,12 +2,12 @@
 
 extern crate test;
 
-use test::{black_box, Bencher};
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use std::io;
 use std::io::prelude::*;
 use tempfile::NamedTempFile;
-use rand::{thread_rng, Rng};
-use rand::distributions::Alphanumeric;
+use test::{black_box, Bencher};
 
 use bio::io::{fasta, fastx};
 
@@ -51,9 +51,11 @@ fn gen_random_fasta() -> io::Result<io::Cursor<Vec<u8>>> {
 }
 
 fn fastx_count_bases<T, E, I>(records: I) -> Result<usize, E>
-where T: fastx::Record,
+where
+    T: fastx::Record,
     E: std::error::Error,
-    I: fastx::Records<T, E> {
+    I: fastx::Records<T, E>,
+{
     let mut nb_bases = 0;
     for result in records {
         let record = result?;
@@ -63,7 +65,9 @@ where T: fastx::Record,
 }
 
 fn fasta_count_bases<R>(records: fasta::Records<R>) -> io::Result<usize>
-where R: io::Read {
+where
+    R: io::Read,
+{
     let mut nb_bases = 0;
     for result in records {
         let record = result?;
@@ -73,9 +77,11 @@ where R: io::Read {
 }
 
 fn fastx_check<T, E, I>(records: I) -> Result<(), String>
-where T: fastx::Record,
+where
+    T: fastx::Record,
     E: std::error::Error,
-    I: fastx::Records<T, E> {
+    I: fastx::Records<T, E>,
+{
     for result in records {
         let record = result.map_err(|e| format!("{}", e))?;
         record.check().map_err(|e| e.to_owned())?;
@@ -84,14 +90,15 @@ where T: fastx::Record,
 }
 
 fn fasta_check<R>(records: fasta::Records<R>) -> Result<(), String>
-where R: io::Read {
+where
+    R: io::Read,
+{
     for result in records {
         let record = result.map_err(|e| format!("{}", e))?;
         record.check().map_err(|e| e.to_owned())?;
     }
     Ok(())
 }
-
 
 #[bench]
 fn bench_fasta_count(b: &mut Bencher) -> io::Result<()> {
