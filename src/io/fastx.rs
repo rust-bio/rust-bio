@@ -360,10 +360,10 @@ impl<R: Read> Iterator for EitherRecords<R> {
         match &mut self.records {
             Some(EitherRecordsInner::FASTA(r)) => r
                 .next()
-                .map(|record_res| record_res.map(EitherRecord::from).map_err(Error::from)),
+                .map(|record_res| record_res.map(EitherRecord::FASTA).map_err(Error::IO)),
             Some(EitherRecordsInner::FASTQ(r)) => r
                 .next()
-                .map(|record_res| record_res.map(EitherRecord::from).map_err(Error::from)),
+                .map(|record_res| record_res.map(EitherRecord::FASTQ).map_err(Error::FASTQ)),
             None => None,
         }
     }
