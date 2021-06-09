@@ -100,6 +100,9 @@
 //! utility functions defined on the enum so you can work with them without converting to the
 //! underlying type.
 //!
+//! Note that using dynamic types like this incurs a slight performance cost around 5-10% when
+//! compared to the typing based approach or parsing a single type directly.
+//!
 //! ## Parsing data of either the FASTA of FASTQ type
 //!
 //! ```
