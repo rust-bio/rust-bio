@@ -136,7 +136,7 @@ impl<N: Ord + Clone + Copy, D: Clone> ArrayBackedIntervalTree<N, D> {
             last_value = a[i].max;
         });
         let mut k = 1;
-        while (1 << k) < n {
+        while (1 << k) <= n {
             // process internal nodes in the bottom-up order
             let x = 1 << (k - 1);
             let i0 = (x << 1) - 1; // i0 is the first node
@@ -283,8 +283,9 @@ impl StackCell {
 
 #[cfg(test)]
 mod tests {
+    use proptest::prelude::*;
+
     use super::*;
-    use crate::data_structures::interval_tree::ArrayBackedIntervalTree;
 
     #[test]
     fn test_example() {
@@ -305,5 +306,69 @@ mod tests {
         };
         let expected = vec![e1, e2];
         assert_eq!(overlap, expected);
+    }
+
+    /// Regression test: catch a scenario where the `max` value of an entry
+    /// wasn't extended to take into account all of the leaf nodes it contained
+    /// when indexing
+    #[test]
+    fn test_disjoint_two_element_search() {
+        let mut tree = ArrayBackedIntervalTree::new();
+        tree.insert(12..34, 0);
+        tree.insert(40..56, 1);
+        tree.index();
+        let overlap = tree.find(40..41);
+
+        let e1 = Entry {
+            interval: &(40..56).into(),
+            data: &1,
+        };
+        let expected = vec![e1];
+        assert_eq!(overlap, expected);
+    }
+
+    proptest! {
+        /// Given a query interval in the format `(start, len)` and a sequence
+        /// of intervals `(start, len)` to index, assert that
+        /// `ArrayBackedIntervalTree::find` returns all the intervals which
+        /// overlap the query.
+        #[test]
+        fn find_arbitrary(
+            query in (0u32..1001, 0u32..1001),
+            intervals in prop::collection::vec((0u32..1000, 0u32..1000), 0..1000)
+        ) {
+            let tree = ArrayBackedIntervalTree::from_iter(
+                intervals
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, (start, len))| (start..start + len, i)),
+            );
+
+            let (start, len) = query;
+            let end = start + len;
+
+            let expected: Vec<_> = tree
+                .entries
+                .iter()
+                .filter_map(|internal| {
+                    if internal.interval.start < end && start < internal.interval.end {
+                        Some(Entry {
+                            interval: &internal.interval,
+                            data: &internal.data,
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            prop_assert_eq!(
+                tree.find(start..end),
+                expected,
+                "{:?} in {:?}",
+                start..end,
+                tree.entries
+            );
+        }
     }
 }
