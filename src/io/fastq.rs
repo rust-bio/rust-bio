@@ -249,7 +249,7 @@ where
             self.reader.read_line(&mut self.line_buffer)?;
 
             let mut lines_read = 0;
-            while !self.line_buffer.starts_with('+') {
+            while !self.line_buffer.is_empty() && !self.line_buffer.starts_with('+') {
                 record.seq.push_str(&self.line_buffer.trim_end());
                 self.line_buffer.clear();
                 self.reader.read_line(&mut self.line_buffer)?;
@@ -852,6 +852,16 @@ IIIIIIJJJJJJ
         let expected = 4;
 
         assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_read_with_missing_plus() {
+        let fq: &'static [u8] = b"@id description\nACGT\n*\n!!!!\n";
+        let mut reader = Reader::new(fq);
+        let mut record = Record::new();
+        let err = reader.read(&mut record).unwrap_err();
+
+        assert!(matches!(err, Error::IncompleteRecord))
     }
 
     #[test]
