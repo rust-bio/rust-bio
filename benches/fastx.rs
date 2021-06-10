@@ -3,7 +3,9 @@
 extern crate test;
 
 use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use rand::Rng;
+use rand::SeedableRng;
+use rand::rngs::StdRng;
 use std::io;
 use std::io::prelude::*;
 use tempfile::NamedTempFile;
@@ -22,15 +24,14 @@ const ITERS: usize = 4000;
 fn gen_random_fasta() -> io::Result<io::Cursor<Vec<u8>>> {
     let mut file = NamedTempFile::new()?;
     let mut w = fasta::Writer::to_file(file.path())?;
-    let mut rng = thread_rng();
     for _ in 0..FASTA_SIZE {
-        let id: String = thread_rng()
+        let id: String = StdRng::seed_from_u64(42)
             .sample_iter(&Alphanumeric)
             .take(ID_LEN)
             .map(char::from)
             .collect();
 
-        let desc: String = thread_rng()
+        let desc: String = StdRng::seed_from_u64(4)
             .sample_iter(&Alphanumeric)
             .take(DESC_LEN)
             .map(char::from)
@@ -38,7 +39,7 @@ fn gen_random_fasta() -> io::Result<io::Cursor<Vec<u8>>> {
 
         let seq: Vec<u8> = (0..SEQ_LEN)
             .map(|_| {
-                let idx = rng.gen_range(0..BASES.len());
+                let idx = StdRng::seed_from_u64(65).gen_range(0..BASES.len());
                 BASES[idx]
             })
             .collect();
