@@ -2,16 +2,13 @@
 
 extern crate test;
 
+use bio::io::{fasta, fastx};
 use rand::distributions::Alphanumeric;
+use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
-use rand::rngs::StdRng;
 use std::io;
-use std::io::prelude::*;
-use tempfile::NamedTempFile;
 use test::{black_box, Bencher};
-
-use bio::io::{fasta, fastx};
 
 const BASES: &[u8] = b"ACTG";
 const ID_LEN: usize = 10;
@@ -21,34 +18,34 @@ const FASTA_SIZE: usize = 100;
 
 const ITERS: usize = 4000;
 
-fn gen_random_fasta() -> io::Result<io::Cursor<Vec<u8>>> {
-    let mut file = NamedTempFile::new()?;
-    let mut w = fasta::Writer::to_file(file.path())?;
-    for _ in 0..FASTA_SIZE {
-        let id: String = StdRng::seed_from_u64(42)
-            .sample_iter(&Alphanumeric)
-            .take(ID_LEN)
-            .map(char::from)
-            .collect();
+fn gen_random_fasta() -> io::Result<Vec<u8>> {
+    let mut raw_writer = Vec::new();
+    {
+        let mut w = fasta::Writer::new(&mut raw_writer);
+        for _ in 0..FASTA_SIZE {
+            let id: String = StdRng::seed_from_u64(42)
+                .sample_iter(&Alphanumeric)
+                .take(ID_LEN)
+                .map(char::from)
+                .collect();
 
-        let desc: String = StdRng::seed_from_u64(4)
-            .sample_iter(&Alphanumeric)
-            .take(DESC_LEN)
-            .map(char::from)
-            .collect();
+            let desc: String = StdRng::seed_from_u64(4)
+                .sample_iter(&Alphanumeric)
+                .take(DESC_LEN)
+                .map(char::from)
+                .collect();
 
-        let seq: Vec<u8> = (0..SEQ_LEN)
-            .map(|_| {
-                let idx = StdRng::seed_from_u64(65).gen_range(0..BASES.len());
-                BASES[idx]
-            })
-            .collect();
+            let seq: Vec<u8> = (0..SEQ_LEN)
+                .map(|_| {
+                    let idx = StdRng::seed_from_u64(65).gen_range(0..BASES.len());
+                    BASES[idx]
+                })
+                .collect();
 
-        w.write_record(&fasta::Record::with_attrs(&id, Some(&desc), &seq))?;
+            w.write_record(&fasta::Record::with_attrs(&id, Some(&desc), &seq))?;
+        }
     }
-    let mut data: Vec<u8> = Vec::new();
-    file.read_to_end(&mut data)?;
-    Ok(io::Cursor::new(data))
+    Ok(raw_writer)
 }
 
 fn fastx_count_bases<T, E, I>(records: I) -> Result<usize, E>
@@ -107,7 +104,7 @@ fn bench_fasta_count(b: &mut Bencher) -> io::Result<()> {
     b.iter(|| {
         for _ in 0..ITERS {
             black_box({
-                let data = data.clone();
+                let data = io::Cursor::new(&data);
                 let records = fasta::Reader::new(data).records();
                 fasta_count_bases(records).unwrap();
             });
@@ -122,7 +119,7 @@ fn bench_fastx_fasta_count(b: &mut Bencher) -> io::Result<()> {
     b.iter(|| {
         for _ in 0..ITERS {
             black_box({
-                let data = data.clone();
+                let data = io::Cursor::new(&data);
                 let records = fasta::Reader::new(data).records();
                 fastx_count_bases(records).unwrap();
             });
@@ -137,7 +134,7 @@ fn bench_either_fasta_count(b: &mut Bencher) -> io::Result<()> {
     b.iter(|| {
         for _ in 0..ITERS {
             black_box({
-                let data = data.clone();
+                let data = io::Cursor::new(&data);
                 let records = fastx::EitherRecords::new(data);
                 fastx_count_bases(records).unwrap();
             });
@@ -152,7 +149,7 @@ fn bench_fasta_check(b: &mut Bencher) -> io::Result<()> {
     b.iter(|| {
         for _ in 0..ITERS {
             black_box({
-                let data = data.clone();
+                let data = io::Cursor::new(&data);
                 let records = fasta::Reader::new(data.clone()).records();
                 fasta_check(records).unwrap();
             });
@@ -167,7 +164,7 @@ fn bench_fastx_fasta_check(b: &mut Bencher) -> io::Result<()> {
     b.iter(|| {
         for _ in 0..ITERS {
             black_box({
-                let data = data.clone();
+                let data = io::Cursor::new(&data);
                 let records = fasta::Reader::new(data.clone()).records();
                 fastx_check(records).unwrap();
             });
@@ -182,7 +179,7 @@ fn bench_either_fasta_check(b: &mut Bencher) -> io::Result<()> {
     b.iter(|| {
         for _ in 0..ITERS {
             black_box({
-                let data = data.clone();
+                let data = io::Cursor::new(&data);
                 let records = fastx::EitherRecords::new(data);
                 fastx_check(records).unwrap();
             });
