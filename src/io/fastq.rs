@@ -177,7 +177,7 @@ impl<B> Reader<B>
 where
     B: io::BufRead,
 {
-    /// Create a new Fasta reader given a `io::BufReader`.
+    ///  Create a new Fastq reader with an object that implements `io::BufReader`.
     pub fn from_bufread(bufreader: B) -> Self {
         Reader {
             reader: bufreader,

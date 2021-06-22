@@ -223,7 +223,7 @@ impl<B> Reader<B>
 where
     B: io::BufRead,
 {
-    /// Create a new Fasta reader given an object that implement `io::BufRead`.
+    /// Create a new Fasta reader with an object that implements `io::BufRead`.
     ///
     /// # Example
     /// ```rust
@@ -233,7 +233,7 @@ where
     /// # const fasta_file: &'static [u8] = b">id desc
     /// # AAAA
     /// # ";
-    /// let buffer = io::Bufreader::with_capacity(16384, fasta_file)
+    /// let buffer = io::BufReader::with_capacity(16384, fasta_file);
     /// let reader = Reader::from_bufread(buffer);
     /// # }
     /// ```
