@@ -34,106 +34,61 @@ fn write_sequence(file: &mut std::fs::File, seed: u64) {
     }
 }
 
+macro_rules! bench_func {
+    ($name:ident, $read_expr:expr) => {
+        #[bench]
+        fn $name(b: &mut Bencher) {
+            let mut tempfile = tempfile::tempfile().unwrap();
+
+            write_sequence(&mut tempfile, 42);
+
+            b.iter(|| {
+                tempfile.seek(io::SeekFrom::Start(0)).unwrap();
+                $read_expr(&mut tempfile).records().for_each(|_| ())
+            });
+        }
+    };
+}
+
 mod fasta_buffer {
     use std::io;
 
     use super::*;
 
-    #[bench]
-    fn default(b: &mut Bencher) {
-        let mut tempfile = tempfile::tempfile().unwrap();
+    bench_func!(default, |tempfile| fasta::Reader::new(tempfile));
+    bench_func!(wrapped_default, |tempfile| fasta::Reader::new(
+        io::BufReader::new(tempfile)
+    ));
 
-        write_sequence(&mut tempfile, 42);
+    bench_func!(capacity_default, |tempfile| fasta::Reader::with_capacity(
+        8192, tempfile
+    ));
 
-        b.iter(|| {
-            tempfile.seek(io::SeekFrom::Start(0)).unwrap();
-            fasta::Reader::new(&mut tempfile).records().for_each(|_| ())
-        });
-    }
+    bench_func!(bufread_default, |tempfile| fasta::Reader::from_bufread(
+        io::BufReader::new(tempfile)
+    ));
 
-    #[bench]
-    fn wrapped_default(b: &mut Bencher) {
-        let mut tempfile = tempfile::tempfile().unwrap();
+    bench_func!(wrapped_32768, |tempfile| fasta::Reader::new(
+        io::BufReader::with_capacity(3278, tempfile)
+    ));
 
-        write_sequence(&mut tempfile, 42);
+    bench_func!(capacity_32768, |tempfile| fasta::Reader::with_capacity(
+        32768, tempfile
+    ));
 
-        b.iter(|| {
-            tempfile.seek(io::SeekFrom::Start(0)).unwrap();
-            fasta::Reader::new(io::BufReader::new(&mut tempfile))
-                .records()
-                .for_each(|_| ())
-        });
-    }
+    bench_func!(bufread_32768, |tempfile| fasta::Reader::from_bufread(
+        io::BufReader::with_capacity(32768, tempfile)
+    ));
 
-    #[bench]
-    fn capacity_default(b: &mut Bencher) {
-        let mut tempfile = tempfile::tempfile().unwrap();
+    bench_func!(wrapped_65536, |tempfile| fasta::Reader::new(
+        io::BufReader::with_capacity(65536, tempfile)
+    ));
 
-        write_sequence(&mut tempfile, 42);
+    bench_func!(capacity_65536, |tempfile| fasta::Reader::with_capacity(
+        65536, tempfile
+    ));
 
-        b.iter(|| {
-            tempfile.seek(io::SeekFrom::Start(0)).unwrap();
-            fasta::Reader::with_capacity(8192, &mut tempfile)
-                .records()
-                .for_each(|_| ())
-        });
-    }
-
-    #[bench]
-    fn bufread_default(b: &mut Bencher) {
-        let mut tempfile = tempfile::tempfile().unwrap();
-
-        write_sequence(&mut tempfile, 42);
-
-        b.iter(|| {
-            tempfile.seek(io::SeekFrom::Start(0)).unwrap();
-            let buffer = io::BufReader::new(&mut tempfile);
-            fasta::Reader::from_bufread(buffer)
-                .records()
-                .for_each(|_| ())
-        });
-    }
-
-    #[bench]
-    fn wrapped_32768(b: &mut Bencher) {
-        let mut tempfile = tempfile::tempfile().unwrap();
-
-        write_sequence(&mut tempfile, 42);
-
-        b.iter(|| {
-            tempfile.seek(io::SeekFrom::Start(0)).unwrap();
-            fasta::Reader::new(io::BufReader::with_capacity(32768, &mut tempfile))
-                .records()
-                .for_each(|_| ())
-        });
-    }
-
-    #[bench]
-    fn capacity_32768(b: &mut Bencher) {
-        let mut tempfile = tempfile::tempfile().unwrap();
-
-        write_sequence(&mut tempfile, 42);
-
-        b.iter(|| {
-            tempfile.seek(io::SeekFrom::Start(0)).unwrap();
-            fasta::Reader::with_capacity(32768, &mut tempfile)
-                .records()
-                .for_each(|_| ())
-        });
-    }
-
-    #[bench]
-    fn bufread_32768(b: &mut Bencher) {
-        let mut tempfile = tempfile::tempfile().unwrap();
-
-        write_sequence(&mut tempfile, 42);
-
-        b.iter(|| {
-            tempfile.seek(io::SeekFrom::Start(0)).unwrap();
-            let buffer = io::BufReader::with_capacity(32768, &mut tempfile);
-            fasta::Reader::from_bufread(buffer)
-                .records()
-                .for_each(|_| ())
-        });
-    }
+    bench_func!(bufread_65536, |tempfile| fasta::Reader::from_bufread(
+        io::BufReader::with_capacity(65536, tempfile)
+    ));
 }
