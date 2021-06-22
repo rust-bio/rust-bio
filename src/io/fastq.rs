@@ -137,12 +137,12 @@ pub trait FastqRead {
 
 /// A FastQ reader.
 #[derive(Debug)]
-pub struct Reader<R: io::Read> {
-    reader: io::BufReader<R>,
+pub struct Reader<B> {
+    reader: B,
     line_buffer: String,
 }
 
-impl Reader<fs::File> {
+impl Reader<io::BufReader<fs::File>> {
     /// Read from a given file.
     pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
         fs::File::open(path.as_ref())
@@ -155,7 +155,7 @@ impl Reader<fs::File> {
     }
 }
 
-impl<R: io::Read> Reader<R> {
+impl<R: io::Read> Reader<io::BufReader<R>> {
     /// Read from a given [`io::Read`](https://doc.rust-lang.org/std/io/trait.Read.html).
     pub fn new(reader: R) -> Self {
         Reader {
@@ -171,9 +171,14 @@ impl<R: io::Read> Reader<R> {
             line_buffer: String::new(),
         }
     }
+}
 
+impl<B> Reader<B>
+where
+    B: io::BufRead,
+{
     /// Create a new Fasta reader given a `io::BufReader`.
-    pub fn from_bufreader(bufreader: io::BufReader<R>) -> Self {
+    pub fn from_bufread(bufreader: B) -> Self {
         Reader {
             reader: bufreader,
             line_buffer: String::new(),
@@ -200,14 +205,14 @@ impl<R: io::Read> Reader<R> {
     ///     assert!(record.check().is_ok())
     /// }
     /// ```
-    pub fn records(self) -> Records<R> {
+    pub fn records(self) -> Records<B> {
         Records { reader: self }
     }
 }
 
-impl<R> FastqRead for Reader<R>
+impl<B> FastqRead for Reader<B>
 where
-    R: io::Read,
+    B: io::BufRead,
 {
     /// Read the next FastQ entry into the given [`Record`](#Record).
     /// An empty record indicates that no more records can be read.
@@ -490,7 +495,10 @@ pub struct Records<R: io::Read> {
     reader: Reader<R>,
 }
 
-impl<R: io::Read> Iterator for Records<R> {
+impl<B> Iterator for Records<B>
+where
+    B: io::BufRead,
+{
     type Item = Result<Record>;
 
     fn next(&mut self) -> Option<Result<Record>> {
@@ -614,7 +622,7 @@ IIIIIIJJJJJJ
             assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
         }
 
-        let reader = Reader::from_bufreader(io::BufReader::new(FASTQ_FILE));
+        let reader = Reader::from_bufread(io::BufReader::new(FASTQ_FILE));
         let records: Vec<Result<Record>> = reader.records().collect();
         assert_eq!(records.len(), 1);
         for res in records {

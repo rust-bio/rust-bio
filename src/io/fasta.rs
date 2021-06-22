@@ -127,7 +127,6 @@
 //! faidx.read(&mut seq).expect("Couldn't read the interval");
 //! assert_eq!(seq, b"GTAGGCTGAA");
 //! ```
-//!
 
 use std::cmp::min;
 use std::collections;
@@ -151,12 +150,12 @@ pub trait FastaRead {
 
 /// A FASTA reader.
 #[derive(Debug)]
-pub struct Reader<R: io::Read> {
-    reader: io::BufReader<R>,
+pub struct Reader<B> {
+    reader: B,
     line: String,
 }
 
-impl Reader<fs::File> {
+impl Reader<io::BufReader<fs::File>> {
     /// Read FASTA from given file path.
     pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
         fs::File::open(&path)
@@ -175,7 +174,10 @@ impl Reader<fs::File> {
     }
 }
 
-impl<R: io::Read> Reader<R> {
+impl<R> Reader<io::BufReader<R>>
+where
+    R: io::Read,
+{
     /// Create a new Fasta reader given an instance of `io::Read`.
     ///
     /// # Example
@@ -215,8 +217,13 @@ impl<R: io::Read> Reader<R> {
             line: String::new(),
         }
     }
+}
 
-    /// Create a new Fasta reader given a `io::BufReader`.
+impl<B> Reader<B>
+where
+    B: io::BufRead,
+{
+    /// Create a new Fasta reader given an object that implement `io::BufRead`.
     ///
     /// # Example
     /// ```rust
@@ -226,10 +233,11 @@ impl<R: io::Read> Reader<R> {
     /// # const fasta_file: &'static [u8] = b">id desc
     /// # AAAA
     /// # ";
-    /// let reader = Reader::with_capacity(16384, fasta_file);
+    /// let buffer = io::Bufreader::with_capacity(16384, fasta_file)
+    /// let reader = Reader::from_bufread(buffer);
     /// # }
     /// ```
-    pub fn from_bufreader(bufreader: io::BufReader<R>) -> Self {
+    pub fn from_bufread(bufreader: B) -> Self {
         Reader {
             reader: bufreader,
             line: String::new(),
@@ -256,7 +264,7 @@ impl<R: io::Read> Reader<R> {
     /// }
     /// # }
     /// ```
-    pub fn records(self) -> Records<R> {
+    pub fn records(self) -> Records<B> {
         Records {
             reader: self,
             error_has_occured: false,
@@ -264,9 +272,9 @@ impl<R: io::Read> Reader<R> {
     }
 }
 
-impl<R> FastaRead for Reader<R>
+impl<B> FastaRead for Reader<B>
 where
-    R: io::Read,
+    B: io::BufRead,
 {
     /// Read the next FASTA record into the given `Record`.
     /// An empty record indicates that no more records can be read.
@@ -1000,12 +1008,18 @@ impl fmt::Display for Record {
 }
 
 /// An iterator over the records of a Fasta file.
-pub struct Records<R: io::Read> {
-    reader: Reader<R>,
+pub struct Records<B>
+where
+    B: io::BufRead,
+{
+    reader: Reader<B>,
     error_has_occured: bool,
 }
 
-impl<R: io::Read> Iterator for Records<R> {
+impl<B> Iterator for Records<B>
+where
+    B: io::BufRead,
+{
     type Item = io::Result<Record>;
 
     fn next(&mut self) -> Option<io::Result<Record>> {
@@ -1133,7 +1147,7 @@ ATTGTTGTTTTA
             assert_eq!(record.seq(), seqs[i]);
         }
 
-        let reader = Reader::from_bufreader(io::BufReader::new(FASTA_FILE));
+        let reader = Reader::from_bufread(io::BufReader::new(FASTA_FILE));
 
         for (i, r) in reader.records().enumerate() {
             let record = r.expect("Error reading record");
