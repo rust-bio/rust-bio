@@ -85,20 +85,19 @@ use std::cmp::Ordering;
 use ndarray::prelude::*;
 use num_traits::Zero;
 use ordered_float::OrderedFloat;
-use statrs::distribution::{Continuous};
+use statrs::distribution::Continuous;
 
 pub use self::errors::{Error, Result};
 
 use super::LogProb;
 
+use std::cmp::Eq;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::cmp::Eq;
 
-use std::collections::BTreeMap;
 use super::Prob;
 use std::cell::RefCell;
-
+use std::collections::BTreeMap;
 
 custom_derive! {
     /// A newtype for HMM states.
@@ -212,7 +211,6 @@ impl Iterator for StateTransitionIter {
 /// emission distributions.
 #[allow(unconditional_recursion)]
 pub trait Model<Observation> {
-
     /// The number of states in the model.
     fn num_states(&self) -> usize;
 
@@ -384,14 +382,13 @@ pub fn forward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>,
         } else {
             // Subsequent columns.
             for j in hmm.states() {
-
                 let xs = hmm
                     .states()
                     .map(|k| {
                         vals[[i - 1, *k]]
                             + hmm.transition_prob_idx(k, j, i)
                             + hmm.observation_prob(j, o)
-                            // + maybe_initial
+                        // + maybe_initial
                     })
                     .collect::<Vec<LogProb>>();
                 vals[[i, *j]] = LogProb::ln_sum_exp(&xs);
@@ -401,18 +398,16 @@ pub fn forward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>,
 
     // Compute final probability.
 
-    let prob_vec_final = hmm.states().map(|k| {
-        vals[[observations.len() - 1, *k]]
-        + hmm.end_prob(k)
-    }).collect::<Vec<LogProb>>();
+    let prob_vec_final = hmm
+        .states()
+        .map(|k| vals[[observations.len() - 1, *k]] + hmm.end_prob(k))
+        .collect::<Vec<LogProb>>();
 
     let prob = LogProb::ln_sum_exp(&prob_vec_final);
     // let prob = LogProb::ln_sum_exp(vals.row(observations.len() - 1).to_slice().unwrap());
 
-
     (vals, prob)
 }
-
 
 pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>, LogProb) {
     // The matrix with probabilities.
@@ -429,54 +424,47 @@ pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>
 
             for j in hmm.states() {
                 let xs = hmm
-                        .states()
-                        .map(|k| {
-                                    vals[[i, *k]]
-                                    + hmm.transition_prob_idx(j, k, n - i)
-                                    + hmm.observation_prob(k, o)
-                        })
-                        .collect::<Vec<LogProb>>();
+                    .states()
+                    .map(|k| {
+                        vals[[i, *k]]
+                            + hmm.transition_prob_idx(j, k, n - i)
+                            + hmm.observation_prob(k, o)
+                    })
+                    .collect::<Vec<LogProb>>();
                 if observations.len() > 1 {
-                        vals[[i+1, *j]] = LogProb::ln_sum_exp(&xs);
+                    vals[[i + 1, *j]] = LogProb::ln_sum_exp(&xs);
                 } else {
-                        prob_vec_final = hmm.states().map(|k| {
-                                    vals[[i, *k]]
-                                    + hmm.initial_prob(k)
-                                    + hmm.observation_prob(k, o)
-                                }).collect::<Vec<LogProb>>();
+                    prob_vec_final = hmm
+                        .states()
+                        .map(|k| vals[[i, *k]] + hmm.initial_prob(k) + hmm.observation_prob(k, o))
+                        .collect::<Vec<LogProb>>();
                 }
-
             }
         } else if i == (observations.len() - 1) {
-                prob_vec_final = hmm.states().map(|k| {
-                                    vals[[i, *k]]
-                                    + hmm.initial_prob(k)
-                                    + hmm.observation_prob(k, o)
-                                }).collect::<Vec<LogProb>>();
-
-        }
-        else {
+            prob_vec_final = hmm
+                .states()
+                .map(|k| vals[[i, *k]] + hmm.initial_prob(k) + hmm.observation_prob(k, o))
+                .collect::<Vec<LogProb>>();
+        } else {
             // Previous columns.
             for j in hmm.states() {
                 let xs = hmm
                     .states()
                     .map(|k| {
-                            vals[[i, *k]]
+                        vals[[i, *k]]
                             + hmm.transition_prob_idx(j, k, n - i)
                             + hmm.observation_prob(k, o)
                     })
                     .collect::<Vec<LogProb>>();
-                vals[[i+1, *j]] = LogProb::ln_sum_exp(&xs);
+                vals[[i + 1, *j]] = LogProb::ln_sum_exp(&xs);
             }
         }
     }
-
 
     let prob = LogProb::ln_sum_exp(&prob_vec_final);
 
     (vals, prob)
 }
-
 
 /// Execute **one step** of Baum-Welch algorithm to find the maximum likelihood estimate of the parameters of a HMM given a set of observed
 /// feature vector and return the estimated initial state distribution (*π**), estimated transition matrix (*A**),
@@ -502,8 +490,15 @@ pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>
 ///
 /// - `O` - the observation type (only discrete emissions)
 /// - `M` - type `Model` type
-pub fn baum_welch<O: Debug + Eq + Hash + Ord, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array1<LogProb>, Array2<LogProb>, Array2<LogProb>, Array1<LogProb>){
-
+pub fn baum_welch<O: Debug + Eq + Hash + Ord, M: Model<O>>(
+    hmm: &M,
+    observations: &[O],
+) -> (
+    Array1<LogProb>,
+    Array2<LogProb>,
+    Array2<LogProb>,
+    Array1<LogProb>,
+) {
     // Execute forward algorithm to calculate the alpha probabilities for each time-step.
     // Ignore P(x)
     let (prob_table_f, _) = forward(hmm, observations);
@@ -514,10 +509,10 @@ pub fn baum_welch<O: Debug + Eq + Hash + Ord, M: Model<O>>(hmm: &M, observations
     // entries are in reverse order, i.e., from t=N to t=0.
     // The following code puts the backward matrix in the same order as forward matrix.
     // This is usefull when computing the alfa times beta probabilities.
-    let n = observations.len() - 1 ;
+    let n = observations.len() - 1;
     let mut prob_table_b = Array2::<LogProb>::zeros((observations.len(), hmm.num_states()));
     for (j, el) in prob_table_b_cor.axis_iter(Axis(0)).enumerate() {
-        prob_table_b.row_mut(n-j).assign(&el);
+        prob_table_b.row_mut(n - j).assign(&el);
     }
 
     // Product of the forward probability and backward probability which is translated
@@ -537,7 +532,6 @@ pub fn baum_welch<O: Debug + Eq + Hash + Ord, M: Model<O>>(hmm: &M, observations
     let mut distinct_obs = 0;
 
     for h in hmm.states() {
-
         let mut probs_observations: BTreeMap<&O, LogProb> = BTreeMap::new();
 
         // First, for the numerator of b_{i}^{^}(v_{k}) we sum gamma for all time steps t in which the observation o_{t}
@@ -545,14 +539,14 @@ pub fn baum_welch<O: Debug + Eq + Hash + Ord, M: Model<O>>(hmm: &M, observations
         for (t, o) in observations.iter().enumerate() {
             // For example, in einsner example, it calculates the probabilities P(->state, observation), for example p(->C,1) or p(->C,2) or p(->C,3)
             let p = probs_observations.entry(o).or_insert(LogProb::ln_zero());
-            *p = (*p).ln_add_exp(alpha_betas[[t, *h]]  - probx);
+            *p = (*p).ln_add_exp(alpha_betas[[t, *h]] - probx);
         }
         distinct_obs = probs_observations.len();
         vec_hashs_prob_obs.push(probs_observations);
-
     }
 
-    let mut vals_xi = Array2::<LogProb>::zeros((observations.len(), hmm.num_states()*hmm.num_states()));
+    let mut vals_xi =
+        Array2::<LogProb>::zeros((observations.len(), hmm.num_states() * hmm.num_states()));
 
     // Calculate the arc probabilities.
     // It's the xi equation which it's entries represent the probability of being in state i and j,
@@ -562,26 +556,34 @@ pub fn baum_welch<O: Debug + Eq + Hash + Ord, M: Model<O>>(hmm: &M, observations
     // the probability in time t and k is the index encoding of the pair of states (i,j).
     for (t, o) in observations.iter().enumerate() {
         if t == 0 {
-            continue
+            continue;
         } else {
             for (idxstate, j) in hmm.states().enumerate() {
-                let numerador = hmm.states().map(|i| {
-                    prob_table_f[[t-1, *j]]
-                    +  hmm.transition_prob_idx(j, i, t)
-                    + prob_table_b[[t, *i]]
-                    + hmm.observation_prob(i, o)
-                    - probx
-                } ).collect::<Vec<LogProb>>();
+                let numerador = hmm
+                    .states()
+                    .map(|i| {
+                        prob_table_f[[t - 1, *j]]
+                            + hmm.transition_prob_idx(j, i, t)
+                            + prob_table_b[[t, *i]]
+                            + hmm.observation_prob(i, o)
+                            - probx
+                    })
+                    .collect::<Vec<LogProb>>();
 
-            vals_xi.slice_mut(s![t, idxstate*hmm.num_states()..(idxstate+1)*hmm.num_states()]).assign(&Array1::from(numerador));
-
+                vals_xi
+                    .slice_mut(s![
+                        t,
+                        idxstate * hmm.num_states()..(idxstate + 1) * hmm.num_states()
+                    ])
+                    .assign(&Array1::from(numerador));
             }
         }
     }
 
     let mut sum_p_states = Vec::new();
-    for k in hmm.states(){
-        let sum_prob_states = LogProb::ln_sum_exp(&alpha_betas.column(*k).map(|x| x - probx).to_vec());
+    for k in hmm.states() {
+        let sum_prob_states =
+            LogProb::ln_sum_exp(&alpha_betas.column(*k).map(|x| x - probx).to_vec());
         sum_p_states.push(sum_prob_states);
     }
 
@@ -589,60 +591,96 @@ pub fn baum_welch<O: Debug + Eq + Hash + Ord, M: Model<O>>(hmm: &M, observations
     let mut transitions_hat = Array2::<LogProb>::zeros((hmm.num_states(), hmm.num_states()));
 
     for (idxstate, i) in hmm.states().enumerate() {
-        let gamma_i = LogProb::ln_sum_exp(&alpha_betas.column(*i).to_vec().iter().map(|x| {*x - probx}).collect::<Vec<LogProb>>());
+        let gamma_i = LogProb::ln_sum_exp(
+            &alpha_betas
+                .column(*i)
+                .to_vec()
+                .iter()
+                .map(|x| *x - probx)
+                .collect::<Vec<LogProb>>(),
+        );
         let end_i = if hmm.has_end_state() {
             LogProb::ln_zero()
-            } else {
+        } else {
             alpha_betas[[observations.len() - 1, *i]] - probx
         };
-        let q = vals_xi.slice(s![.., idxstate*hmm.num_states()..(idxstate+1)*hmm.num_states()]);
+        let q = vals_xi.slice(s![
+            ..,
+            idxstate * hmm.num_states()..(idxstate + 1) * hmm.num_states()
+        ]);
         for k in hmm.states() {
             let sa = LogProb::ln_sum_exp(&q.column(*k).to_vec());
             transitions_hat[[*i, *k]] = sa - gamma_i.ln_sub_exp(end_i);
         }
 
-
         let mut ind_probs = vec![];
-            for (_k,v) in &vec_hashs_prob_obs[*i]{
-                ind_probs.push(*v - gamma_i);
-            }
-        observations_hat.row_mut(*i).assign(&Array1::from(ind_probs));
-
+        for (_k, v) in &vec_hashs_prob_obs[*i] {
+            ind_probs.push(*v - gamma_i);
+        }
+        observations_hat
+            .row_mut(*i)
+            .assign(&Array1::from(ind_probs));
     }
 
-
-    let pi_hat = Array1::from(alpha_betas.row(0).to_vec().iter().map(|x| {*x - probx}).collect::<Vec<LogProb>>());
+    let pi_hat = Array1::from(
+        alpha_betas
+            .row(0)
+            .to_vec()
+            .iter()
+            .map(|x| *x - probx)
+            .collect::<Vec<LogProb>>(),
+    );
 
     let end_hat = if hmm.has_end_state() {
-        Array1::from(sum_p_states.iter()
-                                            .zip(alpha_betas.row(observations.len() - 1).to_vec().iter())
-                                            .map(|(sg, g)| {(*g - probx) - *sg}).collect::<Vec<LogProb>>())
+        Array1::from(
+            sum_p_states
+                .iter()
+                .zip(alpha_betas.row(observations.len() - 1).to_vec().iter())
+                .map(|(sg, g)| (*g - probx) - *sg)
+                .collect::<Vec<LogProb>>(),
+        )
     } else {
-        Array1::from(pi_hat.iter().map(|_x| {LogProb::from(Prob(1.0))}).collect::<Vec<LogProb>>())
+        Array1::from(
+            pi_hat
+                .iter()
+                .map(|_x| LogProb::from(Prob(1.0)))
+                .collect::<Vec<LogProb>>(),
+        )
     };
 
     (pi_hat, transitions_hat, observations_hat, end_hat)
-
 }
-
 
 /// A trait for trainning Hidden Markov Models (HMM) with generic `Observation` type using Baum-Welch algorithm.
 pub trait Trainable<Observation> {
-
     ///  Iterative procedure to train the model using Baum-Welch algorithm given the training sequences.
     ///
     /// As arguments, a set of sequences (observations) and two optional argumets: maximum number of iterations (`n_iter`) and tolerance (`tol`).
     /// The baum-welch iterative training procedure will stop either if it reaches the tolerance of the relative log-likelihood augmentation (default `1e-6`) or
     /// exceed the maximum number of iterations (default `500`).
-    fn train_baum_welch(&self, observations: &[Vec<Observation>], n_iter: Option<usize>, tol: Option<f64>) -> (Array1<LogProb>, Array2<LogProb>, Array2<LogProb>, Array1<LogProb>);
+    fn train_baum_welch(
+        &self,
+        observations: &[Vec<Observation>],
+        n_iter: Option<usize>,
+        tol: Option<f64>,
+    ) -> (
+        Array1<LogProb>,
+        Array2<LogProb>,
+        Array2<LogProb>,
+        Array1<LogProb>,
+    );
 
     /// This feature comes in handy in Bam-Welch algorithm when doing an update of HMM parameters.
     ///
     /// After receiving the estimated parameters found after trainning, this method updates the values in the
     /// HMM model.
-    fn update_matrices(&self, transition_hat: Array2<LogProb>, observation_hat: Array2<LogProb>,
-                initial_hat: Array1<LogProb>, end_hat: Array1<LogProb>) -> ();
-
+    fn update_matrices(
+        &self,
+        transition_hat: Array2<LogProb>,
+        observation_hat: Array2<LogProb>,
+        initial_hat: Array1<LogProb>,
+        end_hat: Array1<LogProb>,
+    ) -> ();
 }
 
 /// Implementation of Hidden Markov Model with emission values from discrete distributions.
@@ -839,15 +877,20 @@ pub mod discrete_emission_opt_end {
             initial: &Array1<Prob>,
             end: Option<&Array1<Prob>>,
         ) -> Result<Self> {
-
             let initial_dim = initial.dim();
-            let end_possible = (0..initial_dim).map(|_x| Prob(1.0)).collect::<Array1<Prob>>();
+            let end_possible = (0..initial_dim)
+                .map(|_x| Prob(1.0))
+                .collect::<Array1<Prob>>();
 
             let has_end_state;
 
             match end {
-                Some(_p) => {has_end_state = true;},
-                None => {has_end_state = false;},
+                Some(_p) => {
+                    has_end_state = true;
+                }
+                None => {
+                    has_end_state = false;
+                }
             }
 
             let end_un = end.unwrap_or(&end_possible);
@@ -869,7 +912,6 @@ pub mod discrete_emission_opt_end {
             initial: &Array1<f64>,
             end: Option<&Array1<f64>>,
         ) -> Result<Self> {
-
             let initial_dim = initial.dim();
             let end_possible = (0..initial_dim).map(|_x| 1.0).collect::<Array1<f64>>();
             let end_un = end.unwrap_or(&end_possible);
@@ -877,8 +919,12 @@ pub mod discrete_emission_opt_end {
             let has_end_state;
 
             match end {
-                Some(_p) => {has_end_state = true;},
-                None => {has_end_state = false;},
+                Some(_p) => {
+                    has_end_state = true;
+                }
+                None => {
+                    has_end_state = false;
+                }
             }
 
             Self::new(
@@ -892,7 +938,6 @@ pub mod discrete_emission_opt_end {
     }
 
     impl super::Model<usize> for Model {
-
         fn num_states(&self) -> usize {
             let transition = self.transition.borrow();
             transition.dim().0
@@ -936,14 +981,16 @@ pub mod discrete_emission_opt_end {
         fn has_end_state(&self) -> bool {
             self.has_end_state
         }
-
     }
 
-    impl super::Trainable<usize> for Model{
-
-        fn update_matrices(&self, transition_hat: Array2<LogProb>, observation_hat: Array2<LogProb>,
-                initial_hat: Array1<LogProb>, end_hat: Array1<LogProb>) -> () {
-
+    impl super::Trainable<usize> for Model {
+        fn update_matrices(
+            &self,
+            transition_hat: Array2<LogProb>,
+            observation_hat: Array2<LogProb>,
+            initial_hat: Array1<LogProb>,
+            end_hat: Array1<LogProb>,
+        ) -> () {
             let mut end_prob = self.end.borrow_mut();
             *end_prob = end_hat;
 
@@ -953,19 +1000,34 @@ pub mod discrete_emission_opt_end {
             let mut observation_prob = self.observation.borrow_mut();
             *observation_prob = observation_hat;
 
-            let mut initial_prob= self.initial.borrow_mut();
+            let mut initial_prob = self.initial.borrow_mut();
             *initial_prob = initial_hat;
         }
 
-        fn train_baum_welch(&self, observations: &[Vec<usize>], n_iter: Option<usize>, tol: Option<f64>) -> (Array1<LogProb>, Array2<LogProb>, Array2<LogProb>, Array1<LogProb>){
+        fn train_baum_welch(
+            &self,
+            observations: &[Vec<usize>],
+            n_iter: Option<usize>,
+            tol: Option<f64>,
+        ) -> (
+            Array1<LogProb>,
+            Array2<LogProb>,
+            Array2<LogProb>,
+            Array1<LogProb>,
+        ) {
             let hmm = self;
 
             let tol = tol.unwrap_or(1e-6_f64);
             let n_iter = n_iter.unwrap_or(500);
 
-            let (pi_hat, transitions_hat, observations_hat, end_hat) = super::baum_welch(hmm, &observations[0]);
-            let (mut pi_hat_ref, mut transitions_hat_ref, mut observations_hat_ref, mut end_hat_ref) = (pi_hat,
-                                                                                transitions_hat, observations_hat, end_hat);
+            let (pi_hat, transitions_hat, observations_hat, end_hat) =
+                super::baum_welch(hmm, &observations[0]);
+            let (
+                mut pi_hat_ref,
+                mut transitions_hat_ref,
+                mut observations_hat_ref,
+                mut end_hat_ref,
+            ) = (pi_hat, transitions_hat, observations_hat, end_hat);
             let (_, mut prob_fwd_new) = super::forward(hmm, &observations[0]);
 
             // initialize var llh to store the log likelihood of trainned model
@@ -977,23 +1039,21 @@ pub mod discrete_emission_opt_end {
             // Normalize the previous log likelihood computed by number of observations
             let mut nllh_o = LogProb::from(Prob((*prob_fwd_new / obs_n).exp()));
 
-            println!("Iter num {:?} - LLH: {:?} - Normalized LLH: {:?}", 0, prob_fwd_new, nllh_o);
+            println!(
+                "Iter num {:?} - LLH: {:?} - Normalized LLH: {:?}",
+                0, prob_fwd_new, nllh_o
+            );
 
-            for iteration in 0..(n_iter-1) {
-
-
-                for obs in observations.iter(){
-
-                    let  ( pi_hat,  transitions_hat,  observations_hat, end_hat) = baum_welch(hmm, obs);
-
+            for iteration in 0..(n_iter - 1) {
+                for obs in observations.iter() {
+                    let (pi_hat, transitions_hat, observations_hat, end_hat) = baum_welch(hmm, obs);
 
                     pi_hat_ref = pi_hat.to_owned();
                     transitions_hat_ref = transitions_hat.to_owned();
                     observations_hat_ref = observations_hat.to_owned();
                     end_hat_ref = end_hat.to_owned();
 
-                    hmm.update_matrices(transitions_hat, observations_hat,
-                            pi_hat, end_hat);
+                    hmm.update_matrices(transitions_hat, observations_hat, pi_hat, end_hat);
 
                     let (_, prob_fwd_new_ii) = super::forward(hmm, obs);
 
@@ -1001,41 +1061,46 @@ pub mod discrete_emission_opt_end {
 
                     // Get the number of observations
                     obs_n = obs.len() as f64;
-
                 }
-
 
                 // Normalize the new log likelihood computed in this iteration by number of observations
                 let nllh = LogProb::from(Prob((*llh / obs_n).exp()));
 
-                println!("Iter num {:?} - LLH: {:?} - Normalized LLH: {:?}", iteration+1, llh, nllh);
+                println!(
+                    "Iter num {:?} - LLH: {:?} - Normalized LLH: {:?}",
+                    iteration + 1,
+                    llh,
+                    nllh
+                );
 
                 if nllh_o >= nllh {
                     prob_fwd_new = llh.clone();
                     // Normalize the previous log likelihood computed by number of observations
                     nllh_o = LogProb::from(Prob((*prob_fwd_new / obs_n).exp()));
                     // Skip to next iteration
-                    continue
+                    continue;
                 }
 
-                if nllh.ln_sub_exp(nllh_o) < LogProb::from(Prob(tol)){
-                        // Stop trainning if the difference between the new log like and the old is less than a threshold
-                        break
-                    } else {
-                        // Otherwise, set the old log like as the new log like
-                        prob_fwd_new = llh.clone();
+                if nllh.ln_sub_exp(nllh_o) < LogProb::from(Prob(tol)) {
+                    // Stop trainning if the difference between the new log like and the old is less than a threshold
+                    break;
+                } else {
+                    // Otherwise, set the old log like as the new log like
+                    prob_fwd_new = llh.clone();
 
-                        // Normalize the previous log likelihood computed by number of observations
-                        nllh_o = LogProb::from(Prob((*prob_fwd_new / obs_n).exp()));
-                    }
-
-
+                    // Normalize the previous log likelihood computed by number of observations
+                    nllh_o = LogProb::from(Prob((*prob_fwd_new / obs_n).exp()));
+                }
             }
-            return (pi_hat_ref, transitions_hat_ref, observations_hat_ref, end_hat_ref)
+            return (
+                pi_hat_ref,
+                transitions_hat_ref,
+                observations_hat_ref,
+                end_hat_ref,
+            );
         }
     }
 }
-
 
 /// Implementation of Hidden Markov Models with emission values from univariate continuous
 /// distributions.
@@ -1324,7 +1389,7 @@ mod tests {
         }
     }
 
-     #[test]
+    #[test]
     fn test_recriate_discrete_backward_toy_example() {
         // Same toy example as above.
         let transition = array![[0.5, 0.5], [0.4, 0.6]];
@@ -1332,14 +1397,13 @@ mod tests {
         let initial = array![0.5, 0.5];
 
         let hmm = DiscreteEmissionHMMoptEND::with_float(&transition, &observation, &initial, None)
-        .expect("Dimensions should be consistent");
+            .expect("Dimensions should be consistent");
 
         let (_, log_prob) = backward(&hmm, &[2, 2, 1, 0]);
         let prob = Prob::from(log_prob);
 
         assert_relative_eq!(0.0038432_f64, *prob, epsilon = 0.0001);
     }
-
 
     #[test]
     fn test_discrete_with_end_backward_toy_example() {
@@ -1354,17 +1418,19 @@ mod tests {
         let initial = array![0.5, 0.5];
         let end = array![0.1, 0.1];
 
-        let ices = vec![1,2,2,1,2,1,2,1,1,2,0,2,2,0,0,0,1,0,0,0,2,0,1,0,0,0,1,2,2,1,2,1,1];
+        let ices = vec![
+            1, 2, 2, 1, 2, 1, 2, 1, 1, 2, 0, 2, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 1, 0, 0, 0, 1, 2, 2,
+            1, 2, 1, 1,
+        ];
 
-
-        let hmm = DiscreteEmissionHMMoptEND::with_float(&transition, &observation, &initial, Some(&end))
-        .expect("Dimensions should be consistent");
+        let hmm =
+            DiscreteEmissionHMMoptEND::with_float(&transition, &observation, &initial, Some(&end))
+                .expect("Dimensions should be consistent");
 
         let (_, log_backward_probok) = backward(&hmm, &ices);
         let prob = Prob::from(log_backward_probok);
 
         assert_relative_eq!(0.912e-18_f64, *prob, epsilon = 0.1e-20_f64);
-
     }
 
     #[test]
@@ -1377,12 +1443,14 @@ mod tests {
         let initial = array![0.3, 0.7];
         let end = array![0.1, 0.1];
 
+        let ices = vec![
+            1, 2, 2, 1, 2, 1, 2, 1, 1, 2, 0, 2, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 1, 0, 0, 0, 1, 2, 2,
+            1, 2, 1, 1,
+        ];
 
-        let ices = vec![1,2,2,1,2,1,2,1,1,2,0,2,2,0,0,0,1,0,0,0,2,0,1,0,0,0,1,2,2,1,2,1,1];
-
-
-        let hmm = DiscreteEmissionHMMoptEND::with_float(&transition, &observation, &initial, Some(&end))
-        .expect("Dimensions should be consistent");
+        let hmm =
+            DiscreteEmissionHMMoptEND::with_float(&transition, &observation, &initial, Some(&end))
+                .expect("Dimensions should be consistent");
 
         // Apply one iteration of baum-welch algorithm and return estimated parameters without
         // updating the model in loco.
@@ -1390,27 +1458,56 @@ mod tests {
 
         // Transform estimated log prob values into prob
         let pi_hat_vec = pi_hat.iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
-        let transitions_hat_vec = transitions_hat.iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
-        let observations_hat_vec = observations_hat.iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
-        let end_hat_vec = end_hat.iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
+        let transitions_hat_vec = transitions_hat
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
+        let observations_hat_vec = observations_hat
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
+        let end_hat_vec = end_hat
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
 
         // Compare with the example given in Jason Eisner's spreadsheet (http://www.cs.jhu.edu/~jason/papers/#eisner-2002-tnlp)
-        let pi_hat_vec_ori = vec![0.0597, 0.9403].iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
-        let transitions_hat_vec_ori = vec![0.8797, 0.1049, 0.0921, 0.8658].iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
-        let observations_hat_vec_ori = vec![0.6765, 0.2188, 0.1047, 0.0584, 0.4251, 0.5165].iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
-        let end_hat_vec_ori = vec![0.0153, 0.0423].iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
+        let pi_hat_vec_ori = vec![0.0597, 0.9403]
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
+        let transitions_hat_vec_ori = vec![0.8797, 0.1049, 0.0921, 0.8658]
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
+        let observations_hat_vec_ori = vec![0.6765, 0.2188, 0.1047, 0.0584, 0.4251, 0.5165]
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
+        let end_hat_vec_ori = vec![0.0153, 0.0423]
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
 
-        assert!(pi_hat_vec.iter().zip(pi_hat_vec_ori.iter()).
-                all(|(a,b)| (*b - Prob::from(0.001) <= *a) && (*a <= *b + Prob::from(0.001)) ));
+        assert!(pi_hat_vec
+            .iter()
+            .zip(pi_hat_vec_ori.iter())
+            .all(|(a, b)| (*b - Prob::from(0.001) <= *a) && (*a <= *b + Prob::from(0.001))));
 
-        assert!(transitions_hat_vec.iter().zip(transitions_hat_vec_ori.iter()).
-                all(|(a,b)| (*b - Prob::from(0.001) <= *a) && (*a <= *b + Prob::from(0.001)) ));
+        assert!(transitions_hat_vec
+            .iter()
+            .zip(transitions_hat_vec_ori.iter())
+            .all(|(a, b)| (*b - Prob::from(0.001) <= *a) && (*a <= *b + Prob::from(0.001))));
 
-        assert!(observations_hat_vec.iter().zip(observations_hat_vec_ori.iter()).
-                all(|(a,b)| (*b - Prob::from(0.01) <= *a) && (*a <= *b + Prob::from(0.01)) ));
+        assert!(observations_hat_vec
+            .iter()
+            .zip(observations_hat_vec_ori.iter())
+            .all(|(a, b)| (*b - Prob::from(0.01) <= *a) && (*a <= *b + Prob::from(0.01))));
 
-        assert!(end_hat_vec.iter().zip(end_hat_vec_ori.iter()).
-                all(|(a,b)| (*b - Prob::from(0.01) <= *a) && (*a <= *b + Prob::from(0.01)) ));
+        assert!(end_hat_vec
+            .iter()
+            .zip(end_hat_vec_ori.iter())
+            .all(|(a, b)| (*b - Prob::from(0.01) <= *a) && (*a <= *b + Prob::from(0.01))));
     }
 
     #[test]
@@ -1423,41 +1520,70 @@ mod tests {
         let initial = array![0.3, 0.7];
         let end = array![0.1, 0.1];
 
+        let observations = [vec![
+            1, 2, 2, 1, 2, 1, 2, 1, 1, 2, 0, 2, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 1, 0, 0, 0, 1, 2, 2,
+            1, 2, 1, 1,
+        ]];
 
-        let observations = [vec![1,2,2,1,2,1,2,1,1,2,0,2,2,0,0,0,1,0,0,0,2,0,1,0,0,0,1,2,2,1,2,1,1]];
-
-
-        let hmm = DiscreteEmissionHMMoptEND::with_float(&transition, &observation, &initial, Some(&end))
-        .expect("Dimensions should be consistent");
+        let hmm =
+            DiscreteEmissionHMMoptEND::with_float(&transition, &observation, &initial, Some(&end))
+                .expect("Dimensions should be consistent");
 
         // Run 10 iterations of Baum-Welch algorithm
-        let (pi_hat, transitions_hat, observations_hat, end_hat) = hmm.train_baum_welch(&observations, Some(10), None);
+        let (pi_hat, transitions_hat, observations_hat, end_hat) =
+            hmm.train_baum_welch(&observations, Some(10), None);
 
         // Transform the obtained LogProb values into Prob.
         let pi_hat_vec = pi_hat.iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
-        let transitions_hat_vec = transitions_hat.iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
-        let observations_hat_vec = observations_hat.iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
-        let end_hat_vec = end_hat.iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
-
-
+        let transitions_hat_vec = transitions_hat
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
+        let observations_hat_vec = observations_hat
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
+        let end_hat_vec = end_hat
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
 
         // Example based on Jason Eisner spreadsheet (http://www.cs.jhu.edu/~jason/papers/#eisner-2002-tnlp)
-        let pi_hat_vec_ori = vec![0.0, 1.0].iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
-        let transitions_hat_vec_ori = vec![0.9337, 0.0663, 0.0718, 0.865].iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
-        let observations_hat_vec_ori = vec![0.6407, 0.1481, 0.2112, 1.5e-4, 0.5341, 0.4657].iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
-        let end_hat_vec_ori = vec![0.0, 0.0632].iter().map(|x| Prob::from(*x)).collect::<Vec<Prob>>();
+        let pi_hat_vec_ori = vec![0.0, 1.0]
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
+        let transitions_hat_vec_ori = vec![0.9337, 0.0663, 0.0718, 0.865]
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
+        let observations_hat_vec_ori = vec![0.6407, 0.1481, 0.2112, 1.5e-4, 0.5341, 0.4657]
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
+        let end_hat_vec_ori = vec![0.0, 0.0632]
+            .iter()
+            .map(|x| Prob::from(*x))
+            .collect::<Vec<Prob>>();
 
-        assert!(pi_hat_vec.iter().zip(pi_hat_vec_ori.iter()).
-                all(|(a,b)| (*b - Prob::from(0.001) <= *a) && (*a <= *b + Prob::from(0.001)) ));
+        assert!(pi_hat_vec
+            .iter()
+            .zip(pi_hat_vec_ori.iter())
+            .all(|(a, b)| (*b - Prob::from(0.001) <= *a) && (*a <= *b + Prob::from(0.001))));
 
-        assert!(transitions_hat_vec.iter().zip(transitions_hat_vec_ori.iter()).
-                all(|(a,b)| (*b - Prob::from(0.001) <= *a) && (*a <= *b + Prob::from(0.001)) ));
+        assert!(transitions_hat_vec
+            .iter()
+            .zip(transitions_hat_vec_ori.iter())
+            .all(|(a, b)| (*b - Prob::from(0.001) <= *a) && (*a <= *b + Prob::from(0.001))));
 
-        assert!(observations_hat_vec.iter().zip(observations_hat_vec_ori.iter()).
-                all(|(a,b)| (*b - Prob::from(0.01) <= *a) && (*a <= *b + Prob::from(0.01)) ));
+        assert!(observations_hat_vec
+            .iter()
+            .zip(observations_hat_vec_ori.iter())
+            .all(|(a, b)| (*b - Prob::from(0.01) <= *a) && (*a <= *b + Prob::from(0.01))));
 
-        assert!(end_hat_vec.iter().zip(end_hat_vec_ori.iter()).
-                all(|(a,b)| (*b - Prob::from(0.01) <= *a) && (*a <= *b + Prob::from(0.01)) ));
+        assert!(end_hat_vec
+            .iter()
+            .zip(end_hat_vec_ori.iter())
+            .all(|(a, b)| (*b - Prob::from(0.01) <= *a) && (*a <= *b + Prob::from(0.01))));
     }
-
 }
