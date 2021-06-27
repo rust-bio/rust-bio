@@ -19,25 +19,22 @@ const FASTA_SIZE: usize = 100;
 const ITERS: usize = 4000;
 
 fn gen_random_fasta() -> io::Result<Vec<u8>> {
+    let mut rng = StdRng::seed_from_u64(42);
     let mut raw_writer = Vec::new();
     {
         let mut w = fasta::Writer::new(&mut raw_writer);
         for _ in 0..FASTA_SIZE {
-            let id: String = StdRng::seed_from_u64(42)
-                .sample_iter(&Alphanumeric)
-                .take(ID_LEN)
-                .map(char::from)
+            let id: String = (0..ID_LEN)
+                .map(|_| char::from(rng.sample(&Alphanumeric)))
                 .collect();
 
-            let desc: String = StdRng::seed_from_u64(4)
-                .sample_iter(&Alphanumeric)
-                .take(DESC_LEN)
-                .map(char::from)
+            let desc: String = (0..DESC_LEN)
+                .map(|_| char::from(rng.sample(&Alphanumeric)))
                 .collect();
 
             let seq: Vec<u8> = (0..SEQ_LEN)
                 .map(|_| {
-                    let idx = StdRng::seed_from_u64(65).gen_range(0..BASES.len());
+                    let idx = rng.gen_range(0..BASES.len());
                     BASES[idx]
                 })
                 .collect();
