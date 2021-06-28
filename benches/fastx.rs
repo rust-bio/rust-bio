@@ -8,15 +8,13 @@ use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
 use std::io;
-use test::{black_box, Bencher};
+use test::Bencher;
 
 const BASES: &[u8] = b"ACTG";
 const ID_LEN: usize = 10;
 const DESC_LEN: usize = 20;
 const SEQ_LEN: usize = 100;
 const FASTA_SIZE: usize = 100;
-
-const ITERS: usize = 4000;
 
 fn gen_random_fasta() -> io::Result<Vec<u8>> {
     let mut rng = StdRng::seed_from_u64(42);
@@ -97,90 +95,66 @@ where
 
 #[bench]
 fn bench_fasta_count(b: &mut Bencher) -> io::Result<()> {
-    let data = gen_random_fasta()?;
+    let mut data = io::Cursor::new(gen_random_fasta()?);
     b.iter(|| {
-        for _ in 0..ITERS {
-            black_box({
-                let data = io::Cursor::new(&data);
-                let records = fasta::Reader::new(data).records();
-                fasta_count_bases(records).unwrap();
-            });
-        }
+        data.set_position(0);
+        let records = fasta::Reader::new(&mut data).records();
+        fasta_count_bases(records).unwrap();
     });
     Ok(())
 }
 
 #[bench]
 fn bench_fastx_fasta_count(b: &mut Bencher) -> io::Result<()> {
-    let data = gen_random_fasta()?;
+    let mut data = io::Cursor::new(gen_random_fasta()?);
     b.iter(|| {
-        for _ in 0..ITERS {
-            black_box({
-                let data = io::Cursor::new(&data);
-                let records = fasta::Reader::new(data).records();
-                fastx_count_bases(records).unwrap();
-            });
-        }
+        data.set_position(0);
+        let records = fasta::Reader::new(&mut data).records();
+        fastx_count_bases(records).unwrap();
     });
     Ok(())
 }
 
 #[bench]
 fn bench_either_fasta_count(b: &mut Bencher) -> io::Result<()> {
-    let data = gen_random_fasta()?;
+    let mut data = io::Cursor::new(gen_random_fasta()?);
     b.iter(|| {
-        for _ in 0..ITERS {
-            black_box({
-                let data = io::Cursor::new(&data);
-                let records = fastx::EitherRecords::new(data);
-                fastx_count_bases(records).unwrap();
-            });
-        }
+        data.set_position(0);
+        let records = fastx::EitherRecords::new(&mut data);
+        fastx_count_bases(records).unwrap();
     });
     Ok(())
 }
 
 #[bench]
 fn bench_fasta_check(b: &mut Bencher) -> io::Result<()> {
-    let data = gen_random_fasta()?;
+    let mut data = io::Cursor::new(gen_random_fasta()?);
     b.iter(|| {
-        for _ in 0..ITERS {
-            black_box({
-                let data = io::Cursor::new(&data);
-                let records = fasta::Reader::new(data.clone()).records();
-                fasta_check(records).unwrap();
-            });
-        }
+        data.set_position(0);
+        let records = fasta::Reader::new(&mut data).records();
+        fasta_check(records).unwrap();
     });
     Ok(())
 }
 
 #[bench]
 fn bench_fastx_fasta_check(b: &mut Bencher) -> io::Result<()> {
-    let data = gen_random_fasta()?;
+    let mut data = io::Cursor::new(gen_random_fasta()?);
     b.iter(|| {
-        for _ in 0..ITERS {
-            black_box({
-                let data = io::Cursor::new(&data);
-                let records = fasta::Reader::new(data.clone()).records();
-                fastx_check(records).unwrap();
-            });
-        }
+        data.set_position(0);
+        let records = fasta::Reader::new(&mut data).records();
+        fastx_check(records).unwrap();
     });
     Ok(())
 }
 
 #[bench]
 fn bench_either_fasta_check(b: &mut Bencher) -> io::Result<()> {
-    let data = gen_random_fasta()?;
+    let mut data = io::Cursor::new(gen_random_fasta()?);
     b.iter(|| {
-        for _ in 0..ITERS {
-            black_box({
-                let data = io::Cursor::new(&data);
-                let records = fastx::EitherRecords::new(data);
-                fastx_check(records).unwrap();
-            });
-        }
+        data.set_position(0);
+        let records = fastx::EitherRecords::new(&mut data);
+        fastx_check(records).unwrap();
     });
     Ok(())
 }
