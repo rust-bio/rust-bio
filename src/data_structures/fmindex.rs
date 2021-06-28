@@ -382,13 +382,21 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
     /// let intervals = fmdindex.all_smems(pattern, 0);
     /// assert_eq!(intervals.len(), 2);
     ///
-    /// let solutions = vec![[0,14,0,3], [4,9,3,4]];
+    /// let solutions = vec![[0, 14, 0, 3], [4, 9, 3, 4]];
     /// for (i, interval) in intervals.iter().enumerate() {
     ///     let forward_positions = interval.0.forward().occ(&sa);
     ///     let revcomp_positions = interval.0.revcomp().occ(&sa);
     ///     let pattern_position = interval.1;
     ///     let smem_len = interval.2;
-    ///     assert_eq!([forward_positions[0], revcomp_positions[0], pattern_position, smem_len], solutions[i]);
+    ///     assert_eq!(
+    ///         [
+    ///             forward_positions[0],
+    ///             revcomp_positions[0],
+    ///             pattern_position,
+    ///             smem_len
+    ///         ],
+    ///         solutions[i]
+    ///     );
     /// }
     /// ```
     pub fn all_smems(&self, pattern: &[u8], l: usize) -> Vec<(BiInterval, usize, usize)> {
