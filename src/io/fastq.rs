@@ -137,12 +137,12 @@ pub trait FastqRead {
 
 /// A FastQ reader.
 #[derive(Debug)]
-pub struct Reader<R: io::Read> {
-    reader: io::BufReader<R>,
+pub struct Reader<B> {
+    reader: B,
     line_buffer: String,
 }
 
-impl Reader<fs::File> {
+impl Reader<io::BufReader<fs::File>> {
     /// Read from a given file.
     pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
         fs::File::open(path.as_ref())
@@ -155,11 +155,32 @@ impl Reader<fs::File> {
     }
 }
 
-impl<R: io::Read> Reader<R> {
+impl<R: io::Read> Reader<io::BufReader<R>> {
     /// Read from a given [`io::Read`](https://doc.rust-lang.org/std/io/trait.Read.html).
     pub fn new(reader: R) -> Self {
         Reader {
             reader: io::BufReader::new(reader),
+            line_buffer: String::new(),
+        }
+    }
+
+    /// Create a new Fastq reader given a capacity and an instance of `io::Read`.
+    pub fn with_capacity(capacity: usize, reader: R) -> Self {
+        Reader {
+            reader: io::BufReader::with_capacity(capacity, reader),
+            line_buffer: String::new(),
+        }
+    }
+}
+
+impl<B> Reader<B>
+where
+    B: io::BufRead,
+{
+    ///  Create a new Fastq reader with an object that implements `io::BufReader`.
+    pub fn from_bufread(bufreader: B) -> Self {
+        Reader {
+            reader: bufreader,
             line_buffer: String::new(),
         }
     }
@@ -184,14 +205,14 @@ impl<R: io::Read> Reader<R> {
     ///     assert!(record.check().is_ok())
     /// }
     /// ```
-    pub fn records(self) -> Records<R> {
+    pub fn records(self) -> Records<B> {
         Records { reader: self }
     }
 }
 
-impl<R> FastqRead for Reader<R>
+impl<B> FastqRead for Reader<B>
 where
-    R: io::Read,
+    B: io::BufRead,
 {
     /// Read the next FastQ entry into the given [`Record`](#Record).
     /// An empty record indicates that no more records can be read.
@@ -474,7 +495,10 @@ pub struct Records<R: io::Read> {
     reader: Reader<R>,
 }
 
-impl<R: io::Read> Iterator for Records<R> {
+impl<B> Iterator for Records<B>
+where
+    B: io::BufRead,
+{
     type Item = Result<Record>;
 
     fn next(&mut self) -> Option<Result<Record>> {
@@ -499,6 +523,11 @@ impl Writer<fs::File> {
     pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::create(path).map(Writer::new)
     }
+
+    /// Write to the given file path and a buffer capacity
+    pub fn to_file_with_capacity<P: AsRef<Path>>(capacity: usize, path: P) -> io::Result<Self> {
+        fs::File::create(path).map(|file| Writer::with_capacity(capacity, file))
+    }
 }
 
 impl<W: io::Write> Writer<W> {
@@ -507,6 +536,18 @@ impl<W: io::Write> Writer<W> {
         Writer {
             writer: io::BufWriter::new(writer),
         }
+    }
+
+    /// Create a new Fastq writer with a capacity of write buffer
+    pub fn with_capacity(capacity: usize, writer: W) -> Self {
+        Writer {
+            writer: io::BufWriter::with_capacity(capacity, writer),
+        }
+    }
+
+    /// Create a new Fastq writer with a given BufWriter
+    pub fn from_bufwriter(bufwriter: io::BufWriter<W>) -> Self {
+        Writer { writer: bufwriter }
     }
 
     /// Directly write a FastQ record.
@@ -558,6 +599,30 @@ IIIIIIJJJJJJ
     #[test]
     fn test_reader() {
         let reader = Reader::new(FASTQ_FILE);
+        let records: Vec<Result<Record>> = reader.records().collect();
+        assert_eq!(records.len(), 1);
+        for res in records {
+            let record = res.unwrap();
+            assert_eq!(record.check(), Ok(()));
+            assert_eq!(record.id(), "id");
+            assert_eq!(record.desc(), Some("desc"));
+            assert_eq!(record.seq(), b"ACCGTAGGCTGA");
+            assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
+        }
+
+        let reader = Reader::with_capacity(100, FASTQ_FILE);
+        let records: Vec<Result<Record>> = reader.records().collect();
+        assert_eq!(records.len(), 1);
+        for res in records {
+            let record = res.unwrap();
+            assert_eq!(record.check(), Ok(()));
+            assert_eq!(record.id(), "id");
+            assert_eq!(record.desc(), Some("desc"));
+            assert_eq!(record.seq(), b"ACCGTAGGCTGA");
+            assert_eq!(record.qual(), b"IIIIIIJJJJJJ");
+        }
+
+        let reader = Reader::from_bufread(io::BufReader::new(FASTQ_FILE));
         let records: Vec<Result<Record>> = reader.records().collect();
         assert_eq!(records.len(), 1);
         for res in records {
@@ -627,6 +692,20 @@ IIIIIIJJJJJJ
     #[test]
     fn test_writer() {
         let mut writer = Writer::new(Vec::new());
+        writer
+            .write("id", Some("desc"), b"ACCGTAGGCTGA", b"IIIIIIJJJJJJ")
+            .expect("Expected successful write");
+        writer.flush().expect("Expected successful write");
+        assert_eq!(writer.writer.get_ref(), &FASTQ_FILE);
+
+        let mut writer = Writer::with_capacity(100, Vec::new());
+        writer
+            .write("id", Some("desc"), b"ACCGTAGGCTGA", b"IIIIIIJJJJJJ")
+            .expect("Expected successful write");
+        writer.flush().expect("Expected successful write");
+        assert_eq!(writer.writer.get_ref(), &FASTQ_FILE);
+
+        let mut writer = Writer::from_bufwriter(std::io::BufWriter::with_capacity(100, Vec::new()));
         writer
             .write("id", Some("desc"), b"ACCGTAGGCTGA", b"IIIIIIJJJJJJ")
             .expect("Expected successful write");
