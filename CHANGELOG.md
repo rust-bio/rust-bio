@@ -2,8 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-# Unreleased
-- Improved documentation for FASTA index (@mbhall88)
+# [0.35.0] - 2021-07-05
+- Improved buffer control in Fasta and Fastq API (@natir).
+- Fixed an indexing bug in ArrayBackedIntervalTree (@wabain).
+- Fixed a corner case where the FASTX parser could have looped infinitely (@morsecodist).
+- Fixed compiler warnings (@fxwiegand).
+- Improved documentation for FASTA index (@mbhall88).
 
 
 # [0.34.0] - 2021-05-04
