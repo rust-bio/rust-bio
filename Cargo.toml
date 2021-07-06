@@ -53,6 +53,7 @@ enum-map = "0.6"
 triple_accel = "0.3"
 thiserror = "1"
 anyhow = "1"
+rand = "0.7.3"
 
 [dependencies.vec_map]
 version = "0.8"
