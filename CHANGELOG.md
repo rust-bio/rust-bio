@@ -114,6 +114,13 @@ Further additions in this release are:
 - rank-0 and select-0 in RankSelect.
 - use bv crate for RankSelect.
 
+## [0.36.0](https://www.github.com/rust-bio/rust-bio/compare/v0.35.0...v0.36.0) (2021-07-06)
+
+
+### Features
+
+* Baum-Welch algorithm for Discrete HMM ([#432](https://www.github.com/rust-bio/rust-bio/issues/432)) ([eb8b8cb](https://www.github.com/rust-bio/rust-bio/commit/eb8b8cbad0016b0ab91861cb8d33f7fb624fb157))
+
 ## [0.18.0] - 2018-05-04
 - More flexible FASTA API.
 - Fixed bug in KMP.
