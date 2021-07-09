@@ -296,7 +296,7 @@ pub trait Motif {
         let bits = Self::get_bits();
         let scores = self.get_scores();
         let mut tot = 0.0;
-        for row in scores.genrows() {
+        for row in scores.rows() {
             tot += bits - ent(row.iter());
         }
         tot
