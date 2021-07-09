@@ -166,6 +166,14 @@ where
             .max_by_key(|(_, prob)| NotNan::new(***prob).unwrap())
             .map(|(event, _)| event)
     }
+
+    /// Event posteriors sorted in descending order.
+    pub fn event_posteriors(&self) -> impl Iterator<Item = (&Event, LogProb)> {
+        self.joint_probs
+            .iter()
+            .map(|(event, prob)| (event, prob - self.marginal))
+            .sorted_by_key(|(_, prob)| -NotNan::new(**prob).unwrap())
+    }
 }
 
 impl<PosteriorEvent> ModelInstance<NotNan<f64>, PosteriorEvent>

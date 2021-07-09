@@ -116,12 +116,14 @@
 //! const FAI_FILE: &[u8] = b"chr1\t16\t6\t12\t13";
 //!
 //! let seq_name = "chr1";
-//! let start: u64 = 0;  // start is 0-based, inclusive
-//! let stop: u64 = 10;  // stop is 0-based, exclusive
-//! // load the index
+//! let start: u64 = 0; // start is 0-based, inclusive
+//! let stop: u64 = 10; // stop is 0-based, exclusive
+//!                     // load the index
 //! let mut faidx = IndexedReader::new(std::io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
 //! // move the pointer in the index to the desired sequence and interval
-//! faidx.fetch(seq_name, start, stop).expect("Couldn't fetch interval");
+//! faidx
+//!     .fetch(seq_name, start, stop)
+//!     .expect("Couldn't fetch interval");
 //! // read the subsequence defined by the interval into a vector
 //! let mut seq = Vec::new();
 //! faidx.read(&mut seq).expect("Couldn't read the interval");
@@ -458,12 +460,14 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     /// const FAI_FILE: &[u8] = b"chr1\t16\t6\t12\t13";
     ///
     /// let seq_name = "chr1";
-    /// let start: u64 = 0;  // start is 0-based, inclusive
-    /// let stop: u64 = 10;  // stop is 0-based, exclusive
-    /// // load the index
+    /// let start: u64 = 0; // start is 0-based, inclusive
+    /// let stop: u64 = 10; // stop is 0-based, exclusive
+    ///                     // load the index
     /// let mut faidx = IndexedReader::new(std::io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
     /// // move the pointer in the index to the desired sequence and interval
-    /// faidx.fetch(seq_name, start, stop).expect("Couldn't fetch interval");
+    /// faidx
+    ///     .fetch(seq_name, start, stop)
+    ///     .expect("Couldn't fetch interval");
     /// // read the subsequence defined by the interval into a vector
     /// let mut seq = Vec::new();
     /// faidx.read(&mut seq).expect("Couldn't read the interval");
@@ -472,7 +476,6 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     ///
     /// # Errors
     /// If the `seq_name` does not exist within the index.
-    ///
     pub fn fetch(&mut self, seq_name: &str, start: u64, stop: u64) -> io::Result<()> {
         let idx = self.idx(seq_name)?;
         self.start = Some(start);
@@ -494,12 +497,14 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     /// const FAI_FILE: &[u8] = b"chr1\t16\t6\t12\t13";
     ///
     /// let rid: usize = 0;
-    /// let start: u64 = 0;  // start is 0-based, inclusive
-    /// let stop: u64 = 10;  // stop is 0-based, exclusive
-    /// // load the index
+    /// let start: u64 = 0; // start is 0-based, inclusive
+    /// let stop: u64 = 10; // stop is 0-based, exclusive
+    ///                     // load the index
     /// let mut faidx = IndexedReader::new(std::io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
     /// // move the pointer in the index to the desired sequence and interval
-    /// faidx.fetch_by_rid(rid, start, stop).expect("Couldn't fetch interval");
+    /// faidx
+    ///     .fetch_by_rid(rid, start, stop)
+    ///     .expect("Couldn't fetch interval");
     /// // read the subsequence defined by the interval into a vector
     /// let mut seq = Vec::new();
     /// faidx.read(&mut seq).expect("Couldn't read the interval");
@@ -508,7 +513,6 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     ///
     /// # Errors
     /// If `rid` does not exist within the index.
-    ///
     pub fn fetch_by_rid(&mut self, rid: usize, start: u64, stop: u64) -> io::Result<()> {
         let idx = self.idx_by_rid(rid)?;
         self.start = Some(start);
