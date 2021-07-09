@@ -114,6 +114,13 @@ Further additions in this release are:
 - rank-0 and select-0 in RankSelect.
 - use bv crate for RankSelect.
 
+## [0.37.0](https://www.github.com/rust-bio/rust-bio/compare/v0.36.0...v0.37.0) (2021-07-09)
+
+
+### Features
+
+* add method to retrieve all event posteriors from Bayesian model. ([e5feda8](https://www.github.com/rust-bio/rust-bio/commit/e5feda8ad4101cb992ca4ad82f4fc96e0e1574ba))
+
 ## [0.36.0](https://www.github.com/rust-bio/rust-bio/compare/v0.35.0...v0.36.0) (2021-07-06)
 
 
