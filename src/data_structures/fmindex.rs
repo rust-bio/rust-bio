@@ -300,7 +300,7 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
             match_len += 1;
         }
 
-        for &a in pattern[i + 1..].iter() {
+        for &a in &pattern[i + 1..] {
             // forward extend interval
             let forward_interval = self.forward_ext(&interval, a);
 
@@ -451,7 +451,7 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
         // then c(T) = A, c(G) = C, c(C) = G, N, c(A) = T, ...
         // Hence, we calculate lower revcomp bounds by iterating over
         // symbols and updating from previous one.
-        for &b in b"$TGCNAtgcna".iter() {
+        for &b in b"$TGCNAtgcna" {
             l += s;
             o = if interval.lower == 0 {
                 0
