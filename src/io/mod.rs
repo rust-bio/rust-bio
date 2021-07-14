@@ -70,3 +70,33 @@ impl From<fasta::Record> for Record {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const ID: &str = "thisisanid";
+    const DESC: Option<&str> = Some("description");
+    const SEQ: &[u8] = b"ATGC";
+    const QUAL: &[u8] = b"IIII";
+
+    #[test]
+    fn test_fastq_to_generic_to_fastq() {
+        let fastq_orig = fastq::Record::with_attrs(ID, DESC, SEQ, QUAL);
+        let general = Record::from(fastq_orig.clone());
+        let fastq_new = general.fastq_record();
+
+        assert_eq!(fastq_orig, fastq_new);
+    }
+    #[test]
+    fn test_fasta_to_generic_to_fasta() {
+        let fasta_orig = fasta::Record::with_attrs(ID, DESC, SEQ);
+        let general = Record::from(fasta_orig.clone());
+        let fasta_new = general.fasta_record();
+
+        // fasta does not have a == operator and so just checking individual fields
+        assert_eq!(fasta_orig.id(), fasta_new.id());
+        assert_eq!(fasta_orig.desc(), fasta_new.desc());
+        assert_eq!(fasta_orig.seq(), fasta_new.seq());
+    }
+}
