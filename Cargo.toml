@@ -10,6 +10,7 @@ readme = "README.md"
 license = "MIT"
 build = "build.rs"
 edition = "2018"
+include = ["src/**/*", "LICENSE.md", "README.md", "CHANGELOG.md", "build.rs"]
 
 [package.metadata.release]
 pre-release-commit-message = "release version {{version}}"
