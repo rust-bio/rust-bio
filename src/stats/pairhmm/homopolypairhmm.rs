@@ -210,7 +210,7 @@ impl HomopolyPairHMM {
     {
         let mut prev = 0;
         let mut curr = 1;
-        let mut v: [EnumMap<State, Vec<LogProb>>; 2] = [EnumMap::new(), EnumMap::new()];
+        let mut v: [EnumMap<State, Vec<LogProb>>; 2] = [EnumMap::default(), EnumMap::default()];
         let transition_probs = &self.transition_probs;
 
         let len_y = emission_params.len_y();
