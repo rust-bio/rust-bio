@@ -25,6 +25,9 @@ use std::cmp;
 use std::fmt::Debug;
 use std::iter;
 use std::ops::Deref;
+use std::borrow::Borrow;
+use std::collections::HashMap;
+use std::hash::BuildHasherDefault;
 
 use num_integer::Integer;
 use num_traits::{cast, NumCast, Unsigned};
@@ -32,12 +35,17 @@ use num_traits::{cast, NumCast, Unsigned};
 use bv::{BitVec, Bits, BitsMut};
 use vec_map::VecMap;
 
+use fxhash::FxHasher;
+
 use crate::alphabets::{Alphabet, RankTransform};
 use crate::data_structures::smallints::SmallInts;
+use crate::data_structures::bwt::{BWT, Less, Occ};
 
 pub type LCPArray = SmallInts<i8, isize>;
 pub type RawSuffixArray = Vec<usize>;
 pub type RawSuffixArraySlice<'a> = &'a [usize];
+
+type HashMapFx<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
 
 /// A trait exposing general functionality of suffix arrays.
 pub trait SuffixArray {
@@ -45,63 +53,77 @@ pub trait SuffixArray {
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool;
 
-    // /// Sample the suffix array with the given sample rate.
-    // ///
-    // /// # Arguments
-    // ///
-    // /// * `bwt` - the corresponding BWT
-    // /// * `less` - the corresponding less array
-    // /// * `occ` - the corresponding occ table
-    // /// * `sampling_rate` - if sampling rate is k, every k-th entry will be kept
-    // ///
-    // /// # Example
-    // ///
-    // /// ```
-    // /// use bio::data_structures::suffix_array::{suffix_array, SuffixArray};
-    // /// use bio::data_structures::bwt::{bwt, less, Occ};
-    // /// use bio::alphabets::dna;
-    // ///
-    // /// let text = b"ACGCGAT$";
-    // /// let alphabet = dna::n_alphabet();
-    // /// let sa = suffix_array(text);
-    // /// let bwt = bwt(text, &sa);
-    // /// let less = less(&bwt, &alphabet);
-    // /// let occ = Occ::new(&bwt, 3, &alphabet);
-    // /// let sampled = sa.sample(&bwt, &less, &occ, 1);
-    // ///
-    // /// for i in 0..sa.len() {
-    // ///    assert_eq!(sa.get(i), sampled.get(i));
-    // /// }
-    // /// ```
-    // fn sample<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc>
-    //     (&self, bwt: DBWT, less: DLess, occ: DOcc, sampling_rate: usize) ->
-    //     SampledSuffixArray<DBWT, DLess, DOcc> {
-    //
-    //     let mut sample = Vec::with_capacity((self.len() as f32 / sampling_rate as f32).ceil() as usize);
-    //     for i in 0..self.len() {
-    //         if (i % sampling_rate) == 0 {
-    //             sample.push(self.get(i).unwrap());
-    //         }
-    //     }
-    //
-    //     SampledSuffixArray {
-    //         bwt: bwt,
-    //         less: less,
-    //         occ: occ,
-    //         sample: sample,
-    //         s: sampling_rate,
-    //     }
-    // }
+    /// Sample the suffix array with the given sample rate.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - text that the suffix array is built on
+    /// * `bwt` - the corresponding BWT
+    /// * `less` - the corresponding less array
+    /// * `occ` - the corresponding occ table
+    /// * `sampling_rate` - if sampling rate is k, every k-th entry will be kept
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::suffix_array::{suffix_array, SuffixArray};
+    /// use bio::data_structures::bwt::{bwt, less, Occ};
+    /// use bio::alphabets::dna;
+    ///
+    /// let text = b"ACGCGAT$";
+    /// let alphabet = dna::n_alphabet();
+    /// let sa = suffix_array(text);
+    /// let bwt = bwt(text, &sa);
+    /// let less = less(&bwt, &alphabet);
+    /// let occ = Occ::new(&bwt, 3, &alphabet);
+    /// let sampled = sa.sample(text, &bwt, &less, &occ, 2);
+    ///
+    /// for i in 0..sa.len() {
+    ///    assert_eq!(sa.get(i), sampled.get(i));
+    /// }
+    /// ```
+    fn sample<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>>
+        (&self, text: &[u8], bwt: DBWT, less: DLess, occ: DOcc, sampling_rate: usize) ->
+        SampledSuffixArray<DBWT, DLess, DOcc> {
+
+        let mut sample = Vec::with_capacity((self.len() as f32 / sampling_rate as f32).ceil() as usize);
+        let mut extra_rows = HashMapFx::default();
+        let sentinel = sentinel(text);
+
+        for i in 0..self.len() {
+            let idx = self.get(i).unwrap();
+            if (i % sampling_rate) == 0 {
+                sample.push(idx);
+            } else if bwt.borrow()[i] == sentinel {
+                // If bwt lookup will return a sentinel
+                // Text suffixes that begin right after a sentinel are always saved as extra rows
+                // to help deal with bwt inaccuracy when there are many sentinels
+                extra_rows.insert(i, idx);
+            }
+        }
+
+        SampledSuffixArray {
+            bwt,
+            less,
+            occ,
+            sample,
+            s: sampling_rate,
+            extra_rows,
+            sentinel,
+        }
+    }
 }
 
-// /// A sampled suffix array.
-// pub struct SampledSuffixArray<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> {
-//     bwt: DBWT,
-//     less: DLess,
-//     occ: DOcc,
-//     sample: Vec<usize>,
-//     s: usize, // Rate of sampling
-// }
+/// A sampled suffix array.
+pub struct SampledSuffixArray<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> {
+    bwt: DBWT,
+    less: DLess,
+    occ: DOcc,
+    sample: Vec<usize>,
+    s: usize, // Rate of sampling
+    extra_rows: HashMapFx<usize, usize>,
+    sentinel: u8,
+}
 
 impl SuffixArray for RawSuffixArray {
     fn get(&self, index: usize) -> Option<usize> {
@@ -120,58 +142,51 @@ impl SuffixArray for RawSuffixArray {
     fn is_empty(&self) -> bool {
         Vec::is_empty(self)
     }
-
-    // fn sample<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc>
-    //     (&self, bwt: DBWT, less: DLess, occ: DOcc, sampling_rate: usize) ->
-    //     SampledSuffixArray<DBWT, DLess, DOcc> {
-    //     // Provide a specialized, faster implementation using iterators.
-    //
-    //     let sample = self.iter().cloned().step(sampling_rate).collect();
-    //
-    //     SampledSuffixArray {
-    //         bwt: bwt,
-    //         less: less,
-    //         occ: occ,
-    //         sample: sample,
-    //         s: sampling_rate,
-    //     }
-    // }
 }
 
-// impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SuffixArray for SampledSuffixArray<DBWT, DLess, DOcc> {
-//     fn get(&self, index: usize) -> Option<usize> {
-//         if index < self.len() {
-//             let mut pos = index;
-//             let mut offset = 0;
-//             loop {
-//                 if pos % self.s == 0 {
-//                     return Some(self.sample[pos / self.s] + offset);
-//                 }
-//
-//                 let c = self.bwt[pos];
-//                 pos = self.less[c as usize] + self.occ.get(&self.bwt, pos - 1, c);
-//                 offset += 1;
-//             }
-//         } else {
-//             None
-//         }
-//     }
-//
-//     fn len(&self) -> usize {
-//         self.bwt.len()
-//     }
+impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> SuffixArray for SampledSuffixArray<DBWT, DLess, DOcc> {
+    fn get(&self, index: usize) -> Option<usize> {
+        if index < self.len() {
+            let mut pos = index;
+            let mut offset = 0;
+            loop {
+                if pos % self.s == 0 {
+                    return Some(self.sample[pos / self.s] + offset);
+                }
 
-//     fn is_empty(&self) -> bool {
-//         self.bwt.is_empty()
-//     }
-// }
-//
-//
-// impl<DBWT: DerefBWT, DLess: DerefLess, DOcc: DerefOcc> SampledSuffixArray<DBWT, DLess, DOcc> {
-//     pub fn sampling_rate(&self) -> usize {
-//         self.s
-//     }
-// }
+                let c = self.bwt.borrow()[pos];
+
+                if c == self.sentinel {
+                    // Check if next character is the sentinel
+                    // If so, there must be a cached result to workaround bwt lookup
+                    // inaccuracy when there are multiple sentinels
+                    // This branch should rarely be triggered so the performance impact
+                    // of hashmap lookups would be low
+                    return Some(self.extra_rows[&pos] + offset);
+                }
+
+                pos = self.less.borrow()[c as usize] + self.occ.borrow().get(self.bwt.borrow(), pos - 1, c);
+                offset += 1;
+            }
+        } else {
+            None
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.bwt.borrow().len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.bwt.borrow().is_empty()
+    }
+}
+
+impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> SampledSuffixArray<DBWT, DLess, DOcc> {
+    pub fn sampling_rate(&self) -> usize {
+        self.s
+    }
+}
 
 /// Construct suffix array for given text of length n.
 /// Complexity: O(n).
@@ -679,13 +694,11 @@ impl PosTypes {
 
 #[cfg(test)]
 mod tests {
-    // Commented-out imports waiting on re-enabling of sampled suffix array
-    // See issue #70
     use super::*;
     use super::{transform_text, PosTypes, SAIS};
-    use crate::alphabets::Alphabet;
+    use crate::alphabets::{dna, Alphabet};
+    use crate::data_structures::bwt::{bwt, less};
     use bv::{BitVec, BitsPush};
-    //use data_structures::bwt::{bwt, less, Occ};
     use std::str;
 
     #[test]
@@ -817,35 +830,51 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_sampled_matches() {
-    //     let test_cases =             [(&b"A$C$G$T$"[..], "simple"),
-    //          (&b"A$A$T$T$"[..], "duplicates"),
-    //          (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
-    //          (&b"AGCCAT$\
-    //             CAGCC$"[..],
-    //             "substring"),
-    //          (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
-    //             AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
-    //             "complex"),
-    //          (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
-    //             TTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATTATAATTAGGCCTAC$\
-    //             AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
-    //             TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"[..],
-    //             "complex with revcomps"),
-    //          ];
-    //
-    //     for &(text, _) in test_cases.into_iter() {
-    //         let alphabet = dna::n_alphabet();
-    //         let sa = suffix_array(text);
-    //         let bwt = bwt(text, &sa);
-    //         let less = less(&bwt, &alphabet);
-    //         let occ = Occ::new(&bwt, 3, &alphabet);
-    //         let sampled = sa.sample(&bwt, &less, &occ, 2);
-    //
-    //         for i in 0..sa.len() {
-    //             assert_eq!(sa.get(i), sampled.get(i));
-    //         }
-    //     }
-    // }
+    #[test]
+    fn test_sampled_matches() {
+        let test_cases =             [(&b"A$C$G$T$"[..], "simple"),
+             (&b"A$A$T$T$"[..], "duplicates"),
+             (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
+             (&b"AGCCAT$\
+                CAGCC$"[..],
+                "substring"),
+             (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
+                AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
+                "complex"),
+             (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
+                TTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATTATAATTAGGCCTAC$\
+                AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$\
+                TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"[..],
+                "complex with revcomps"),
+             (&b"GTAG$GCCTAAT$TATAATCAG$"[..], "issue70"),
+             (&b"TGTGTGTGTG$"[..], "repeating"),
+             (&b"TACTCCGCTAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTT$AAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTAGCGGAGTA$TAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTTGTCCAGTA$TACTGGACAAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTA$ACGCACCCCGGCATTCGTCGACTCTACACTTAGTGGAACATACAAATTCGCTCGCAGGAGCGCCTCATACATTCTAACGCAGTGATCTTCGGCTGAGACT$AGTCTCAGCCGAAGATCACTGCGTTAGAATGTATGAGGCGCTCCTGCGAGCGAATTTGTATGTTCCACTAAGTGTAGAGTCGACGAATGCCGGGGTGCGT$"[..], "complex sentinels"),
+             ];
+
+        for &(text, test_name) in test_cases.iter() {
+            for &sample_rate in &[2, 3, 5] {
+                let alphabet = dna::n_alphabet();
+                let sa = suffix_array(text);
+                let bwt = bwt(text, &sa);
+                let less = less(&bwt, &alphabet);
+                let occ = Occ::new(&bwt, 3, &alphabet);
+                let sampled = sa.sample(text, &bwt, &less, &occ, sample_rate);
+
+                for i in 0..sa.len() {
+                    let sa_idx = sa.get(i).unwrap();
+                    let sampled_idx = sampled.get(i).unwrap();
+                    assert_eq!(
+                        sa_idx,
+                        sampled_idx,
+                        "Failed:\n{}\n{}\nat index {} do not match in test: {} (sample rate: {})",
+                        str::from_utf8(&text[sa_idx..]).unwrap(),
+                        str::from_utf8(&text[sampled_idx..]).unwrap(),
+                        i,
+                        test_name,
+                        sample_rate
+                    );
+                }
+            }
+        }
+    }
 }
