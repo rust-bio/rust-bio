@@ -104,7 +104,7 @@ pub trait SuffixArray {
             } else if bwt.borrow()[i] == sentinel {
                 // If bwt lookup will return a sentinel
                 // Text suffixes that begin right after a sentinel are always saved as extra rows
-                // to help deal with bwt inaccuracy when there are many sentinels
+                // to help deal with FM index last to front inaccuracy when there are many sentinels
                 extra_rows.insert(i, idx);
             }
         }
@@ -167,9 +167,9 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> SuffixArray
                 let c = self.bwt.borrow()[pos];
 
                 if c == self.sentinel {
-                    // Check if next character is the sentinel
-                    // If so, there must be a cached result to workaround bwt lookup
-                    // inaccuracy when there are multiple sentinels
+                    // Check if next character in the bwt is the sentinel
+                    // If so, there must be a cached result to workaround FM index last to front
+                    // mapping inaccuracy when there are multiple sentinels
                     // This branch should rarely be triggered so the performance impact
                     // of hashmap lookups would be low
                     return Some(self.extra_rows[&pos] + offset);
