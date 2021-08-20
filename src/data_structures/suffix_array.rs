@@ -21,13 +21,13 @@
 //! );
 //! ```
 
+use std::borrow::Borrow;
 use std::cmp;
+use std::collections::HashMap;
 use std::fmt::Debug;
+use std::hash::BuildHasherDefault;
 use std::iter;
 use std::ops::Deref;
-use std::borrow::Borrow;
-use std::collections::HashMap;
-use std::hash::BuildHasherDefault;
 
 use num_integer::Integer;
 use num_traits::{cast, NumCast, Unsigned};
@@ -37,11 +37,11 @@ use vec_map::VecMap;
 
 use fxhash::FxHasher;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::alphabets::{Alphabet, RankTransform};
+use crate::data_structures::bwt::{Less, Occ, BWT};
 use crate::data_structures::smallints::SmallInts;
-use crate::data_structures::bwt::{BWT, Less, Occ};
 
 pub type LCPArray = SmallInts<i8, isize>;
 pub type RawSuffixArray = Vec<usize>;
@@ -68,9 +68,9 @@ pub trait SuffixArray {
     /// # Example
     ///
     /// ```
-    /// use bio::data_structures::suffix_array::{suffix_array, SuffixArray};
-    /// use bio::data_structures::bwt::{bwt, less, Occ};
     /// use bio::alphabets::dna;
+    /// use bio::data_structures::bwt::{bwt, less, Occ};
+    /// use bio::data_structures::suffix_array::{suffix_array, SuffixArray};
     ///
     /// let text = b"ACGCGAT$";
     /// let alphabet = dna::n_alphabet();
@@ -81,14 +81,19 @@ pub trait SuffixArray {
     /// let sampled = sa.sample(text, &bwt, &less, &occ, 2);
     ///
     /// for i in 0..sa.len() {
-    ///    assert_eq!(sa.get(i), sampled.get(i));
+    ///     assert_eq!(sa.get(i), sampled.get(i));
     /// }
     /// ```
-    fn sample<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>>
-        (&self, text: &[u8], bwt: DBWT, less: DLess, occ: DOcc, sampling_rate: usize) ->
-        SampledSuffixArray<DBWT, DLess, DOcc> {
-
-        let mut sample = Vec::with_capacity((self.len() as f32 / sampling_rate as f32).ceil() as usize);
+    fn sample<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>>(
+        &self,
+        text: &[u8],
+        bwt: DBWT,
+        less: DLess,
+        occ: DOcc,
+        sampling_rate: usize,
+    ) -> SampledSuffixArray<DBWT, DLess, DOcc> {
+        let mut sample =
+            Vec::with_capacity((self.len() as f32 / sampling_rate as f32).ceil() as usize);
         let mut extra_rows = HashMapFx::default();
         let sentinel = sentinel(text);
 
@@ -147,7 +152,9 @@ impl SuffixArray for RawSuffixArray {
     }
 }
 
-impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> SuffixArray for SampledSuffixArray<DBWT, DLess, DOcc> {
+impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> SuffixArray
+    for SampledSuffixArray<DBWT, DLess, DOcc>
+{
     fn get(&self, index: usize) -> Option<usize> {
         if index < self.len() {
             let mut pos = index;
@@ -168,7 +175,8 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> SuffixArray for 
                     return Some(self.extra_rows[&pos] + offset);
                 }
 
-                pos = self.less.borrow()[c as usize] + self.occ.borrow().get(self.bwt.borrow(), pos - 1, c);
+                pos = self.less.borrow()[c as usize]
+                    + self.occ.borrow().get(self.bwt.borrow(), pos - 1, c);
                 offset += 1;
             }
         } else {
@@ -185,7 +193,9 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> SuffixArray for 
     }
 }
 
-impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> SampledSuffixArray<DBWT, DLess, DOcc> {
+impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>>
+    SampledSuffixArray<DBWT, DLess, DOcc>
+{
     pub fn sampling_rate(&self) -> usize {
         self.s
     }
