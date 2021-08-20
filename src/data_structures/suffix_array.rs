@@ -199,6 +199,18 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>>
     pub fn sampling_rate(&self) -> usize {
         self.s
     }
+
+    pub fn bwt(&self) -> &BWT {
+        self.bwt.borrow()
+    }
+
+    pub fn less(&self) -> &Less {
+        self.less.borrow()
+    }
+
+    pub fn occ(&self) -> &Occ {
+        self.occ.borrow()
+    }
 }
 
 /// Construct suffix array for given text of length n.
