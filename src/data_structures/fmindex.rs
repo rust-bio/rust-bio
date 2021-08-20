@@ -480,6 +480,21 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
 
         self.backward_ext(&interval.swapped(), comp_a).swapped()
     }
+
+    /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics)
+    /// without checking whether the text is over the DNA alphabet with N.
+    /// This expects a BWT that was created from a text over the DNA alphabet with N
+    /// (`alphabets::dna::n_alphabet()`) consisting of the
+    /// concatenation with its reverse complement, separated by the sentinel symbol `$`.
+    /// I.e., let T be the original text and R be its reverse complement.
+    /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
+    /// T1$R1$T2$R2$T3$R3$.
+    /// It is unsafe to construct an FMD index from an FM index that is not built on the DNA alphabet.
+    pub unsafe fn from_fmindex_unchecked(
+        fmindex: FMIndex<DBWT, DLess, DOcc>,
+    ) -> FMDIndex<DBWT, DLess, DOcc> {
+        FMDIndex { fmindex }
+    }
 }
 
 #[cfg(test)]
