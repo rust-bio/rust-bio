@@ -196,18 +196,22 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> SuffixArray
 impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>>
     SampledSuffixArray<DBWT, DLess, DOcc>
 {
+    /// Get the sampling rate of the suffix array.
     pub fn sampling_rate(&self) -> usize {
         self.s
     }
 
+    /// Get a reference to the internal BWT.
     pub fn bwt(&self) -> &BWT {
         self.bwt.borrow()
     }
 
+    /// Get a reference to the internal Less.
     pub fn less(&self) -> &Less {
         self.less.borrow()
     }
 
+    /// Get a reference to the internal Occ.
     pub fn occ(&self) -> &Occ {
         self.occ.borrow()
     }
@@ -724,6 +728,8 @@ mod tests {
     use crate::alphabets::{dna, Alphabet};
     use crate::data_structures::bwt::{bwt, less};
     use bv::{BitVec, BitsPush};
+    use rand;
+    use rand::prelude::*;
     use std::str;
 
     #[test]
@@ -816,9 +822,27 @@ mod tests {
         ) + "$"
     }
 
+    fn rand_seqs(num_seqs: usize, seq_len: usize) -> Vec<u8> {
+        let mut rng = rand::thread_rng();
+        let alpha = [b'A', b'T', b'C', b'G', b'N'];
+        let seqs = (0..num_seqs)
+            .into_iter()
+            .map(|_| {
+                let len = rng.gen_range((seq_len / 2)..=seq_len);
+                (0..len)
+                    .into_iter()
+                    .map(|_| *alpha.choose(&mut rng).unwrap())
+                    .collect::<Vec<u8>>()
+            })
+            .collect::<Vec<_>>();
+        let mut res = seqs.join(&b'$');
+        res.push(b'$');
+        res
+    }
+
     #[test]
     fn test_sorts_lexically() {
-        let test_cases =             [(&b"A$C$G$T$"[..], "simple"),
+        let mut test_cases = vec![(&b"A$C$G$T$"[..], "simple"),
              (&b"A$A$T$T$"[..], "duplicates"),
              (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
              (&b"AGCCAT$\
@@ -833,6 +857,14 @@ mod tests {
                 TATTGGAATAGCCATTCGACGCTGACCTCTTGAGGTTCCATTACCCGGCTACTGATGCTAAAATCCTGGCAGCCCGAGCAATACGAAATGTCCGCTGATT$"[..],
                 "complex with revcomps"),
              ];
+        let num_rand = 100;
+        let rand_cases = (0..num_rand)
+            .into_iter()
+            .map(|i| rand_seqs(10, i * 10))
+            .collect::<Vec<_>>();
+        for i in 0..num_rand {
+            test_cases.push((&rand_cases[i], "rand test case"));
+        }
 
         for &(text, test_name) in test_cases.iter() {
             let pos = suffix_array(text);
@@ -857,7 +889,7 @@ mod tests {
 
     #[test]
     fn test_sampled_matches() {
-        let test_cases =             [(&b"A$C$G$T$"[..], "simple"),
+        let mut test_cases = vec![(&b"A$C$G$T$"[..], "simple"),
              (&b"A$A$T$T$"[..], "duplicates"),
              (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
              (&b"AGCCAT$\
@@ -875,9 +907,17 @@ mod tests {
              (&b"TGTGTGTGTG$"[..], "repeating"),
              (&b"TACTCCGCTAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTT$AAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTAGCGGAGTA$TAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTTGTCCAGTA$TACTGGACAAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTA$ACGCACCCCGGCATTCGTCGACTCTACACTTAGTGGAACATACAAATTCGCTCGCAGGAGCGCCTCATACATTCTAACGCAGTGATCTTCGGCTGAGACT$AGTCTCAGCCGAAGATCACTGCGTTAGAATGTATGAGGCGCTCCTGCGAGCGAATTTGTATGTTCCACTAAGTGTAGAGTCGACGAATGCCGGGGTGCGT$"[..], "complex sentinels"),
              ];
+        let num_rand = 100;
+        let rand_cases = (0..num_rand)
+            .into_iter()
+            .map(|i| rand_seqs(10, i * 10))
+            .collect::<Vec<_>>();
+        for i in 0..num_rand {
+            test_cases.push((&rand_cases[i], "rand test case"));
+        }
 
         for &(text, test_name) in test_cases.iter() {
-            for &sample_rate in &[2, 3, 5] {
+            for &sample_rate in &[2, 3, 5, 16] {
                 let alphabet = dna::n_alphabet();
                 let sa = suffix_array(text);
                 let bwt = bwt(text, &sa);
