@@ -114,6 +114,14 @@ Further additions in this release are:
 - rank-0 and select-0 in RankSelect.
 - use bv crate for RankSelect.
 
+### [0.37.1](https://www.github.com/rust-bio/rust-bio/compare/v0.37.0...v0.37.1) (2021-08-23)
+
+
+### Bug Fixes
+
+* One Simple Trick to significantly improve the speed and memory usage of Occ ([#448](https://www.github.com/rust-bio/rust-bio/issues/448)) ([9aa79cb](https://www.github.com/rust-bio/rust-bio/commit/9aa79cbb76960af47178bf0c06d8507872fbe3b0))
+* sampled suffix array ([#447](https://www.github.com/rust-bio/rust-bio/issues/447)) ([00f9846](https://www.github.com/rust-bio/rust-bio/commit/00f9846ba5cb717b3e5392301029f9c46ecea527))
+
 ## [0.37.0](https://www.github.com/rust-bio/rust-bio/compare/v0.36.0...v0.37.0) (2021-07-09)
 
 
