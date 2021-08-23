@@ -73,7 +73,7 @@ pub fn invert_bwt(bwt: &BWTSlice) -> Vec<u8> {
 }
 
 /// An occurrence array implementation.
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Occ {
     occ: Vec<Vec<usize>>,
     k: u32,
