@@ -97,7 +97,11 @@ impl Occ {
             .max_symbol()
             .expect("Expecting non-empty alphabet.") as usize
             + 1;
-        let alpha = alphabet.symbols.iter().collect::<Vec<usize>>();
+        let mut alpha = alphabet.symbols.iter().collect::<Vec<usize>>();
+        // include sentinel '$'
+        if (b'$' as usize) < m && !alphabet.is_word(b"$") {
+            alpha.push(b'$' as usize);
+        }
         let mut occ: Vec<Vec<usize>> = vec![Vec::new(); m];
         let mut curr_occ = vec![0usize; m];
 
