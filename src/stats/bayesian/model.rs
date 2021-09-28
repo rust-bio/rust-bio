@@ -130,6 +130,50 @@ where
             marginal,
         }
     }
+
+    /// Compute model via the exploration of the marginal distribution of the data.
+    pub fn compute_from_marginal<M>(&self, marginal: &M, data: &Data) -> ModelInstance<Event, PosteriorEvent> 
+    where
+        M: Marginal<Data=Data, Event=PosteriorEvent, BaseEvent=Event>,
+    {
+        let mut joint_probs = HashMap::new();
+        let mut posterior_probs = HashMap::new();
+        let mut payload = Payload::default();
+        let marginal = {
+            let mut joint_prob = |event: &Event, data: &Data| {
+                let p = self.joint_prob(event, data, &mut payload);
+                joint_probs.insert(event.clone(), p);
+                p
+            };
+
+            let mut joint_prob_posterior = |event: &PosteriorEvent, data: &Data| {
+                let p = self.posterior.compute(event, data, &mut joint_prob);
+                posterior_probs.insert(event.clone(), p);
+                p
+            };
+
+            marginal.compute(data, &mut joint_prob_posterior)
+        };
+
+        ModelInstance {
+            joint_probs,
+            posterior_probs,
+            marginal,
+        }
+    }
+}
+
+/// A trait for the exploration of the marginal distribution of the data.
+pub trait Marginal {
+    type Event;
+    type BaseEvent;
+    type Data;
+
+    fn compute<F: FnMut(&Self::Event, &Self::Data) -> LogProb>(
+        &self,
+        data: &Self::Data,
+        joint_prob: &mut F,
+    ) -> LogProb;
 }
 
 /// Instance of a model for given data and event universe.
