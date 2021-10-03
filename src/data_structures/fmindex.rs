@@ -127,7 +127,7 @@ pub trait FMIndexable {
 
             // The symbol was not found if we end up with an empty interval.
             // Terminate the LF-mapping process.
-            if l == r {
+            if l > r {
                 break;
             }
         }
@@ -538,6 +538,24 @@ mod tests {
         let positions = sai.occ(&sa);
 
         assert_eq!(positions, []);
+    }
+
+    #[test]
+    fn test_fmindex_backward_search_optimization() {
+        let text = b"GATTACA$";
+        let pattern = &text[..text.len() - 1];
+        let alphabet = dna::n_alphabet();
+        let sa = suffix_array(text);
+        let bwt = bwt(text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+        let fm = FMIndex::new(&bwt, &less, &occ);
+
+        let sai = fm.backward_search(pattern.iter());
+
+        let positions = sai.occ(&sa);
+
+        assert_eq!(positions, [0]);
     }
 
     #[test]
