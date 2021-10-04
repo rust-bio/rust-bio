@@ -82,9 +82,8 @@ impl Interval {
 pub enum BackwardSearchResult {
     Complete(Interval),
     Partial(Interval, usize),
-    Absent
+    Absent,
 }
-
 
 pub trait FMIndexable {
     /// Get occurrence count of symbol a in BWT[..r+1].
@@ -93,9 +92,9 @@ pub trait FMIndexable {
     fn less(&self, a: u8) -> usize;
     fn bwt(&self) -> &BWT;
 
-    /// Perform backward search, yielding `BackwardSearchResult` enum that 
-    /// contains the suffix array interval denoting exact occurrences of the given pattern 
-    /// of length m in the text if it exists, or the suffix array interval denoting the 
+    /// Perform backward search, yielding `BackwardSearchResult` enum that
+    /// contains the suffix array interval denoting exact occurrences of the given pattern
+    /// of length m in the text if it exists, or the suffix array interval denoting the
     /// exact occurrences of a maximal matching suffix of the given pattern if it does
     /// not exist.  If none of the pattern can be matched, the `BackwardSearchResult` is
     /// `Absent`.
@@ -128,7 +127,7 @@ pub trait FMIndexable {
     ///     BackwardSearchResult::Complete(sai) => sai.occ(&sa),
     ///     BackwardSearchResult::Partial(sai, _l) => sai.occ(&sa),
     ///     BackwardSearchResult::Absent => Vec<usize>::new()
-    /// }; 
+    /// };
     ///
     /// assert_eq!(positions, [3, 12, 9]);
     /// ```
@@ -137,7 +136,7 @@ pub trait FMIndexable {
         pattern: P,
     ) -> BackwardSearchResult {
         let (mut l, mut r) = (0, self.bwt().len() - 1);
-        // to keep track of the last "valid" search interval if 
+        // to keep track of the last "valid" search interval if
         // there is any valid suffix match.
         let (mut pl, mut pr) = (l, r);
         // the length of the suffix we have been able to match
@@ -162,31 +161,25 @@ pub trait FMIndexable {
         }
 
         match matched_len {
-            // if we matched at least 1 character but 
+            // if we matched at least 1 character but
             // less than the full pattern length, we have
             // a partial suffix match
-            i if (i > 0) && (i < patl) => {
-                BackwardSearchResult::Partial(
-                    Interval{
-                        lower: pl,
-                        upper: pr + 1,
-                    },
-                    matched_len,
-                )
-            },
-            // if we matched the full pattern length we 
+            i if (i > 0) && (i < patl) => BackwardSearchResult::Partial(
+                Interval {
+                    lower: pl,
+                    upper: pr + 1,
+                },
+                matched_len,
+            ),
+            // if we matched the full pattern length we
             // have a complete match
-            i if i == patl => {
-                BackwardSearchResult::Complete(Interval{
-                    lower: l,
-                    upper: r + 1,
-                })
-            },
-            // if we matched no characters we have an `Absent` 
+            i if i == patl => BackwardSearchResult::Complete(Interval {
+                lower: l,
+                upper: r + 1,
+            }),
+            // if we matched no characters we have an `Absent`
             // result
-            _ => {
-                BackwardSearchResult::Absent
-            }
+            _ => BackwardSearchResult::Absent,
         }
     }
 }
@@ -570,9 +563,9 @@ mod tests {
         let sai = fm.backward_search(pattern.iter());
 
         let positions = match sai {
-            BackwardSearchResult::Complete(saint) => { saint.occ(&sa) },
-            BackwardSearchResult::Partial(saint, _l) => { saint.occ(&sa) },
-            BackwardSearchResult::Absent => { Vec::<usize>::new() } 
+            BackwardSearchResult::Complete(saint) => saint.occ(&sa),
+            BackwardSearchResult::Partial(saint, _l) => saint.occ(&sa),
+            BackwardSearchResult::Absent => Vec::<usize>::new(),
         };
 
         assert_eq!(positions, [3, 12, 9]);
@@ -592,9 +585,9 @@ mod tests {
         let sai = fm.backward_search(pattern.iter());
 
         let positions = match sai {
-            BackwardSearchResult::Complete(saint) => { saint.occ(&sa) },
-            BackwardSearchResult::Partial(saint, _l) => { saint.occ(&sa) },
-            BackwardSearchResult::Absent => { Vec::<usize>::new() } 
+            BackwardSearchResult::Complete(saint) => saint.occ(&sa),
+            BackwardSearchResult::Partial(saint, _l) => saint.occ(&sa),
+            BackwardSearchResult::Absent => Vec::<usize>::new(),
         };
 
         assert_eq!(positions, []);
@@ -614,9 +607,9 @@ mod tests {
         let sai = fm.backward_search(pattern.iter());
 
         let positions = match sai {
-            BackwardSearchResult::Complete(saint) => { saint.occ(&sa) },
-            BackwardSearchResult::Partial(saint, _l) => { saint.occ(&sa) },
-            BackwardSearchResult::Absent => { Vec::<usize>::new() } 
+            BackwardSearchResult::Complete(saint) => saint.occ(&sa),
+            BackwardSearchResult::Partial(saint, _l) => saint.occ(&sa),
+            BackwardSearchResult::Absent => Vec::<usize>::new(),
         };
 
         assert_eq!(positions, [0]);
@@ -637,9 +630,12 @@ mod tests {
 
         let mut partial_match_len = 0;
         let positions = match sai {
-            BackwardSearchResult::Complete(saint) => { saint.occ(&sa) },
-            BackwardSearchResult::Partial(saint, l) => { partial_match_len = l; saint.occ(&sa) },
-            BackwardSearchResult::Absent => { Vec::<usize>::new() } 
+            BackwardSearchResult::Complete(saint) => saint.occ(&sa),
+            BackwardSearchResult::Partial(saint, l) => {
+                partial_match_len = l;
+                saint.occ(&sa)
+            }
+            BackwardSearchResult::Absent => Vec::<usize>::new(),
         };
 
         assert_eq!(partial_match_len, 4);
