@@ -114,6 +114,19 @@ Further additions in this release are:
 - rank-0 and select-0 in RankSelect.
 - use bv crate for RankSelect.
 
+## [0.38.0](https://www.github.com/rust-bio/rust-bio/compare/v0.37.1...v0.38.0) (2021-10-04)
+
+
+### Features
+
+* adds iupac amino acid alpha ([#444](https://www.github.com/rust-bio/rust-bio/issues/444)) ([f4b7a7c](https://www.github.com/rust-bio/rust-bio/commit/f4b7a7c23aa7e165718c77e91f62f60fc431ba2c))
+* Allow to compute bayesian model via the exploration of the marginal distribution. ([#453](https://www.github.com/rust-bio/rust-bio/issues/453)) ([d09033c](https://www.github.com/rust-bio/rust-bio/commit/d09033c1f42da89514ec87bf4aba5d1614e9810d))
+
+
+### Bug Fixes
+
+* backward search yielding potentially incorrect positions on FM-Index ([#454](https://www.github.com/rust-bio/rust-bio/issues/454)) ([#455](https://www.github.com/rust-bio/rust-bio/issues/455)) ([3489e6a](https://www.github.com/rust-bio/rust-bio/commit/3489e6ab493b5191b879b4405b868a4004bbb88e))
+
 ### [0.37.1](https://www.github.com/rust-bio/rust-bio/compare/v0.37.0...v0.37.1) (2021-08-23)
 
 
