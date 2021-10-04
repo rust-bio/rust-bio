@@ -132,9 +132,13 @@ where
     }
 
     /// Compute model via the exploration of the marginal distribution of the data.
-    pub fn compute_from_marginal<M>(&self, marginal: &M, data: &Data) -> ModelInstance<Event, PosteriorEvent> 
+    pub fn compute_from_marginal<M>(
+        &self,
+        marginal: &M,
+        data: &Data,
+    ) -> ModelInstance<Event, PosteriorEvent>
     where
-        M: Marginal<Data=Data, Event=PosteriorEvent, BaseEvent=Event>,
+        M: Marginal<Data = Data, Event = PosteriorEvent, BaseEvent = Event>,
     {
         let mut joint_probs = HashMap::new();
         let mut posterior_probs = HashMap::new();
