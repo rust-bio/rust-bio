@@ -77,7 +77,15 @@ impl Interval {
     }
 }
 
-/// A suffix array interval.
+/// This enum represents the potential result states
+/// from a backward_search in the fm index.  The
+/// potential variants of the enum are:
+/// Complete(Interval) — the query matched completely. The interval is the
+/// range of suffix array indices matching the query string.
+/// Partial(Intarval, usize) - some suffix of the query matched, but not the whole query.
+/// The interval returned is the range of suffix array indices for the maximal
+/// matching suffix, and the `usize` is the length of the maximal matching suffix.
+/// Absent - None suffix of the pattern matched in the text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum BackwardSearchResult {
     Complete(Interval),
@@ -131,7 +139,7 @@ pub trait FMIndexable {
     ///
     /// assert_eq!(positions, [3, 12, 9]);
     /// ```
-    fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator + ExactSizeIterator>(
+    fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator>(
         &self,
         pattern: P,
     ) -> BackwardSearchResult {
@@ -139,11 +147,13 @@ pub trait FMIndexable {
         // to keep track of the last "valid" search interval if
         // there is any valid suffix match.
         let (mut pl, mut pr) = (l, r);
+
         // the length of the suffix we have been able to match
         // successfully
         let mut matched_len = 0;
-        // the length of the full pattern.
-        let patl = pattern.len();
+        // track if we exit early or not due to an empty
+        // search interval.
+        let mut complete_match = true;
 
         for &a in pattern.rev() {
             let less = self.less(a);
@@ -153,33 +163,38 @@ pub trait FMIndexable {
             r = less + self.occ(r, a) - 1;
 
             // The symbol was not found if we end up with an empty interval.
-            // Terminate the LF-mapping process.
+            // Terminate the LF-mapping process. In this case, also mark that
+            // we do not have a complete match.
             if l > r {
+                complete_match = false;
                 break;
             }
             matched_len += 1;
         }
 
-        match matched_len {
-            // if we matched at least 1 character but
-            // less than the full pattern length, we have
-            // a partial suffix match
-            i if (i > 0) && (i < patl) => BackwardSearchResult::Partial(
-                Interval {
-                    lower: pl,
-                    upper: pr + 1,
-                },
-                matched_len,
-            ),
+        // if we matched at least 1 character
+        if matched_len > 0 {
             // if we matched the full pattern length we
             // have a complete match
-            i if i == patl => BackwardSearchResult::Complete(Interval {
-                lower: l,
-                upper: r + 1,
-            }),
-            // if we matched no characters we have an `Absent`
-            // result
-            _ => BackwardSearchResult::Absent,
+            if complete_match {
+                return BackwardSearchResult::Complete(Interval {
+                    lower: l,
+                    upper: r + 1,
+                });
+            } else {
+                // if we matched less than the full pattern length, we have
+                // a partial suffix match
+                return BackwardSearchResult::Partial(
+                    Interval {
+                        lower: pl,
+                        upper: pr + 1,
+                    },
+                    matched_len,
+                );
+            }
+        } else {
+            // if we matched nothing we have an absent result
+            return BackwardSearchResult::Absent;
         }
     }
 }
