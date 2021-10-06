@@ -176,18 +176,15 @@ impl QGramIndex {
                     }
                     Entry::Occupied(mut o) => {
                         let m = o.get_mut();
-                        if m.pattern.stop - q + 1 == i {
-                            m.pattern.stop = i + q;
-                            m.text.stop = p + q;
-                        } else {
+                        if m.pattern.stop - q + 1 != i {
                             // discontinue match
                             matches.push(*m);
                             // start new match
                             m.pattern.start = i;
-                            m.pattern.stop = i + q;
                             m.text.start = p;
-                            m.text.stop = p + q;
                         }
+                        m.pattern.stop = i + q;
+                        m.text.stop = p + q;
                     }
                 }
             }

@@ -8,7 +8,7 @@ use bio::alignment::Alignment;
 use bio::pattern_matching::myers::{long, Myers};
 use bio::pattern_matching::ukkonen::*;
 
-static TEXT: &'static [u8] = b"GATCACAGGTCTATCACCCTATTAACCACTCACGGGAGCTCTCCATGC\
+static TEXT: &[u8] = b"GATCACAGGTCTATCACCCTATTAACCACTCACGGGAGCTCTCCATGC\
 ATTTGGTATTTTCGTCTGGGGGGTATGCACGCGATAGCATTGCGAGACGCTGGAGCCGGAGCACCCTATGTCGCAGTAT\
 CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT\
 GTTAATTAATTAATGCTTGTAGGACATAATAATAACAATTGAATGTCTGCACAGCCACTTTCCACACAGACATCATAAC\
@@ -222,7 +222,7 @@ CATCACGATG";
 
 // Pattern has same length as in pattern_matching.rs, but 2 differences to best match.
 // With k = 5 there are 14 hits, with k = 6, there are 78 hits (most are overlapping)
-static PATTERN: &'static [u8] = b"GCGCGTCCACACCGCTCG";
+static PATTERN: &[u8] = b"GCGCGTCCACACCGCTCG";
 
 static K: u8 = 6;
 // used with assertions to ensure correct code and to prevent over-optimization
@@ -360,7 +360,7 @@ fn myers_path_reverse_64(b: &mut Bencher) {
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all(TEXT, K);
-        while let Some(_) = matches.next_path_reverse(&mut ops) {
+        while matches.next_path_reverse(&mut ops).is_some() {
             n += 1;
         }
         assert_eq!(n, N_HITS);
@@ -374,7 +374,7 @@ fn myers_path_64(b: &mut Bencher) {
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all(TEXT, K);
-        while let Some(_) = matches.next_path(&mut ops) {
+        while matches.next_path(&mut ops).is_some() {
             n += 1;
         }
         assert_eq!(n, N_HITS);
@@ -388,7 +388,7 @@ fn myers_path_long_64(b: &mut Bencher) {
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all(TEXT, K as usize);
-        while let Some(_) = matches.next_path(&mut ops) {
+        while matches.next_path(&mut ops).is_some() {
             n += 1;
         }
         assert_eq!(n, N_HITS);
@@ -402,7 +402,7 @@ fn myers_path_long_8(b: &mut Bencher) {
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all(TEXT, K as usize);
-        while let Some(_) = matches.next_path(&mut ops) {
+        while matches.next_path(&mut ops).is_some() {
             n += 1;
         }
         assert_eq!(n, N_HITS);
@@ -417,7 +417,7 @@ fn myers_path_long_128(b: &mut Bencher) {
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all(TEXT, K as usize);
-        while let Some(_) = matches.next_path(&mut ops) {
+        while matches.next_path(&mut ops).is_some() {
             n += 1;
         }
         assert_eq!(n, N_HITS);
@@ -463,7 +463,7 @@ fn myers_no_alignment_64(b: &mut Bencher) {
     b.iter(|| {
         let mut n = 0;
         let mut matches = myers.find_all(TEXT, K);
-        while let Some(_) = matches.next_end() {
+        while matches.next_end().is_some() {
             n += 1;
         }
         assert_eq!(n, N_HITS);

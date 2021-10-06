@@ -117,7 +117,7 @@ pub struct EntryMut<'a, N: Ord + Clone, D> {
 impl<'a, N: Ord + Clone + 'a, D: 'a> EntryMut<'a, N, D> {
     /// Get a mutable reference to the data for this entry
     pub fn data(&'a mut self) -> &'a mut D {
-        &mut self.data
+        self.data
     }
 
     /// Get a reference to the interval for this entry
