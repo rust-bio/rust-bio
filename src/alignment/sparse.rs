@@ -302,10 +302,7 @@ pub fn sdpkpp_union_lcskpp_path(
         .path
         .binary_search(&sdpkpp_al.path[0])
         .unwrap_or(0);
-    let post_lcskpp = match lcskpp_al
-        .path
-        .binary_search(&sdpkpp_al.path.last().unwrap())
-    {
+    let post_lcskpp = match lcskpp_al.path.binary_search(sdpkpp_al.path.last().unwrap()) {
         Ok(ind) => ind + 1,
         Err(_) => lcskpp_al.path.len(),
     };
@@ -334,7 +331,7 @@ pub fn find_kmer_matches(seq1: &[u8], seq2: &[u8], k: usize) -> Vec<(u32, u32)> 
         let set = hash_kmers(seq1, k);
         find_kmer_matches_seq1_hashed(&set, seq2, k)
     } else {
-        let set = hash_kmers(&seq2, k);
+        let set = hash_kmers(seq2, k);
         find_kmer_matches_seq2_hashed(seq1, &set, k)
     }
 }

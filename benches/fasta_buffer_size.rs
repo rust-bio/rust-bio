@@ -55,7 +55,7 @@ mod fasta_buffer {
 
     use super::*;
 
-    bench_func!(default, |tempfile| fasta::Reader::new(tempfile));
+    bench_func!(default, fasta::Reader::new);
     bench_func!(wrapped_default, |tempfile| fasta::Reader::new(
         io::BufReader::new(tempfile)
     ));

@@ -266,7 +266,7 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
     let n = text.len();
     let alphabet = Alphabet::new(text);
     let sentinel_count = sentinel_count(text);
-    let mut sais = SAIS::new(n);
+    let mut sais = Sais::new(n);
 
     match alphabet.len() + sentinel_count {
         a if a <= std::u8::MAX as usize => {
@@ -440,7 +440,7 @@ fn transform_text<T: Integer + Unsigned + NumCast + Copy + Debug>(
 }
 
 /// SAIS implementation (see function `suffix_array` for description).
-struct SAIS {
+struct Sais {
     pos: Vec<usize>,
     lms_pos: Vec<usize>,
     reduced_text_pos: Vec<usize>,
@@ -449,10 +449,10 @@ struct SAIS {
     bucket_end: Vec<usize>,
 }
 
-impl SAIS {
+impl Sais {
     /// Create a new instance.
     fn new(n: usize) -> Self {
-        SAIS {
+        Sais {
             pos: Vec::with_capacity(n),
             lms_pos: Vec::with_capacity(n),
             reduced_text_pos: vec![0; n],
@@ -724,7 +724,7 @@ impl PosTypes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::{transform_text, PosTypes, SAIS};
+    use super::{transform_text, PosTypes, Sais};
     use crate::alphabets::{dna, Alphabet};
     use crate::data_structures::bwt::{bwt, less};
     use bv::{BitVec, BitsPush};
@@ -756,7 +756,7 @@ mod tests {
         let text: Vec<u8> = transform_text(orig_text, &alphabet, 1);
         let n = text.len();
 
-        let mut sais = SAIS::new(n);
+        let mut sais = Sais::new(n);
         sais.init_bucket_start(&text);
         assert_eq!(sais.bucket_start, vec![0, 1, 7, 13, 15]);
         sais.init_bucket_end(&text);
@@ -770,7 +770,7 @@ mod tests {
         let text: Vec<u8> = transform_text(orig_text, &alphabet, 1);
         let n = text.len();
 
-        let mut sais = SAIS::new(n);
+        let mut sais = Sais::new(n);
         let pos_types = PosTypes::new(&text);
         sais.lms_pos = vec![21, 5, 14, 8, 11, 17, 1];
         sais.calc_pos(&text, &pos_types);
@@ -787,7 +787,7 @@ mod tests {
         let text: Vec<u8> = transform_text(orig_text, &alphabet, 1);
         let n = text.len();
 
-        let mut sais = SAIS::new(n);
+        let mut sais = Sais::new(n);
         let pos_types = PosTypes::new(&text);
         sais.calc_lms_pos(&text, &pos_types);
     }

@@ -538,7 +538,7 @@ pub fn baum_welch<O: Debug + Eq + Hash + Ord, M: Model<O>>(
         // is the symbol v_{k}
         for (t, o) in observations.iter().enumerate() {
             // For example, in einsner example, it calculates the probabilities P(->state, observation), for example p(->C,1) or p(->C,2) or p(->C,3)
-            let p = probs_observations.entry(o).or_insert(LogProb::ln_zero());
+            let p = probs_observations.entry(o).or_insert_with(LogProb::ln_zero);
             *p = (*p).ln_add_exp(alpha_betas[[t, *h]] - probx);
         }
         distinct_obs = probs_observations.len();
@@ -614,7 +614,7 @@ pub fn baum_welch<O: Debug + Eq + Hash + Ord, M: Model<O>>(
         }
 
         let mut ind_probs = vec![];
-        for (_k, v) in &vec_hashs_prob_obs[*i] {
+        for v in vec_hashs_prob_obs[*i].values() {
             ind_probs.push(*v - gamma_i);
         }
         observations_hat
@@ -680,7 +680,7 @@ pub trait Trainable<Observation> {
         observation_hat: Array2<LogProb>,
         initial_hat: Array1<LogProb>,
         end_hat: Array1<LogProb>,
-    ) -> ();
+    );
 }
 
 /// Implementation of Hidden Markov Model with emission values from discrete distributions.
@@ -990,7 +990,7 @@ pub mod discrete_emission_opt_end {
             observation_hat: Array2<LogProb>,
             initial_hat: Array1<LogProb>,
             end_hat: Array1<LogProb>,
-        ) -> () {
+        ) {
             let mut end_prob = self.end.borrow_mut();
             *end_prob = end_hat;
 
@@ -1057,7 +1057,7 @@ pub mod discrete_emission_opt_end {
 
                     let (_, prob_fwd_new_ii) = super::forward(hmm, obs);
 
-                    llh = prob_fwd_new_ii.clone();
+                    llh = prob_fwd_new_ii;
 
                     // Get the number of observations
                     obs_n = obs.len() as f64;
@@ -1074,7 +1074,7 @@ pub mod discrete_emission_opt_end {
                 );
 
                 if nllh_o >= nllh {
-                    prob_fwd_new = llh.clone();
+                    prob_fwd_new = llh;
                     // Normalize the previous log likelihood computed by number of observations
                     nllh_o = LogProb::from(Prob((*prob_fwd_new / obs_n).exp()));
                     // Skip to next iteration
@@ -1086,18 +1086,18 @@ pub mod discrete_emission_opt_end {
                     break;
                 } else {
                     // Otherwise, set the old log like as the new log like
-                    prob_fwd_new = llh.clone();
+                    prob_fwd_new = llh;
 
                     // Normalize the previous log likelihood computed by number of observations
                     nllh_o = LogProb::from(Prob((*prob_fwd_new / obs_n).exp()));
                 }
             }
-            return (
+            (
                 pi_hat_ref,
                 transitions_hat_ref,
                 observations_hat_ref,
                 end_hat_ref,
-            );
+            )
         }
     }
 }
