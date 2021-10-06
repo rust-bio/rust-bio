@@ -130,7 +130,10 @@ impl WaveletMatrix {
     /// Compute the number of occurrences of symbol val in the original text up to position p (inclusive).
     /// Complexity O(1).
     pub fn rank(&self, val: u8, p: u64) -> u64 {
-        assert!(!self.check_overflow(p), "Invalid p (it must be in range 0..wm_size-1");
+        assert!(
+            !self.check_overflow(p),
+            "Invalid p (it must be in range 0..wm_size-1"
+        );
         let height = self.height as usize;
         let mut spos = 0;
         let mut epos = p + 1;
