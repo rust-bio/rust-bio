@@ -16,7 +16,7 @@
 //!
 //! For **getting started** with using `rust-bio`, see [the `Getting started` section below](#getting-started).
 //! For navigating the documentation of the available modules, see [the `Modules` section below](#modules).
-//! If you want to contribute to `rust-bio`, see [the `Contribute` section in the repo](https://github.com/rust-bio/rust-bio#contribute).
+//! If you want to contribute to `rust-bio`, see [`CONTRIBUTING.md`](https://github.com/rust-bio/rust-bio/CONTRIBUTING.md).
 //!
 //! Currently, rust-bio provides
 //!
@@ -24,7 +24,7 @@
 //! * a convenient alphabet implementation,
 //! * pairwise alignment,
 //! * suffix arrays,
-//! * the [Burrows-Wheeler-transform (BWT)]()
+//! * the [Burrows-Wheeler-transform (BWT)](https://en.wikipedia.org/wiki/Burrows–Wheeler_transform)
 //! * the [Full-text index in Minute space index (FM-index)](https://doi.org/10.1109/SFCS.2000.892127),
 //! * FMD-Index for finding supermaximal exact matches,
 //! * a q-gram index,
@@ -41,8 +41,8 @@
 //! # Getting started
 //!
 //! We explain how to use Rust-Bio step-by-step.
-//! Users who already have experience with Rust can skip right to [Step 3: Use Rust-Bio in your project](https://docs.rs/bio/#step-3-use-rust-bio-in-your-project).
-//! Users who already know `rust-bio` might want to jump right into the [modules docs](https://docs.rs/bio/#modules)
+//! Users who already have experience with Rust can skip right to [Step 3: Use Rust-Bio in your project](#step-3-use-rust-bio-in-your-project).
+//! Users who already know `rust-bio` might want to jump right into the [modules docs](#modules)
 //!
 //! ## Step 1: Setting up Rust
 //!
@@ -85,108 +85,16 @@
 //! bio = "*"
 //! ```
 //!
-//! and import the crate from your source code:
+//! and import the crate from your source code (if your `cargo --version` is greater than 1.31, you can skip this step):
 //!
 //! ```rust
 //! extern crate bio;
 //! ```
 //!
-//! ## Example: FM-index and FASTQ
+//! # Examples
 //!
-//! An example of using `rust-bio`:
-//!
-//! ```rust
-//! // Import some modules
-//! use bio::alphabets;
-//! use bio::data_structures::bwt::{bwt, less, Occ};
-//! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
-//! use bio::data_structures::suffix_array::suffix_array;
-//! use bio::io::fastq;
-//! use bio::io::fastq::FastqRead;
-//! use std::io;
-//!
-//! // a given text
-//! let text = b"ACAGCTCGATCGGTA$";
-//! let pattern = b"ATCG";
-//!
-//! // Create an FM-Index for the given text.
-//!
-//! // instantiate an alphabet
-//! let alphabet = alphabets::dna::iupac_alphabet();
-//! // calculate a suffix array
-//! let sa = suffix_array(text);
-//! // calculate the Burrows-Wheeler-transform
-//! let bwt = bwt(text, &sa);
-//! // calculate the vectors less and Occ (occurrences)
-//! let less = less(&bwt, &alphabet);
-//! let occ = Occ::new(&bwt, 3, &alphabet);
-//! // set up FMIndex
-//! let fmindex = FMIndex::new(&bwt, &less, &occ);
-//! // do a backwards search for the pattern
-//! let interval = fmindex.backward_search(pattern.iter());
-//! let positions = interval.occ(&sa);
-//!
-//! // Iterate over a FASTQ file, use the alphabet to validate read
-//! // sequences and search for exact matches in the FM-Index.
-//!
-//! // create FASTQ reader
-//! let mut reader = fastq::Reader::new(io::stdin());
-//! let mut record = fastq::Record::new();
-//! reader.read(&mut record).expect("Failed to parse record");
-//! while !record.is_empty() {
-//!     let check = record.check();
-//!     if check.is_err() {
-//!         panic!("I got a rubbish record!")
-//!     }
-//!     // obtain sequence
-//!     let seq = record.seq();
-//!     // check, whether seq is in the expected alphabet
-//!     if alphabet.is_word(seq) {
-//!         let interval = fmindex.backward_search(seq.iter());
-//!         let positions = interval.occ(&positions);
-//!     }
-//!     reader.read(&mut record).expect("Failed to parse record");
-//! }
-//! ```
-//!
-//! Documentation and further examples for each module can be found in the module descriptions below.
-//!
-//!
-//! ## Example: Multithreaded
-//!
-//! ```rust
-//! use bio::alphabets;
-//! use bio::data_structures::bwt::{bwt, less, Occ};
-//! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
-//! use bio::data_structures::suffix_array::suffix_array;
-//! use std::sync::Arc;
-//! use std::thread;
-//!
-//! let text = b"ACGGATGCTGGATCGGATCGCGCTAGCTA$";
-//! let patterns = vec![b"ACCG", b"TGCT"];
-//!
-//! // Create an FM-Index for a given text.
-//! let alphabet = alphabets::dna::iupac_alphabet();
-//! let sa = suffix_array(text);
-//! let bwt = Arc::new(bwt(text, &sa));
-//! let less = Arc::new(less(bwt.as_ref(), &alphabet));
-//! let occ = Arc::new(Occ::new(bwt.as_ref(), 3, &alphabet));
-//! let fmindex = Arc::new(FMIndex::new(bwt, less, occ));
-//!
-//! // Spawn threads to perform backward searches for each interval
-//! let interval_calculators = patterns
-//!     .into_iter()
-//!     .map(|pattern| {
-//!         let fmindex = fmindex.clone();
-//!         thread::spawn(move || fmindex.backward_search(pattern.iter()))
-//!     })
-//!     .collect::<Vec<_>>();
-//!
-//! // Loop through the results, extracting the positions array for each pattern
-//! for interval_calculator in interval_calculators {
-//!     let positions = interval_calculator.join().unwrap().occ(&sa);
-//! }
-//! ```
+//! - [FM-index and FASTQ](https://github.com/rust-bio/rust-bio/examples/fmindex_fastq.rs)
+//! - [Multithreaded](https://github.com/rust-bio/rust-bio/examples/multithreaded.rs)
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.
 //!
