@@ -27,12 +27,12 @@ use std::iter::{repeat, Enumerate};
 
 use crate::utils::TextSlice;
 
-type LPS = Vec<usize>;
+type Lps = Vec<usize>;
 
 /// KMP algorithm.
 pub struct KMP<'a> {
     m: usize,
-    lps: LPS,
+    lps: Lps,
     pattern: TextSlice<'a>,
 }
 
@@ -71,9 +71,9 @@ impl<'a> KMP<'a> {
     }
 }
 
-fn lps(pattern: &[u8]) -> LPS {
+fn lps(pattern: &[u8]) -> Lps {
     let (m, mut q) = (pattern.len(), 0);
-    let mut lps: LPS = repeat(0).take(m).collect();
+    let mut lps: Lps = repeat(0).take(m).collect();
     for i in 1..m {
         while q > 0 && pattern[q] != pattern[i] {
             q = lps[q - 1];

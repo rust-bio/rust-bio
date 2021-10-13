@@ -914,10 +914,7 @@ impl Record {
     /// assert_eq!(">read1 sampleid=foobar\nACGT\n", record.to_string())
     /// ```
     pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> Self {
-        let desc = match desc {
-            Some(desc) => Some(desc.to_owned()),
-            _ => None,
-        };
+        let desc = desc.map(|desc| desc.to_owned());
         Record {
             id: id.to_owned(),
             desc,
@@ -950,7 +947,7 @@ impl Record {
     /// Return descriptions if present.
     pub fn desc(&self) -> Option<&str> {
         match self.desc.as_ref() {
-            Some(desc) => Some(&desc),
+            Some(desc) => Some(desc),
             None => None,
         }
     }

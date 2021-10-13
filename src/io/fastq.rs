@@ -271,7 +271,7 @@ where
 
             let mut lines_read = 0;
             while !self.line_buffer.is_empty() && !self.line_buffer.starts_with('+') {
-                record.seq.push_str(&self.line_buffer.trim_end());
+                record.seq.push_str(self.line_buffer.trim_end());
                 self.line_buffer.clear();
                 self.reader.read_line(&mut self.line_buffer)?;
                 lines_read += 1;
@@ -328,10 +328,7 @@ impl Record {
     /// assert_eq!(record.qual(), b"QQQQQQQ");
     /// ```
     pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice<'_>, qual: &[u8]) -> Self {
-        let desc = match desc {
-            Some(desc) => Some(desc.to_owned()),
-            _ => None,
-        };
+        let desc = desc.map(|desc| desc.to_owned());
         Record {
             id: id.to_owned(),
             desc,
@@ -403,7 +400,7 @@ impl Record {
     /// Return descriptions if present.
     pub fn desc(&self) -> Option<&str> {
         match self.desc.as_ref() {
-            Some(desc) => Some(&desc),
+            Some(desc) => Some(desc),
             None => None,
         }
     }

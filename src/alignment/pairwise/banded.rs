@@ -305,7 +305,7 @@ impl<F: MatchFunc> Aligner<F> {
         y: TextSlice<'_>,
         matches: &[(u32, u32)],
     ) -> Alignment {
-        self.band = Band::create_with_matches(x, y, self.k, self.w, &self.scoring, &matches);
+        self.band = Band::create_with_matches(x, y, self.k, self.w, &self.scoring, matches);
         self.compute_alignment(x, y)
     }
 
@@ -1316,7 +1316,7 @@ impl Band {
             scoring.gap_open,
             scoring.gap_extend,
         );
-        Band::create_from_match_path(x, y, k, w, scoring, &res.path, &matches)
+        Band::create_from_match_path(x, y, k, w, scoring, &res.path, matches)
     }
 
     fn create_from_match_path<F: MatchFunc>(

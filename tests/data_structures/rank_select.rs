@@ -42,7 +42,7 @@ impl<T: Hash + Eq + Clone> Select<T> {
                 }
             }
         }
-        return None;
+        None
     }
 }
 

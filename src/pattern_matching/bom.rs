@@ -88,10 +88,7 @@ impl BOM {
         if q >= self.table.len() {
             None
         } else {
-            match self.table[q].get(a as usize) {
-                Some(&q) => Some(q),
-                None => None,
-            }
+            self.table[q].get(a as usize).copied()
         }
     }
 
