@@ -99,7 +99,7 @@
 //! // Import some modules
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
-//! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
+//! use bio::data_structures::fmindex::{BackwardSearchResult, FMIndex, FMIndexable};
 //! use bio::data_structures::suffix_array::suffix_array;
 //! use bio::io::fastq;
 //! use bio::io::fastq::FastqRead;
@@ -132,7 +132,7 @@
 //!         partial_match_len = l;
 //!         saint.occ(&sa)
 //!     }
-//!     BackwardSearchResult::Absent => Vec::<usize>::new(),
+//!     BackwardSearchResult::Absent => Vec::new(),
 //! };
 //! // Iterate over a FASTQ file, use the alphabet to validate read
 //! // sequences and search for exact matches in the FM-Index.
@@ -160,7 +160,7 @@
 //!                 partial_match_len = l;
 //!                 saint.occ(&sa)
 //!             }
-//!             BackwardSearchResult::Absent => Vec::<usize>::new(),
+//!             BackwardSearchResult::Absent => Vec::new(),
 //!         };
 //!     }
 //!     reader.read(&mut record).expect("Failed to parse record");
@@ -175,7 +175,7 @@
 //! ```rust
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
-//! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
+//! use bio::data_structures::fmindex::{BackwardSearchResult,FMIndex, FMIndexable};
 //! use bio::data_structures::suffix_array::suffix_array;
 //! use std::sync::Arc;
 //! use std::thread;

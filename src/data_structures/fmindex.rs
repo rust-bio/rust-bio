@@ -78,12 +78,12 @@ impl Interval {
 }
 
 /// This enum represents the potential result states
-/// from a backward_search in the fm index.  The
+/// from a backward_search in the fm index.  The 
 /// potential variants of the enum are:
-/// Complete(Interval) — the query matched completely. The interval is the
+/// Complete(Interval) — the query matched completely. The interval is the 
 /// range of suffix array indices matching the query string.
 /// Partial(Intarval, usize) - some suffix of the query matched, but not the whole query.
-/// The interval returned is the range of suffix array indices for the maximal
+/// The interval returned is the range of suffix array indices for the maximal 
 /// matching suffix, and the `usize` is the length of the maximal matching suffix.
 /// Absent - None suffix of the pattern matched in the text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -117,7 +117,7 @@ pub trait FMIndexable {
     /// ```
     /// use bio::alphabets::dna;
     /// use bio::data_structures::bwt::{bwt, less, Occ};
-    /// use bio::data_structures::fmindex::{FMIndex, FMIndexable};
+    /// use bio::data_structures::fmindex::{BackwardSearchResult, FMIndex, FMIndexable};
     /// use bio::data_structures::suffix_array::suffix_array;
     ///
     /// let text = b"GCCTTAACATTATTACGCCTA$";
@@ -134,7 +134,7 @@ pub trait FMIndexable {
     /// let positions = match bsr {
     ///     BackwardSearchResult::Complete(sai) => sai.occ(&sa),
     ///     BackwardSearchResult::Partial(sai, _l) => sai.occ(&sa),
-    ///     BackwardSearchResult::Absent => Vec<usize>::new()
+    ///     BackwardSearchResult::Absent => Vec::<usize>::new()
     /// };
     ///
     /// assert_eq!(positions, [3, 12, 9]);
@@ -151,7 +151,7 @@ pub trait FMIndexable {
         // the length of the suffix we have been able to match
         // successfully
         let mut matched_len = 0;
-        // track if we exit early or not due to an empty
+        // track if we exit early or not due to an empty 
         // search interval.
         let mut complete_match = true;
 
@@ -171,7 +171,7 @@ pub trait FMIndexable {
             }
             matched_len += 1;
         }
-
+        
         // if we matched at least 1 character
         if matched_len > 0 {
             // if we matched the full pattern length we
@@ -182,9 +182,9 @@ pub trait FMIndexable {
                     upper: r + 1,
                 });
             } else {
-                // if we matched less than the full pattern length, we have
-                // a partial suffix match
-                return BackwardSearchResult::Partial(
+              // if we matched less than the full pattern length, we have
+              // a partial suffix match
+               return BackwardSearchResult::Partial(
                     Interval {
                         lower: pl,
                         upper: pr + 1,
