@@ -152,7 +152,7 @@
 //!     // check, whether seq is in the expected alphabet
 //!     if alphabet.is_word(seq) {
 //!         let interval = fmindex.backward_search(seq.iter());
-//!         // get the positions where seq matched completely 
+//!         // get the positions where seq matched completely
 //!         // or where the maximal matching suffix of seq occurred.
 //!         let positions = match interval {
 //!             BackwardSearchResult::Complete(saint) => saint.occ(&sa),
