@@ -114,6 +114,13 @@ Further additions in this release are:
 - rank-0 and select-0 in RankSelect.
 - use bv crate for RankSelect.
 
+## [0.39.0](https://www.github.com/rust-bio/rust-bio/compare/v0.38.0...v0.39.0) (2021-10-20)
+
+
+### Features
+
+* Backward search api ([#457](https://www.github.com/rust-bio/rust-bio/issues/457)) ([eb9d378](https://www.github.com/rust-bio/rust-bio/commit/eb9d378c70bc43d1dcf477e48cb167802799a546))
+
 ## [0.38.0](https://www.github.com/rust-bio/rust-bio/compare/v0.37.1...v0.38.0) (2021-10-04)
 
 
