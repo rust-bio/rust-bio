@@ -15,6 +15,9 @@ include = ["src/**/*", "LICENSE.md", "README.md", "CHANGELOG.md", "build.rs"]
 pre-release-commit-message = "release version {{version}}"
 tag-message = "Version {{version}} of Rust-Bio."
 
+[package.metadata.cargo-udeps.ignore]
+development = ["rand", "approx", "proptest", "tempfile"]
+
 [features]
 runtime-dispatch-simd = ["bytecount/runtime-dispatch-simd"]
 generic-simd = ["bytecount/generic-simd"]
@@ -22,7 +25,7 @@ phylogeny = [
   # features
   "io",
   # crates
-  "pest", "pest_derive", "bio-types/phylogeny"
+  "pest", "pest_derive", "bio-types/phylogeny", "petgraph",
 ]
 
 default = [
@@ -57,7 +60,7 @@ pattern_matching = [
   # features
   "utils", "alignment",
   # crates
-  "num-traits", "stats", "ndarray", "vec_map",
+  "num-traits", "itertools", "approx", "ndarray", "vec_map", "thiserror",
 ]
 scores = [
   # crates
@@ -67,7 +70,7 @@ io = [
   # features
   "utils",
   # crates
-  "csv", "itertools", "serde", "regex", "multimap", "approx", "bio-types", "anyhow", "petgraph",
+  "csv", "itertools", "serde", "regex", "multimap", "approx", "bio-types", "anyhow", "thiserror",
 ]
 seq_analysis = [
   # features
@@ -81,11 +84,11 @@ stats = [
   # crates
   "num-traits", "itertools", "itertools-num", "ndarray", "lazy_static",
   "approx", "custom_derive", "newtype_derive", "ordered-float", "getset",
-  "strum", "statrs", "enum-map", "serde",
+  "strum", "statrs", "enum-map", "serde", "thiserror",
 ]
 utils = [
   # crates
-  "num-traits", "serde",
+  "num-traits", "serde", "thiserror",
 ]
 
 [dependencies]
@@ -115,7 +118,7 @@ strum = { version = ">= 0.16, < 0.24", optional = true, features = ["derive"] }
 getset = { version = ">=0.0.9, <0.2", optional = true }
 enum-map = { version = ">=0.6.4, <2", optional = true }
 triple_accel = { version = ">=0.3, <0.5", optional = true }
-thiserror = "1"
+thiserror = { version = "1", optional = true }
 anyhow = { version = "1", optional =  true }
 rand = { version = ">=0.7.3, < 0.9", optional = true }
 
