@@ -65,11 +65,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-          override: true
-
       - name: Install ${{ matrix.rust }} toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -116,12 +111,6 @@ jobs:
         uses: actions/checkout@v2
 
       - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-          override: true
-
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
