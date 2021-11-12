@@ -1,4 +1,5 @@
 #![feature(test)]
+#![cfg(feature = "alignment")]
 
 extern crate test;
 

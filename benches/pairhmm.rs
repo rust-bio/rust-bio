@@ -1,4 +1,5 @@
 #![feature(test)]
+#![cfg(feature = "stats")]
 
 extern crate test;
 

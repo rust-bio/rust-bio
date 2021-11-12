@@ -1,4 +1,5 @@
 #![feature(test)]
+#![cfg(feature = "data_structures")]
 
 extern crate test;
 
