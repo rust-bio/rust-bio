@@ -26,6 +26,8 @@ pub mod errors;
 
 use std::ops::{Deref, Range};
 
+use serde::{Deserialize, Serialize};
+
 pub use self::errors::{Error, Result};
 
 /// An `Interval` wraps the `std::ops::Range` from the stdlib and is defined by a start and end field

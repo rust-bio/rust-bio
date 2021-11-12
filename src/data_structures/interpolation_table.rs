@@ -106,6 +106,7 @@ impl<F: Fn(f64) -> f64> InterpolationTable<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::assert_relative_eq;
 
     #[test]
     fn test_interpolation_table() {

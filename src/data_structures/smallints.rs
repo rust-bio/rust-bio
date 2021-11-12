@@ -30,6 +30,7 @@ use std::slice;
 
 use num_integer::Integer;
 use num_traits::{cast, Bounded, Num, NumCast};
+use serde::{Deserialize, Serialize};
 
 /// Data structure for storing a sequence of small integers with few big ones space efficiently
 /// while supporting classical vector operations.

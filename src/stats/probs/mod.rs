@@ -14,10 +14,13 @@ use std::iter;
 use std::mem;
 use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
+use approx::relative_eq;
+use custom_derive::custom_derive;
 use itertools::Itertools;
 use itertools_num::linspace;
 use num_traits::{Float, Zero};
 use ordered_float::NotNan;
+use serde::{Deserialize, Serialize};
 
 use crate::utils::FastExp;
 
@@ -487,6 +490,7 @@ impl Zero for PHREDProb {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::assert_relative_eq;
     use itertools::Itertools;
 
     #[test]

@@ -38,6 +38,8 @@
 //! assert_eq!(dna_ranks.transform(text), [2, 0, 3, 3, 0, 1, 0]);
 //! ```
 
+use serde::{Deserialize, Serialize};
+
 /// A sequence of bitencoded values.
 ///
 /// Space complexity: O(⌈(n * width) / k⌉) * 32 bit, where n is the length of the input

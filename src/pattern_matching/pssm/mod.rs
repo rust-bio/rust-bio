@@ -35,6 +35,7 @@
 use std::borrow::Borrow;
 use std::f32::NEG_INFINITY;
 
+use approx::abs_diff_eq;
 use itertools::Itertools;
 use ndarray::prelude::Array2;
 

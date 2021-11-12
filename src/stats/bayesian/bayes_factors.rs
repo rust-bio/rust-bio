@@ -1,6 +1,12 @@
+use custom_derive::custom_derive;
+use newtype_derive::{NewtypeDeref, NewtypeFrom};
+
 use crate::stats::LogProb;
 
 pub mod evidence {
+    use serde::{Deserialize, Serialize};
+    use strum::{Display, EnumIter, EnumString, EnumVariantNames, IntoStaticStr};
+
     /// Scale of evidence as defined by
     /// [Kass and Raftery 1995](http://www.andrew.cmu.edu/user/kk3n/simplicity/KassRaftery1995.pdf).
     #[derive(
@@ -73,6 +79,8 @@ impl BayesFactor {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
 
     #[test]

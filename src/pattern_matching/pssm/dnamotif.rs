@@ -183,8 +183,12 @@ impl From<Array2<f32>> for DNAMotif {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use approx::assert_relative_eq;
+
     use crate::pattern_matching::pssm::ScoredPos;
+
+    use super::*;
+
     #[test]
     fn simple_pssm() {
         let pssm: DNAMotif = DNAMotif::from_seqs(

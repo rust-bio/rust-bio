@@ -56,11 +56,13 @@
 
 use std::borrow::Borrow;
 use std::iter::DoubleEndedIterator;
+use std::mem::swap;
+
+use serde::{Deserialize, Serialize};
 
 use crate::alphabets::dna;
 use crate::data_structures::bwt::{Less, Occ, BWT};
 use crate::data_structures::suffix_array::SuffixArray;
-use std::mem::swap;
 
 /// A suffix array interval.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

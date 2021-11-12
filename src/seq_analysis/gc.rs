@@ -62,6 +62,8 @@ pub fn gc3_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
 
     #[test]

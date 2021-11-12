@@ -101,13 +101,15 @@
 //! }
 //! ```
 
-use anyhow::Context;
 use std::convert::AsRef;
 use std::fmt;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
+
+use anyhow::Context;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Error, Debug)]

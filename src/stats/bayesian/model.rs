@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
+use getset::{Getters, MutGetters};
 use itertools::Itertools;
 use ordered_float::NotNan;
 

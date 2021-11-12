@@ -22,6 +22,7 @@
 use bio_types::phylogeny::{Tree, TreeGraph};
 use pest::iterators::Pair;
 use pest::Parser;
+use pest_derive::Parser;
 use petgraph::graph::NodeIndex;
 use std::fs;
 use std::io;

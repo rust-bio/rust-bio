@@ -284,6 +284,8 @@ impl PairHMM {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use crate::stats::{LogProb, Prob};
 
     use super::*;

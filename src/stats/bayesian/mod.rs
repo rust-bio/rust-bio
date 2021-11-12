@@ -48,8 +48,11 @@ pub fn expected_fdr(peps: &[LogProb]) -> Vec<LogProb> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use approx::assert_relative_eq;
+
     use crate::stats::LogProb;
+
+    use super::*;
 
     #[test]
     fn test_expected_fdr() {

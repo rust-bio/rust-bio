@@ -29,6 +29,7 @@ use std::ops::Deref;
 
 use bv::BitVec;
 use bv::Bits;
+use serde::{Deserialize, Serialize};
 
 /// A rank/select data structure.
 #[derive(Serialize, Deserialize)]

@@ -101,6 +101,7 @@ use std::slice;
 
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
+use serde::{Deserialize, Serialize};
 
 use crate::stats::LogProb;
 
@@ -414,6 +415,7 @@ pub type CDFPMFIter<'a, T> = iter::Scan<
 mod test {
     use super::*;
     use crate::stats::LogProb;
+    use approx::assert_relative_eq;
     use ordered_float::NotNan;
 
     #[test]

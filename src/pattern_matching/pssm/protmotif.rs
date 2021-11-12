@@ -157,8 +157,10 @@ impl From<Array2<f32>> for ProtMotif {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use approx::assert_relative_eq;
     use ndarray::Array;
+
+    use super::*;
 
     #[test]
     fn test_info_content() {

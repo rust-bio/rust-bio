@@ -539,6 +539,9 @@ fn min3<T: Ord>(a: T, b: T, c: T) -> T {
 mod tests {
     use std::iter::repeat;
 
+    use approx::assert_relative_eq;
+    use lazy_static::lazy_static;
+
     use crate::stats::pairhmm::homopolypairhmm::tests::AlignmentMode::{Global, Semiglobal};
     use crate::stats::pairhmm::PairHMM;
     use crate::stats::{LogProb, Prob};

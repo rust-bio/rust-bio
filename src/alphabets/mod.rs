@@ -18,6 +18,7 @@ use std::borrow::Borrow;
 use std::mem;
 
 use bit_set::BitSet;
+use serde::{Deserialize, Serialize};
 use vec_map::VecMap;
 
 pub mod dna;

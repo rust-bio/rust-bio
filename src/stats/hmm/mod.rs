@@ -82,6 +82,7 @@ pub mod errors;
 
 use std::cmp::Ordering;
 
+use custom_derive::custom_derive;
 use ndarray::prelude::*;
 use num_traits::Zero;
 use ordered_float::OrderedFloat;
@@ -1223,10 +1224,11 @@ pub mod univariate_continuous_emission {
 
 #[cfg(test)]
 mod tests {
-    use super::super::Prob;
+    use approx::assert_relative_eq;
     use ndarray::array;
     use statrs::distribution::Normal;
 
+    use super::super::Prob;
     use super::discrete_emission::Model as DiscreteEmissionHMM;
     use super::discrete_emission_opt_end::Model as DiscreteEmissionHMMoptEND;
     use super::univariate_continuous_emission::GaussianModel as GaussianHMM;

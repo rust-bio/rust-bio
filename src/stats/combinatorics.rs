@@ -61,6 +61,8 @@ pub fn combinations_with_repl(n: u64, k: u64) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
 
     #[test]

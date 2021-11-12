@@ -24,17 +24,18 @@
 //! }
 //! ```
 
-use anyhow::Context;
-use itertools::Itertools;
-use multimap::MultiMap;
-use regex::Regex;
 use std::convert::AsRef;
 use std::fs;
 use std::io;
 use std::path::Path;
 use std::str::FromStr;
 
+use anyhow::Context;
 use bio_types::strand::Strand;
+use itertools::Itertools;
+use multimap::MultiMap;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
 
 /// `GffType`
 ///
