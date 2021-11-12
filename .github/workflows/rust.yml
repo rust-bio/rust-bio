@@ -110,7 +110,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [alignment, alphabets, data_structures, pattern_matching, scores, io, seq_analysis, stats, utils]
+        feature: [alignment, alphabets, data_structures, pattern_matching, scores, io, seq_analysis, stats, utils, phylogeny]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2

@@ -18,7 +18,12 @@ tag-message = "Version {{version}} of Rust-Bio."
 [features]
 runtime-dispatch-simd = ["bytecount/runtime-dispatch-simd"]
 generic-simd = ["bytecount/generic-simd"]
-phylogeny = ["pest", "pest_derive", "bio-types/phylogeny"]
+phylogeny = [
+  # features
+  "io",
+  # crates
+  "pest", "pest_derive", "bio-types/phylogeny"
+]
 
 default = [
   "alignment",
@@ -35,7 +40,7 @@ default = [
 alignment = [
   # features
   "utils", "scores", "data_structures",
-  # crates 
+  # crates
   "fxhash", "bio-types", "triple_accel", "petgraph",
 ]
 alphabets = [
