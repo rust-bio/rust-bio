@@ -96,6 +96,8 @@
 //! An example of using `rust-bio`:
 //!
 //! ```rust
+//! # #[cfg(all(feature = "data_structures", feature = "io", feature = "alphabets"))]
+//! # {
 //! // Import some modules
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
@@ -165,6 +167,7 @@
 //!     }
 //!     reader.read(&mut record).expect("Failed to parse record");
 //! }
+//! # }
 //! ```
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.
@@ -173,6 +176,8 @@
 //! ## Example: Multithreaded
 //!
 //! ```rust
+//! # #[cfg(all(feature = "data_structures", feature = "alphabets"))]
+//! # {
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
 //! use bio::data_structures::fmindex::{BackwardSearchResult,FMIndex, FMIndexable};
@@ -207,6 +212,7 @@
 //!         _ => Vec::new()
 //!     };
 //! }
+//! # }
 //! ```
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.
@@ -236,14 +242,15 @@ extern crate custom_derive;
 #[macro_use]
 extern crate lazy_static;
 
+#[cfg(feature = "newtype_derive")]
 #[macro_use]
 extern crate newtype_derive;
 
 #[macro_use]
-extern crate serde_derive;
+extern crate serde;
 
 #[macro_use]
-extern crate strum_macros;
+extern crate strum;
 
 #[macro_use]
 extern crate getset;
@@ -252,12 +259,29 @@ extern crate getset;
 #[macro_use]
 extern crate pest_derive;
 
+#[cfg(feature = "alignment")]
 pub mod alignment;
+
+#[cfg(feature = "alphabets")]
 pub mod alphabets;
+
+#[cfg(feature = "data_structures")]
 pub mod data_structures;
+
+#[cfg(feature = "io")]
 pub mod io;
+
+#[cfg(feature = "pattern_matching")]
 pub mod pattern_matching;
+
+#[cfg(feature = "scores")]
 pub mod scores;
+
+#[cfg(feature = "seq_analysis")]
 pub mod seq_analysis;
+
+#[cfg(feature = "stats")]
 pub mod stats;
+
+#[cfg(feature = "utils")]
 pub mod utils;
