@@ -55,6 +55,10 @@ For extra credit, feel free to familiarize yourself with:
 * the Rust [documentation conventions](https://rust-lang.github.io/rfcs/1574-more-api-documentation-conventions.html#appendix-a-full-conventions-text)
 * the Rust [API documentation guidelines](https://rust-lang.github.io/api-guidelines/documentation.html)
 
+## Minimum supported Rust version
+
+Currently the minimum supported Rust version is 1.51.0.
+
 ## License
 
 Licensed under the MIT license http://opensource.org/licenses/MIT. This project may not be copied, modified, or distributed except according to those terms.
