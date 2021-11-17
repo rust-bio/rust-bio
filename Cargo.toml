@@ -45,9 +45,8 @@ statrs = ">= 0.11, < 0.16"
 bio-types = ">=0.11.0"
 pest = { version = "2", optional = true }
 pest_derive = { version = "2", optional = true }
-fnv = "1.0"
-strum = ">= 0.16, < 0.22"
-strum_macros = ">= 0.16, < 0.22"
+strum = ">= 0.16, < 0.24"
+strum_macros = ">= 0.16, < 0.24"
 getset = ">=0.0.9, <0.2"
 enum-map = ">=0.6.4, <2"
 triple_accel = ">=0.3, <0.5"
