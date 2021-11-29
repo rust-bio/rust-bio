@@ -23,6 +23,7 @@ use bio_types::phylogeny::{Tree, TreeGraph};
 use pest::iterators::Pair;
 use pest::Parser;
 use petgraph::graph::NodeIndex;
+use petgraph::visit::EdgeRef;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -39,6 +40,9 @@ pub enum Error {
 
     #[error("Error while reading tree: {0}")]
     Read(#[from] std::io::Error),
+
+    #[error("Error while writing tree: {0}")]
+    Write(std::io::Error),
 
     #[error("Tree contains invalid UTF-8: {0}")]
     InvalidContent(#[from] std::str::Utf8Error),
@@ -159,7 +163,7 @@ fn newick_to_graph(root: TreeValue) -> Result<Tree> {
     fn add_node(g: &mut TreeGraph, t: TreeValue) -> NodeIndex {
         match t {
             TreeValue::Node { name, children } => {
-                let node_id = g.add_node(name.unwrap_or("N/A".into()).into());
+                let node_id = g.add_node(name.unwrap_or("".into()).into());
                 if let Some(children) = children {
                     for child in children {
                         match child {
@@ -184,6 +188,8 @@ fn newick_to_graph(root: TreeValue) -> Result<Tree> {
 }
 
 /// Reads a tree from an `&str`-compatible type
+///
+/// The root of the tree will be at NodeIndex 0.
 pub fn from_string<S: AsRef<str>>(content: S) -> Result<Tree> {
     let raw_tree = parse_newick_file(content.as_ref())?;
     newick_to_graph(raw_tree)
@@ -207,4 +213,81 @@ pub fn read<R: io::Read>(reader: R) -> Result<Tree> {
         .map_err(Error::Read)?;
     let content_str = std::str::from_utf8(&content_bytes).map_err(Error::InvalidContent)?;
     from_string(&content_str)
+}
+
+/// Convert the Tree to the Newick String representation.
+pub fn to_string(t: &Tree) -> String {
+    fn node_to_string(i: NodeIndex, g: &TreeGraph, s: &mut String) {
+        let edges = g.edges_directed(i, petgraph::Outgoing).collect::<Vec<_>>();
+        if !edges.is_empty() {
+            *s += "(";
+            let mut first = true;
+            // Petgraph iterates over edges in reverse order of adding them.
+            // Reversing here ensures that `to_string` is compatible with `from_string`.
+            for edge in edges.iter().rev() {
+                if first {
+                    first = false;
+                } else {
+                    *s += ",";
+                }
+                node_to_string(edge.target(), g, s);
+                if !edge.weight().is_nan() {
+                    *s += ":";
+                    *s += &edge.weight().to_string();
+                }
+            }
+            *s += ")";
+        }
+        // `i` should never be an invalid index here.
+        *s += g.node_weight(i).unwrap();
+    }
+
+    let mut s = String::new();
+    node_to_string(0.into(), &t.g, &mut s);
+    s + ";"
+}
+
+/// Writes a tree to a file.
+pub fn to_file<P: AsRef<Path>>(path: P, tree: &Tree) -> Result<()> {
+    fs::File::open(&path)
+        .map(|w| write(w, tree))
+        .map_err(|e| Error::OpenFile {
+            filename: path.as_ref().to_owned(),
+            source: e,
+        })?
+}
+
+/// Writes a tree to any type implementing `io::Write`.
+pub fn write<W: io::Write>(mut writer: W, tree: &Tree) -> Result<()> {
+    let s = to_string(&tree);
+    writer.write_all(&s.into_bytes()).map_err(Error::Write)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Test that to_string and from_string are inverses.
+    #[test]
+    fn newick_from_to_string() {
+        // Test input from Wikipedia: https://en.wikipedia.org/wiki/Newick_format
+        let strings = vec![
+            // This is not supported currently:
+            // The grammar allows it, but the value is ignored.
+            //"(:0.1,:0.2,(:0.3,:0.4):0.5):1.0;", /* all have a distance to parent, including the root. */
+            "A;",
+            "(A,B);",
+            "(,,(,));",                            //no nodes are named
+            "(A,B,(C,D));",                        //leaf nodes are named
+            "(A,B,(C,D)E)F;",                      //all nodes are named
+            "(:0.1,:0.2,(:0.3,:0.4):0.5);",        //all but root node have a distance to parent
+            "(A:0.1,B:0.2,(C:0.3,D:0.4):0.5);",    //distances and leaf names (popular)
+            "(A:0.1,B:0.2,(C:0.3,D:0.4)E:0.5)F;",  //distances and all names
+            "((B:0.2,(C:0.3,D:0.4)E:0.5)F:0.1)A;", //a tree rooted on a leaf node (rare)
+        ];
+        for s in strings {
+            let t = from_string(s).unwrap();
+            assert_eq!(to_string(&t), s);
+        }
+    }
 }
