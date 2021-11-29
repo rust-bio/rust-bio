@@ -24,6 +24,7 @@ use pest::iterators::Pair;
 use pest::Parser;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
+use petgraph::EdgeDirection::Incoming;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -49,6 +50,9 @@ pub enum Error {
 
     #[error("Error while parsing tree: {0}")]
     ParsingError(#[from] pest::error::Error<crate::io::newick::Rule>),
+
+    #[error("No unique root")]
+    NoUniqueRoot,
 }
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -188,8 +192,6 @@ fn newick_to_graph(root: TreeValue) -> Result<Tree> {
 }
 
 /// Reads a tree from an `&str`-compatible type
-///
-/// The root of the tree will be at NodeIndex 0.
 pub fn from_string<S: AsRef<str>>(content: S) -> Result<Tree> {
     let raw_tree = parse_newick_file(content.as_ref())?;
     newick_to_graph(raw_tree)
@@ -216,7 +218,7 @@ pub fn read<R: io::Read>(reader: R) -> Result<Tree> {
 }
 
 /// Convert the Tree to the Newick String representation.
-pub fn to_string(t: &Tree) -> String {
+pub fn to_string(t: &Tree) -> Result<String> {
     fn node_to_string(i: NodeIndex, g: &TreeGraph, s: &mut String) {
         let edges = g.edges_directed(i, petgraph::Outgoing).collect::<Vec<_>>();
         if !edges.is_empty() {
@@ -242,9 +244,17 @@ pub fn to_string(t: &Tree) -> String {
         *s += g.node_weight(i).unwrap();
     }
 
+    // Find the root of the tree.
+    let roots = t.g.externals(Incoming);
+    // Make sure there is exactly one vertex without incoming edges.
+    let root = roots.next().ok_or(Error::NoUniqueRoot)?;
+    if roots.next().is_some() {
+        return Err(Error::NoUniqueRoot);
+    }
+
     let mut s = String::new();
-    node_to_string(0.into(), &t.g, &mut s);
-    s + ";"
+    node_to_string(root, &t.g, &mut s);
+    Ok(s + ";")
 }
 
 /// Writes a tree to a file.
@@ -259,7 +269,7 @@ pub fn to_file<P: AsRef<Path>>(path: P, tree: &Tree) -> Result<()> {
 
 /// Writes a tree to any type implementing `io::Write`.
 pub fn write<W: io::Write>(mut writer: W, tree: &Tree) -> Result<()> {
-    let s = to_string(&tree);
+    let s = to_string(&tree)?;
     writer.write_all(&s.into_bytes()).map_err(Error::Write)
 }
 
@@ -287,7 +297,7 @@ mod tests {
         ];
         for s in strings {
             let t = from_string(s).unwrap();
-            assert_eq!(to_string(&t), s);
+            assert_eq!(to_string(&t).unwrap(), s);
         }
     }
 }
