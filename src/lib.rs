@@ -175,7 +175,7 @@
 //! ```rust
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
-//! use bio::data_structures::fmindex::{BackwardSearchResult,FMIndex, FMIndexable};
+//! use bio::data_structures::fmindex::{BackwardSearchResult, FMIndex, FMIndexable};
 //! use bio::data_structures::suffix_array::suffix_array;
 //! use std::sync::Arc;
 //! use std::thread;
@@ -204,7 +204,7 @@
 //! for interval_calculator in interval_calculators {
 //!     let positions = match interval_calculator.join().unwrap() {
 //!         BackwardSearchResult::Complete(saint) => saint.occ(&sa),
-//!         _ => Vec::new()
+//!         _ => Vec::new(),
 //!     };
 //! }
 //! ```
@@ -257,6 +257,8 @@ pub mod alphabets;
 pub mod data_structures;
 pub mod io;
 pub mod pattern_matching;
+#[cfg(feature = "phylogeny")]
+pub mod phylogeny;
 pub mod scores;
 pub mod seq_analysis;
 pub mod stats;
