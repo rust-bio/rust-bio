@@ -245,7 +245,7 @@ pub fn to_string(t: &Tree) -> Result<String> {
     }
 
     // Find the root of the tree.
-    let roots = t.g.externals(Incoming);
+    let mut roots = t.g.externals(Incoming);
     // Make sure there is exactly one vertex without incoming edges.
     let root = roots.next().ok_or(Error::NoUniqueRoot)?;
     if roots.next().is_some() {
