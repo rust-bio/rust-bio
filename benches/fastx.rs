@@ -59,7 +59,7 @@ where
 
 fn fasta_count_bases<R>(records: fasta::Records<R>) -> io::Result<usize>
 where
-    R: io::Read,
+    R: io::BufRead,
 {
     let mut nb_bases = 0;
     for result in records {
@@ -84,7 +84,7 @@ where
 
 fn fasta_check<R>(records: fasta::Records<R>) -> Result<(), String>
 where
-    R: io::Read,
+    R: io::BufRead,
 {
     for result in records {
         let record = result.map_err(|e| format!("{}", e))?;

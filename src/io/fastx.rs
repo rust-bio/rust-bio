@@ -72,6 +72,7 @@
 //!
 //! ```
 //! use bio::io::{fasta, fastq, fastx};
+//! use std::io::BufReader;
 //! use std::io;
 //!
 //! fn at_least_n_bases<T, E, I>(records: I, n: usize) -> impl Iterator<Item = Result<T, E>>
@@ -86,7 +87,7 @@
 //!     })
 //! }
 //!
-//! let mut reader = fasta::Reader::new(io::stdin());
+//! let mut reader = fasta::Reader::new(BufReader::new(io::stdin()));
 //! let mut writer = fasta::Writer::new(io::stdout());
 //!
 //! for record in at_least_n_bases(reader.records(), 10) {
@@ -107,10 +108,11 @@
 //!
 //! ```
 //! use bio::io::fastx::{EitherRecords, Record};
+//! use std::io::BufReader;
 //! use std::io;
 //! use std::str;
 //!
-//! let mut records = EitherRecords::from(io::stdin());
+//! let mut records = EitherRecords::from(BufReader::new(io::stdin()));
 //! while let Some(Ok(record)) = records.next() {
 //!     println!("id  : {}", record.id());
 //!     println!("desc: {}", record.desc().unwrap_or("none"));
@@ -170,6 +172,7 @@ use anyhow::Context;
 use std::convert::AsRef;
 use std::fs;
 use std::io;
+use std::io::BufReader;
 use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::mem;
@@ -302,34 +305,35 @@ impl Record for EitherRecord {
 
 pub trait Records<R: Record, E>: Iterator<Item = Result<R, E>> {}
 
-impl<T: Read> Records<fasta::Record, io::Error> for fasta::Records<T> {}
+impl<T: BufRead> Records<fasta::Record, io::Error> for fasta::Records<T> {}
 
-impl<T: Read> Records<fastq::Record, fastq::Error> for fastq::Records<T> {}
+impl<T: BufRead> Records<fastq::Record, fastq::Error> for fastq::Records<T> {}
 
-impl<T: Read> Records<EitherRecord, Error> for EitherRecords<T> {}
+impl<T: BufRead> Records<EitherRecord, Error> for EitherRecords<T> {}
 
 #[derive(Debug)]
-enum EitherRecordsInner<R: Read> {
+enum EitherRecordsInner<R: BufRead> {
     FASTA(fasta::Records<R>),
     FASTQ(fastq::Records<R>),
 }
 
 #[derive(Debug)]
-pub struct EitherRecords<R: Read> {
-    records: Option<EitherRecordsInner<io::Chain<io::Cursor<[u8; 1]>, R>>>,
+pub struct EitherRecords<R: BufRead> {
+    records: Option<EitherRecordsInner<BufReader<io::Chain<io::Cursor<[u8; 1]>, R>>>>,
     reader: Option<R>,
 }
 
-impl EitherRecords<fs::File> {
+impl EitherRecords<BufReader<fs::File>> {
     /// Read from a given file.
     pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
         fs::File::open(path.as_ref())
+            .map(BufReader::new)
             .map(EitherRecords::from)
             .with_context(|| format!("Failed to read fastq from {:#?}", path))
     }
 }
 
-impl<R: Read> EitherRecords<R> {
+impl<R: BufRead> EitherRecords<R> {
     pub fn new(reader: R) -> Self {
         EitherRecords::from(reader)
     }
@@ -367,7 +371,7 @@ impl<R: Read> EitherRecords<R> {
     }
 }
 
-impl<R: Read> Iterator for EitherRecords<R> {
+impl<R: BufRead> Iterator for EitherRecords<R> {
     type Item = Result<EitherRecord>;
     fn next(&mut self) -> Option<Self::Item> {
         if let Err(e) = self.initialize() {
@@ -385,7 +389,7 @@ impl<R: Read> Iterator for EitherRecords<R> {
     }
 }
 
-impl<R: Read> From<R> for EitherRecords<R> {
+impl<R: BufRead> From<R> for EitherRecords<R> {
     fn from(reader: R) -> Self {
         EitherRecords {
             records: None,
@@ -605,16 +609,16 @@ ACCGTAGGCTGA
 +
 ";
 
-    struct MockReader<R: Read> {
+    struct MockBufReader<R: BufRead> {
         bytes_read: usize,
         error: Option<io::Error>,
         error_at_byte: usize,
         reader: R,
     }
 
-    impl<R: Read> MockReader<R> {
+    impl<R: BufRead> MockBufReader<R> {
         fn new(error: io::Error, error_at_byte: usize, reader: R) -> Self {
-            MockReader {
+            MockBufReader {
                 bytes_read: 0,
                 error: Some(error),
                 error_at_byte,
@@ -623,7 +627,7 @@ ACCGTAGGCTGA
         }
     }
 
-    impl<R: Read> Read for MockReader<R> {
+    impl<R: BufRead> Read for MockBufReader<R> {
         fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
             if buf.len() + self.bytes_read >= self.error_at_byte {
                 match mem::replace(&mut self.error, None) {
@@ -635,6 +639,14 @@ ACCGTAGGCTGA
             self.bytes_read += bytes_read;
             Ok(bytes_read)
         }
+    }
+
+    impl<R: BufRead> BufRead for MockBufReader<R> {
+        fn fill_buf(&mut self) -> io::Result<&[u8]> {
+            Ok(&[])
+        }
+
+        fn consume(&mut self, _amt: usize) {}
     }
 
     #[test]
@@ -704,7 +716,7 @@ ACCGTAGGCTGA
             .unwrap()
             .0
             + 1;
-        let reader = MockReader::new(
+        let reader = MockBufReader::new(
             io::Error::new(io::ErrorKind::Other, "error"),
             error_at_byte,
             FASTA_FILE,
@@ -814,7 +826,7 @@ ACCGTAGGCTGA
     #[test]
     fn test_get_kind_detailed_error() {
         let mock_reader =
-            MockReader::new(io::Error::new(io::ErrorKind::Other, "error"), 0, FASTA_FILE);
+            MockBufReader::new(io::Error::new(io::ErrorKind::Other, "error"), 0, FASTA_FILE);
         let (mut reader, err) = get_kind_detailed(mock_reader).err().unwrap();
         assert!(matches!(err.kind(), io::ErrorKind::Other));
         let mut buf = [0u8; 1];
