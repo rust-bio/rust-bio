@@ -93,7 +93,7 @@ pub trait Motif {
     fn seqs_to_weights(seqs: &[Vec<u8>], _pseudos: Option<&[f32]>) -> Result<Array2<f32>> {
         let p1 = vec![DEF_PSEUDO; Self::MONO_CT];
         let pseudos = match _pseudos {
-            Some(ref p2) => p2,
+            Some(p2) => p2,
             None => p1.as_slice(),
         };
 

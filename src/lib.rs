@@ -99,7 +99,7 @@
 //! // Import some modules
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
-//! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
+//! use bio::data_structures::fmindex::{BackwardSearchResult, FMIndex, FMIndexable};
 //! use bio::data_structures::suffix_array::suffix_array;
 //! use bio::io::fastq;
 //! use bio::io::fastq::FastqRead;
@@ -124,14 +124,23 @@
 //! let fmindex = FMIndex::new(&bwt, &less, &occ);
 //! // do a backwards search for the pattern
 //! let interval = fmindex.backward_search(pattern.iter());
-//! let positions = interval.occ(&sa);
-//!
+//! let mut partial_match_len = 0;
+//! // get the locations where the pattern matched (completely in this case).
+//! let positions = match interval {
+//!     BackwardSearchResult::Complete(saint) => saint.occ(&sa),
+//!     BackwardSearchResult::Partial(saint, l) => {
+//!         partial_match_len = l;
+//!         saint.occ(&sa)
+//!     }
+//!     BackwardSearchResult::Absent => Vec::new(),
+//! };
 //! // Iterate over a FASTQ file, use the alphabet to validate read
 //! // sequences and search for exact matches in the FM-Index.
 //!
 //! // create FASTQ reader
 //! let mut reader = fastq::Reader::new(io::stdin());
 //! let mut record = fastq::Record::new();
+//! let mut partial_match_len = 0;
 //! reader.read(&mut record).expect("Failed to parse record");
 //! while !record.is_empty() {
 //!     let check = record.check();
@@ -143,7 +152,16 @@
 //!     // check, whether seq is in the expected alphabet
 //!     if alphabet.is_word(seq) {
 //!         let interval = fmindex.backward_search(seq.iter());
-//!         let positions = interval.occ(&positions);
+//!         // get the positions where seq matched completely
+//!         // or where the maximal matching suffix of seq occurred.
+//!         let positions = match interval {
+//!             BackwardSearchResult::Complete(saint) => saint.occ(&sa),
+//!             BackwardSearchResult::Partial(saint, l) => {
+//!                 partial_match_len = l;
+//!                 saint.occ(&sa)
+//!             }
+//!             BackwardSearchResult::Absent => Vec::new(),
+//!         };
 //!     }
 //!     reader.read(&mut record).expect("Failed to parse record");
 //! }
@@ -157,7 +175,7 @@
 //! ```rust
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
-//! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
+//! use bio::data_structures::fmindex::{BackwardSearchResult,FMIndex, FMIndexable};
 //! use bio::data_structures::suffix_array::suffix_array;
 //! use std::sync::Arc;
 //! use std::thread;
@@ -184,7 +202,10 @@
 //!
 //! // Loop through the results, extracting the positions array for each pattern
 //! for interval_calculator in interval_calculators {
-//!     let positions = interval_calculator.join().unwrap().occ(&sa);
+//!     let positions = match interval_calculator.join().unwrap() {
+//!         BackwardSearchResult::Complete(saint) => saint.occ(&sa),
+//!         _ => Vec::new()
+//!     };
 //! }
 //! ```
 //!

@@ -82,6 +82,28 @@ jobs:
           command: test
           args: --all --no-fail-fast
 
+  MSRV:
+    needs: Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install MSRV toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.51.0
+          override: true
+
+      - name: check if README matches MSRV defined here
+        run: grep '1.51.0' README.md
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all --no-fail-fast
+
   Coverage:
     needs: Formatting
     runs-on: ubuntu-latest

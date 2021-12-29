@@ -48,21 +48,30 @@ impl QGramIndex {
     /// Create a new q-gram index.
     /// The q has to be smaller than b / log2(|A|) with |A| being the alphabet size and b the number
     /// bits with the `usize` data type.
-    pub fn new(q: u32, text: &[u8], alphabet: &Alphabet) -> Self {
+    pub fn new<'a, T, I>(q: u32, text: T, alphabet: &Alphabet) -> Self
+    where
+        I: Iterator<Item = &'a u8> + ExactSizeIterator + Clone,
+        T: IntoIterator<Item = &'a u8, IntoIter = I> + Sized,
+    {
         QGramIndex::with_max_count(q, text, alphabet, std::usize::MAX)
     }
 
     /// Create a new q-gram index, only considering q-grams that occur at most `max_count` times.
     /// The q has to be smaller than b / log2(|A|) with |A| being the alphabet size and b the number
     /// bits with the `usize` data type.
-    pub fn with_max_count(q: u32, text: &[u8], alphabet: &Alphabet, max_count: usize) -> Self {
+    pub fn with_max_count<'a, T, I>(q: u32, text: T, alphabet: &Alphabet, max_count: usize) -> Self
+    where
+        I: Iterator<Item = &'a u8> + ExactSizeIterator + Clone,
+        T: IntoIterator<Item = &'a u8, IntoIter = I> + Sized,
+    {
+        let text = text.into_iter();
         let ranks = RankTransform::new(alphabet);
 
         let qgram_count = alphabet.len().pow(q as u32);
         let mut address = vec![0; qgram_count + 1];
         let mut pos = vec![0; text.len()];
 
-        for qgram in ranks.qgrams(q, text) {
+        for qgram in ranks.qgrams(q, text.clone()) {
             address[qgram] += 1;
         }
 
@@ -167,18 +176,15 @@ impl QGramIndex {
                     }
                     Entry::Occupied(mut o) => {
                         let m = o.get_mut();
-                        if m.pattern.stop - q + 1 == i {
-                            m.pattern.stop = i + q;
-                            m.text.stop = p + q;
-                        } else {
+                        if m.pattern.stop - q + 1 != i {
                             // discontinue match
                             matches.push(*m);
                             // start new match
                             m.pattern.start = i;
-                            m.pattern.stop = i + q;
                             m.text.start = p;
-                            m.text.stop = p + q;
                         }
+                        m.pattern.stop = i + q;
+                        m.text.stop = p + q;
                     }
                 }
             }
@@ -298,6 +304,16 @@ mod tests {
 
         let exact_matches = qgram_index.exact_matches(text);
         assert!(!exact_matches.is_empty());
+    }
+
+    #[test]
+    fn test_iterator() {
+        let (text, alphabet) = setup();
+        let q = 3;
+        let qgram_index = QGramIndex::new(q, text.iter(), &alphabet);
+
+        let exact_matches = qgram_index.exact_matches(text);
+        assert!(exact_matches.len() >= 1);
     }
 
     #[test]

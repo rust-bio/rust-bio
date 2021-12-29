@@ -42,7 +42,7 @@ pub struct WaveletMatrix {
 }
 
 fn build_partlevel(
-    vals: &Vec<u8>,
+    vals: &[u8],
     shift: u8,
     next_zeros: &mut Vec<u8>,
     next_ones: &mut Vec<u8>,
@@ -69,7 +69,7 @@ impl WaveletMatrix {
         let width = text.len();
         let height: usize = 3; // hardcoded for alphabet size <= 8 (ACGTN$)
 
-        let mut curr_zeros: Vec<u8> = text.to_vec().clone();
+        let mut curr_zeros: Vec<u8> = text.to_vec();
         let mut curr_ones: Vec<u8> = Vec::new();
 
         let mut zeros: Vec<u64> = Vec::new();
@@ -120,21 +120,20 @@ impl WaveletMatrix {
     fn prank(&self, level: usize, p: u64, val: u8) -> u64 {
         if p == 0 {
             0
+        } else if val == 0 {
+            self.levels[level].rank_0(p - 1).unwrap()
         } else {
-            if val == 0 {
-                self.levels[level].rank_0(p - 1).unwrap()
-            } else {
-                self.levels[level].rank_1(p - 1).unwrap()
-            }
+            self.levels[level].rank_1(p - 1).unwrap()
         }
     }
 
     /// Compute the number of occurrences of symbol val in the original text up to position p (inclusive).
     /// Complexity O(1).
     pub fn rank(&self, val: u8, p: u64) -> u64 {
-        if self.check_overflow(p) {
-            panic!("Invalid p (it must be in range 0..wm_size-1");
-        }
+        assert!(
+            !self.check_overflow(p),
+            "Invalid p (it must be in range 0..wm_size-1"
+        );
         let height = self.height as usize;
         let mut spos = 0;
         let mut epos = p + 1;

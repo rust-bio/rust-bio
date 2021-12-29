@@ -2,8 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-# Unreleased
-- Improved documentation for FASTA index (@mbhall88)
+# [0.35.0] - 2021-07-05
+- Improved buffer control in Fasta and Fastq API (@natir).
+- Fixed an indexing bug in ArrayBackedIntervalTree (@wabain).
+- Fixed a corner case where the FASTX parser could have looped infinitely (@morsecodist).
+- Fixed compiler warnings (@fxwiegand).
+- Improved documentation for FASTA index (@mbhall88).
 
 
 # [0.34.0] - 2021-05-04
@@ -109,6 +113,48 @@ Further additions in this release are:
 # [0.19.0] - 2018-05-25
 - rank-0 and select-0 in RankSelect.
 - use bv crate for RankSelect.
+
+## [0.39.0](https://www.github.com/rust-bio/rust-bio/compare/v0.38.0...v0.39.0) (2021-10-20)
+
+
+### Features
+
+* Backward search api ([#457](https://www.github.com/rust-bio/rust-bio/issues/457)) ([eb9d378](https://www.github.com/rust-bio/rust-bio/commit/eb9d378c70bc43d1dcf477e48cb167802799a546))
+
+## [0.38.0](https://www.github.com/rust-bio/rust-bio/compare/v0.37.1...v0.38.0) (2021-10-04)
+
+
+### Features
+
+* adds iupac amino acid alpha ([#444](https://www.github.com/rust-bio/rust-bio/issues/444)) ([f4b7a7c](https://www.github.com/rust-bio/rust-bio/commit/f4b7a7c23aa7e165718c77e91f62f60fc431ba2c))
+* Allow to compute bayesian model via the exploration of the marginal distribution. ([#453](https://www.github.com/rust-bio/rust-bio/issues/453)) ([d09033c](https://www.github.com/rust-bio/rust-bio/commit/d09033c1f42da89514ec87bf4aba5d1614e9810d))
+
+
+### Bug Fixes
+
+* backward search yielding potentially incorrect positions on FM-Index ([#454](https://www.github.com/rust-bio/rust-bio/issues/454)) ([#455](https://www.github.com/rust-bio/rust-bio/issues/455)) ([3489e6a](https://www.github.com/rust-bio/rust-bio/commit/3489e6ab493b5191b879b4405b868a4004bbb88e))
+
+### [0.37.1](https://www.github.com/rust-bio/rust-bio/compare/v0.37.0...v0.37.1) (2021-08-23)
+
+
+### Bug Fixes
+
+* One Simple Trick to significantly improve the speed and memory usage of Occ ([#448](https://www.github.com/rust-bio/rust-bio/issues/448)) ([9aa79cb](https://www.github.com/rust-bio/rust-bio/commit/9aa79cbb76960af47178bf0c06d8507872fbe3b0))
+* sampled suffix array ([#447](https://www.github.com/rust-bio/rust-bio/issues/447)) ([00f9846](https://www.github.com/rust-bio/rust-bio/commit/00f9846ba5cb717b3e5392301029f9c46ecea527))
+
+## [0.37.0](https://www.github.com/rust-bio/rust-bio/compare/v0.36.0...v0.37.0) (2021-07-09)
+
+
+### Features
+
+* add method to retrieve all event posteriors from Bayesian model. ([e5feda8](https://www.github.com/rust-bio/rust-bio/commit/e5feda8ad4101cb992ca4ad82f4fc96e0e1574ba))
+
+## [0.36.0](https://www.github.com/rust-bio/rust-bio/compare/v0.35.0...v0.36.0) (2021-07-06)
+
+
+### Features
+
+* Baum-Welch algorithm for Discrete HMM ([#432](https://www.github.com/rust-bio/rust-bio/issues/432)) ([eb8b8cb](https://www.github.com/rust-bio/rust-bio/commit/eb8b8cbad0016b0ab91861cb8d33f7fb624fb157))
 
 ## [0.18.0] - 2018-05-04
 - More flexible FASTA API.
