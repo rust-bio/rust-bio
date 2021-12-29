@@ -343,10 +343,7 @@ impl<R: BufRead> EitherRecords<R> {
         match self.records {
             Some(EitherRecordsInner::FASTA(_)) => Ok(Kind::FASTA),
             Some(EitherRecordsInner::FASTQ(_)) => Ok(Kind::FASTQ),
-            None => Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Data is empty",
-            )),
+            None => Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Data is empty")),
         }
     }
 
@@ -532,11 +529,8 @@ pub fn get_kind_detailed<R: Read>(
             new_reader,
             Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                format!(
-                    "Data is not a valid FASTA/FASTQ, illegal start character '{}'",
-                    first
-                ),
-            )),
+                format!("Not a valid FASTA/FASTQ, illegal start character '{}'", first),
+            ))
         )),
     }
 }
@@ -557,10 +551,7 @@ pub fn get_kind_seek<R: Read + io::Seek>(reader: &mut R) -> io::Result<Kind> {
         '@' => Ok(Kind::FASTQ),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!(
-                "Data is not a valid FASTA/FASTQ, illegal start character '{}'",
-                first
-            ),
+            format!("Not a valid FASTA/FASTQ, illegal start character '{}'", first),
         )),
     }
 }
@@ -871,5 +862,13 @@ ACCGTAGGCTGA
         let res = get_kind_file("get_kind_file.fasta").unwrap();
         assert_eq!(res, Kind::FASTQ);
         fs::remove_file("get_kind_file.fasta").unwrap();
+    }
+
+    #[test]
+    fn test_either_record_from_records() {
+        let from_fasta = EitherRecord::from(fasta::Record::with_attrs("asd", None, &[]));
+        assert_eq!(from_fasta.id(), "asd");
+        let from_fastq = EitherRecord::from(fastq::Record::with_attrs("asd", None, &[], &[]));
+        assert_eq!(from_fastq.id(), "asd");
     }
 }
