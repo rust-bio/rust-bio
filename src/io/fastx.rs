@@ -630,9 +630,8 @@ ACCGTAGGCTGA
     impl<R: BufRead> Read for MockBufReader<R> {
         fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
             if buf.len() + self.bytes_read >= self.error_at_byte {
-                match mem::replace(&mut self.error, None) {
-                    Some(err) => return Err(err),
-                    None => (),
+                if let Some(err) = mem::replace(&mut self.error, None) {
+                    return Err(err);
                 }
             }
             let bytes_read = self.reader.read(buf)?;
