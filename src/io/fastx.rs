@@ -72,8 +72,8 @@
 //!
 //! ```
 //! use bio::io::{fasta, fastq, fastx};
-//! use std::io::BufReader;
 //! use std::io;
+//! use std::io::BufReader;
 //!
 //! fn at_least_n_bases<T, E, I>(records: I, n: usize) -> impl Iterator<Item = Result<T, E>>
 //! where
@@ -108,8 +108,8 @@
 //!
 //! ```
 //! use bio::io::fastx::{EitherRecords, Record};
-//! use std::io::BufReader;
 //! use std::io;
+//! use std::io::BufReader;
 //! use std::str;
 //!
 //! let mut records = EitherRecords::from(BufReader::new(io::stdin()));
@@ -172,8 +172,8 @@ use anyhow::Context;
 use std::convert::AsRef;
 use std::fs;
 use std::io;
-use std::io::BufReader;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::io::SeekFrom;
 use std::mem;
 use std::path::Path;
