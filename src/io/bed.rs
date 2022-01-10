@@ -54,6 +54,7 @@ impl<R: io::Read> Reader<R> {
             inner: csv::ReaderBuilder::new()
                 .delimiter(b'\t')
                 .has_headers(false)
+                .comment(Some(b'#'))
                 .from_reader(reader),
         }
     }
@@ -392,6 +393,12 @@ mod tests {
     const BED_FILE: &[u8] = b"1\t5\t5000\tname1\tup
 2\t3\t5005\tname2\tup
 ";
+    const BED_FILE_COMMENT: &[u8] = b"\
+# this line should be ignored
+1\t5\t5000\tname1\tup
+# and this one as well
+2\t3\t5005\tname2\tup
+";
     const BED_FILE_COMPACT: &[u8] = b"1\t5\t5000\n2\t3\t5005\n";
 
     #[test]
@@ -403,6 +410,25 @@ mod tests {
         let scores = ["up", "up"];
 
         let mut reader = Reader::new(BED_FILE);
+        for (i, r) in reader.records().enumerate() {
+            let record = r.expect("Error reading record");
+            assert_eq!(record.chrom(), chroms[i]);
+            assert_eq!(record.start(), starts[i]);
+            assert_eq!(record.end(), ends[i]);
+            assert_eq!(record.name().expect("Error reading name"), names[i]);
+            assert_eq!(record.score().expect("Error reading score"), scores[i]);
+        }
+    }
+
+    #[test]
+    fn test_reader_with_comment() {
+        let chroms = ["1", "2"];
+        let starts = [5, 3];
+        let ends = [5000, 5005];
+        let names = ["name1", "name2"];
+        let scores = ["up", "up"];
+
+        let mut reader = Reader::new(BED_FILE_COMMENT);
         for (i, r) in reader.records().enumerate() {
             let record = r.expect("Error reading record");
             assert_eq!(record.chrom(), chroms[i]);
