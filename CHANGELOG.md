@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-# [0.38.1] - 2022-01-11
+# [0.39.1] - 2022-01-11
 - Fixed the bed reader to allow comment lines (@mrvollger).
 
 # [0.35.0] - 2021-07-05
