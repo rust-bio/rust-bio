@@ -117,6 +117,13 @@ Further additions in this release are:
 - rank-0 and select-0 in RankSelect.
 - use bv crate for RankSelect.
 
+### [0.39.1](https://www.github.com/rust-bio/rust-bio/compare/v0.39.0...v0.39.1) (2022-01-12)
+
+
+### Bug Fixes
+
+* added code to ignore commented lines in a bed file  ([#474](https://www.github.com/rust-bio/rust-bio/issues/474)) ([d17f823](https://www.github.com/rust-bio/rust-bio/commit/d17f823de1466c0fa2f21ae1dbdd1298a36744e6))
+
 ## [0.39.0](https://www.github.com/rust-bio/rust-bio/compare/v0.38.0...v0.39.0) (2021-10-20)
 
 
