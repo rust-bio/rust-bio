@@ -326,7 +326,7 @@ impl RankTransform {
             text: text.into_iter(),
             ranks: self,
             bits,
-            mask: (1 << (q * bits)) - 1,
+            mask: 1usize.checked_shl(q * bits).unwrap_or(0).wrapping_sub(1),
             qgram: 0,
         };
 
