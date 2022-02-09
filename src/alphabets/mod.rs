@@ -326,7 +326,7 @@ impl RankTransform {
             text: text.into_iter(),
             ranks: self,
             bits,
-            mask: (1 << (q * bits)) - 1,
+            mask: 1usize.checked_shl(q * bits).unwrap_or(0).wrapping_sub(1),
             qgram: 0,
         };
 
@@ -447,5 +447,14 @@ mod tests {
         assert_eq!(Alphabet::new(b"ATCG"), Alphabet::new(b"ATCG"));
         assert_eq!(Alphabet::new(b"ATCG"), Alphabet::new(b"TAGC"));
         assert_ne!(Alphabet::new(b"ATCG"), Alphabet::new(b"ATC"));
+    }
+
+    /// When `q * bits == usize::BITS`, make sure that `1<<(1*bits)` does not overflow.
+    #[test]
+    fn test_qgram_shiftleft_overflow() {
+        let alphabet = Alphabet::new(b"ACTG");
+        let transform = RankTransform::new(&alphabet);
+        let text = b"ACTG".repeat(100);
+        transform.qgrams(usize::BITS / 2, text);
     }
 }
