@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+### [0.39.2](https://www.github.com/rust-bio/rust-bio/compare/v0.39.1...v0.39.2) (2022-02-09)
+
+
+### Bug Fixes
+
+* Make QGramIndex use less memory; fix bug; improve tests&docs ([#471](https://www.github.com/rust-bio/rust-bio/issues/471)) ([48bac1c](https://www.github.com/rust-bio/rust-bio/commit/48bac1cc9efd236b8b904997b40af1f64cd5f255))
+* overflow in `qgrams` for k=32 ([#478](https://www.github.com/rust-bio/rust-bio/issues/478)) ([8048eb8](https://www.github.com/rust-bio/rust-bio/commit/8048eb8ced2087659184f70bae9e0d91690aa212))
+
 ### [0.39.1](https://www.github.com/rust-bio/rust-bio/compare/v0.39.0...v0.39.1) (2022-01-12)
 
 
