@@ -191,19 +191,19 @@ pub trait BaseSpecificHopParameters {
 }
 
 impl<H: HopParameters> BaseSpecificHopParameters for H {
-    fn prob_hop_x_with_base(&self, base: u8) -> LogProb {
+    fn prob_hop_x_with_base(&self, _base: u8) -> LogProb {
         self.prob_hop_x()
     }
 
-    fn prob_hop_y_with_base(&self, base: u8) -> LogProb {
+    fn prob_hop_y_with_base(&self, _base: u8) -> LogProb {
         self.prob_hop_y()
     }
 
-    fn prob_hop_x_extend_with_base(&self, base: u8) -> LogProb {
+    fn prob_hop_x_extend_with_base(&self, _base: u8) -> LogProb {
         self.prob_hop_x_extend()
     }
 
-    fn prob_hop_y_extend_with_base(&self, base: u8) -> LogProb {
+    fn prob_hop_y_extend_with_base(&self, _base: u8) -> LogProb {
         self.prob_hop_y_extend()
     }
 }
