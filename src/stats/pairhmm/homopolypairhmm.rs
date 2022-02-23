@@ -112,6 +112,16 @@ impl State {
             _ => false,
         }
     }
+
+    fn base(&self) -> Option<u8> {
+        match self {
+            MatchA | HopAX | HopAY => Some(b'A'),
+            MatchC | HopCX | HopCY => Some(b'C'),
+            MatchG | HopGX | HopGY => Some(b'G'),
+            MatchT | HopTX | HopTY => Some(b'T'),
+            _ => None,
+        }
+    }
 }
 
 const STATES: [State; 14] = [
@@ -163,6 +173,39 @@ pub trait HopParameters {
 
     /// Probability to extend hop in y.
     fn prob_hop_y_extend(&self) -> LogProb;
+}
+
+/// Trait for parametrization of `PairHMM` hop behavior.
+pub trait BaseSpecificHopParameters {
+    /// Probability to start hop in x.
+    fn prob_hop_x_with_base(&self, base: u8) -> LogProb;
+
+    /// Probability to start hop in y.
+    fn prob_hop_y_with_base(&self, base: u8) -> LogProb;
+
+    /// Probability to extend hop in x.
+    fn prob_hop_x_extend_with_base(&self, base: u8) -> LogProb;
+
+    /// Probability to extend hop in y.
+    fn prob_hop_y_extend_with_base(&self, base: u8) -> LogProb;
+}
+
+impl<H: HopParameters> BaseSpecificHopParameters for H {
+    fn prob_hop_x_with_base(&self, _base: u8) -> LogProb {
+        self.prob_hop_x()
+    }
+
+    fn prob_hop_y_with_base(&self, _base: u8) -> LogProb {
+        self.prob_hop_y()
+    }
+
+    fn prob_hop_x_extend_with_base(&self, _base: u8) -> LogProb {
+        self.prob_hop_x_extend()
+    }
+
+    fn prob_hop_y_extend_with_base(&self, _base: u8) -> LogProb {
+        self.prob_hop_y_extend()
+    }
 }
 
 /// A pair Hidden Markov Model for comparing sequences x and y as described by
@@ -456,16 +499,11 @@ const MATCH_OTHER: [(State, State); 12] = [
     (MatchT, MatchA),
 ];
 
-fn build_transition_table<G: GapParameters, H: HopParameters>(
+fn build_transition_table<G: GapParameters, H: BaseSpecificHopParameters>(
     gap_params: &G,
     hop_params: &H,
 ) -> HashMap<usize, LogProb> {
     let mut transition_probs = HashMap::new();
-
-    let prob_hop_x = hop_params.prob_hop_x();
-    let prob_hop_y = hop_params.prob_hop_y();
-    let prob_hop_x_extend = hop_params.prob_hop_x_extend();
-    let prob_hop_y_extend = hop_params.prob_hop_y_extend();
 
     let prob_gap_x = gap_params.prob_gap_x();
     let prob_gap_y = gap_params.prob_gap_y();
@@ -473,24 +511,60 @@ fn build_transition_table<G: GapParameters, H: HopParameters>(
     let prob_gap_y_extend = gap_params.prob_gap_y_extend();
 
     MATCH_HOP_X.iter().for_each(|(a, b)| {
-        transition_probs.insert(*a >> *b, prob_hop_x);
+        transition_probs.insert(
+            *a >> *b,
+            hop_params.prob_hop_x_with_base(b.base().expect("Unsupported base")),
+        );
     });
     MATCH_HOP_Y.iter().for_each(|(a, b)| {
-        transition_probs.insert(*a >> *b, prob_hop_y);
+        transition_probs.insert(
+            *a >> *b,
+            hop_params.prob_hop_y_with_base(b.base().expect("Unsupported base")),
+        );
     });
     HOP_X_HOP_X.iter().for_each(|(a, b)| {
-        transition_probs.insert(*a >> *b, prob_hop_x_extend);
+        assert_eq!(a.base(), b.base());
+        transition_probs.insert(
+            *a >> *b,
+            hop_params.prob_hop_x_extend_with_base(b.base().expect("Unsupported base")),
+        );
     });
     HOP_Y_HOP_Y.iter().for_each(|(a, b)| {
-        transition_probs.insert(*a >> *b, prob_hop_y_extend);
+        assert_eq!(a.base(), b.base());
+        transition_probs.insert(
+            *a >> *b,
+            hop_params.prob_hop_y_extend_with_base(b.base().expect("Unsupported base")),
+        );
     });
     HOP_X_MATCH.iter().for_each(|(a, b)| {
-        transition_probs.insert(*a >> *b, prob_hop_x_extend.ln_one_minus_exp());
+        transition_probs.insert(
+            *a >> *b,
+            hop_params
+                .prob_hop_x_with_base(a.base().expect("Unsupported base"))
+                .ln_one_minus_exp(),
+        );
     });
     HOP_Y_MATCH.iter().for_each(|(a, b)| {
-        transition_probs.insert(*a >> *b, prob_hop_y_extend.ln_one_minus_exp());
+        transition_probs.insert(
+            *a >> *b,
+            hop_params
+                .prob_hop_y_with_base(a.base().expect("Unsupported base"))
+                .ln_one_minus_exp(),
+        );
     });
 
+    let prob_hop_x = LogProb::ln_sum_exp(&[
+        hop_params.prob_hop_x_with_base(b'A'),
+        hop_params.prob_hop_x_with_base(b'C'),
+        hop_params.prob_hop_x_with_base(b'G'),
+        hop_params.prob_hop_x_with_base(b'T'),
+    ]) - LogProb(4.0);
+    let prob_hop_y = LogProb::ln_sum_exp(&[
+        hop_params.prob_hop_y_with_base(b'A'),
+        hop_params.prob_hop_y_with_base(b'C'),
+        hop_params.prob_hop_y_with_base(b'G'),
+        hop_params.prob_hop_y_with_base(b'T'),
+    ]) - LogProb(4.0);
     let match_same =
         LogProb::ln_sum_exp(&[prob_gap_y, prob_gap_x, prob_hop_x, prob_hop_y]).ln_one_minus_exp();
     let match_other =
