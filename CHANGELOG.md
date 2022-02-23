@@ -2,6 +2,17 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.0](https://www.github.com/rust-bio/rust-bio/compare/v0.39.2...v1.0.0) (2022-02-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* base specific hop parameters in homopoly-pair-hmm (#480)
+
+### Features
+
+* base specific hop parameters in homopoly-pair-hmm ([#480](https://www.github.com/rust-bio/rust-bio/issues/480)) ([cf75b6c](https://www.github.com/rust-bio/rust-bio/commit/cf75b6cb5280dde52b26f95f8ec9cd37706a642d))
+
 ### [0.39.2](https://www.github.com/rust-bio/rust-bio/compare/v0.39.1...v0.39.2) (2022-02-09)
 
 
