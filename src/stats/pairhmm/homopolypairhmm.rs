@@ -227,7 +227,7 @@ impl HomopolyPairHMM {
     pub fn new<G, H>(gap_params: &G, hop_params: &H) -> Self
     where
         G: GapParameters,
-        H: HopParameters,
+        H: BaseSpecificHopParameters,
     {
         Self {
             transition_probs: build_transition_table(gap_params, hop_params),
