@@ -35,6 +35,7 @@
 //! assert_eq!(aligner.global(z).alignment().score, 5);
 //! ```
 
+
 use std::cmp::{max, Ordering};
 
 use crate::utils::TextSlice;
