@@ -269,6 +269,13 @@ impl<F: MatchFunc> Aligner<F> {
         self
     }
 
+        /// Globally align a given query against the graph.
+        pub fn global_banded(&mut self, query: TextSlice, bandwidth: usize) -> &mut Self {
+            self.query = query.to_vec();
+            self.traceback = self.poa.global_banded(query, bandwidth);
+            self
+        }
+
     /// Return alignment graph.
     pub fn graph(&self) -> &POAGraph {
         &self.poa.graph
