@@ -22,7 +22,7 @@ use ordered_float::NotNan;
 /// This is achieved via a binary search over the grid points.
 /// The assumption is that the density is unimodal. If that is not the case,
 /// the binary search will not find the maximum and the integral can miss features.
-pub(crate) fn ln_integrate_exp<T, F>(
+pub fn ln_integrate_exp<T, F>(
     mut density: F,
     min_point: T,
     max_point: T,

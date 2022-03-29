@@ -6,6 +6,7 @@
 //! Handling log-probabilities. Log probabilities are an important tool to deal with probabilities
 //! in a numerically stable way, in particular when having probabilities close to zero.
 
+pub mod adaptive_integration;
 pub mod cdf;
 pub mod errors;
 
