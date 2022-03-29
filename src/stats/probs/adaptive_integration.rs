@@ -12,7 +12,7 @@ use std::{
     ops::{Add, Div, Mul, Sub},
 };
 
-use bio::stats::probs::LogProb;
+use crate::stats::probs::LogProb;
 use itertools::Itertools;
 use itertools_num::linspace;
 use ordered_float::NotNan;
