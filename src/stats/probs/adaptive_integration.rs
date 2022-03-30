@@ -1,5 +1,5 @@
-// Copyright 2021 Johannes Köster.
-// Licensed under the GNU GPLv3 license (https://opensource.org/licenses/GPL-3.0)
+// Copyright 2021-2022 Johannes Köster.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
@@ -22,6 +22,27 @@ use ordered_float::NotNan;
 /// This is achieved via a binary search over the grid points.
 /// The assumption is that the density is unimodal. If that is not the case,
 /// the binary search will not find the maximum and the integral can miss features.
+///
+/// # Example
+///
+/// ```rust
+/// use bio::stats::probs::adaptive_integration::ln_integrate_exp;
+/// use bio::stats::probs::{Prob, LogProb};
+/// use statrs::distribution::{Normal, Continuous};
+/// use statrs::statistics::Distribution;
+/// use ordered_float::NotNan;
+/// use approx::abs_diff_eq;
+///
+/// let ndist = Normal::new(0.0, 1.0).unwrap();
+///
+/// let integral = ln_integrate_exp(
+///     |x| LogProb::from(Prob(ndist.pdf(*x))),
+///     NotNan::new(-1.0).unwrap(),
+///     NotNan::new(1.0).unwrap(),
+///     NotNan::new(0.01).unwrap()
+/// );
+/// abs_diff_eq!(integral.exp(), 0.682, epsilon=0.01);
+/// ```
 pub fn ln_integrate_exp<T, F>(
     mut density: F,
     min_point: T,
