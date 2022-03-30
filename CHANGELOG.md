@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.41.0](https://www.github.com/rust-bio/rust-bio/compare/v0.40.0...v0.41.0) (2022-03-30)
+
+
+### Features
+
+* adaptive integration of density functions using a binary search approach that tries to achieve good resolution around the maximum ([#486](https://www.github.com/rust-bio/rust-bio/issues/486)) ([207b76f](https://www.github.com/rust-bio/rust-bio/commit/207b76fa9bccce4236e3cda9c10e56be7a636a61))
+
 ## [0.40.0](https://www.github.com/rust-bio/rust-bio/compare/v0.39.2...v0.40.0) (2022-02-25)
 
 ### Features
