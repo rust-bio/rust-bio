@@ -4,9 +4,15 @@
 // except according to those terms.
 
 //! A data structure for a sequence of small integers with a few big integers.
-//! Small ints are stored in type S (e.g. a byte), big ints are stored separately (in type B) in a BTree.
+//! Small ints are stored in type S (e.g. a byte), big ints are stored separately (in type `B`) in a BTree.
 //! The implementation provides vector-like operations on the data structure (e.g. retrieve a position,
-//! add an integer, etc.).
+//! add an integer, etc.). Getting and setting (by position) time complexity is `O(1)` for small ints,
+//! and `O(b)` for big ints, where `b` is the number of big ints stored.
+//!
+//! # Space usage
+//! SmallInts pay the cost of slower retrieval of big integers with smaller overall memory usage;
+//! `O(size_of(S) * (s+b) + size_of(B) * b)` where `S` and `B` are the small and large int types, and
+//! `s` and `b` are the number of those stored respectively.
 //!
 //! # Example
 //!
@@ -88,7 +94,8 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
         }
     }
 
-    /// Return the integer at position `i`.
+    /// Return the integer at position `i`. Time complexity `O(1)` if `i` points to a small int,
+    /// `O(log(b))` for a big int, where `b` denotes the number of big ints stored.
     pub fn get(&self, i: usize) -> Option<B> {
         if i < self.smallints.len() {
             self.real_value(i, self.smallints[i])
@@ -97,7 +104,9 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
         }
     }
 
-    /// Append `v` to the sequence. This will determine whether `v` is big or small and store it accordingly.
+    /// Append `v` to the sequence. This will determine whether `v` is big or small and store it
+    /// accordingly. Time complexity `O(1)` for small ints and `O(log(b))` for big ints,
+    /// where `b` denotes the number of big ints stored.
     pub fn push(&mut self, v: B) {
         let maxv: S = S::max_value();
         match cast(v) {
@@ -111,6 +120,8 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
     }
 
     /// Set value of position `i` to `v`. This will determine whether `v` is big or small and store it accordingly.
+    /// Time complexity `O(1)` for small ints and `O(log(b))` for big ints,
+    /// where `b` denotes the number of big ints stored.
     pub fn set(&mut self, i: usize, v: B) {
         let maxv: S = S::max_value();
         match cast(v) {
