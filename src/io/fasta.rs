@@ -870,8 +870,17 @@ impl<W: io::Write> Writer<W> {
             self.writer.write_all(desc.as_bytes())?;
         }
         self.writer.write_all(b"\n")?;
-        self.writer.write_all(seq)?;
-        self.writer.write_all(b"\n")?;
+        let mut i = 0;
+        let lw = 60;
+        while i < seq.len() {
+            let mut to = i + lw;
+            if to > seq.len() {
+                to = seq.len();
+            }
+            self.writer.write_all(&seq[i..to])?;
+            self.writer.write_all(b"\n")?;
+            i = i + lw;
+        }
 
         Ok(())
     }
