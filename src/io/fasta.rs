@@ -860,6 +860,10 @@ impl<W: io::Write> Writer<W> {
     pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
         self.write(record.id(), record.desc(), record.seq())
     }
+    pub fn write_record_formated(&mut self, record: &Record) -> io::Result<()> {
+        let width = 60;
+        self.write_width(record.id(), record.desc(), record.seq(), width)
+    }
 
     /// Write a Fasta record with given id, optional description and sequence.
     pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> io::Result<()> {
@@ -870,16 +874,35 @@ impl<W: io::Write> Writer<W> {
             self.writer.write_all(desc.as_bytes())?;
         }
         self.writer.write_all(b"\n")?;
+        self.writer.write_all(seq)?;
+        self.writer.write_all(b"\n")?;
+
+        Ok(())
+    }
+    /// Write a Fasta record with given id, optional description and sequence with a line width.
+    pub fn write_width(
+        &mut self,
+        id: &str,
+        desc: Option<&str>,
+        seq: TextSlice<'_>,
+        width: usize,
+    ) -> io::Result<()> {
+        self.writer.write_all(b">")?;
+        self.writer.write_all(id.as_bytes())?;
+        if let Some(desc) = desc {
+            self.writer.write_all(b" ")?;
+            self.writer.write_all(desc.as_bytes())?;
+        }
+        self.writer.write_all(b"\n")?;
         let mut i = 0;
-        let lw = 60;
         while i < seq.len() {
-            let mut to = i + lw;
+            let mut to = i + width;
             if to > seq.len() {
                 to = seq.len();
             }
             self.writer.write_all(&seq[i..to])?;
             self.writer.write_all(b"\n")?;
-            i = i + lw;
+            i = i + width;
         }
 
         Ok(())
