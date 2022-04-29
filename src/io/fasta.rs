@@ -857,16 +857,16 @@ impl<W: io::Write> Writer<W> {
     /// assert!(fs::remove_file(path).is_ok());
     /// assert_eq!(actual, expected)
     /// ```
+
     pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
         self.write(record.id(), record.desc(), record.seq())
     }
-    pub fn write_record_formated(&mut self, record: &Record) -> io::Result<()> {
-        let width = 60;
-        self.write_width(record.id(), record.desc(), record.seq(), width)
+
+    pub fn write_record_width(&mut self, record: &Record, width: usize) -> io::Result<()> {
+        self.write_formated(record.id(), record.desc(), record.seq(), width)
     }
 
-    /// Write a Fasta record with given id, optional description and sequence.
-    pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> io::Result<()> {
+    pub fn write_record_header(&mut self, id: &str, desc: Option<&str>) -> io::Result<()> {
         self.writer.write_all(b">")?;
         self.writer.write_all(id.as_bytes())?;
         if let Some(desc) = desc {
@@ -874,38 +874,35 @@ impl<W: io::Write> Writer<W> {
             self.writer.write_all(desc.as_bytes())?;
         }
         self.writer.write_all(b"\n")?;
+
+        Ok(())
+    }
+
+    /// Write a Fasta record with given id, optional description and sequence.
+    pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> io::Result<()> {
+        self.write_record_header(id, desc)?;
         self.writer.write_all(seq)?;
         self.writer.write_all(b"\n")?;
 
         Ok(())
     }
+
     /// Write a Fasta record with given id, optional description and sequence with a line width.
-    pub fn write_width(
+    pub fn write_formated(
         &mut self,
         id: &str,
         desc: Option<&str>,
         seq: TextSlice<'_>,
         width: usize,
     ) -> io::Result<()> {
-        self.writer.write_all(b">")?;
-        self.writer.write_all(id.as_bytes())?;
-        if let Some(desc) = desc {
-            self.writer.write_all(b" ")?;
-            self.writer.write_all(desc.as_bytes())?;
-        }
-        self.writer.write_all(b"\n")?;
-        let mut i = 0;
-        while i < seq.len() {
-            let mut to = i + width;
-            if to > seq.len() {
-                to = seq.len();
-            }
-            self.writer.write_all(&seq[i..to])?;
-            self.writer.write_all(b"\n")?;
-            i = i + width;
-        }
+        self.write_record_header(id, desc)?;
 
-        Ok(())
+        seq.chunks(width).try_for_each(|chunk| -> io::Result<()> {
+            self.writer.write_all(chunk)?;
+            self.writer.write_all(b"\n")?;
+
+            Ok(())
+        })
     }
 
     /// Flush the writer, ensuring that everything is written.
@@ -1820,4 +1817,47 @@ ATTGTTGTTTTA
         assert!(fs::remove_file(path).is_ok());
         assert_eq!(actual, expected)
     }
+
+    // THESE ARE NOT GOOD JUST COPY PASTED
+    #[test]
+    fn test_write_record_formated() {
+        let path = Path::new("test.fa");
+        let file = fs::File::create(path).unwrap();
+        {
+            let handle = io::BufWriter::new(file);
+            let mut writer = Writer { writer: handle };
+            let record = Record::with_attrs("id", Some("desc"), b"ACGT");
+
+            let write_result = writer.write_record_width(&record, 60);
+            assert!(write_result.is_ok());
+        }
+
+        let actual = fs::read_to_string(path).unwrap();
+        let expected = ">id desc\nACGT\n";
+
+        assert!(fs::remove_file(path).is_ok());
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_write_width(){
+        let mut writer = Writer::new(Vec::new());
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
+        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
+        writer.flush().unwrap();
+        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
+
+        let mut writer = Writer::with_capacity(100, Vec::new());
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
+        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
+        writer.flush().unwrap();
+        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
+
+        let mut writer = Writer::from_bufwriter(std::io::BufWriter::with_capacity(100, Vec::new()));
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
+        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
+        writer.flush().unwrap();
+        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
+    }
+
 }
