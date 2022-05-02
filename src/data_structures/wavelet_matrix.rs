@@ -13,9 +13,11 @@
 //! assert_eq!(wm.rank(b'T', 13), 3);
 //! ```
 
-use crate::data_structures::rank_select::RankSelect;
 use bv::BitVec;
 use bv::BitsMut;
+use serde::{Deserialize, Serialize};
+
+use crate::data_structures::rank_select::RankSelect;
 
 const DNA2INT: [u8; 128] = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //  0

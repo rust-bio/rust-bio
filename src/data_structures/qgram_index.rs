@@ -32,6 +32,8 @@ use std::cmp;
 use std::collections;
 use std::collections::hash_map::Entry;
 
+use serde::{Deserialize, Serialize};
+
 use crate::alphabets::{Alphabet, RankTransform};
 use crate::utils;
 

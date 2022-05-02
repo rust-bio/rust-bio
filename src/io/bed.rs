@@ -31,6 +31,7 @@ use anyhow::Context;
 use bio_types::annot;
 use bio_types::annot::loc::Loc;
 use bio_types::strand;
+use serde::{Deserialize, Serialize};
 
 /// A BED reader.
 #[derive(Debug)]

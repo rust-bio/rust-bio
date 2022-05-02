@@ -96,6 +96,8 @@
 //! An example of using `rust-bio`:
 //!
 //! ```rust
+//! # #[cfg(all(feature = "data_structures", feature = "io", feature = "alphabets"))]
+//! # {
 //! // Import some modules
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
@@ -165,6 +167,7 @@
 //!     }
 //!     reader.read(&mut record).expect("Failed to parse record");
 //! }
+//! # }
 //! ```
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.
@@ -173,6 +176,8 @@
 //! ## Example: Multithreaded
 //!
 //! ```rust
+//! # #[cfg(all(feature = "data_structures", feature = "alphabets"))]
+//! # {
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
 //! use bio::data_structures::fmindex::{BackwardSearchResult,FMIndex, FMIndexable};
@@ -207,6 +212,7 @@
 //!         _ => Vec::new()
 //!     };
 //! }
+//! # }
 //! ```
 //!
 //! Documentation and further examples for each module can be found in the module descriptions below.
@@ -227,37 +233,33 @@
 //! Benchmarking Seqan from *Python timeit* entails an overhead of 1.46ms for calling a C++ binary. This overhead was subtracted from above Seqan run times.
 //! Note that this benchmark only compares the two libraries to exemplify that Rust-Bio has comparable speed to C++ libraries: all used algorithms have their advantages for specific text and pattern structures and lengths (see [the pattern matching section in the documentation](https://docs.rs/bio/0.28.2/bio/pattern_matching/index.html))./!
 
-#[macro_use]
-extern crate approx;
-
-#[macro_use]
-extern crate custom_derive;
-
-#[macro_use]
-extern crate lazy_static;
-
+#[cfg(feature = "newtype_derive")]
 #[macro_use]
 extern crate newtype_derive;
 
-#[macro_use]
-extern crate serde_derive;
-
-#[macro_use]
-extern crate strum_macros;
-
-#[macro_use]
-extern crate getset;
-
-#[cfg(feature = "phylogeny")]
-#[macro_use]
-extern crate pest_derive;
-
+#[cfg(feature = "alignment")]
 pub mod alignment;
+
+#[cfg(feature = "alphabets")]
 pub mod alphabets;
+
+#[cfg(feature = "data_structures")]
 pub mod data_structures;
+
+#[cfg(feature = "io")]
 pub mod io;
+
+#[cfg(feature = "pattern_matching")]
 pub mod pattern_matching;
+
+#[cfg(feature = "scores")]
 pub mod scores;
+
+#[cfg(feature = "seq_analysis")]
 pub mod seq_analysis;
+
+#[cfg(feature = "stats")]
 pub mod stats;
+
+#[cfg(feature = "utils")]
 pub mod utils;

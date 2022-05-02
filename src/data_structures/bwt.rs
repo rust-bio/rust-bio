@@ -9,6 +9,8 @@
 
 use std::iter::repeat;
 
+use serde::{Deserialize, Serialize};
+
 use crate::alphabets::Alphabet;
 use crate::data_structures::suffix_array::RawSuffixArraySlice;
 use crate::utils::prescan;

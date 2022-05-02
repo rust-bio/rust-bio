@@ -133,14 +133,16 @@
 use std::cmp::min;
 use std::collections;
 use std::convert::AsRef;
+use std::fmt;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 
-use crate::utils::{Text, TextSlice};
 use anyhow::Context;
-use std::fmt;
+use serde::{Deserialize, Serialize};
+
+use crate::utils::{Text, TextSlice};
 
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;

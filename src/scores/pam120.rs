@@ -3,6 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use lazy_static::lazy_static;
+
 lazy_static! {
     // taken from https://github.com/seqan/seqan/blob/master/include%2Fseqan%2Fscore%2
     // Fscore_matrix_data.h#L614

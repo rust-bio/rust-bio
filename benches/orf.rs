@@ -1,4 +1,5 @@
 #![feature(test)]
+#![cfg(feature = "seq_analysis")]
 
 extern crate test;
 

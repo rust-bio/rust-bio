@@ -17,6 +17,8 @@
 
 use std::borrow::Borrow;
 
+use lazy_static::lazy_static;
+
 use crate::alphabets::Alphabet;
 
 /// The DNA alphabet (uppercase and lowercase).

@@ -26,10 +26,14 @@
 //! }
 //! ```
 
-use crate::utils::Interval;
 use std::cmp;
 use std::iter::FromIterator;
 use std::mem;
+
+use serde::{Deserialize, Serialize};
+
+use crate::utils::Interval;
+
 /// An interval tree for storing intervals with data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntervalTree<N: Ord + Clone, D> {

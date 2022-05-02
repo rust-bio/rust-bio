@@ -1,4 +1,5 @@
 #![feature(test)]
+#![cfg(feature = "pattern_matching")]
 
 extern crate test;
 
