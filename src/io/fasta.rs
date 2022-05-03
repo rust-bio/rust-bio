@@ -863,7 +863,7 @@ impl<W: io::Write> Writer<W> {
     }
 
     pub fn write_record_width(&mut self, record: &Record, width: usize) -> io::Result<()> {
-        self.write_formated(record.id(), record.desc(), record.seq(), width)
+        self.write_width(record.id(), record.desc(), record.seq(), width)
     }
 
     pub fn write_record_header(&mut self, id: &str, desc: Option<&str>) -> io::Result<()> {
@@ -888,7 +888,7 @@ impl<W: io::Write> Writer<W> {
     }
 
     /// Write a Fasta record with given id, optional description and sequence with a line width.
-    pub fn write_formated(
+    pub fn write_width(
         &mut self,
         id: &str,
         desc: Option<&str>,
@@ -1118,6 +1118,15 @@ CCCC";
 ACCGTAGGCTGA
 >id2
 ATTGTTGTTTTA
+";
+    const WRITE_FASTA_FILE_WIDTH: &[u8] = b">id desc
+ACCG
+TAGG
+CTGA
+>id2
+ATTG
+TTGT
+TTTA
 ";
 
     struct ReaderMock {
@@ -1826,38 +1835,50 @@ ATTGTTGTTTTA
         {
             let handle = io::BufWriter::new(file);
             let mut writer = Writer { writer: handle };
-            let record = Record::with_attrs("id", Some("desc"), b"ACGT");
+            let record = Record::with_attrs("id", Some("desc"), b"AGCTAGCT");
 
-            let write_result = writer.write_record_width(&record, 60);
+            let write_result = writer.write_record_width(&record, 4);
             assert!(write_result.is_ok());
         }
 
         let actual = fs::read_to_string(path).unwrap();
-        let expected = ">id desc\nACGT\n";
+        let expected = ">id desc\nAGCT\nAGCT\n";
 
         assert!(fs::remove_file(path).is_ok());
         assert_eq!(actual, expected)
     }
 
     #[test]
-    fn test_write_width(){
+    fn test_write_width() {
+        let width = 4;
         let mut writer = Writer::new(Vec::new());
-        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
-        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
+        writer
+            .write_width("id", Some("desc"), b"ACCGTAGGCTGA", width)
+            .unwrap();
+        writer
+            .write_width("id2", None, b"ATTGTTGTTTTA", width)
+            .unwrap();
         writer.flush().unwrap();
-        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
+        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE_WIDTH);
 
         let mut writer = Writer::with_capacity(100, Vec::new());
-        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
-        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
+        writer
+            .write_width("id", Some("desc"), b"ACCGTAGGCTGA", width)
+            .unwrap();
+        writer
+            .write_width("id2", None, b"ATTGTTGTTTTA", width)
+            .unwrap();
         writer.flush().unwrap();
-        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
+        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE_WIDTH);
 
         let mut writer = Writer::from_bufwriter(std::io::BufWriter::with_capacity(100, Vec::new()));
-        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
-        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
+        writer
+            .write_width("id", Some("desc"), b"ACCGTAGGCTGA", width)
+            .unwrap();
+        writer
+            .write_width("id2", None, b"ATTGTTGTTTTA", width)
+            .unwrap();
         writer.flush().unwrap();
-        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
+        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE_WIDTH);
     }
-
 }
