@@ -862,6 +862,35 @@ impl<W: io::Write> Writer<W> {
         self.write(record.id(), record.desc(), record.seq())
     }
 
+    /// Directly write a [`fasta::Record`](struct.Record.html) width a fixed line length.
+    ///
+    /// # Errors
+    /// If there is an issue writing to the `Writer`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use bio::io::fasta::{Record, Writer};
+    /// use std::fs;
+    /// use std::io;
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("test.fa");
+    /// let file = fs::File::create(path).unwrap();
+    /// {
+    ///     let handle = io::BufWriter::new(file);
+    ///     let mut writer = Writer::new(handle);
+    ///     let record = Record::with_attrs("id", Some("desc"), b"ACGTACGT");
+    ///     // For demonstration width is 4 chars, use 50, 60 or 70 instead for production
+    ///     let write_result = writer.write_record_width(&record, 4);
+    ///     assert!(write_result.is_ok());
+    /// }
+    ///
+    /// let actual = fs::read_to_string(path).unwrap();
+    /// let expected = ">id desc\nACGT\nACGT";
+    ///
+    /// assert!(fs::remove_file(path).is_ok());
+    /// assert_eq!(actual, expected)
+    /// ```
     pub fn write_record_width(&mut self, record: &Record, width: usize) -> io::Result<()> {
         self.write_width(record.id(), record.desc(), record.seq(), width)
     }
