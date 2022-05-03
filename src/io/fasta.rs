@@ -886,7 +886,7 @@ impl<W: io::Write> Writer<W> {
     /// }
     ///
     /// let actual = fs::read_to_string(path).unwrap();
-    /// let expected = ">id desc\nACGT\nACGT";
+    /// let expected = ">id desc\nACGT\nACGT\n";
     ///
     /// assert!(fs::remove_file(path).is_ok());
     /// assert_eq!(actual, expected)
