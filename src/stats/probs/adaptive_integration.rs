@@ -57,7 +57,7 @@ where
         + Div<NotNan<f64>, Output = T>
         + Mul<Output = T>
         + Into<f64>
-        + TryFrom<f64, Error=E>
+        + TryFrom<f64, Error = E>
         + Ord
         + Debug
         + Hash,
