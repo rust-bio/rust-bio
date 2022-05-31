@@ -403,7 +403,7 @@ impl From<NotNan<f64>> for LogProb {
 
 impl From<LogProb> for NotNan<f64> {
     fn from(p: LogProb) -> NotNan<f64> {
-        NotNan::from(*p)
+        NotNan::new(*p).unwrap()
     }
 }
 
