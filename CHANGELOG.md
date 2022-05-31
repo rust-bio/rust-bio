@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [0.42.0](https://www.github.com/rust-bio/rust-bio/compare/v0.42.0...v0.41.0) (2022-05-03)
 
 * Upgrade `strum` to version `0.24`
+* Upgrade `ordered-float` to `2.0`
 
 ## [0.41.0](https://www.github.com/rust-bio/rust-bio/compare/v0.40.0...v0.41.0) (2022-03-30)
 
