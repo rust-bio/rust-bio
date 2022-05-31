@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.42.0](https://www.github.com/rust-bio/rust-bio/compare/v0.42.0...v0.41.0) (2022-05-03)
 
+* Change `impl From<LogProb> for NotNan<f64>` to `impl TryFrom<LogProb> for NotNan<f64>` to indicate the conversion can fail.
 * Upgrade `strum` to version `0.24`
 * Upgrade `ordered-float` to `2.0`
 
