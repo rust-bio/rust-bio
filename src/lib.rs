@@ -257,8 +257,6 @@ pub mod alphabets;
 pub mod data_structures;
 pub mod io;
 pub mod pattern_matching;
-#[cfg(feature = "phylogeny")]
-pub mod phylogeny;
 pub mod scores;
 pub mod seq_analysis;
 pub mod stats;
