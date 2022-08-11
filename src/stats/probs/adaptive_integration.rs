@@ -113,7 +113,7 @@ where
     // METHOD additionally investigate small interval around the optimum
     for point in linspace(
         cmp::max(
-            middle.unwrap() - T::try_from(max_resolution.into() * 3.0).unwrap(),
+            T::try_from(middle.unwrap() - max_resolution.into() * 3.0).unwrap(),
             min_point,
         )
         .into(),
