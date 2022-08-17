@@ -6,7 +6,7 @@
 //! Error definitions for the `interval` module.
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum Error {
     #[error("an Interval must have a Range with a positive width")]
     InvalidRange,

@@ -177,24 +177,24 @@ pub trait FMIndexable {
             // if we matched the full pattern length we
             // have a complete match
             if complete_match {
-                return BackwardSearchResult::Complete(Interval {
+                BackwardSearchResult::Complete(Interval {
                     lower: l,
                     upper: r + 1,
-                });
+                })
             } else {
                 // if we matched less than the full pattern length, we have
                 // a partial suffix match
-                return BackwardSearchResult::Partial(
+                BackwardSearchResult::Partial(
                     Interval {
                         lower: pl,
                         upper: pr + 1,
                     },
                     matched_len,
-                );
+                )
             }
         } else {
             // if we matched nothing we have an absent result
-            return BackwardSearchResult::Absent;
+            BackwardSearchResult::Absent
         }
     }
 }
