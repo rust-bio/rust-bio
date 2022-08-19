@@ -10,6 +10,7 @@ pub mod adaptive_integration;
 pub mod cdf;
 pub mod errors;
 
+use std::convert::TryFrom;
 use std::f64;
 use std::iter;
 use std::mem;
@@ -18,7 +19,7 @@ use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use itertools::Itertools;
 use itertools_num::linspace;
 use num_traits::{Float, Zero};
-use ordered_float::NotNan;
+use ordered_float::{FloatIsNan, NotNan};
 
 use crate::utils::FastExp;
 
@@ -401,9 +402,10 @@ impl From<NotNan<f64>> for LogProb {
     }
 }
 
-impl From<LogProb> for NotNan<f64> {
-    fn from(p: LogProb) -> NotNan<f64> {
-        NotNan::from(*p)
+impl TryFrom<LogProb> for NotNan<f64> {
+    type Error = FloatIsNan;
+    fn try_from(p: LogProb) -> Result<Self, Self::Error> {
+        NotNan::new(*p)
     }
 }
 
