@@ -242,7 +242,7 @@ impl cmp::PartialOrd for Match {
 }
 
 /// An exact match between the pattern and the text.
-#[derive(PartialEq, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub struct ExactMatch {
     pub pattern: Interval,
     pub text: Interval,

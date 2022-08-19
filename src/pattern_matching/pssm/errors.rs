@@ -6,7 +6,7 @@
 //! Error definitions for the `pssm` module.
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum Error {
     #[error(
         "query length {} is shorter than motif length {}",

@@ -1008,15 +1008,9 @@ impl<F: MatchFunc> Aligner<F> {
 /// Possible traceback moves include : start, insert, delete, match, substitute,
 /// prefix clip and suffix clip for x & y. So we need 4 bits each for matrices I, D, S
 /// to keep track of these 9 moves.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct TracebackCell {
     v: u16,
-}
-
-impl Default for TracebackCell {
-    fn default() -> Self {
-        TracebackCell { v: 0 }
-    }
 }
 
 // Traceback bit positions (LSB)
