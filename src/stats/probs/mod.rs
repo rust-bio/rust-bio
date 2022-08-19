@@ -378,7 +378,7 @@ impl<'a> iter::Sum<&'a LogProb> for LogProb {
     }
 }
 
-impl<'a> iter::Sum<LogProb> for LogProb {
+impl iter::Sum<LogProb> for LogProb {
     fn sum<I: Iterator<Item = LogProb>>(iter: I) -> Self {
         iter.fold(LogProb(0.0), |a, b| a + b)
     }

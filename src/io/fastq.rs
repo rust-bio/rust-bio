@@ -295,7 +295,7 @@ where
 }
 
 /// A FastQ record.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Record {
     id: String,
     desc: Option<String>,

@@ -84,7 +84,7 @@ impl Finder {
 /// An ORF representation with start and end position of said ORF,
 /// as well as offset of the reading frame (1,2,3) and strand location
 // (current: +, reverse complementary: -).
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Orf {
     pub start: usize,
     pub end: usize,

@@ -722,7 +722,7 @@ struct IndexRecord {
 }
 
 /// A sequence record returned by the FASTA index.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Sequence {
     pub name: String,
     pub len: u64,

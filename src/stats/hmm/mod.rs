@@ -105,6 +105,7 @@ custom_derive! {
         NewtypeFrom,
         NewtypeDeref,
         PartialEq,
+        Eq,
         Copy,
         Clone,
         Debug
@@ -144,7 +145,7 @@ impl Iterator for StateIter {
 }
 
 /// Transition between two states in a `Model`.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct StateTransition {
     /// Source of the transition.
     pub src: State,
@@ -882,16 +883,7 @@ pub mod discrete_emission_opt_end {
                 .map(|_x| Prob(1.0))
                 .collect::<Array1<Prob>>();
 
-            let has_end_state;
-
-            match end {
-                Some(_p) => {
-                    has_end_state = true;
-                }
-                None => {
-                    has_end_state = false;
-                }
-            }
+            let has_end_state = end.is_some();
 
             let end_un = end.unwrap_or(&end_possible);
 
@@ -916,16 +908,7 @@ pub mod discrete_emission_opt_end {
             let end_possible = (0..initial_dim).map(|_x| 1.0).collect::<Array1<f64>>();
             let end_un = end.unwrap_or(&end_possible);
 
-            let has_end_state;
-
-            match end {
-                Some(_p) => {
-                    has_end_state = true;
-                }
-                None => {
-                    has_end_state = false;
-                }
-            }
+            let has_end_state = end.is_some();
 
             Self::new(
                 RefCell::new(transition.map(|x| LogProb::from(Prob(*x)))),

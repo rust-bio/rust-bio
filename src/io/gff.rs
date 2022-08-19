@@ -41,7 +41,7 @@ use bio_types::strand::Strand;
 /// We have three format in the GFF family.
 /// The change is in the last field of GFF.
 /// For each type we have key value separator and field separator
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GffType {
     /// Attribute format is: key1=value; key2=value1,value2
     GFF3,

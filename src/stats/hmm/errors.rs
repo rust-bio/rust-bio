@@ -6,7 +6,7 @@
 //! Error definitions for the `hmm` module.
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum Error {
     #[error(
         "inferred from A: N_0={}, N_1={} (must be equal), from B: N={}, M={}, from pi: N={}",
