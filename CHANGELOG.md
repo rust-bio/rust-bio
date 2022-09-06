@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [0.43.0](https://www.github.com/rust-bio/rust-bio/compare/v0.42.0...v0.43.0) (2022-09-06)
+
+
+### Features
+
+* detect nested ORFs ([#501](https://www.github.com/rust-bio/rust-bio/issues/501)) ([19b6c36](https://www.github.com/rust-bio/rust-bio/commit/19b6c36bbea910eaaa0753a37e24b1389f31f527))
+
 ## [0.42.0](https://www.github.com/rust-bio/rust-bio/compare/v0.41.0...v0.42.0) (2022-08-30)
 
 
