@@ -3,6 +3,22 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [1.0.0](https://www.github.com/rust-bio/rust-bio/compare/v0.42.0...v1.0.0) (2022-09-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* update to latest ordered-float (#503)
+
+### Features
+
+* detect nested ORFs ([#501](https://www.github.com/rust-bio/rust-bio/issues/501)) ([19b6c36](https://www.github.com/rust-bio/rust-bio/commit/19b6c36bbea910eaaa0753a37e24b1389f31f527))
+
+
+### Bug Fixes
+
+* update to latest ordered-float ([#503](https://www.github.com/rust-bio/rust-bio/issues/503)) ([63fb752](https://www.github.com/rust-bio/rust-bio/commit/63fb752616bfb02791f10779cd37bc072487923e))
+
 ## [0.42.0](https://www.github.com/rust-bio/rust-bio/compare/v0.41.0...v0.42.0) (2022-08-30)
 
 
