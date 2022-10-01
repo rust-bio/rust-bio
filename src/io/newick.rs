@@ -29,7 +29,21 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 /// A `thiserror` error type gathering all the potential bad outcomes
-#[derive(Debug, Error)]
+#[derive(
+    Debug,
+    Error,
+    Default,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    Debug,
+    Serialize,
+    Deserialize,
+)]
 pub enum Error {
     #[error("Error while opening {}: {}", filename.display(), source)]
     OpenFile {
@@ -52,6 +66,9 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// file
 #[derive(Parser)]
 #[grammar = "io/newick.pest"]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct NewickParser;
 
 /// A hidden, temporary datatype used to collect the parser result

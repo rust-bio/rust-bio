@@ -6,7 +6,7 @@
 //! Error definitions for the `probs` module.
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Copy, Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 pub enum Error {
     #[error("probabilty {} not in interval [0,1]", prob)]
     InvalidProb { prob: f64 },

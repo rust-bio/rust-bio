@@ -22,6 +22,9 @@ fn prob_emit_x_or_y() -> LogProb {
     LogProb::from(Prob(1.0) - PROB_ILLUMINA_SUBST)
 }
 
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct TestEmissionParams {
     x: &'static [u8],
     y: &'static [u8],
@@ -53,6 +56,9 @@ impl EmissionParameters for TestEmissionParams {
     }
 }
 
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct SemiglobalGapParams;
 
 impl GapParameters for SemiglobalGapParams {
@@ -73,6 +79,9 @@ impl GapParameters for SemiglobalGapParams {
     }
 }
 
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct SemiglobalAlignment;
 
 impl StartEndGapParameters for SemiglobalAlignment {

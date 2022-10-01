@@ -12,6 +12,7 @@ use crate::pattern_matching::myers::traceback::{StatesHandler, TracebackHandler}
 use crate::pattern_matching::myers::{BitVec, State};
 
 /// Myers algorithm.
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct Myers<T = u64>
 where
     T: BitVec,
@@ -121,7 +122,9 @@ impl<T: BitVec> Myers<T> {
     }
 }
 
-#[derive(Default)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub(super) struct ShortStatesHandler<'a>(PhantomData<&'a ()>);
 
 impl<'a> ShortStatesHandler<'a> {

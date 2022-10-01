@@ -25,12 +25,14 @@ use crate::pattern_matching::myers::{ceil_div, State};
 use super::word_size;
 use super::BitVec;
 
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 struct Peq<T: BitVec> {
     peq: [T; 256],
     bound: T,
 }
 
 /// Myers algorithm.
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct Myers<T = u64>
 where
     T: BitVec,
@@ -164,6 +166,7 @@ fn advance_block<T: BitVec>(state: &mut State<T, usize>, p: &Peq<T>, a: u8, hin:
     hout
 }
 
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub(super) struct States<T: BitVec> {
     states: Vec<State<T, usize>>,
     max_block: usize,
@@ -243,7 +246,9 @@ where
     }
 }
 
-#[derive(Default)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub(super) struct LongStatesHandler<'a> {
     n_blocks: usize,
     _a: PhantomData<&'a ()>,
