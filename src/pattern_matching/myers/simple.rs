@@ -157,7 +157,7 @@ impl<'a, T: BitVec + 'a> StatesHandler<'a, T, T::DistType> for ShortStatesHandle
         states: &mut [State<T, T::DistType>],
     ) {
         //states[pos] = source.clone();
-        *unsafe { states.get_unchecked_mut(pos) } = source.clone();
+        *unsafe { states.get_unchecked_mut(pos) } = *source;
     }
 
     #[inline]
@@ -200,8 +200,8 @@ impl<'a, T: BitVec> ShortTracebackHandler<'a, T> {
         // let mut states = states.iter().rev().cycle().skip(states.len() - pos - 1);
 
         ShortTracebackHandler {
-            state: states_iter.next().unwrap().clone(),
-            left_state: states_iter.next().unwrap().clone(),
+            state: *states_iter.next().unwrap(),
+            left_state: *states_iter.next().unwrap(),
             states_iter,
             max_mask: mask0,
             pos_bitvec: mask0,
@@ -258,10 +258,7 @@ where
 
     #[inline]
     fn move_to_left(&mut self) {
-        self.state = replace(
-            &mut self.left_state,
-            self.states_iter.next().unwrap().clone(),
-        );
+        self.state = replace(&mut self.left_state, *self.states_iter.next().unwrap());
         self.left_state.adjust_by_mask(self.left_mask);
     }
 
