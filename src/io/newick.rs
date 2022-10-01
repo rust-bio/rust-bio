@@ -29,21 +29,7 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 /// A `thiserror` error type gathering all the potential bad outcomes
-#[derive(
-    Debug,
-    Error,
-    Default,
-    Copy,
-    Clone,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Hash,
-    Debug,
-    Serialize,
-    Deserialize,
-)]
+#[derive(Debug, Error)]
 pub enum Error {
     #[error("Error while opening {}: {}", filename.display(), source)]
     OpenFile {
