@@ -14,8 +14,8 @@
 //! * KMP algorithm: the classical ancestor.
 //! * Ukkonens algorithm: approximate pattern matching with dynamic programming.
 //! * Myers algorithm: linear-time approximate pattern matching with edit distance for small patterns
-//! 
-//! This library provides heavily optimized routines for string search primitives. Available at: https://crates.io/crates/memchr
+//!
+//! Another library that provides heavily optimized routines for string search primitives is memchr: https://crates.io/crates/memchr
 
 pub mod bndm;
 pub mod bom;
