@@ -182,6 +182,7 @@ pub trait Marginal {
 
 /// Instance of a model for given data and event universe.
 /// From the instance, posterior, marginal and MAP can be computed.
+#[derive(Debug, Clone, Getters)]
 pub struct ModelInstance<Event, PosteriorEvent>
 where
     Event: Hash + Eq,
@@ -189,6 +190,7 @@ where
 {
     joint_probs: HashMap<Event, LogProb>,
     posterior_probs: HashMap<PosteriorEvent, LogProb>,
+    #[getset(get_copy = "pub")]
     marginal: LogProb,
 }
 
@@ -202,9 +204,11 @@ where
         self.posterior_probs.get(event).map(|p| p - self.marginal)
     }
 
-    /// Marginal probability.
-    pub fn marginal(&self) -> LogProb {
-        self.marginal
+    /// Iterator over posterior events and their probability.
+    pub fn posteriors<'a>(&'a self) -> impl Iterator<Item = (&'a PosteriorEvent, LogProb)> {
+        self.posterior_probs
+            .iter()
+            .map(move |(event, prob)| (event, prob - self.marginal))
     }
 
     /// Maximum a posteriori estimate.
@@ -215,7 +219,8 @@ where
             .map(|(event, _)| event)
     }
 
-    /// Event posteriors sorted in descending order.
+    /// Event posteriors sorted in descending order. Note that these can be densities
+    /// in case of a continuous event space (i.e. values >1).
     pub fn event_posteriors(&self) -> impl Iterator<Item = (&Event, LogProb)> {
         self.joint_probs
             .iter()
@@ -228,6 +233,7 @@ impl<PosteriorEvent> ModelInstance<NotNan<f64>, PosteriorEvent>
 where
     PosteriorEvent: Hash + Eq,
 {
+    /// Calculate expected value under the assumption of discrete events.
     pub fn expected_value(&self) -> NotNan<f64> {
         self.joint_probs
             .iter()
