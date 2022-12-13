@@ -33,7 +33,7 @@ const DNA2INT: [u8; 128] = [
     0, 0, 0, 0, 0, 0, 0, 0,
 ]; // 120
 
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct WaveletMatrix {
     width: usize,  // levels[0].len()
     height: usize, // zeros.len() == levels.len()

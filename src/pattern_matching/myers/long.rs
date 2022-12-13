@@ -25,12 +25,14 @@ use crate::pattern_matching::myers::{ceil_div, State};
 use super::word_size;
 use super::BitVec;
 
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 struct Peq<T: BitVec> {
     peq: [T; 256],
     bound: T,
 }
 
 /// Myers algorithm.
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct Myers<T = u64>
 where
     T: BitVec,
@@ -164,6 +166,7 @@ fn advance_block<T: BitVec>(state: &mut State<T, usize>, p: &Peq<T>, a: u8, hin:
     hout
 }
 
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub(super) struct States<T: BitVec> {
     states: Vec<State<T, usize>>,
     max_block: usize,
@@ -243,7 +246,9 @@ where
     }
 }
 
-#[derive(Default)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub(super) struct LongStatesHandler<'a> {
     n_blocks: usize,
     _a: PhantomData<&'a ()>,
@@ -362,8 +367,8 @@ impl<'a, T: BitVec> LongTracebackHandler<'a, T> {
         LongTracebackHandler {
             block_pos: n_blocks - 1,
             left_block_pos: n_blocks - 1,
-            block: col.last().unwrap().clone(),
-            left_block: left_col.last().unwrap().clone(),
+            block: *col.last().unwrap(),
+            left_block: *left_col.last().unwrap(),
             col,
             left_col,
             states_iter,
@@ -415,7 +420,7 @@ impl<'a, T: BitVec + 'a> TracebackHandler<'a, T, usize> for LongTracebackHandler
             self.pos_bitvec = T::one() << (word_size::<T>() - 1);
             self.block_pos -= 1;
             if adjust_dist {
-                self.block = self.col[self.block_pos].clone();
+                self.block = self.col[self.block_pos];
             }
         }
     }
@@ -436,7 +441,7 @@ impl<'a, T: BitVec + 'a> TracebackHandler<'a, T, usize> for LongTracebackHandler
             self.left_mask = T::zero();
             self.left_block_pos -= 1;
             if adjust_dist {
-                self.left_block = self.left_col[self.left_block_pos].clone();
+                self.left_block = self.left_col[self.left_block_pos];
             }
         }
     }
@@ -445,10 +450,7 @@ impl<'a, T: BitVec + 'a> TracebackHandler<'a, T, usize> for LongTracebackHandler
     fn move_to_left(&mut self) {
         self.col = self.left_col;
         self.left_col = self.states_iter.next().unwrap();
-        self.block = replace(
-            &mut self.left_block,
-            self.left_col[self.left_block_pos].clone(),
-        );
+        self.block = replace(&mut self.left_block, self.left_col[self.left_block_pos]);
         self.left_block.adjust_by_mask(self.left_mask);
     }
 
@@ -464,7 +466,7 @@ impl<'a, T: BitVec + 'a> TracebackHandler<'a, T, usize> for LongTracebackHandler
             // more complicated: at lower block boundary, and there is a lower block
             if b.mv & T::one() == T::one() {
                 let d = self.left_block().dist - 1;
-                self.left_block = b.clone();
+                self.left_block = *b;
                 self.left_block.dist = d;
                 return true;
             }

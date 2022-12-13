@@ -38,7 +38,7 @@ use crate::utils;
 /// A classical, flexible, q-gram index implementation.
 ///
 /// Uses |alphabet|^q + k words of memory, where k is the number of q-grams in the text with count at most `max_count` (if specified).
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct QGramIndex {
     q: u32,
     // For each q-gram, the position in `pos` where positions for this q-gram are stored.
@@ -208,7 +208,9 @@ impl QGramIndex {
 }
 
 /// An interval, consisting of start and stop position (the latter exclusive).
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct Interval {
     pub start: usize,
     pub stop: usize,
@@ -222,7 +224,7 @@ impl Interval {
 }
 
 /// A match between the pattern and the text.
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(Default, Copy, Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub struct Match {
     pub pattern: Interval,
     pub text: Interval,
@@ -242,7 +244,9 @@ impl cmp::PartialOrd for Match {
 }
 
 /// An exact match between the pattern and the text.
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct ExactMatch {
     pub pattern: Interval,
     pub text: Interval,

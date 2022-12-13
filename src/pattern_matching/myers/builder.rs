@@ -47,7 +47,7 @@ use super::{BitVec, Myers};
 /// Note that only ambiguities in the pattern are recognized. The reverse is not true; ambiguities
 /// in the search text are not matched by multiple symbols in the pattern. This would require
 /// specifying additional ambiguities (`builder.ambig(b'A', b"MRWVHDN")`, etc...).
-#[derive(Default, Clone, Eq, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct MyersBuilder {
     ambigs: HashMap<u8, Vec<u8>>,
     wildcards: Vec<u8>,

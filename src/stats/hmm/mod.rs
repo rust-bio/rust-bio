@@ -101,20 +101,41 @@ use std::collections::BTreeMap;
 
 custom_derive! {
     /// A newtype for HMM states.
+    // #[derive(
+    //     NewtypeFrom,
+    //     NewtypeDeref,
+    //     Default,
+    //     Copy,
+    //     Clone,
+    //     Eq,
+    //     PartialEq,
+    //     Ord,
+    //     PartialOrd,
+    //     Hash,
+    //     Debug,
+    // )]
+    // #[derive(Serialize, Deserialize)]
     #[derive(
         NewtypeFrom,
         NewtypeDeref,
-        PartialEq,
-        Eq,
+        Default,
         Copy,
         Clone,
-        Debug
+        Eq,
+        PartialEq,
+        Ord,
+        PartialOrd,
+        Hash,
+        Debug,
     )]
-    // #[derive(Serialize, Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct State(pub usize);
 }
 
 /// Iterate over the states of a `Model`.
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct StateIter {
     nxt: usize,
     max: usize,
@@ -145,7 +166,9 @@ impl Iterator for StateIter {
 }
 
 /// Transition between two states in a `Model`.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct StateTransition {
     /// Source of the transition.
     pub src: State,
@@ -161,6 +184,9 @@ impl StateTransition {
 }
 
 /// Iterate over all state transitions of a `Model`.
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct StateTransitionIter {
     nxt_a: usize,
     nxt_b: usize,
@@ -697,7 +723,7 @@ pub mod discrete_emission {
     /// The state transition matrix with dimensions `NxN` is `A`, the observation probability
     /// distribution is the matrix `B` with dimensions `NxM` and the initial state distribution `pi`
     /// has length `N`.
-    #[derive(Debug, PartialEq)]
+    #[derive(Default, Clone, PartialEq, Debug)]
     pub struct Model {
         /// The state transition matrix (size `NxN`), `A` in Rabiner's tutorial.
         transition: Array2<LogProb>,
@@ -821,7 +847,7 @@ pub mod discrete_emission_opt_end {
     /// has length `N`. We also included a silent end state `ε` with vector length `N` that do not emit symbols for
     /// modelling the end of sequences. It's optional to supply the end probabilities at the creation of the model.
     /// If this happens, we'll create a dummy end state to simulate as if the end state has not been included.
-    #[derive(Debug, PartialEq)]
+    #[derive(Default, Clone, PartialEq, Debug)]
     pub struct Model {
         /// The state transition matrix (size `NxN`), `A` in Rabiner's tutorial.
         transition: RefCell<Array2<LogProb>>,
@@ -1094,6 +1120,7 @@ pub mod univariate_continuous_emission {
     /// Implementation of a `hmm::Model` with emission values from univariate continuous distributions.
     ///
     /// Log-scale probabilities are used for numeric stability.
+    #[derive(Default, Clone, PartialEq, Debug)]
     pub struct Model<Dist: Continuous<f64, f64>> {
         /// The state transition matrix (size `NxN`), `A` in Rabiner's tutorial.
         transition: Array2<LogProb>,

@@ -40,6 +40,7 @@ use std::iter;
 // codons because a VecDeque<u8> is used to represent a sliding codon
 // (see: State.codon) window which unfortunately, cannot be compared
 // to [u8; 3].
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Finder {
     start_codons: Vec<VecDeque<u8>>,
     stop_codons: Vec<VecDeque<u8>>,
@@ -84,7 +85,9 @@ impl Finder {
 /// An ORF representation with start and end position of said ORF,
 /// as well as offset of the reading frame (1,2,3) and strand location
 // (current: +, reverse complementary: -).
-#[derive(Debug, PartialEq, Eq)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct Orf {
     pub start: usize,
     pub end: usize,
@@ -92,6 +95,7 @@ pub struct Orf {
 }
 
 /// The current algorithm state.
+#[derive(Clone, Debug)]
 struct State {
     start_pos: [Vec<usize>; 3],
     codon: VecDeque<u8>,
@@ -110,6 +114,7 @@ impl State {
 }
 
 /// Iterator over offset, start position, end position and sequence of matched ORFs.
+#[derive(Clone, Debug)]
 pub struct Matches<'a, C, T>
 where
     C: Borrow<u8>,

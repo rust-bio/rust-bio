@@ -47,7 +47,7 @@ use bio_types::annot::loc::Loc;
 ///
 /// Thus, the overlapping annotations identified by querying a
 /// `AnnotMap` may need further filtering.
-#[derive(Debug, Clone)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct AnnotMap<R, T>
 where
     R: Hash + Eq,
@@ -180,7 +180,7 @@ where
 }
 
 /// A view of one annotation in a `AnnotMap` container.
-#[derive(Debug, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Serialize)]
 pub struct Entry<'a, R, T>
 where
     R: Eq + Hash,
@@ -213,6 +213,7 @@ where
 /// `AnnotMap`.
 ///
 /// This struct is created by the `find` function on `AnnotMap`.
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize)]
 pub struct AnnotMapIterator<'a, R, T>
 where
     R: Eq + Hash,

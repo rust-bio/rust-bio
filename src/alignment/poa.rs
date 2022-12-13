@@ -53,20 +53,21 @@ pub type POAGraph = Graph<u8, i32, Directed, usize>;
 // traceback matrix. I have not yet figured out what the best level of
 // detail to store is, so Match and Del operations remember In and Out
 // nodes on the reference graph.
-#[derive(Debug, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum AlignmentOperation {
     Match(Option<(usize, usize)>),
     Del(Option<(usize, usize)>),
     Ins(Option<usize>),
 }
 
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Alignment {
     pub score: i32,
     //    xstart: Edge,
     operations: Vec<AlignmentOperation>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct TracebackCell {
     score: i32,
     op: AlignmentOperation,
@@ -94,6 +95,7 @@ impl PartialEq for TracebackCell {
 
 impl Eq for TracebackCell {}
 
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct Traceback {
     rows: usize,
     cols: usize,
@@ -196,7 +198,7 @@ impl Traceback {
         while i > 0 && j > 0 {
             // push operation and edge corresponding to (one of the) optimal
             // routes
-            ops.push(self.matrix[i][j].op.clone());
+            ops.push(self.matrix[i][j].op);
             match self.matrix[i][j].op {
                 AlignmentOperation::Match(Some((p, _))) => {
                     i = p + 1;
@@ -233,6 +235,7 @@ impl Traceback {
 /// A partially ordered aligner builder
 ///
 /// Uses consuming builder pattern for constructing partial order alignments with method chaining
+#[derive(Default, Clone, Debug)]
 pub struct Aligner<F: MatchFunc> {
     traceback: Traceback,
     query: Vec<u8>,
@@ -278,6 +281,7 @@ impl<F: MatchFunc> Aligner<F> {
 ///
 /// A directed acyclic graph datastructure that represents the topology of a
 /// traceback matrix.
+#[derive(Default, Clone, Debug)]
 pub struct Poa<F: MatchFunc> {
     scoring: Scoring<F>,
     pub graph: POAGraph,

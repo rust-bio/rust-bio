@@ -39,7 +39,7 @@ use num_traits::{cast, Bounded, Num, NumCast};
 
 /// Data structure for storing a sequence of small integers with few big ones space efficiently
 /// while supporting classical vector operations.
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct SmallInts<F: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> {
     smallints: Vec<F>,
     bigints: BTreeMap<usize, B>,
@@ -166,6 +166,7 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
 }
 
 /// Iterator over the elements of a `SmallInts` sequence.
+#[derive(Clone, Debug)]
 pub struct Iter<'a, S, B>
 where
     S: Integer + Bounded + NumCast + Copy,
