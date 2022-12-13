@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [1.1.0](https://www.github.com/rust-bio/rust-bio/compare/v1.0.0...v1.1.0) (2022-12-13)
+
+
+### Features
+
+* add standard derives to all public types ([#505](https://www.github.com/rust-bio/rust-bio/issues/505)) ([c08623b](https://www.github.com/rust-bio/rust-bio/commit/c08623ba1bf2a44d9293ea0c9f6f496667ffb8c6))
+
 ## [1.0.0](https://www.github.com/rust-bio/rust-bio/compare/v0.42.0...v1.0.0) (2022-09-29)
 
 
