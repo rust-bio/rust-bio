@@ -77,6 +77,7 @@ pub fn complement(a: u8) -> u8 {
 /// assert_eq!(rna::revcomp(b"ACGUN"), b"NACGU");
 /// assert_eq!(rna::revcomp(b"GaUuaCA"), b"UGuaAuC");
 /// assert_eq!(rna::revcomp(b"AGCUYRWSKMDVHBNZ"), b"ZNVDBHKMSWYRAGCU");
+#[inline]
 pub fn revcomp<C, T>(text: T) -> Vec<u8>
 where
     C: Borrow<u8>,
