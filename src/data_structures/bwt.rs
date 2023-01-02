@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The [Burrows-Wheeler-Transform](https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.37.6774) and related data structures.
+//! The [Burrows-Wheeler-Transform](https://web.archive.org/web/20220121112232/http://www.mit.edu/~6.454/www_fall_2002/bwt/burrowswheeler94.pdf) and related data structures.
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
