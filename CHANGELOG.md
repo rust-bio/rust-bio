@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+### [1.1.1](https://www.github.com/rust-bio/rust-bio/compare/v1.1.0...v1.1.1) (2023-01-02)
+
+
+### Performance Improvements
+
+* mark complement as inline ([#510](https://www.github.com/rust-bio/rust-bio/issues/510)) ([bd08234](https://www.github.com/rust-bio/rust-bio/commit/bd08234ca777c0dad8db9b0a5a16e2e4a0e9eefc))
+
 ## [1.1.0](https://www.github.com/rust-bio/rust-bio/compare/v1.0.0...v1.1.0) (2022-12-13)
 
 
