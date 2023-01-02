@@ -62,6 +62,7 @@ lazy_static! {
 /// assert_eq!(rna::complement(115), 115); // s → s
 /// assert_eq!(rna::complement(78), 78); // N → N
 /// ```
+#[inline]
 pub fn complement(a: u8) -> u8 {
     COMPLEMENT[a as usize]
 }
