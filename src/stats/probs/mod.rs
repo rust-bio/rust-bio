@@ -67,14 +67,14 @@ custom_derive! {
         NewtypeSub(*),
         NewtypeMul(*),
         NewtypeDiv(*),
-        PartialEq,
-        PartialOrd,
+        Default,
         Copy,
         Clone,
+        PartialEq,
+        PartialOrd,
         Debug,
-        Default
     )]
-    #[derive(Serialize, Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct Prob(pub f64);
 }
 
@@ -119,13 +119,13 @@ custom_derive! {
         NewtypeDeref,
         NewtypeAdd(*),
         NewtypeSub(*),
-        PartialEq,
-        PartialOrd,
         Copy,
         Clone,
-        Debug
+        PartialEq,
+        PartialOrd,
+        Debug,
     )]
-    #[derive(Serialize, Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct LogProb(pub f64);
 }
 
@@ -151,13 +151,13 @@ custom_derive! {
         NewtypeDeref,
         NewtypeAdd(*),
         NewtypeSub(*),
-        PartialEq,
-        PartialOrd,
         Copy,
         Clone,
-        Debug
+        PartialEq,
+        PartialOrd,
+        Debug,
     )]
-    #[derive(Serialize, Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct PHREDProb(pub f64);
 }
 

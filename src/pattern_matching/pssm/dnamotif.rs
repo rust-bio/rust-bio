@@ -9,7 +9,7 @@ use std::f32;
 use std::f32::{INFINITY, NEG_INFINITY};
 
 /// Position-specific scoring matrix for DNA sequences
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Default, Clone, PartialEq, Debug)]
 pub struct DNAMotif {
     /// matrix holding weights at each position, indexed by [position, base]
     pub scores: Array2<f32>,

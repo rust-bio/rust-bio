@@ -53,7 +53,21 @@ pub trait Posterior {
 /// This can be used to define custom caching mechanisms. See
 /// [here](https://github.com/varlociraptor/varlociraptor/blob/694e994547e8f523e5b0013fdf951b694f3870fa/src/model/modes/generic.rs#L200)
 /// for an example.
-#[derive(Clone, Debug, Getters, MutGetters)]
+#[derive(
+    Default,
+    Getters,
+    MutGetters,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    Debug,
+    Serialize,
+    Deserialize,
+)]
 pub struct Model<L, Pr, Po, Payload = ()>
 where
     L: Likelihood<Payload>,
@@ -182,6 +196,7 @@ pub trait Marginal {
 
 /// Instance of a model for given data and event universe.
 /// From the instance, posterior, marginal and MAP can be computed.
+#[derive(Default, Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ModelInstance<Event, PosteriorEvent>
 where
     Event: Hash + Eq,

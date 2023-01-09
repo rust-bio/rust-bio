@@ -23,6 +23,7 @@ use crate::utils::TextSlice;
 use std::borrow::Borrow;
 
 /// BNDM algorithm.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct BNDM {
     m: usize,
     masks: [u64; 256],
@@ -58,6 +59,7 @@ impl BNDM {
 }
 
 /// Iterator over start positions of matches.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct Matches<'a> {
     bndm: &'a BNDM,
     window: usize,

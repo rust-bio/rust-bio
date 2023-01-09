@@ -119,7 +119,7 @@ impl<W: io::Write> Writer<W> {
 
 /// A BED record as defined by BEDtools
 /// (http://bedtools.readthedocs.org/en/latest/content/general-usage.html)
-#[derive(Debug, Serialize, Default, Deserialize, Clone)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Record {
     chrom: String,
     start: u64,

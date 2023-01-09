@@ -52,6 +52,9 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// file
 #[derive(Parser)]
 #[grammar = "io/newick.pest"]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct NewickParser;
 
 /// A hidden, temporary datatype used to collect the parser result
