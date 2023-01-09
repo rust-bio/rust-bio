@@ -193,7 +193,7 @@ impl Traceback {
         let mut i = self.last.index() + 1;
         let mut j = self.cols;
 
-        while i > 0 && j > 0 {
+        while i > 0 || j > 0 {
             // push operation and edge corresponding to (one of the) optimal
             // routes
             ops.push(self.matrix[i][j].op.clone());
@@ -210,13 +210,14 @@ impl Traceback {
                     j -= 1;
                 }
                 AlignmentOperation::Match(None) => {
-                    break;
-                }
-                AlignmentOperation::Del(None) => {
+                    i -= 1;
                     j -= 1;
                 }
+                AlignmentOperation::Del(None) => {
+                    i -= 1; 
+                }
                 AlignmentOperation::Ins(None) => {
-                    i -= 1;
+                    j -= 1;
                 }
             }
         }
@@ -430,9 +431,20 @@ impl<F: MatchFunc> Poa<F> {
     pub fn add_alignment(&mut self, aln: &Alignment, seq: TextSlice) {
         let mut prev: NodeIndex<usize> = NodeIndex::new(0);
         let mut i: usize = 0;
+        let mut edge_not_connected: bool = false;
         for op in aln.operations.iter() {
             match op {
                 AlignmentOperation::Match(None) => {
+                    let node: NodeIndex<usize> = NodeIndex::new(0);
+                    if (seq[i] != self.graph.raw_nodes()[0].weight) && (seq[i] != b'X') {
+                        let node = self.graph.add_node(seq[i]);
+                        prev = node;
+                    }
+                    if edge_not_connected {
+                        self.graph.add_edge(prev, node, 1);
+                        prev = node;
+                        edge_not_connected = false;
+                    }
                     i += 1;
                 }
                 AlignmentOperation::Match(Some((_, p))) => {
@@ -457,6 +469,12 @@ impl<F: MatchFunc> Poa<F> {
                     i += 1;
                 }
                 AlignmentOperation::Ins(None) => {
+                    let node = self.graph.add_node(seq[i]);
+                    if edge_not_connected {
+                        self.graph.add_edge(prev, node, 1);    
+                    }
+                    prev = node;
+                    edge_not_connected = false;
                     i += 1;
                 }
                 AlignmentOperation::Ins(Some(_)) => {
