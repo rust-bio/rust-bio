@@ -433,14 +433,15 @@ impl<F: MatchFunc> Poa<F> {
     /// * `aln` - The alignment of the new sequence to the graph
     /// * `seq` - The sequence being incorporated
     pub fn add_alignment(&mut self, aln: &Alignment, seq: TextSlice) {
-        let mut prev: NodeIndex<usize> = NodeIndex::new(0);
+        let head = Topo::new(&self.graph).next(&self.graph).unwrap();
+        let mut prev: NodeIndex<usize> = NodeIndex::new(head.index());
         let mut i: usize = 0;
         let mut edge_not_connected: bool = false;
         for op in aln.operations.iter() {
             match op {
                 AlignmentOperation::Match(None) => {
                     let node: NodeIndex<usize> = NodeIndex::new(0);
-                    if (seq[i] != self.graph.raw_nodes()[0].weight) && (seq[i] != b'X') {
+                    if (seq[i] != self.graph.raw_nodes()[head.index()].weight) && (seq[i] != b'X') {
                         let node = self.graph.add_node(seq[i]);
                         prev = node;
                     }
@@ -464,8 +465,9 @@ impl<F: MatchFunc> Poa<F> {
                                 *self.graph.edge_weight_mut(edge).unwrap() += 1;
                             }
                             None => {
-                                // where the previous node was newly added
-                                self.graph.add_edge(prev, node, 1);
+                                if prev.index() != head.index() {
+                                    self.graph.add_edge(prev, node, 1);
+                                }
                             }
                         }
                         prev = NodeIndex::new(*p);
@@ -478,7 +480,7 @@ impl<F: MatchFunc> Poa<F> {
                         self.graph.add_edge(prev, node, 1);    
                     }
                     prev = node;
-                    edge_not_connected = false;
+                    edge_not_connected = true;
                     i += 1;
                 }
                 AlignmentOperation::Ins(Some(_)) => {
