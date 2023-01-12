@@ -216,7 +216,7 @@ impl Traceback {
                     j -= 1;
                 }
                 AlignmentOperation::Del(None) => {
-                    i -= 1; 
+                    i -= 1;
                 }
                 AlignmentOperation::Ins(None) => {
                     j -= 1;
@@ -477,7 +477,7 @@ impl<F: MatchFunc> Poa<F> {
                 AlignmentOperation::Ins(None) => {
                     let node = self.graph.add_node(seq[i]);
                     if edge_not_connected {
-                        self.graph.add_edge(prev, node, 1);    
+                        self.graph.add_edge(prev, node, 1);
                     }
                     prev = node;
                     edge_not_connected = true;
@@ -499,8 +499,8 @@ impl<F: MatchFunc> Poa<F> {
 mod tests {
     use super::*;
     use crate::alignment::pairwise::Scoring;
-    use petgraph::graph::NodeIndex;
     use petgraph::dot::Dot;
+    use petgraph::graph::NodeIndex;
 
     #[test]
     fn test_init_graph() {
@@ -610,28 +610,28 @@ mod tests {
     }
     #[test]
     fn test_edge_cases() {
-        //case 1
+        // case 1
         let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
         let mut aligner = Aligner::new(scoring, b"BBA");
         aligner.global(b"AAA").add_to_graph();
         let g = aligner.graph().map(|_, n| (*n) as char, |_, e| *e);
         let dot = format!("{:?}", Dot::new(&g));
         assert_eq!(dot, "digraph {\n    0 [ label = \"'B'\" ]\n    1 [ label = \"'B'\" ]\n    2 [ label = \"'A'\" ]\n    3 [ label = \"'A'\" ]\n    4 [ label = \"'A'\" ]\n    0 -> 1 [ label = \"1\" ]\n    1 -> 2 [ label = \"1\" ]\n    3 -> 4 [ label = \"1\" ]\n    4 -> 2 [ label = \"1\" ]\n}\n");
-        //case 2
+        // case 2
         let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
         let mut aligner = Aligner::new(scoring, b"AAA");
         aligner.global(b"ABA").add_to_graph();
         let g = aligner.graph().map(|_, n| (*n) as char, |_, e| *e);
         let dot = format!("{:?}", Dot::new(&g));
         assert_eq!(dot, "digraph {\n    0 [ label = \"'A'\" ]\n    1 [ label = \"'A'\" ]\n    2 [ label = \"'A'\" ]\n    3 [ label = \"'B'\" ]\n    0 -> 1 [ label = \"1\" ]\n    1 -> 2 [ label = \"1\" ]\n    0 -> 3 [ label = \"1\" ]\n    3 -> 2 [ label = \"1\" ]\n}\n");
-        //case 3
+        // case 3
         let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
         let mut aligner = Aligner::new(scoring, b"BBBBBAAA");
         aligner.global(b"AAA").add_to_graph();
         let g = aligner.graph().map(|_, n| (*n) as char, |_, e| *e);
         let dot = format!("{:?}", Dot::new(&g));
         assert_eq!(dot, "digraph {\n    0 [ label = \"'B'\" ]\n    1 [ label = \"'B'\" ]\n    2 [ label = \"'B'\" ]\n    3 [ label = \"'B'\" ]\n    4 [ label = \"'B'\" ]\n    5 [ label = \"'A'\" ]\n    6 [ label = \"'A'\" ]\n    7 [ label = \"'A'\" ]\n    0 -> 1 [ label = \"1\" ]\n    1 -> 2 [ label = \"1\" ]\n    2 -> 3 [ label = \"1\" ]\n    3 -> 4 [ label = \"1\" ]\n    4 -> 5 [ label = \"1\" ]\n    5 -> 6 [ label = \"2\" ]\n    6 -> 7 [ label = \"2\" ]\n}\n");
-        //case 4
+        // case 4
         let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
         let mut aligner = Aligner::new(scoring, b"AAA");
         aligner.global(b"BBBBBAAA").add_to_graph();
