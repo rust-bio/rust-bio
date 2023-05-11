@@ -4,6 +4,18 @@ use crate::utils::Text;
 //use crate::alphabets;
 
 
+
+/// # Example
+/// ```
+/// use bio::blast;
+/// let dna_string = vec![b'C',b'T',b'A'];
+/// let rna_string = blast::transcription(dna_string);
+/// assert!(rna_string == vec![b'C',b'U',b'A']);
+///  
+/// let prot_string = blast::traduction(rna_string);
+/// assert!(prot_string == vec![b'L']);
+/// ```
+
 /// Transcription of a dna (Text :type) into the rna version
 pub fn transcription(dna_str : Text) -> Text {
     //let alphab = alphabets::dna::alphabet();
@@ -19,8 +31,8 @@ pub fn transcription(dna_str : Text) -> Text {
     rna_str
 }
 
-/// Translation of a rna (Text :type) into the aminoacid strand
-pub fn translation(rna_str : Text) -> Text{
+/// traduction of a rna (Text :type) into the aminoacid strand
+pub fn traduction(rna_str : Text) -> Text{
     let mut codo : Text = vec![];
     let mut protein_str : Text = vec![];
     for i in &rna_str {
@@ -120,7 +132,7 @@ mod tests {
     #[test]
     fn traduction_one_codon_protein(){
         let seq_arn : Text = vec![b'U',b'U',b'U'];
-        let new_prot : Text = translation(seq_arn);
+        let new_prot : Text = traduction(seq_arn);
         assert_eq!(new_prot,vec![b'F']);
     }
 }
