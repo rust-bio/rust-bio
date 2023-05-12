@@ -1,20 +1,21 @@
 //use bio_types::genome::Length;
-
 use crate::utils::Text;
+//use vec;
 //use crate::alphabets;
 
 
 
-/// # Example
-/// ```
-/// use bio::blast;
-/// let dna_string = vec![b'C',b'T',b'A'];
-/// let rna_string = blast::transcription(dna_string);
-/// assert!(rna_string == vec![b'C',b'U',b'A']);
-///  
-/// let prot_string = blast::traduction(rna_string);
-/// assert!(prot_string == vec![b'L']);
-/// ```
+/* ! # Example
+ ```
+ use bio::blast;
+ let dna_string = vec![b'C',b'T',b'A'];
+ let rna_string = blast::transcription(dna_string);
+ assert!(rna_string == vec![b'C',b'U',b'A']);
+  
+ let prot_string = blast::traduction(rna_string);
+ assert!(prot_string == vec![b'L']);
+ ```
+ */
 
 /// Transcription of a dna (Text :type) into the rna version
 pub fn transcription(dna_str : Text) -> Text {
@@ -100,6 +101,36 @@ pub fn traduction(rna_str : Text) -> Text{
     protein_str
 }
 
+pub fn protein_to_three(protein_str : Text) -> Vec<String>{
+    let mut three_prot : Vec<String> = vec![];
+    for i in protein_str {
+        match i{
+            b'F'=>three_prot.push("Phe".to_string()),
+            b'L'=>three_prot.push("Leu".to_string()),
+            b'S'=>three_prot.push("Ser".to_string()),
+            b'Y'=>three_prot.push("Tyr".to_string()),
+            b'O'=>three_prot.push("Stop".to_string()),
+            b'C'=>three_prot.push("Cys".to_string()),
+            b'W'=>three_prot.push("Trp".to_string()),
+            b'P'=>three_prot.push("Pro".to_string()),
+            b'H'=>three_prot.push("His".to_string()),
+            b'Q'=>three_prot.push("Gln".to_string()),
+            b'R'=>three_prot.push("Arg".to_string()),
+            b'I'=>three_prot.push("Ile".to_string()),
+            b'M'=>three_prot.push("Met".to_string()),
+            b'T'=>three_prot.push("Thr".to_string()),
+            b'N'=>three_prot.push("Asn".to_string()),
+            b'K'=>three_prot.push("Lys".to_string()),
+            b'V'=>three_prot.push("Val".to_string()),
+            b'A'=>three_prot.push("Ala".to_string()),
+            b'D'=>three_prot.push("Asp".to_string()),
+            b'E'=>three_prot.push("Glu".to_string()),
+            b'G'=>three_prot.push("Gly".to_string()),
+            _=>three_prot.push("Wrong".to_string()),
+        }
+    }
+    three_prot
+}
 
 
 
@@ -127,6 +158,7 @@ mod tests {
         let seq_vec : Text= vec![b'A',b'C',b'T'];
         let new_arn = transcription(seq_vec);
         assert_eq!(new_arn,vec![b'A',b'C',b'U']);
+        print_sequence(&new_arn);
     }
 
     #[test]
@@ -134,5 +166,13 @@ mod tests {
         let seq_arn : Text = vec![b'U',b'U',b'U'];
         let new_prot : Text = traduction(seq_arn);
         assert_eq!(new_prot,vec![b'F']);
+        print_sequence(&new_prot);
+    }
+
+    #[test]
+    fn uni_to_three_protein(){
+        let prot_ex : Text = vec![b'F',b'T'];
+        let prot_result = protein_to_three(prot_ex);
+        assert_eq!(prot_result,vec!["Phe".to_string(),"Thr".to_string()]);
     }
 }
