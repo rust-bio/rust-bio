@@ -15,7 +15,6 @@
 //! ```
 
 use std::borrow::Borrow;
-use std::mem;
 
 use bit_set::BitSet;
 use vec_map::VecMap;
@@ -316,9 +315,10 @@ impl RankTransform {
         C: Borrow<u8>,
         T: IntoIterator<Item = C>,
     {
+        assert!(q > 0, "Expecting q-gram length q to be larger than 0.");
         let bits = (self.ranks.len() as f32).log2().ceil() as u32;
         assert!(
-            (bits * q) as usize <= mem::size_of::<usize>() * 8,
+            bits * q <= usize::BITS,
             "Expecting q to be smaller than usize / log2(|A|)"
         );
 
@@ -450,7 +450,7 @@ mod tests {
         assert_ne!(Alphabet::new(b"ATCG"), Alphabet::new(b"ATC"));
     }
 
-    /// When `q * bits == usize::BITS`, make sure that `1<<(1*bits)` does not overflow.
+    /// When `q * bits == usize::BITS`, make sure that `1<<(q*bits)` does not overflow.
     #[test]
     fn test_qgram_shiftleft_overflow() {
         let alphabet = Alphabet::new(b"ACTG");
