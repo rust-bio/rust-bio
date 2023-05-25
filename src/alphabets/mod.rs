@@ -325,6 +325,7 @@ impl RankTransform {
         let mut qgrams = QGrams {
             text: text.into_iter(),
             ranks: self,
+            q,
             bits,
             mask: 1usize.checked_shl(q * bits).unwrap_or(0).wrapping_sub(1),
             qgram: 0,
@@ -392,6 +393,7 @@ where
 {
     text: T,
     ranks: &'a RankTransform,
+    q: u32,
     bits: u32,
     mask: usize,
     qgram: usize,
@@ -427,6 +429,17 @@ where
             None => None,
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.text.size_hint()
+    }
+}
+
+impl<'a, C, T> ExactSizeIterator for QGrams<'a, C, T>
+where
+    C: Borrow<u8>,
+    T: ExactSizeIterator<Item = C>,
+{
 }
 
 /// Returns the english ascii lower case alphabet.
@@ -457,5 +470,20 @@ mod tests {
         let transform = RankTransform::new(&alphabet);
         let text = b"ACTG".repeat(100);
         transform.qgrams(usize::BITS / 2, text);
+    }
+
+    #[test]
+    fn test_exactsize_iterator() {
+        let alphabet = Alphabet::new(b"ACTG");
+        let transform = RankTransform::new(&alphabet);
+        let text = b"ACTGACTG";
+
+        let mut qgrams = transform.qgrams(4, text);
+        assert_eq!(qgrams.len(), 5);
+        qgrams.next();
+        assert_eq!(qgrams.len(), 4);
+
+        let qgrams = transform.qgrams(4, b"AC");
+        assert_eq!(qgrams.len(), 0);
     }
 }
