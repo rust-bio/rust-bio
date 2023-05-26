@@ -259,6 +259,7 @@ impl RankTransform {
     /// assert_eq!(dna_ranks.get(65), 0); // "A"
     /// assert_eq!(dna_ranks.get(116), 7); // "t"
     /// ```
+    #[inline]
     pub fn get(&self, a: u8) -> u8 {
         *self.ranks.get(a as usize).expect("Unexpected character.")
     }
@@ -452,6 +453,7 @@ where
     T: Iterator<Item = C>,
 {
     /// Push a new character into the current qgram.
+    #[inline]
     fn qgram_push(&mut self, a: u8) {
         self.qgram <<= self.bits;
         self.qgram |= a as usize;
@@ -466,6 +468,7 @@ where
 {
     type Item = usize;
 
+    #[inline]
     fn next(&mut self) -> Option<usize> {
         match self.text.next() {
             Some(a) => {
@@ -510,6 +513,7 @@ where
     T: DoubleEndedIterator<Item = C>,
 {
     /// Push a new character into the current qgram in the reverse direction.
+    #[inline]
     fn qgram_push_rev(&mut self, a: u8) {
         self.qgram >>= self.bits;
         self.qgram |= (a as usize) << self.left_shift;
@@ -523,6 +527,7 @@ where
 {
     type Item = usize;
 
+    #[inline]
     fn next(&mut self) -> Option<usize> {
         match self.text.next_back() {
             Some(a) => {
