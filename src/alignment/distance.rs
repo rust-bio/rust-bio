@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-    expected = "hamming distance cannot be calculated for texts of different length (11!=8)"
+        expected = "hamming distance cannot be calculated for texts of different length (11!=8)"
     )]
     fn test_hamming_dist_bad() {
         let x = b"GACTATATCGA";
@@ -211,7 +211,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-    expected = "simd hamming distance cannot be calculated for texts of different length (11!=8)"
+        expected = "simd hamming distance cannot be calculated for texts of different length (11!=8)"
     )]
     fn test_simd_hamming_dist_bad() {
         let x = b"GACTATATCGA";
