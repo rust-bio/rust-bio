@@ -53,7 +53,7 @@ triple_accel = ">=0.3, <0.5"
 thiserror = "1"
 anyhow = "1"
 rand = ">=0.7.3, < 0.9"
-editdistancek = "1"
+editdistancek = ">=1.0.1, <2"
 
 [dependencies.vec_map]
 version = "0.8"
