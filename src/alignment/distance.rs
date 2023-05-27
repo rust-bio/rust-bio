@@ -6,7 +6,6 @@
 //! Various subroutines for computing a distance between sequences. Features
 //! both scalar and efficient vectorized distance functions with SIMD.
 
-use std::cmp::min;
 
 use crate::utils::TextSlice;
 
@@ -59,30 +58,7 @@ pub fn hamming(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u64 {
 /// ```
 #[allow(unused_assignments)]
 pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
-    let mut columns = [vec![0u32; alpha.len() + 1], vec![0u32; alpha.len() + 1]];
-    let mut i_prev = 0;
-    let mut i_cur = 1;
-
-    for i in 0..columns[0].len() {
-        columns[0][i] = i as u32;
-    }
-
-    for (j, item) in beta.iter().enumerate() {
-        i_cur %= 2;
-        i_prev = 1 - i_cur;
-
-        columns[i_cur][0] = 1 + j as u32;
-        for i in 1..columns[0].len() {
-            columns[i_cur][i] = min(
-                columns[i_prev][i - 1] + if alpha[i - 1] == *item { 0 } else { 1 },
-                min(columns[i_cur][i - 1] + 1, columns[i_prev][i] + 1),
-            );
-        }
-
-        i_cur += 1;
-    }
-
-    columns[i_cur - 1][columns[0].len() - 1]
+    editdistancek::edit_distance(alpha, beta) as u32
 }
 
 pub mod simd {
@@ -105,6 +81,7 @@ pub mod simd {
     //! If AVX2 support is not available, there is a speed penalty for using SSE4.1 with
     //! smaller vectors.
 
+    use std::cmp::{max, min};
     use crate::utils::TextSlice;
 
     /// SIMD-accelerated Hamming distance between two strings. Complexity: O(n / w), for
@@ -187,7 +164,12 @@ pub mod simd {
     /// assert_eq!(ldist, None);
     /// ```
     pub fn bounded_levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>, k: u32) -> Option<u32> {
-        triple_accel::levenshtein::levenshtein_simd_k(alpha, beta, k)
+        // triple_accel::levenshtein::levenshtein_simd_k(alpha, beta, k)
+        if let Some(x) = editdistancek::edit_distance_bounded(alpha, beta, min(k as usize, max(alpha.len(), beta.len()))) {
+            Some(x as u32)
+        } else {
+            None
+        }
     }
 }
 
@@ -219,7 +201,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "hamming distance cannot be calculated for texts of different length (11!=8)"
+    expected = "hamming distance cannot be calculated for texts of different length (11!=8)"
     )]
     fn test_hamming_dist_bad() {
         let x = b"GACTATATCGA";
@@ -229,7 +211,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "simd hamming distance cannot be calculated for texts of different length (11!=8)"
+    expected = "simd hamming distance cannot be calculated for texts of different length (11!=8)"
     )]
     fn test_simd_hamming_dist_bad() {
         let x = b"GACTATATCGA";
