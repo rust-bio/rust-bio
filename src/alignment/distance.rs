@@ -6,7 +6,6 @@
 //! Various subroutines for computing a distance between sequences. Features
 //! both scalar and efficient vectorized distance functions with SIMD.
 
-
 use crate::utils::TextSlice;
 
 /// Compute the Hamming distance between two strings. Complexity: O(n).
@@ -81,8 +80,8 @@ pub mod simd {
     //! If AVX2 support is not available, there is a speed penalty for using SSE4.1 with
     //! smaller vectors.
 
-    use std::cmp::{max, min};
     use crate::utils::TextSlice;
+    use std::cmp::{max, min};
 
     /// SIMD-accelerated Hamming distance between two strings. Complexity: O(n / w), for
     /// SIMD vectors of length w (usually w = 16 or w = 32).
@@ -164,7 +163,11 @@ pub mod simd {
     /// assert_eq!(ldist, None);
     /// ```
     pub fn bounded_levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>, k: u32) -> Option<u32> {
-        if let Some(x) = editdistancek::edit_distance_bounded(alpha, beta, min(k as usize, max(alpha.len(), beta.len()))) {
+        if let Some(x) = editdistancek::edit_distance_bounded(
+            alpha,
+            beta,
+            min(k as usize, max(alpha.len(), beta.len())),
+        ) {
             Some(x as u32)
         } else {
             None
