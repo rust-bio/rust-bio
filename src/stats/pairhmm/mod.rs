@@ -176,7 +176,7 @@ pub trait StartEndGapParameters {
     fn free_end_gap_x(&self) -> bool;
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 pub enum XYEmission {
     Match(LogProb),
     Mismatch(LogProb),

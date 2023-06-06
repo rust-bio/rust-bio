@@ -46,7 +46,7 @@
 /// For values that are not a divider of 32, some bits will remain unused.
 /// For example for `width = 7` only `4 * 7 = 28` bits are used.
 /// Five 7-bit values are stored in 2 blocks.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct BitEnc {
     storage: Vec<u32>,
     width: usize,
@@ -385,7 +385,7 @@ impl BitEnc {
     /// // Add another 2 to create a second block
     /// bitenc.push(2);
     /// assert_eq!(bitenc.nr_blocks(), 2);
-    /// ```    
+    /// ```
     pub fn nr_blocks(&self) -> usize {
         self.storage.len()
     }
@@ -408,7 +408,7 @@ impl BitEnc {
     /// assert_eq!(bitenc.nr_symbols(), 4);
     /// bitenc.push(2);
     /// assert_eq!(bitenc.nr_symbols(), 5);
-    /// ```    
+    /// ```
     pub fn nr_symbols(&self) -> usize {
         self.len
     }
@@ -436,6 +436,7 @@ impl BitEnc {
 
 /// Iterator over values of a bitencoded sequence (values will be unpacked into bytes).
 /// Used to implement the `iter` method of `BitEnc`.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize)]
 pub struct BitEncIter<'a> {
     bitenc: &'a BitEnc,
     i: usize,

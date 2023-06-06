@@ -24,7 +24,7 @@
 //! * a convenient alphabet implementation,
 //! * pairwise alignment,
 //! * suffix arrays,
-//! * the [Burrows-Wheeler-transform (BWT)]()
+//! * the [Burrows-Wheeler-transform (BWT)](https://www.semanticscholar.org/paper/A-Block-sorting-Lossless-Data-Compression-Algorithm-Burrows-Wheeler/af56e6d4901dcd0f589bf969e604663d40f1be5d)
 //! * the [Full-text index in Minute space index (FM-index)](https://doi.org/10.1109/SFCS.2000.892127),
 //! * FMD-Index for finding supermaximal exact matches,
 //! * a q-gram index,
@@ -175,7 +175,7 @@
 //! ```rust
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
-//! use bio::data_structures::fmindex::{BackwardSearchResult,FMIndex, FMIndexable};
+//! use bio::data_structures::fmindex::{BackwardSearchResult, FMIndex, FMIndexable};
 //! use bio::data_structures::suffix_array::suffix_array;
 //! use std::sync::Arc;
 //! use std::thread;
@@ -204,7 +204,7 @@
 //! for interval_calculator in interval_calculators {
 //!     let positions = match interval_calculator.join().unwrap() {
 //!         BackwardSearchResult::Complete(saint) => saint.occ(&sa),
-//!         _ => Vec::new()
+//!         _ => Vec::new(),
 //!     };
 //! }
 //! ```
@@ -261,3 +261,4 @@ pub mod scores;
 pub mod seq_analysis;
 pub mod stats;
 pub mod utils;
+pub use bio_types;

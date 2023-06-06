@@ -41,6 +41,7 @@
 use crate::utils::TextSlice;
 
 /// Algorithm of Horspool.
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize)]
 pub struct Horspool<'a> {
     shift: Vec<usize>,
     m: usize,
@@ -75,6 +76,7 @@ impl<'a> Horspool<'a> {
 }
 
 /// Iterator over start positions of matches.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize)]
 pub struct Matches<'a> {
     horspool: &'a Horspool<'a>,
     text: TextSlice<'a>,
