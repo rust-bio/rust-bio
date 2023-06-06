@@ -27,7 +27,7 @@ pub mod rna;
 pub type SymbolRanks = VecMap<u8>;
 
 /// Representation of an alphabet.
-#[derive(Debug, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct Alphabet {
     pub symbols: BitSet,
 }
@@ -217,7 +217,7 @@ impl Alphabet {
 ///
 /// `RankTransform` can be used in to perform bit encoding for texts over a
 /// given alphabet via `bio::data_structures::bitenc`.
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct RankTransform {
     pub ranks: SymbolRanks,
 }
@@ -326,7 +326,7 @@ impl RankTransform {
             text: text.into_iter(),
             ranks: self,
             bits,
-            mask: (1 << (q * bits)) - 1,
+            mask: 1usize.checked_shl(q * bits).unwrap_or(0).wrapping_sub(1),
             qgram: 0,
         };
 
@@ -384,6 +384,7 @@ impl RankTransform {
 }
 
 /// Iterator over q-grams.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize)]
 pub struct QGrams<'a, C, T>
 where
     C: Borrow<u8>,
@@ -447,5 +448,14 @@ mod tests {
         assert_eq!(Alphabet::new(b"ATCG"), Alphabet::new(b"ATCG"));
         assert_eq!(Alphabet::new(b"ATCG"), Alphabet::new(b"TAGC"));
         assert_ne!(Alphabet::new(b"ATCG"), Alphabet::new(b"ATC"));
+    }
+
+    /// When `q * bits == usize::BITS`, make sure that `1<<(1*bits)` does not overflow.
+    #[test]
+    fn test_qgram_shiftleft_overflow() {
+        let alphabet = Alphabet::new(b"ACTG");
+        let transform = RankTransform::new(&alphabet);
+        let text = b"ACTG".repeat(100);
+        transform.qgrams(usize::BITS / 2, text);
     }
 }

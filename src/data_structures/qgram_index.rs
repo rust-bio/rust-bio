@@ -36,10 +36,14 @@ use crate::alphabets::{Alphabet, RankTransform};
 use crate::utils;
 
 /// A classical, flexible, q-gram index implementation.
-#[derive(Serialize, Deserialize)]
+///
+/// Uses |alphabet|^q + k words of memory, where k is the number of q-grams in the text with count at most `max_count` (if specified).
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct QGramIndex {
     q: u32,
+    // For each q-gram, the position in `pos` where positions for this q-gram are stored.
     address: Vec<usize>,
+    // The positions in `text` where each q-gram occurs.
     pos: Vec<usize>,
     ranks: RankTransform,
 }
@@ -69,13 +73,12 @@ impl QGramIndex {
 
         let qgram_count = alphabet.len().pow(q as u32);
         let mut address = vec![0; qgram_count + 1];
-        let mut pos = vec![0; text.len()];
 
         for qgram in ranks.qgrams(q, text.clone()) {
             address[qgram] += 1;
         }
 
-        for a in address.iter_mut().skip(1) {
+        for a in address.iter_mut() {
             if *a > max_count {
                 // mask qgram
                 *a = 0;
@@ -83,6 +86,9 @@ impl QGramIndex {
         }
 
         utils::prescan(&mut address, 0, |a, b| a + b);
+
+        // Address has at least size 1, so unwrap is fine.
+        let mut pos = vec![0; *address.last().unwrap()];
 
         {
             let mut offset = vec![0; qgram_count];
@@ -114,8 +120,10 @@ impl QGramIndex {
         &self.pos[self.address[qgram]..self.address[qgram + 1]]
     }
 
-    /// Return matches of the given pattern.
+    /// Return matches of the given pattern, matching in at least `min_count` q-grams.
     /// Complexity O(m + k) for pattern of length m and k being the number of matching q-grams.
+    ///
+    /// A match is a substring of `pattern` and a corresponding substring of the text that share at least `min_count` q-grams.
     pub fn matches(&self, pattern: &[u8], min_count: usize) -> Vec<Match> {
         let q = self.q as usize;
         let mut diagonals = collections::HashMap::new();
@@ -153,6 +161,8 @@ impl QGramIndex {
 
     /// Return exact matches (substrings) of the given pattern.
     /// Complexity O(m + k) for pattern of length m and k being the number of matching q-grams.
+    ///
+    /// An exact match is a substring of `pattern` occurring in the text of length at least `q`.
     pub fn exact_matches(&self, pattern: &[u8]) -> Vec<ExactMatch> {
         let q = self.q as usize;
         let mut diagonals = collections::HashMap::new();
@@ -198,7 +208,9 @@ impl QGramIndex {
 }
 
 /// An interval, consisting of start and stop position (the latter exclusive).
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct Interval {
     pub start: usize,
     pub stop: usize,
@@ -212,7 +224,7 @@ impl Interval {
 }
 
 /// A match between the pattern and the text.
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(Default, Copy, Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub struct Match {
     pub pattern: Interval,
     pub text: Interval,
@@ -232,7 +244,9 @@ impl cmp::PartialOrd for Match {
 }
 
 /// An exact match between the pattern and the text.
-#[derive(PartialEq, Debug, Copy, Clone)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct ExactMatch {
     pub pattern: Interval,
     pub text: Interval,
@@ -265,11 +279,59 @@ mod tests {
     }
 
     #[test]
+    fn test_qgram_with_max_count() {
+        let (text, alphabet) = setup();
+        let q = 3;
+        let qgram_index = QGramIndex::with_max_count(q, text, &alphabet, 1);
+
+        let ranks = alphabets::RankTransform::new(&alphabet);
+
+        let qgram = ranks.qgrams(q, b"TGA").next().unwrap();
+
+        // Should be pruned because the count of 2 is larger than the max_count of 1.
+        let matches = qgram_index.qgram_matches(qgram);
+        assert_eq!(matches, []);
+    }
+
+    #[test]
+    fn test_qgram_with_max_count_index_0() {
+        let (_, alphabet) = setup();
+        let text = b"AAAAA";
+        let q = 3;
+        let qgram_index = QGramIndex::with_max_count(q, text, &alphabet, 1);
+
+        let ranks = alphabets::RankTransform::new(&alphabet);
+
+        let qgram = ranks.qgrams(q, b"AAA").next().unwrap();
+
+        // Should be pruned because the count of 3 is larger than the max_count of 1.
+        let matches = qgram_index.qgram_matches(qgram);
+        assert_eq!(matches, []);
+    }
+
+    #[test]
+    fn test_qgram_sizeof_pos() {
+        let (_, alphabet) = setup();
+        let text = b"AAAAA";
+        let q = 3;
+        let qgram_index = QGramIndex::new(q, text, &alphabet);
+
+        let ranks = alphabets::RankTransform::new(&alphabet);
+
+        let qgram = ranks.qgrams(q, b"AAA").next().unwrap();
+
+        // Should be pruned because the count of 3 is larger than the max_count of 1.
+        let matches = qgram_index.qgram_matches(qgram);
+        assert_eq!(matches, [0, 1, 2]);
+    }
+
+    #[test]
     fn test_matches() {
         let (text, alphabet) = setup();
         let q = 3;
         let qgram_index = QGramIndex::new(q, text, &alphabet);
 
+        // A fully matching pattern.
         let pattern = b"GCTG";
         let matches = qgram_index.matches(pattern, 1);
         assert_eq!(
@@ -277,6 +339,18 @@ mod tests {
             [Match {
                 pattern: Interval { start: 0, stop: 4 },
                 text: Interval { start: 3, stop: 7 },
+                count: 2,
+            }]
+        );
+
+        // A pattern that matches in one position on two disjoint q-grams.
+        let pattern = b"GCTAAGA";
+        let matches = qgram_index.matches(pattern, 2);
+        assert_eq!(
+            matches,
+            [Match {
+                pattern: Interval { start: 0, stop: 7 },
+                text: Interval { start: 3, stop: 10 },
                 count: 2,
             }]
         );
@@ -294,6 +368,23 @@ mod tests {
         for m in exact_matches {
             assert_eq!(m.pattern.get(pattern), m.text.get(text));
         }
+
+        // A pattern that matches in one position on two disjoint q-grams.
+        let pattern = b"GCTAAGA";
+        let matches = qgram_index.exact_matches(pattern);
+        assert_eq!(
+            matches,
+            [
+                ExactMatch {
+                    pattern: Interval { start: 0, stop: 3 },
+                    text: Interval { start: 3, stop: 6 }
+                },
+                ExactMatch {
+                    pattern: Interval { start: 4, stop: 7 },
+                    text: Interval { start: 7, stop: 10 }
+                }
+            ]
+        );
     }
 
     #[test]

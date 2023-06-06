@@ -31,7 +31,7 @@ use bv::BitVec;
 use bv::Bits;
 
 /// A rank/select data structure.
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct RankSelect {
     n: usize,
     bits: BitVec<u8>,
@@ -204,7 +204,7 @@ impl RankSelect {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub enum SuperblockRank {
     First(u64),
     Some(u64),

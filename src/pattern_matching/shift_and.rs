@@ -22,6 +22,7 @@ use std::borrow::Borrow;
 use std::iter::Enumerate;
 
 /// `ShiftAnd` algorithm.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct ShiftAnd {
     m: usize,
     masks: [u64; 256],
@@ -78,6 +79,7 @@ where
 }
 
 /// Iterator over start positions of matches.
+#[derive(Clone, Debug)]
 pub struct Matches<'a, C, T>
 where
     C: Borrow<u8>,

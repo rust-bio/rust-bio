@@ -92,11 +92,15 @@ jobs:
       - name: Install MSRV toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.51.0
+          toolchain: 1.53.0
           override: true
 
       - name: check if README matches MSRV defined here
-        run: grep '1.51.0' README.md
+        run: grep '1.53.0' README.md
+
+      - name: pin dependency versions for MSRV
+        run: |
+          cargo update -p indexmap --precise 1.8.2
 
       - name: Run tests
         uses: actions-rs/cargo@v1

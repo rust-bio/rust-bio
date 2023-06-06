@@ -170,6 +170,7 @@ where
     }
 }
 
+#[derive(Clone, Debug)]
 pub(super) struct Traceback<'a, T, D, H>
 where
     T: BitVec + 'a,

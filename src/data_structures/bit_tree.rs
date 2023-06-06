@@ -41,6 +41,7 @@ pub trait PrefixOp<T> {
 /// a smaller element at the same index.
 /// Time Complexity: O(n) to build a new tree or O(log n) for get() and set() operations,
 /// where `n = tree.len()`.
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct FenwickTree<T: Default + Ord, Op: PrefixOp<T>> {
     tree: Vec<T>,
     phantom: PhantomData<Op>,
@@ -84,6 +85,9 @@ impl<T: Ord + Default + Copy, Op: PrefixOp<T>> FenwickTree<T, Op> {
     }
 }
 
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct MaxOp;
 impl<T: Copy + Ord> PrefixOp<T> for MaxOp {
     fn operation(t1: T, t2: T) -> T {
@@ -94,6 +98,9 @@ impl<T: Copy + Ord> PrefixOp<T> for MaxOp {
 /// Fenwick tree specialized for prefix-max
 pub type MaxBitTree<T> = FenwickTree<T, MaxOp>;
 
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct SumOp;
 impl<T: Copy + Add> PrefixOp<T> for SumOp
 where

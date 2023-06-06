@@ -108,6 +108,7 @@ const DEFAULT_MATCH_SCORE: i32 = 2;
 /// in the band is less than MAX_CELLS (currently set to 10 million), otherwise it returns an
 /// empty alignment
 #[allow(non_snake_case)]
+#[derive(Default, Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub struct Aligner<F: MatchFunc> {
     S: [Vec<i32>; 2],
     I: [Vec<i32>; 2],
@@ -1029,13 +1030,13 @@ trait MatchPair {
 impl MatchPair for (u32, u32) {
     fn continues(&self, p: Option<(u32, u32)>) -> bool {
         match p {
-            Some(_p) => (self.0 == _p.0 + 1 && self.1 == _p.1 + 1),
+            Some(_p) => self.0 == _p.0 + 1 && self.1 == _p.1 + 1,
             None => false,
         }
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Default, Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 struct Band {
     rows: usize,
     cols: usize,

@@ -26,7 +26,7 @@ fn search_index_seeds(b: &mut Bencher) {
 
         let mut loc_temp = Vec::new();
         for (offset, seed) in seeds {
-            let _interval = match fmindex.backward_search(seed.iter()) {
+            match fmindex.backward_search(seed.iter()) {
                 BackwardSearchResult::Complete(interval)
                 | BackwardSearchResult::Partial(interval, _) => {
                     loc_temp.extend((interval.lower..interval.upper).map(|i| (sa[i], offset)))
