@@ -276,6 +276,39 @@ impl<F: MatchFunc> Aligner<F> {
     pub fn graph(&self) -> &POAGraph {
         &self.poa.graph
     }
+    /// Return the consensus sequence generated from the POA graph.
+    pub fn consensus(&self) -> Vec<u8> {
+        let mut consensus: Vec<u8> = vec![];
+        let mut weight_score_next_vec: Vec<(i32, i32, usize)> = vec![(0, 0, 0); self.poa.graph.node_count() + 1];
+        let mut topo = Topo::new(&self.poa.graph);
+        // go through the nodes topologically
+        while let Some(node) = topo.next(&self.poa.graph) {
+            let mut best_weight_score_next: (i32, i32, usize) = (0, 0, usize::MAX);
+            let mut neighbour_nodes = self.poa.graph.neighbors_directed(node, Incoming);
+            // go through the incoming neighbour nodes
+            while let Some(neighbour_node) = neighbour_nodes.next() {
+                let mut edges = self.poa.graph.edges_connecting(neighbour_node, node);
+                let mut weight = 0;
+                while let Some(edge) = edges.next() {
+                    weight += edge.weight().clone();
+                }
+                // save the neighbour node with the highest score as best
+                if (weight + weight_score_next_vec[neighbour_node.index()].1) > best_weight_score_next.1 {
+                    best_weight_score_next = (weight, weight + weight_score_next_vec[neighbour_node.index()].1, neighbour_node.index());
+                }
+            }
+            weight_score_next_vec[node.index()] = best_weight_score_next;
+        }
+        // get the index of the max scored node (end of consensus)
+        let mut pos = weight_score_next_vec.iter().enumerate().max_by_key(|(_, &value)| value.1).map(|(idx, _)| idx).unwrap();
+        // go through weight_score_next_vec appending to the consensus
+        while pos != usize::MAX {
+            consensus.push(self.poa.graph.raw_nodes()[pos].weight);
+            pos = weight_score_next_vec[pos].2;
+        }
+        consensus.reverse();
+        consensus
+    }
 }
 
 /// A partially ordered alignment graph
@@ -493,40 +526,6 @@ impl<F: MatchFunc> Poa<F> {
             }
         }
     }
-    
-    /// Returns the consensus sequence generated from the POA graph
-    pub fn consensus(&self) -> Vec<u8> {
-        let mut consensus: Vec<u8> = vec![];
-        let mut weight_score_next_vec: Vec<(i32, i32, usize)> = vec![(0, 0, 0); self.graph.node_count() + 1];
-        let mut topo = Topo::new(&self.graph);
-        // go through the nodes topologically
-        while let Some(node) = topo.next(&self.graph) {
-            let mut best_weight_score_next: (i32, i32, usize) = (i32::MIN , i32::MIN, usize::MAX);
-            let mut neighbour_nodes = self.graph.neighbors_directed(node, Incoming);
-            // go through the incoming neighbour nodes
-            while let Some(neighbour_node) = neighbour_nodes.next() {
-                let mut edges = self.graph.edges_connecting(neighbour_node, node);
-                let mut weight = 0;
-                while let Some(edge) = edges.next() {
-                    weight += edge.weight().clone();
-                }
-                // save the neighbour node with the highest score as best
-                if (weight + weight_score_next_vec[neighbour_node.index()].1) > best_weight_score_next.1 {
-                    best_weight_score_next = (weight, weight + weight_score_next_vec[neighbour_node.index()].1, neighbour_node.index());
-                }
-            }
-            weight_score_next_vec[node.index()] = best_weight_score_next;
-        }
-        // get the index of the max scored node (end of consensus)
-        let mut pos = weight_score_next_vec.iter().enumerate().max_by_key(|(_, &value)| value.1).map(|(idx, _)| idx).unwrap();
-        // go through weight_score_next_vec appending to the consensus
-        while pos != usize::MAX {
-            consensus.push(self.graph.raw_nodes()[pos].weight);
-            pos = weight_score_next_vec[pos].2;
-        }
-        consensus.reverse();
-        consensus
-    }
 }
 
 #[cfg(test)]
@@ -672,5 +671,13 @@ mod tests {
         let g = aligner.graph().map(|_, n| (*n) as char, |_, e| *e);
         let dot = format!("{:?}", Dot::new(&g));
         assert_eq!(dot, "digraph {\n    0 [ label = \"'A'\" ]\n    1 [ label = \"'A'\" ]\n    2 [ label = \"'A'\" ]\n    3 [ label = \"'B'\" ]\n    4 [ label = \"'B'\" ]\n    5 [ label = \"'B'\" ]\n    6 [ label = \"'B'\" ]\n    7 [ label = \"'B'\" ]\n    0 -> 1 [ label = \"2\" ]\n    1 -> 2 [ label = \"2\" ]\n    3 -> 4 [ label = \"1\" ]\n    4 -> 5 [ label = \"1\" ]\n    5 -> 6 [ label = \"1\" ]\n    6 -> 7 [ label = \"1\" ]\n    7 -> 0 [ label = \"1\" ]\n}\n");
+    }
+    #[test]
+    fn test_consensus() {
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
+        let mut aligner = Aligner::new(scoring, b"GCATGCUx");
+        aligner.global(b"GCATGCU").add_to_graph();
+        aligner.global(b"xCATGCU").add_to_graph();
+        assert_eq!(aligner.consensus(), b"GCATGCUx");
     }
 }
