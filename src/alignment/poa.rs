@@ -279,7 +279,8 @@ impl<F: MatchFunc> Aligner<F> {
     /// Return the consensus sequence generated from the POA graph.
     pub fn consensus(&self) -> Vec<u8> {
         let mut consensus: Vec<u8> = vec![];
-        let mut weight_score_next_vec: Vec<(i32, i32, usize)> = vec![(0, 0, 0); self.poa.graph.node_count() + 1];
+        let mut weight_score_next_vec: Vec<(i32, i32, usize)> =
+            vec![(0, 0, 0); self.poa.graph.node_count() + 1];
         let mut topo = Topo::new(&self.poa.graph);
         // go through the nodes topologically
         while let Some(node) = topo.next(&self.poa.graph) {
@@ -293,7 +294,9 @@ impl<F: MatchFunc> Aligner<F> {
                     weight += edge.weight().clone();
                 }
                 // save the neighbour node with the highest score as best
-                if (weight + weight_score_next_vec[neighbour_node.index()].1) > best_weight_score_next.1 {
+                if (weight + weight_score_next_vec[neighbour_node.index()].1)
+                    > best_weight_score_next.1
+                {
                     best_weight_score_next = (
                         weight,
                         weight + weight_score_next_vec[neighbour_node.index()].1,
