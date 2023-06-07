@@ -294,13 +294,22 @@ impl<F: MatchFunc> Aligner<F> {
                 }
                 // save the neighbour node with the highest score as best
                 if (weight + weight_score_next_vec[neighbour_node.index()].1) > best_weight_score_next.1 {
-                    best_weight_score_next = (weight, weight + weight_score_next_vec[neighbour_node.index()].1, neighbour_node.index());
+                    best_weight_score_next = (
+                        weight,
+                        weight + weight_score_next_vec[neighbour_node.index()].1,
+                        neighbour_node.index(),
+                    );
                 }
             }
             weight_score_next_vec[node.index()] = best_weight_score_next;
         }
         // get the index of the max scored node (end of consensus)
-        let mut pos = weight_score_next_vec.iter().enumerate().max_by_key(|(_, &value)| value.1).map(|(idx, _)| idx).unwrap();
+        let mut pos = weight_score_next_vec
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, &value)| value.1)
+            .map(|(idx, _)| idx)
+            .unwrap();
         // go through weight_score_next_vec appending to the consensus
         while pos != usize::MAX {
             consensus.push(self.poa.graph.raw_nodes()[pos].weight);
