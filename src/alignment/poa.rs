@@ -279,8 +279,8 @@ impl<F: MatchFunc> Aligner<F> {
     /// Return the consensus sequence generated from the POA graph.
     pub fn consensus(&self) -> Vec<u8> {
         let mut consensus: Vec<u8> = vec![];
-        let mut weight_score_next_vec: Vec<(i32, i32, usize)> =
-            vec![(0, 0, 0); self.poa.graph.node_count() + 1];
+        let max_index = self.poa.graph.node_count();
+        let mut weight_score_next_vec: Vec<(i32, i32, usize)> = vec![(0, 0, 0); max_index + 1];
         let mut topo = Topo::new(&self.poa.graph);
         // go through the nodes topologically
         while let Some(node) = topo.next(&self.poa.graph) {
@@ -288,20 +288,17 @@ impl<F: MatchFunc> Aligner<F> {
             let mut neighbour_nodes = self.poa.graph.neighbors_directed(node, Incoming);
             // go through the incoming neighbour nodes
             while let Some(neighbour_node) = neighbour_nodes.next() {
-                let mut edges = self.poa.graph.edges_connecting(neighbour_node, node);
                 let mut weight = 0;
+                let neighbour_index = neighbour_node.index();
+                let neighbour_score = weight_score_next_vec[neighbour_index].1;
+                let mut edges = self.poa.graph.edges_connecting(neighbour_node, node);
                 while let Some(edge) = edges.next() {
                     weight += edge.weight().clone();
                 }
+                let current_node_score = weight + neighbour_score;
                 // save the neighbour node with the highest score as best
-                if (weight + weight_score_next_vec[neighbour_node.index()].1)
-                    > best_weight_score_next.1
-                {
-                    best_weight_score_next = (
-                        weight,
-                        weight + weight_score_next_vec[neighbour_node.index()].1,
-                        neighbour_node.index(),
-                    );
+                if current_node_score > best_weight_score_next.1 {
+                    best_weight_score_next = (weight, current_node_score, neighbour_index);
                 }
             }
             weight_score_next_vec[node.index()] = best_weight_score_next;
