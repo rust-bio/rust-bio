@@ -296,8 +296,8 @@ impl<F: MatchFunc> Aligner<F> {
                     weight += edge.weight().clone();
                 }
                 let current_node_score = weight + neighbour_score;
-                // save the neighbour node with the highest score as best
-                if current_node_score > best_weight_score_next.1 {
+                // save the neighbour node with the highest weight and score as best
+                if (weight, current_node_score, neighbour_index) > best_weight_score_next {
                     best_weight_score_next = (weight, current_node_score, neighbour_index);
                 }
             }
