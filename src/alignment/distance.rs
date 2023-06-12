@@ -1,4 +1,5 @@
 // Copyright 2015-2017 Vadim Nazarov, Johannes Köster.
+// Revisions Copyright 2020 Tianyi Shi
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -57,32 +58,41 @@ pub fn hamming(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u64 {
 /// let ldist = levenshtein(x, y); // Distance is 5
 /// assert_eq!(ldist, 5);
 /// ```
-#[allow(unused_assignments)]
 pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
-    let mut columns = [vec![0u32; alpha.len() + 1], vec![0u32; alpha.len() + 1]];
-    let mut i_prev = 0;
-    let mut i_cur = 1;
+    let (m, n) = (alpha.len(), beta.len());
+    let mut dp_matrix = vec![0u32; m + 1]; // the dynamic programming matrix (only 1 column stored)
+    let mut s_diag: u32; // dp_matrix[i - 1][j - 1]
+    let mut s_above: u32; // dp_matrix[i - 1][j]
+    let mut a: u8; // alpha[i - 1]
+    let mut b: u8; // beta[j - 1]
 
-    for i in 0..columns[0].len() {
-        columns[0][i] = i as u32;
+    // 0th column (j = 0)
+    for i in 1..=m {
+        unsafe { *dp_matrix.get_unchecked_mut(i) = i as u32 }
     }
-
-    for (j, item) in beta.iter().enumerate() {
-        i_cur %= 2;
-        i_prev = 1 - i_cur;
-
-        columns[i_cur][0] = 1 + j as u32;
-        for i in 1..columns[0].len() {
-            columns[i_cur][i] = min(
-                columns[i_prev][i - 1] + if alpha[i - 1] == *item { 0 } else { 1 },
-                min(columns[i_cur][i - 1] + 1, columns[i_prev][i] + 1),
-            );
+    // columns 1 to n
+    for j in 1..=n {
+        {
+            // handles i = 0
+            s_diag = (j - 1) as u32;
+            s_above = j as u32;
+            b = unsafe { *beta.get_unchecked(j - 1) };
         }
-
-        i_cur += 1;
+        // see discussion on PR #365 about using unsafe here
+        for i in 1..=m {
+            unsafe {
+                a = *alpha.get_unchecked(i - 1);
+                s_above = min(
+                    s_diag + if a == b { 0 } else { 1 },
+                    min(s_above + 1, dp_matrix.get_unchecked(i) + 1),
+                );
+                s_diag = *dp_matrix.get_unchecked(i);
+                *dp_matrix.get_unchecked_mut(i) = s_above;
+            }
+        }
     }
 
-    columns[i_cur - 1][columns[0].len() - 1]
+    dp_matrix[m]
 }
 
 pub mod simd {
