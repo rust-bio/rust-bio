@@ -192,7 +192,7 @@
 //!     "Best alignment at {}..{} (distance: {})",
 //!     aln.ystart, aln.yend, aln.score
 //! );
-//! println!("{}", aln.pretty(pattern, text));
+//! println!("{}", aln.pretty(pattern, text, 100));
 //! # }
 //! ```
 //!

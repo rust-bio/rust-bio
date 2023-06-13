@@ -212,7 +212,8 @@
 //!
 //! ## Example: Transcription and Translation
 //!
-//! ```rust
+//! ```ignore
+//! # TODO: Remove `ignore` once `transcribe` and `translate` are implemented.
 //! use bio::sequence::{Dna, Rna, Protein};
 //!
 //! let coding_dna = "ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG";

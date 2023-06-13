@@ -1231,7 +1231,7 @@ mod tests {
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
         let alignment = aligner.global(x, y);
 
-        println!("aln:\n{}", alignment.pretty(x, y));
+        println!("aln:\n{}", alignment.pretty(x, y, 100));
         assert_eq!(
             alignment.operations,
             [Match, Match, Match, Ins, Ins, Ins, Match, Match, Match]
@@ -1246,7 +1246,7 @@ mod tests {
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
         let alignment = aligner.global(x, y);
 
-        println!("aln:\n{}", alignment.pretty(x, y));
+        println!("aln:\n{}", alignment.pretty(x, y, 100));
 
         let mut correct = Vec::new();
         correct.extend(repeat(Match).take(11));
@@ -1290,7 +1290,7 @@ mod tests {
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, score);
         let alignment = aligner.global(x, y);
 
-        println!("\naln:\n{}", alignment.pretty(x, y));
+        println!("\naln:\n{}", alignment.pretty(x, y, 100));
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(
@@ -1409,7 +1409,7 @@ mod tests {
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
         let alignment = aligner.global(x, y);
-        println!("\naln:\n{}", alignment.pretty(x, y));
+        println!("\naln:\n{}", alignment.pretty(x, y, 100));
 
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
@@ -1433,7 +1433,7 @@ mod tests {
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
         let alignment = aligner.global(x, y);
 
-        println!("\naln:\n{}", alignment.pretty(x, y));
+        println!("\naln:\n{}", alignment.pretty(x, y, 100));
 
         println!("score:{}", alignment.score);
         assert_eq!(alignment.score, -9);
@@ -1455,7 +1455,7 @@ mod tests {
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
         let mut aligner = Aligner::with_capacity(x.len(), y.len(), -5, -1, &score);
         let alignment = aligner.global(x, y);
-        println!("\naln:\n{}", alignment.pretty(x, y));
+        println!("\naln:\n{}", alignment.pretty(x, y, 100));
 
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
@@ -1633,7 +1633,7 @@ mod tests {
         let mut aligner = Aligner::with_scoring(scoring);
         let alignment = aligner.custom(x, y);
 
-        println!("{}", alignment.pretty(x, y));
+        println!("{}", alignment.pretty(x, y, 100));
         assert_eq!(alignment.score, 7);
     }
 
