@@ -1,6 +1,6 @@
 [package]
 name = "bio"
-version = "1.2.0"
+version = "1.3.0"
 authors = ["Johannes Köster <johannes.koester@tu-dortmund.de>"]
 description = "A bioinformatics library for Rust. This library provides implementations of many algorithms and data structures that are useful for bioinformatics, but also in other fields."
 homepage = "https://rust-bio.github.io"
