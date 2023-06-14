@@ -3,6 +3,23 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [1.2.0](https://www.github.com/rust-bio/rust-bio/compare/v1.1.0...v1.2.0) (2023-06-06)
+
+
+### Features
+
+* add `pub use bio_types` to lib.rs ([#517](https://www.github.com/rust-bio/rust-bio/issues/517)) ([f1995a7](https://www.github.com/rust-bio/rust-bio/commit/f1995a7765405e4d7729c8bf0f4e96c0c66a506e)), closes [#516](https://www.github.com/rust-bio/rust-bio/issues/516)
+
+
+### Bug Fixes
+
+* edge cases on partial order alignment ([#515](https://www.github.com/rust-bio/rust-bio/issues/515)) ([0181829](https://www.github.com/rust-bio/rust-bio/commit/01818298abbfa4e8d1c298796df652bab633d917))
+
+
+### Performance Improvements
+
+* mark complement as inline ([#510](https://www.github.com/rust-bio/rust-bio/issues/510)) ([bd08234](https://www.github.com/rust-bio/rust-bio/commit/bd08234ca777c0dad8db9b0a5a16e2e4a0e9eefc))
+
 ## [1.1.0](https://www.github.com/rust-bio/rust-bio/compare/v1.0.0...v1.1.0) (2022-12-13)
 
 
