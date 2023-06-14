@@ -63,7 +63,9 @@ use crate::data_structures::suffix_array::SuffixArray;
 use std::mem::swap;
 
 /// A suffix array interval.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct Interval {
     pub lower: usize,
     pub upper: usize,
@@ -86,7 +88,7 @@ impl Interval {
 /// The interval returned is the range of suffix array indices for the maximal
 /// matching suffix, and the `usize` is the length of the maximal matching suffix.
 /// Absent - None suffix of the pattern matched in the text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum BackwardSearchResult {
     Complete(Interval),
     Partial(Interval, usize),
@@ -134,7 +136,7 @@ pub trait FMIndexable {
     /// let positions = match bsr {
     ///     BackwardSearchResult::Complete(sai) => sai.occ(&sa),
     ///     BackwardSearchResult::Partial(sai, _l) => sai.occ(&sa),
-    ///     BackwardSearchResult::Absent => Vec::<usize>::new()
+    ///     BackwardSearchResult::Absent => Vec::<usize>::new(),
     /// };
     ///
     /// assert_eq!(positions, [3, 12, 9]);
@@ -201,7 +203,9 @@ pub trait FMIndexable {
 
 /// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
 /// intervals matching a given pattern.
-#[derive(Serialize, Deserialize)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct FMIndex<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> {
     bwt: DBWT,
     less: DLess,
@@ -237,7 +241,9 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMIndex<DBWT, DL
 }
 
 /// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct BiInterval {
     lower: usize,
     lower_rev: usize,
@@ -271,7 +277,9 @@ impl BiInterval {
 
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
-#[derive(Serialize, Deserialize)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct FMDIndex<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> {
     fmindex: FMIndex<DBWT, DLess, DOcc>,
 }

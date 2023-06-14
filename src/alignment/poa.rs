@@ -53,20 +53,21 @@ pub type POAGraph = Graph<u8, i32, Directed, usize>;
 // traceback matrix. I have not yet figured out what the best level of
 // detail to store is, so Match and Del operations remember In and Out
 // nodes on the reference graph.
-#[derive(Debug, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum AlignmentOperation {
     Match(Option<(usize, usize)>),
     Del(Option<(usize, usize)>),
     Ins(Option<usize>),
 }
 
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Alignment {
     pub score: i32,
     //    xstart: Edge,
     operations: Vec<AlignmentOperation>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct TracebackCell {
     score: i32,
     op: AlignmentOperation,
@@ -94,6 +95,7 @@ impl PartialEq for TracebackCell {
 
 impl Eq for TracebackCell {}
 
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct Traceback {
     rows: usize,
     cols: usize,
@@ -193,10 +195,10 @@ impl Traceback {
         let mut i = self.last.index() + 1;
         let mut j = self.cols;
 
-        while i > 0 && j > 0 {
+        while i > 0 || j > 0 {
             // push operation and edge corresponding to (one of the) optimal
             // routes
-            ops.push(self.matrix[i][j].op.clone());
+            ops.push(self.matrix[i][j].op);
             match self.matrix[i][j].op {
                 AlignmentOperation::Match(Some((p, _))) => {
                     i = p + 1;
@@ -210,13 +212,14 @@ impl Traceback {
                     j -= 1;
                 }
                 AlignmentOperation::Match(None) => {
-                    break;
-                }
-                AlignmentOperation::Del(None) => {
+                    i -= 1;
                     j -= 1;
                 }
-                AlignmentOperation::Ins(None) => {
+                AlignmentOperation::Del(None) => {
                     i -= 1;
+                }
+                AlignmentOperation::Ins(None) => {
+                    j -= 1;
                 }
             }
         }
@@ -233,6 +236,7 @@ impl Traceback {
 /// A partially ordered aligner builder
 ///
 /// Uses consuming builder pattern for constructing partial order alignments with method chaining
+#[derive(Default, Clone, Debug)]
 pub struct Aligner<F: MatchFunc> {
     traceback: Traceback,
     query: Vec<u8>,
@@ -278,6 +282,7 @@ impl<F: MatchFunc> Aligner<F> {
 ///
 /// A directed acyclic graph datastructure that represents the topology of a
 /// traceback matrix.
+#[derive(Default, Clone, Debug)]
 pub struct Poa<F: MatchFunc> {
     scoring: Scoring<F>,
     pub graph: POAGraph,
@@ -428,11 +433,23 @@ impl<F: MatchFunc> Poa<F> {
     /// * `aln` - The alignment of the new sequence to the graph
     /// * `seq` - The sequence being incorporated
     pub fn add_alignment(&mut self, aln: &Alignment, seq: TextSlice) {
-        let mut prev: NodeIndex<usize> = NodeIndex::new(0);
+        let head = Topo::new(&self.graph).next(&self.graph).unwrap();
+        let mut prev: NodeIndex<usize> = NodeIndex::new(head.index());
         let mut i: usize = 0;
+        let mut edge_not_connected: bool = false;
         for op in aln.operations.iter() {
             match op {
                 AlignmentOperation::Match(None) => {
+                    let node: NodeIndex<usize> = NodeIndex::new(0);
+                    if (seq[i] != self.graph.raw_nodes()[head.index()].weight) && (seq[i] != b'X') {
+                        let node = self.graph.add_node(seq[i]);
+                        prev = node;
+                    }
+                    if edge_not_connected {
+                        self.graph.add_edge(prev, node, 1);
+                        prev = node;
+                        edge_not_connected = false;
+                    }
                     i += 1;
                 }
                 AlignmentOperation::Match(Some((_, p))) => {
@@ -448,8 +465,9 @@ impl<F: MatchFunc> Poa<F> {
                                 *self.graph.edge_weight_mut(edge).unwrap() += 1;
                             }
                             None => {
-                                // where the previous node was newly added
-                                self.graph.add_edge(prev, node, 1);
+                                if prev.index() != head.index() {
+                                    self.graph.add_edge(prev, node, 1);
+                                }
                             }
                         }
                         prev = NodeIndex::new(*p);
@@ -457,6 +475,12 @@ impl<F: MatchFunc> Poa<F> {
                     i += 1;
                 }
                 AlignmentOperation::Ins(None) => {
+                    let node = self.graph.add_node(seq[i]);
+                    if edge_not_connected {
+                        self.graph.add_edge(prev, node, 1);
+                    }
+                    prev = node;
+                    edge_not_connected = true;
                     i += 1;
                 }
                 AlignmentOperation::Ins(Some(_)) => {
@@ -475,6 +499,7 @@ impl<F: MatchFunc> Poa<F> {
 mod tests {
     use super::*;
     use crate::alignment::pairwise::Scoring;
+    use petgraph::dot::Dot;
     use petgraph::graph::NodeIndex;
 
     #[test]
@@ -582,5 +607,36 @@ mod tests {
             .global(b"TTGGTTTGCGAA")
             .add_to_graph();
         assert_eq!(aligner.alignment().score, 10);
+    }
+    #[test]
+    fn test_edge_cases() {
+        // case 1
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
+        let mut aligner = Aligner::new(scoring, b"BBA");
+        aligner.global(b"AAA").add_to_graph();
+        let g = aligner.graph().map(|_, n| (*n) as char, |_, e| *e);
+        let dot = format!("{:?}", Dot::new(&g));
+        assert_eq!(dot, "digraph {\n    0 [ label = \"'B'\" ]\n    1 [ label = \"'B'\" ]\n    2 [ label = \"'A'\" ]\n    3 [ label = \"'A'\" ]\n    4 [ label = \"'A'\" ]\n    0 -> 1 [ label = \"1\" ]\n    1 -> 2 [ label = \"1\" ]\n    3 -> 4 [ label = \"1\" ]\n    4 -> 2 [ label = \"1\" ]\n}\n");
+        // case 2
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
+        let mut aligner = Aligner::new(scoring, b"AAA");
+        aligner.global(b"ABA").add_to_graph();
+        let g = aligner.graph().map(|_, n| (*n) as char, |_, e| *e);
+        let dot = format!("{:?}", Dot::new(&g));
+        assert_eq!(dot, "digraph {\n    0 [ label = \"'A'\" ]\n    1 [ label = \"'A'\" ]\n    2 [ label = \"'A'\" ]\n    3 [ label = \"'B'\" ]\n    0 -> 1 [ label = \"1\" ]\n    1 -> 2 [ label = \"1\" ]\n    0 -> 3 [ label = \"1\" ]\n    3 -> 2 [ label = \"1\" ]\n}\n");
+        // case 3
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
+        let mut aligner = Aligner::new(scoring, b"BBBBBAAA");
+        aligner.global(b"AAA").add_to_graph();
+        let g = aligner.graph().map(|_, n| (*n) as char, |_, e| *e);
+        let dot = format!("{:?}", Dot::new(&g));
+        assert_eq!(dot, "digraph {\n    0 [ label = \"'B'\" ]\n    1 [ label = \"'B'\" ]\n    2 [ label = \"'B'\" ]\n    3 [ label = \"'B'\" ]\n    4 [ label = \"'B'\" ]\n    5 [ label = \"'A'\" ]\n    6 [ label = \"'A'\" ]\n    7 [ label = \"'A'\" ]\n    0 -> 1 [ label = \"1\" ]\n    1 -> 2 [ label = \"1\" ]\n    2 -> 3 [ label = \"1\" ]\n    3 -> 4 [ label = \"1\" ]\n    4 -> 5 [ label = \"1\" ]\n    5 -> 6 [ label = \"2\" ]\n    6 -> 7 [ label = \"2\" ]\n}\n");
+        // case 4
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
+        let mut aligner = Aligner::new(scoring, b"AAA");
+        aligner.global(b"BBBBBAAA").add_to_graph();
+        let g = aligner.graph().map(|_, n| (*n) as char, |_, e| *e);
+        let dot = format!("{:?}", Dot::new(&g));
+        assert_eq!(dot, "digraph {\n    0 [ label = \"'A'\" ]\n    1 [ label = \"'A'\" ]\n    2 [ label = \"'A'\" ]\n    3 [ label = \"'B'\" ]\n    4 [ label = \"'B'\" ]\n    5 [ label = \"'B'\" ]\n    6 [ label = \"'B'\" ]\n    7 [ label = \"'B'\" ]\n    0 -> 1 [ label = \"2\" ]\n    1 -> 2 [ label = \"2\" ]\n    3 -> 4 [ label = \"1\" ]\n    4 -> 5 [ label = \"1\" ]\n    5 -> 6 [ label = \"1\" ]\n    6 -> 7 [ label = \"1\" ]\n    7 -> 0 [ label = \"1\" ]\n}\n");
     }
 }

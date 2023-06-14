@@ -27,7 +27,7 @@ pub mod rna;
 pub type SymbolRanks = VecMap<u8>;
 
 /// Representation of an alphabet.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct Alphabet {
     pub symbols: BitSet,
 }
@@ -217,7 +217,7 @@ impl Alphabet {
 ///
 /// `RankTransform` can be used in to perform bit encoding for texts over a
 /// given alphabet via `bio::data_structures::bitenc`.
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct RankTransform {
     pub ranks: SymbolRanks,
 }
@@ -384,6 +384,7 @@ impl RankTransform {
 }
 
 /// Iterator over q-grams.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize)]
 pub struct QGrams<'a, C, T>
 where
     C: Borrow<u8>,

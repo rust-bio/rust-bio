@@ -83,8 +83,10 @@ use crate::stats::probs::LogProb;
 use crate::stats::Prob;
 use std::collections::HashMap;
 
-#[derive(Eq, PartialEq, Debug, Enum, Clone, Copy)]
 #[repr(usize)]
+#[derive(
+    Enum, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub enum State {
     MatchA = 0,
     MatchC = 1,
@@ -213,7 +215,7 @@ impl<H: HopParameters> BaseSpecificHopParameters for H {
 /// Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
 /// The default model has been extended to consider homopolymer errors, at the cost of more states
 /// and transitions.
-#[derive(Debug, Clone)]
+#[derive(Default, Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct HomopolyPairHMM {
     transition_probs: HashMap<usize, LogProb>,
 }
