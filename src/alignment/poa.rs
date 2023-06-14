@@ -735,7 +735,7 @@ mod tests {
     #[test]
     fn test_global_banded() {
         // need strings long enough for the band to matter
-        // create MSA with and without band and make sure they are the same 
+        // create MSA with and without band and make sure they are the same
         let s1 = b"TGGCATGCTCAAGGACCGTTGAATACTATCTTAATGGACCGCAAGCTCCCTGAAGGTGGGCCACATTCGAGGGCC\
         CGGCCTCCACCTATTCCCAACGAAACTAGCATTAACATGGACAGGGGCGCATAAAACAGAGTTTCTCCTAATCCCCTTTCCCCTG\
         GAGTGCTAGTCAGAACCGCACATGTTGACGCTTTGGTCAGGTGTAGCCGATTCACTACCCGGGGTAGTACGAGTGGTAGCACCAT\
