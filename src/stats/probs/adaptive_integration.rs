@@ -5,7 +5,7 @@
 
 use std::cmp;
 use std::collections::HashMap;
-use std::convert::Into;
+use std::convert::{Into, TryFrom};
 use std::hash::Hash;
 use std::{
     fmt::Debug,
@@ -26,12 +26,12 @@ use ordered_float::NotNan;
 /// # Example
 ///
 /// ```rust
-/// use bio::stats::probs::adaptive_integration::ln_integrate_exp;
-/// use bio::stats::probs::{Prob, LogProb};
-/// use statrs::distribution::{Normal, Continuous};
-/// use statrs::statistics::Distribution;
-/// use ordered_float::NotNan;
 /// use approx::abs_diff_eq;
+/// use bio::stats::probs::adaptive_integration::ln_integrate_exp;
+/// use bio::stats::probs::{LogProb, Prob};
+/// use ordered_float::NotNan;
+/// use statrs::distribution::{Continuous, Normal};
+/// use statrs::statistics::Distribution;
 ///
 /// let ndist = Normal::new(0.0, 1.0).unwrap();
 ///
@@ -39,11 +39,11 @@ use ordered_float::NotNan;
 ///     |x| LogProb::from(Prob(ndist.pdf(*x))),
 ///     NotNan::new(-1.0).unwrap(),
 ///     NotNan::new(1.0).unwrap(),
-///     NotNan::new(0.01).unwrap()
+///     NotNan::new(0.01).unwrap(),
 /// );
-/// abs_diff_eq!(integral.exp(), 0.682, epsilon=0.01);
+/// abs_diff_eq!(integral.exp(), 0.682, epsilon = 0.01);
 /// ```
-pub fn ln_integrate_exp<T, F>(
+pub fn ln_integrate_exp<T, F, E>(
     mut density: F,
     min_point: T,
     max_point: T,
@@ -57,10 +57,11 @@ where
         + Div<NotNan<f64>, Output = T>
         + Mul<Output = T>
         + Into<f64>
-        + From<f64>
+        + TryFrom<f64, Error = E>
         + Ord
         + Debug
         + Hash,
+    E: Debug,
     F: FnMut(T) -> LogProb,
     f64: From<T>,
 {
@@ -97,34 +98,31 @@ where
             left = middle.unwrap();
         }
     }
+    // After that loop, we are guaranteed that middle.is_some().
+    let middle = middle.unwrap();
+    let first_middle = first_middle.unwrap();
     // METHOD: add additional grid point in the initially abandoned arm
     if middle < first_middle {
-        grid_point(
-            middle_grid_point(first_middle.unwrap(), max_point),
-            &mut probs,
-        );
+        grid_point(middle_grid_point(first_middle, max_point), &mut probs);
     } else {
-        grid_point(
-            middle_grid_point(min_point, first_middle.unwrap()),
-            &mut probs,
-        );
+        grid_point(middle_grid_point(min_point, first_middle), &mut probs);
     }
     // METHOD additionally investigate small interval around the optimum
     for point in linspace(
         cmp::max(
-            middle.unwrap() - (max_resolution.into() * 3.0).into(),
+            T::try_from(middle.into() - max_resolution.into() * 3.0).unwrap(),
             min_point,
         )
         .into(),
-        middle.unwrap().into(),
+        middle.into(),
         4,
     )
     .take(3)
     .chain(
         linspace(
-            middle.unwrap().into(),
+            middle.into(),
             cmp::min(
-                middle.unwrap() + (max_resolution.into() * 3.0).into(),
+                T::try_from(middle.into() + max_resolution.into() * 3.0).unwrap(),
                 max_point,
             )
             .into(),
@@ -132,7 +130,7 @@ where
         )
         .skip(1),
     ) {
-        grid_point(point.into(), &mut probs);
+        grid_point(T::try_from(point).unwrap(), &mut probs);
     }
 
     let sorted_grid_points: Vec<f64> = probs.keys().sorted().map(|point| (*point).into()).collect();
@@ -140,7 +138,7 @@ where
     // METHOD:
     // Step 2: integrate over grid points visited during the binary search.
     LogProb::ln_trapezoidal_integrate_grid_exp::<f64, _>(
-        |_, g| *probs.get(&T::from(g)).unwrap(),
+        |_, g| *probs.get(&T::try_from(g).unwrap()).unwrap(),
         &sorted_grid_points,
     )
 }

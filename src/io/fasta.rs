@@ -151,7 +151,7 @@ pub trait FastaRead {
 }
 
 /// A FASTA reader.
-#[derive(Debug)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Reader<B> {
     reader: B,
     line: String,
@@ -345,7 +345,7 @@ where
 }
 
 /// A FASTA index as created by SAMtools (.fai).
-#[derive(Debug, Clone)]
+#[derive(Default, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Index {
     inner: Vec<IndexRecord>,
     name_to_rid: collections::HashMap<String, usize>,
@@ -712,7 +712,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 }
 
 /// Record of a FASTA index.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 struct IndexRecord {
     name: String,
     len: u64,
@@ -722,12 +722,13 @@ struct IndexRecord {
 }
 
 /// A sequence record returned by the FASTA index.
-#[derive(Debug, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Sequence {
     pub name: String,
     pub len: u64,
 }
 
+#[derive(Debug)]
 pub struct IndexedReaderIterator<'a, R: io::Read + io::Seek> {
     reader: &'a mut IndexedReader<R>,
     record: IndexRecord,
@@ -951,7 +952,7 @@ impl<W: io::Write> Writer<W> {
 }
 
 /// A FASTA record.
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Record {
     id: String,
     desc: Option<String>,
@@ -1077,6 +1078,7 @@ impl fmt::Display for Record {
 }
 
 /// An iterator over the records of a Fasta file.
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Records<B>
 where
     B: io::BufRead,

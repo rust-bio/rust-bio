@@ -54,7 +54,7 @@ pub const EPSILON: f32 = 1e-5;
 pub const INVALID_MONO: u8 = 255;
 
 /// Represents motif score & location of match
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct ScoredPos {
     pub loc: usize,
     pub sum: f32,
@@ -296,7 +296,7 @@ pub trait Motif {
         let bits = Self::get_bits();
         let scores = self.get_scores();
         let mut tot = 0.0;
-        for row in scores.genrows() {
+        for row in scores.rows() {
             tot += bits - ent(row.iter());
         }
         tot

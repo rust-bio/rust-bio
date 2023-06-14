@@ -36,7 +36,7 @@ use std::hash::BuildHasherDefault;
 pub type HashMapFx<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
 
 /// Result of a sparse alignment
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct SparseAlignmentResult {
     /// LCSk++ path, represented as vector of indices into the input matches vector.
     pub path: Vec<usize>,

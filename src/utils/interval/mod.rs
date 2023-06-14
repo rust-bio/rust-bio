@@ -30,7 +30,7 @@ pub use self::errors::{Error, Result};
 
 /// An `Interval` wraps the `std::ops::Range` from the stdlib and is defined by a start and end field
 /// where end should be >= start.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub struct Interval<N: Ord + Clone>(Range<N>);
 
 impl<N: Ord + Clone> Interval<N> {
@@ -81,6 +81,7 @@ mod tests {
 
     #[test]
     #[should_panic]
+    #[allow(clippy::reversed_empty_ranges)]
     fn negative_width_range() {
         let _ = Interval::from(10..5);
     }

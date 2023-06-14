@@ -37,8 +37,6 @@ use vec_map::VecMap;
 
 use fxhash::FxHasher;
 
-use serde::{Deserialize, Serialize};
-
 use crate::alphabets::{Alphabet, RankTransform};
 use crate::data_structures::bwt::{Less, Occ, BWT};
 use crate::data_structures::smallints::SmallInts;
@@ -122,7 +120,7 @@ pub trait SuffixArray {
 }
 
 /// A sampled suffix array.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Default, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct SampledSuffixArray<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> {
     bwt: DBWT,
     less: DLess,

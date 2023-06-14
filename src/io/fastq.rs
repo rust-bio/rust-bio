@@ -136,7 +136,7 @@ pub trait FastqRead {
 }
 
 /// A FastQ reader.
-#[derive(Debug)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Reader<B> {
     reader: B,
     line_buffer: String,
@@ -295,7 +295,7 @@ where
 }
 
 /// A FastQ record.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Record {
     id: String,
     desc: Option<String>,
@@ -487,7 +487,7 @@ impl SequenceRead for Record {
 }
 
 /// An iterator over the records of a FastQ file.
-#[derive(Debug)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Records<R: io::Read> {
     reader: Reader<R>,
 }

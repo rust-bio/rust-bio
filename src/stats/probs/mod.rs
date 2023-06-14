@@ -10,6 +10,7 @@ pub mod adaptive_integration;
 pub mod cdf;
 pub mod errors;
 
+use std::convert::TryFrom;
 use std::f64;
 use std::iter;
 use std::mem;
@@ -18,7 +19,7 @@ use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use itertools::Itertools;
 use itertools_num::linspace;
 use num_traits::{Float, Zero};
-use ordered_float::NotNan;
+use ordered_float::{FloatIsNan, NotNan};
 
 use crate::utils::FastExp;
 
@@ -66,14 +67,14 @@ custom_derive! {
         NewtypeSub(*),
         NewtypeMul(*),
         NewtypeDiv(*),
-        PartialEq,
-        PartialOrd,
+        Default,
         Copy,
         Clone,
+        PartialEq,
+        PartialOrd,
         Debug,
-        Default
     )]
-    #[derive(Serialize, Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct Prob(pub f64);
 }
 
@@ -118,13 +119,13 @@ custom_derive! {
         NewtypeDeref,
         NewtypeAdd(*),
         NewtypeSub(*),
-        PartialEq,
-        PartialOrd,
         Copy,
         Clone,
-        Debug
+        PartialEq,
+        PartialOrd,
+        Debug,
     )]
-    #[derive(Serialize, Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct LogProb(pub f64);
 }
 
@@ -150,13 +151,13 @@ custom_derive! {
         NewtypeDeref,
         NewtypeAdd(*),
         NewtypeSub(*),
-        PartialEq,
-        PartialOrd,
         Copy,
         Clone,
-        Debug
+        PartialEq,
+        PartialOrd,
+        Debug,
     )]
-    #[derive(Serialize, Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct PHREDProb(pub f64);
 }
 
@@ -377,7 +378,7 @@ impl<'a> iter::Sum<&'a LogProb> for LogProb {
     }
 }
 
-impl<'a> iter::Sum<LogProb> for LogProb {
+impl iter::Sum<LogProb> for LogProb {
     fn sum<I: Iterator<Item = LogProb>>(iter: I) -> Self {
         iter.fold(LogProb(0.0), |a, b| a + b)
     }
@@ -401,9 +402,10 @@ impl From<NotNan<f64>> for LogProb {
     }
 }
 
-impl From<LogProb> for NotNan<f64> {
-    fn from(p: LogProb) -> NotNan<f64> {
-        NotNan::from(*p)
+impl TryFrom<LogProb> for NotNan<f64> {
+    type Error = FloatIsNan;
+    fn try_from(p: LogProb) -> Result<Self, Self::Error> {
+        NotNan::new(*p)
     }
 }
 
