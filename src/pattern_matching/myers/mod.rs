@@ -122,7 +122,7 @@
 //! let mut matches = myers.find_all(text, 3);
 //! while matches.next_alignment(&mut aln) {
 //!     //println!("Hit fond in range: {}..{} (distance: {})", aln.ystart, aln.yend, aln.score);
-//!     //println!("{}", aln.pretty(pattern, text));
+//!     //println!("{}", aln.pretty(pattern, text, 80));
 //! }
 //! # }
 //! ```
@@ -192,7 +192,7 @@
 //!     "Best alignment at {}..{} (distance: {})",
 //!     aln.ystart, aln.yend, aln.score
 //! );
-//! println!("{}", aln.pretty(pattern, text, 100));
+//! println!("{}", aln.pretty(pattern, text, 80));
 //! # }
 //! ```
 //!

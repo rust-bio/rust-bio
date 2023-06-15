@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [1.3.0](https://www.github.com/rust-bio/rust-bio/compare/v1.2.0...v1.3.0) (2023-06-14)
+
+
+### Features
+
+* banded partial order alignments ([#488](https://www.github.com/rust-bio/rust-bio/issues/488)) ([2947a36](https://www.github.com/rust-bio/rust-bio/commit/2947a36cccf7b7ded69f33cb367f994d5e129ae4))
+* Consensus sequence from partial order alignment graph ([#525](https://www.github.com/rust-bio/rust-bio/issues/525)) ([640caa0](https://www.github.com/rust-bio/rust-bio/commit/640caa03c7e5e0db36c17400ff9435836c243672))
+* update to bio-types 1.0 ([#524](https://www.github.com/rust-bio/rust-bio/issues/524)) ([0ede04c](https://www.github.com/rust-bio/rust-bio/commit/0ede04c8d5843f9ca0c47ed8741e1161ea54b52a))
+
 ## [1.2.0](https://www.github.com/rust-bio/rust-bio/compare/v1.1.0...v1.2.0) (2023-06-06)
 
 
