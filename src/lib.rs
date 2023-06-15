@@ -82,13 +82,13 @@
 //!
 //! ```toml
 //! [dependencies]
-//! bio = "*"
+//! bio = "1"
 //! ```
 //!
 //! and import the crate from your source code:
 //!
 //! ```rust
-//! extern crate bio;
+//! use bio;
 //! ```
 //!
 //! ## Example: FM-index and FASTQ
