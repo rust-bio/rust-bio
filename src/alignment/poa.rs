@@ -157,8 +157,7 @@ impl Traceback {
                 score: (row as i32) * gap_open,
                 op: AlignmentOperation::Del(None),
             });
-        }
-        else {
+        } else {
             self.matrix[row].0.push(TracebackCell {
                 score: MIN_SCORE,
                 op: AlignmentOperation::Match(None),
@@ -220,8 +219,8 @@ impl Traceback {
         while i > 0 || j > 0 {
             // push operation and edge corresponding to (one of the) optimal
             // routes
-            ops.push(self.get(i,j).op.clone());
-            match self.get(i,j).op {
+            ops.push(self.get(i, j).op.clone());
+            match self.get(i, j).op {
                 AlignmentOperation::Match(Some((p, _))) => {
                     i = p + 1;
                     j -= 1;
