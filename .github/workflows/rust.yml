@@ -131,7 +131,7 @@ jobs:
           use-tool-cache: true
 
       - name: Coverage with tarpaulin
-        run: cargo tarpaulin --workspace --all-features --timeout 600 --out Lcov -- --test-threads 1
+        run: cargo tarpaulin --workspace --all-features --run-types Tests,Doctests --timeout 600 --out Lcov -- --test-threads 1
 
       - name: Upload coverage
         uses: coverallsapp/github-action@master
