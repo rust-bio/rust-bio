@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+### [1.3.1](https://www.github.com/rust-bio/rust-bio/compare/v1.3.0...v1.3.1) (2023-06-23)
+
+
+### Performance Improvements
+
+* improve alignment::distance::levenshtein and alignment::distance::bounded_levenshtein on strrings where distance is small ([#522](https://www.github.com/rust-bio/rust-bio/issues/522)) ([da7daea](https://www.github.com/rust-bio/rust-bio/commit/da7daea749bd2bbbaf892fff6f2740529ca45140))
+
 ## [1.3.0](https://www.github.com/rust-bio/rust-bio/compare/v1.2.0...v1.3.0) (2023-06-14)
 
 
