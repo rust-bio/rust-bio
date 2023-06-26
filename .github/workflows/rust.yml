@@ -116,6 +116,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+        with:
+          submodules: recursive
 
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
@@ -123,18 +125,18 @@ jobs:
           toolchain: nightly
           override: true
 
-      - name: Install cargo-tarpaulin
-        uses: actions-rs/install@v0.1
-        with:
-          crate: cargo-tarpaulin
-          version: latest
-          use-tool-cache: true
+      - uses: Swatinem/rust-cache@v1.3.0
 
-      - name: Coverage with tarpaulin
-        run: cargo tarpaulin --workspace --all-features --run-types Tests,Doctests --timeout 600 --out Lcov -- --test-threads 1
+      - name: Install and run cargo-tarpaulin
+        uses: actions-rs/tarpaulin@v0.1
+        with:
+          # TODO: update to latest tarpaulin once artefact download is fixed: https://github.com/actions-rs/tarpaulin/pull/23
+          version: "0.22.0"
+          use-tool-cache: true
+          args: "--workspace --all-features --run-types Tests,Doctests --timeout 600 --out Lcov -- --test-threads 1"
 
       - name: Upload coverage
-        uses: coverallsapp/github-action@master
+        uses: coverallsapp/github-action@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: ./lcov.info
