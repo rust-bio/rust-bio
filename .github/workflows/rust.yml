@@ -136,7 +136,6 @@ jobs:
         with:
           # TODO: update to latest tarpaulin once artefact download is fixed: https://github.com/actions-rs/tarpaulin/pull/23
           version: "0.22.0"
-          use-tool-cache: true
           args: "--all-features --run-types Tests,Doctests --out Lcov -- --test-threads 1"
 
       - name: Upload coverage
