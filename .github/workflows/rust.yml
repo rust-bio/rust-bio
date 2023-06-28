@@ -125,10 +125,6 @@ jobs:
           toolchain: nightly
           override: true
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
-
       - name: Install and run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
