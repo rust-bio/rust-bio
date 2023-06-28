@@ -129,8 +129,6 @@ jobs:
         run: |
           sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
 
-      - uses: Swatinem/rust-cache@v2.5.0
-
       - name: Install and run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
