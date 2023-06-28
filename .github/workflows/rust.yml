@@ -111,7 +111,7 @@ jobs:
           args: --all --no-fail-fast
 
   Coverage:
-    needs: Formatting
+    needs: Testing
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -130,7 +130,7 @@ jobs:
         with:
           # TODO: update to latest tarpaulin once artefact download is fixed: https://github.com/actions-rs/tarpaulin/pull/23
           version: "0.22.0"
-          args: "--workspace --all-features --run-types Tests,Doctests --out Lcov --timeout 900"
+          args: "--workspace --all-features --run-types Tests,Doctests --out Lcov --timeout 1800"
 
       - name: Upload coverage
         uses: coverallsapp/github-action@v1
