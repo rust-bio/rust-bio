@@ -130,7 +130,7 @@ jobs:
         with:
           # TODO: update to latest tarpaulin once artefact download is fixed: https://github.com/actions-rs/tarpaulin/pull/23
           version: "0.22.0"
-          args: "--workspace --all-features --run-types Tests,Doctests --out Lcov --timeout 600 -- --test-threads 1"
+          args: "--workspace --all-features --run-types Tests,Doctests --out Lcov --timeout 900"
 
       - name: Upload coverage
         uses: coverallsapp/github-action@v1
