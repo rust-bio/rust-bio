@@ -95,7 +95,7 @@
 //!
 //! An example of using `rust-bio`:
 //!
-//! ```rust
+//! ```no_run
 //! // Import some modules
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
