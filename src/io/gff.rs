@@ -11,7 +11,7 @@
 //!
 //! # Example
 //!
-//! ```
+//! ```no_run
 //! // import functions (at top of script)
 //! use bio::io::gff;
 //! use std::io;
