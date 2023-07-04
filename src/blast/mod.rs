@@ -4,7 +4,7 @@ use crate::utils::Text;
 //use crate::alphabets;
 
 
-pub use self::blast_req::blast_req;
+pub use self::blast_req::blastn_req;
 
 pub mod blast_req;
 /* ! # Example
