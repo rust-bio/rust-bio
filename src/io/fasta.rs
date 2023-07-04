@@ -138,7 +138,7 @@ use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 
-use crate::utils::{Text, TextSlice};
+use crate::utils::{Text, TextSlice, expand_path};
 use anyhow::Context;
 use std::fmt;
 
@@ -160,6 +160,7 @@ pub struct Reader<B> {
 impl Reader<io::BufReader<fs::File>> {
     /// Read FASTA from given file path.
     pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
+        let path = expand_path(path.as_ref());
         fs::File::open(&path)
             .map(Reader::new)
             .with_context(|| format!("Failed to read fasta from {:#?}", path))
@@ -170,6 +171,7 @@ impl Reader<io::BufReader<fs::File>> {
         capacity: usize,
         path: P,
     ) -> anyhow::Result<Self> {
+        let path = expand_path(path.as_ref());
         fs::File::open(&path)
             .map(|file| Reader::with_capacity(capacity, file))
             .with_context(|| format!("Failed to read fasta from {:#?}", path))

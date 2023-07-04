@@ -14,6 +14,9 @@ pub use self::text::{trim_newline, Text, TextSlice};
 mod interval;
 pub use self::interval::Interval;
 
+mod io;
+pub use self::io::{expand_path};
+
 /// In place implementation of scan over a slice.
 pub fn scan<T: Copy, F: Fn(T, T) -> T>(a: &mut [T], op: F) {
     let mut s = a[0];
