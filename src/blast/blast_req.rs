@@ -1,7 +1,7 @@
 use std::error::Error;
 use crate::utils::Text;
-use reqwest::{self, StatusCode};
-use serde_json::{Value};
+use reqwest::{self};
+use serde_json::Value;
 use std::fmt;
 
 #[derive(Debug)]
@@ -71,9 +71,7 @@ pub async fn send_http_req(dna_fasta : String) -> Result<String,Box<dyn Error>> 
         ("RID",rid)
     ];
     let mut status = String::from("WAITI");
-    let mut search_resp = client_ncbi.get(URL_NCBI)
-        .query(&params_result).send().await
-        .or(Err(Box::new(MyError("No response was recieved from client with the ID".into()))))?;
+    let mut search_resp : reqwest::Response;
 
     while status != "READY"{
         search_resp = client_ncbi.get(URL_NCBI)
@@ -120,7 +118,7 @@ pub async fn send_http_req(dna_fasta : String) -> Result<String,Box<dyn Error>> 
 }
 
 ///Get a json alike format from a json text
-fn read_json(raw_json : &str) -> Value {
+fn _read_json(raw_json : &str) -> Value {
     let parsed: Value = serde_json::from_str(raw_json).unwrap();
     parsed
 }
@@ -159,7 +157,6 @@ mod tests {
     use crate::blast::Text;
 
     use super::{create_fasta_from_dna, blastn_req};
-    use super::*;
 
     #[test]
     fn print_html_response() {
