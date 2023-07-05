@@ -1,7 +1,5 @@
-//use bio_types::genome::Length;
 use crate::utils::Text;
 //use vec;
-//use crate::alphabets;
 
 
 pub use self::blast_req::blastn_req;
@@ -103,6 +101,7 @@ pub fn traduction(rna_str : Text) -> Text{
     protein_str
 }
 
+///Transformation from uniletter format to three letter format of a protein strand in Text vector
 pub fn protein_to_three(protein_str : Text) -> Vec<String>{
     let mut three_prot : Vec<String> = vec![];
     for i in protein_str {
@@ -134,6 +133,15 @@ pub fn protein_to_three(protein_str : Text) -> Vec<String>{
     three_prot
 }
 
+
+///Converts a normal string, like FASTA format without the first line, to the Text vector format
+pub fn raw_strand_to_textformat(strand : String) -> Text {
+    let mut vec_strand : Text = vec![];
+    for i in strand.into_bytes() {
+        vec_strand.push(i);
+    }
+    vec_strand
+}
 
 
 #[cfg(test)]
@@ -176,5 +184,13 @@ mod tests {
         let prot_ex : Text = vec![b'F',b'T'];
         let prot_result = protein_to_three(prot_ex);
         assert_eq!(prot_result,vec!["Phe".to_string(),"Thr".to_string()]);
+    }
+
+    #[test]
+    fn string_to_textformat(){
+        let str_initial = String::from("ATGCCGGTTAGCAACGT");
+        let str_result = raw_strand_to_textformat(str_initial);
+        let str_expect : Text = vec![b'A',b'T',b'G',b'C',b'C',b'G',b'G',b'T',b'T',b'A',b'G',b'C',b'A',b'A',b'C',b'G',b'T'];
+        assert_eq!(str_expect,str_result);
     }
 }
