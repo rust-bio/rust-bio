@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 bio = {path = ".."}
-itertools = "0.8"
+itertools = ">=0.8, <0.12"
 
 [dependencies.libfuzzer-sys]
 git = "https://github.com/rust-fuzz/libfuzzer-sys.git"

@@ -81,6 +81,7 @@ mod tests {
 
     #[test]
     #[should_panic]
+    #[allow(clippy::reversed_empty_ranges)]
     fn negative_width_range() {
         let _ = Interval::from(10..5);
     }

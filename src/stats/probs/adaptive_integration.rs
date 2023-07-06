@@ -26,12 +26,12 @@ use ordered_float::NotNan;
 /// # Example
 ///
 /// ```rust
-/// use bio::stats::probs::adaptive_integration::ln_integrate_exp;
-/// use bio::stats::probs::{Prob, LogProb};
-/// use statrs::distribution::{Normal, Continuous};
-/// use statrs::statistics::Distribution;
-/// use ordered_float::NotNan;
 /// use approx::abs_diff_eq;
+/// use bio::stats::probs::adaptive_integration::ln_integrate_exp;
+/// use bio::stats::probs::{LogProb, Prob};
+/// use ordered_float::NotNan;
+/// use statrs::distribution::{Continuous, Normal};
+/// use statrs::statistics::Distribution;
 ///
 /// let ndist = Normal::new(0.0, 1.0).unwrap();
 ///
@@ -39,9 +39,9 @@ use ordered_float::NotNan;
 ///     |x| LogProb::from(Prob(ndist.pdf(*x))),
 ///     NotNan::new(-1.0).unwrap(),
 ///     NotNan::new(1.0).unwrap(),
-///     NotNan::new(0.01).unwrap()
+///     NotNan::new(0.01).unwrap(),
 /// );
-/// abs_diff_eq!(integral.exp(), 0.682, epsilon=0.01);
+/// abs_diff_eq!(integral.exp(), 0.682, epsilon = 0.01);
 /// ```
 pub fn ln_integrate_exp<T, F, E>(
     mut density: F,

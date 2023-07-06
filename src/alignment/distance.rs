@@ -6,8 +6,6 @@
 //! Various subroutines for computing a distance between sequences. Features
 //! both scalar and efficient vectorized distance functions with SIMD.
 
-use std::cmp::min;
-
 use crate::utils::TextSlice;
 
 /// Compute the Hamming distance between two strings. Complexity: O(n).
@@ -59,30 +57,7 @@ pub fn hamming(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u64 {
 /// ```
 #[allow(unused_assignments)]
 pub fn levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>) -> u32 {
-    let mut columns = [vec![0u32; alpha.len() + 1], vec![0u32; alpha.len() + 1]];
-    let mut i_prev = 0;
-    let mut i_cur = 1;
-
-    for i in 0..columns[0].len() {
-        columns[0][i] = i as u32;
-    }
-
-    for (j, item) in beta.iter().enumerate() {
-        i_cur %= 2;
-        i_prev = 1 - i_cur;
-
-        columns[i_cur][0] = 1 + j as u32;
-        for i in 1..columns[0].len() {
-            columns[i_cur][i] = min(
-                columns[i_prev][i - 1] + if alpha[i - 1] == *item { 0 } else { 1 },
-                min(columns[i_cur][i - 1] + 1, columns[i_prev][i] + 1),
-            );
-        }
-
-        i_cur += 1;
-    }
-
-    columns[i_cur - 1][columns[0].len() - 1]
+    editdistancek::edit_distance(alpha, beta) as u32
 }
 
 pub mod simd {
@@ -106,6 +81,7 @@ pub mod simd {
     //! smaller vectors.
 
     use crate::utils::TextSlice;
+    use std::cmp::{max, min};
 
     /// SIMD-accelerated Hamming distance between two strings. Complexity: O(n / w), for
     /// SIMD vectors of length w (usually w = 16 or w = 32).
@@ -187,7 +163,15 @@ pub mod simd {
     /// assert_eq!(ldist, None);
     /// ```
     pub fn bounded_levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>, k: u32) -> Option<u32> {
-        triple_accel::levenshtein::levenshtein_simd_k(alpha, beta, k)
+        if let Some(x) = editdistancek::edit_distance_bounded(
+            alpha,
+            beta,
+            min(k as usize, max(alpha.len(), beta.len())),
+        ) {
+            Some(x as u32)
+        } else {
+            None
+        }
     }
 }
 

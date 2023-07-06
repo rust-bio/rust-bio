@@ -3,6 +3,39 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+### [1.3.1](https://www.github.com/rust-bio/rust-bio/compare/v1.3.0...v1.3.1) (2023-06-23)
+
+
+### Performance Improvements
+
+* improve alignment::distance::levenshtein and alignment::distance::bounded_levenshtein on strrings where distance is small ([#522](https://www.github.com/rust-bio/rust-bio/issues/522)) ([da7daea](https://www.github.com/rust-bio/rust-bio/commit/da7daea749bd2bbbaf892fff6f2740529ca45140))
+
+## [1.3.0](https://www.github.com/rust-bio/rust-bio/compare/v1.2.0...v1.3.0) (2023-06-14)
+
+
+### Features
+
+* banded partial order alignments ([#488](https://www.github.com/rust-bio/rust-bio/issues/488)) ([2947a36](https://www.github.com/rust-bio/rust-bio/commit/2947a36cccf7b7ded69f33cb367f994d5e129ae4))
+* Consensus sequence from partial order alignment graph ([#525](https://www.github.com/rust-bio/rust-bio/issues/525)) ([640caa0](https://www.github.com/rust-bio/rust-bio/commit/640caa03c7e5e0db36c17400ff9435836c243672))
+* update to bio-types 1.0 ([#524](https://www.github.com/rust-bio/rust-bio/issues/524)) ([0ede04c](https://www.github.com/rust-bio/rust-bio/commit/0ede04c8d5843f9ca0c47ed8741e1161ea54b52a))
+
+## [1.2.0](https://www.github.com/rust-bio/rust-bio/compare/v1.1.0...v1.2.0) (2023-06-06)
+
+
+### Features
+
+* add `pub use bio_types` to lib.rs ([#517](https://www.github.com/rust-bio/rust-bio/issues/517)) ([f1995a7](https://www.github.com/rust-bio/rust-bio/commit/f1995a7765405e4d7729c8bf0f4e96c0c66a506e)), closes [#516](https://www.github.com/rust-bio/rust-bio/issues/516)
+
+
+### Bug Fixes
+
+* edge cases on partial order alignment ([#515](https://www.github.com/rust-bio/rust-bio/issues/515)) ([0181829](https://www.github.com/rust-bio/rust-bio/commit/01818298abbfa4e8d1c298796df652bab633d917))
+
+
+### Performance Improvements
+
+* mark complement as inline ([#510](https://www.github.com/rust-bio/rust-bio/issues/510)) ([bd08234](https://www.github.com/rust-bio/rust-bio/commit/bd08234ca777c0dad8db9b0a5a16e2e4a0e9eefc))
+
 ## [1.1.0](https://www.github.com/rust-bio/rust-bio/compare/v1.0.0...v1.1.0) (2022-12-13)
 
 

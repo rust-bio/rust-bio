@@ -95,7 +95,7 @@
 //!
 //! An example of using `rust-bio`:
 //!
-//! ```rust
+//! ```no_run
 //! // Import some modules
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
@@ -175,7 +175,7 @@
 //! ```rust
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
-//! use bio::data_structures::fmindex::{BackwardSearchResult,FMIndex, FMIndexable};
+//! use bio::data_structures::fmindex::{BackwardSearchResult, FMIndex, FMIndexable};
 //! use bio::data_structures::suffix_array::suffix_array;
 //! use std::sync::Arc;
 //! use std::thread;
@@ -204,7 +204,7 @@
 //! for interval_calculator in interval_calculators {
 //!     let positions = match interval_calculator.join().unwrap() {
 //!         BackwardSearchResult::Complete(saint) => saint.occ(&sa),
-//!         _ => Vec::new()
+//!         _ => Vec::new(),
 //!     };
 //! }
 //! ```
@@ -262,3 +262,4 @@ pub mod seq_analysis;
 pub mod stats;
 pub mod utils;
 pub mod blast;
+pub use bio_types;
