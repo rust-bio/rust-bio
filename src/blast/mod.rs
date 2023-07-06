@@ -1,21 +1,24 @@
+
+//! Blastn search from NCBI with data formating related
+//! 
+//! Transformation and transcription from dna and rna strand, between other formating data functions
+//! ```
+//! use bio::blast;
+//! let dna_string = vec![b'C',b'T',b'A'];
+//! let rna_string = blast::transcription(dna_string);
+//! assert!(rna_string == vec![b'C',b'U',b'A']);
+  
+//! let prot_string = blast::traduction(rna_string);
+//! assert!(prot_string == vec![b'L']);
+//! ```
+
 use crate::utils::Text;
 //use vec;
-
 
 pub use self::blast_req::blastn_req;
 
 pub mod blast_req;
-/* ! # Example
- ```
- use bio::blast;
- let dna_string = vec![b'C',b'T',b'A'];
- let rna_string = blast::transcription(dna_string);
- assert!(rna_string == vec![b'C',b'U',b'A']);
-  
- let prot_string = blast::traduction(rna_string);
- assert!(prot_string == vec![b'L']);
- ```
- */
+
 
 /// Transcription of a dna (Text :type) into the rna version
 pub fn transcription(dna_str : Text) -> Text {
