@@ -354,8 +354,8 @@ impl RankTransform {
     /// let dna_alphabet = alphabets::Alphabet::new(b"ACGTacgt");
     /// let dna_ranks = alphabets::RankTransform::new(&dna_alphabet);
     ///
-    /// let q_grams: Vec<usize> = dna_ranks.qgrams(2, b"ACGT").collect();
-    /// assert_eq!(q_grams, vec![1, 10, 19]);
+    /// let q_grams: Vec<usize> = dna_ranks.rev_qgrams(2, b"ACGT").collect();
+    /// assert_eq!(q_grams, vec![19, 10, 1]);
     /// ```
     pub fn rev_qgrams<C, IT, T>(&self, q: u32, text: IT) -> RevQGrams<'_, C, T>
     where
