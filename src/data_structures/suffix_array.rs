@@ -282,6 +282,36 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
     sais.pos
 }
 
+/// Construct suffix array for given text from integer alphabet.
+/// Complexity: O(n).
+/// # Arguments
+///
+/// * `text` - the text, ended by sentinel symbol (being lexicographically smallest).
+/// All symbols, from lexicographically smallest to largest, need to be present in the text,
+/// otherwise SAIS algorithm panics on 'index out of bounds' error.
+/// The text may also contain multiple sentinel symbols, used to concatenate
+/// multiple sequences without mixing their suffixes together.
+///
+/// # Example
+///
+/// ```
+/// use bio::data_structures::suffix_array::suffix_array_int;
+/// let text: Vec<usize> = vec![3, 2, 2, 4, 4, 1, 2, 1, 0];
+/// let sa = suffix_array_int(&text);
+/// assert_eq!(
+///     sa,
+///     vec![8, 7, 5, 6, 1, 2, 0, 4, 3]
+/// );
+/// ```
+pub fn suffix_array_int<T>(text: &[T]) -> RawSuffixArray
+where
+    T: Integer + Unsigned + NumCast + Copy + Debug,
+{
+    let mut sais = Sais::new(text.len());
+    sais.construct(&text);
+    sais.pos
+}
+
 /// Construct lcp array for given text and suffix array of length n.
 /// Complexity: O(n).
 ///
@@ -843,9 +873,7 @@ mod tests {
         let mut test_cases = vec![(&b"A$C$G$T$"[..], "simple"),
              (&b"A$A$T$T$"[..], "duplicates"),
              (&b"AA$GA$CA$TA$TC$TG$GT$GC$"[..], "two letter"),
-             (&b"AGCCAT$\
-                CAGCC$"[..],
-                "substring"),
+             (&b"AGCCAT$CAGCC$"[..], "substring"),
              (&b"GTAGGCCTAATTATAATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAA$\
                 AATCAGCGGACATTTCGTATTGCTCGGGCTGCCAGGATTTTAGCATCAGTAGCCGGGTAATGGAACCTCAAGAGGTCAGCGTCGAATGGCTATTCCAATA$"[..],
                 "complex"),
@@ -939,5 +967,12 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn can_construct_sa_for_usize() {
+        let text: Vec<usize> = vec![3, 2, 2, 4, 4, 1, 2, 1, 0];
+        let sa = suffix_array_int(&text);
+        assert_eq!(sa, vec![8, 7, 5, 6, 1, 2, 0, 4, 3]);
     }
 }
