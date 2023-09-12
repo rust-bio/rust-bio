@@ -82,13 +82,13 @@
 //!
 //! ```toml
 //! [dependencies]
-//! bio = "*"
+//! bio = "1"
 //! ```
 //!
-//! and import the crate from your source code:
+//! Now Rust-Bio modules can be used directly in your source code, for example:
 //!
 //! ```rust
-//! extern crate bio;
+//! use bio::io::fastq;
 //! ```
 //!
 //! ## Example: FM-index and FASTQ
