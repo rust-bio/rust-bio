@@ -187,6 +187,22 @@ impl Traceback {
         println!();
     }
 
+    pub fn as_string(&self, g: &Graph<u8, i32, Directed, usize>, query: TextSlice) -> String {
+        let (m, n) = (g.node_count(), query.len());
+        let mut to_return = "".to_string();
+        to_return.push_str(".\t");
+        for base in query.iter().take(n) {
+            to_return.push_str(&format!("{:?}\t", *base));
+        }
+        for i in 0..m {
+            to_return.push_str(&format!("\n{:?}\t", g.raw_nodes()[i].weight));
+            for j in 0..n {
+                to_return.push_str(&format!("{}.\t", self.get(i + 1, j + 1).score));
+            }
+        }
+        to_return
+    }
+
     pub fn alignment(&self) -> Alignment {
         // optimal AlignmentOperation path
         let mut ops: Vec<AlignmentOperation> = vec![];
@@ -272,9 +288,59 @@ impl<F: MatchFunc> Aligner<F> {
         self
     }
 
+    /// Globally align a given query against the graph with a band around the previous
+    /// optimal score for speed.
+    pub fn global_banded(&mut self, query: TextSlice, bandwidth: usize) -> &mut Self {
+        self.query = query.to_vec();
+        self.traceback = self.poa.global_banded(query, bandwidth);
+        self
+    }
+
     /// Return alignment graph.
     pub fn graph(&self) -> &POAGraph {
         &self.poa.graph
+    }
+    /// Return the consensus sequence generated from the POA graph.
+    pub fn consensus(&self) -> Vec<u8> {
+        let mut consensus: Vec<u8> = vec![];
+        let max_index = self.poa.graph.node_count();
+        let mut weight_score_next_vec: Vec<(i32, i32, usize)> = vec![(0, 0, 0); max_index + 1];
+        let mut topo = Topo::new(&self.poa.graph);
+        // go through the nodes topologically
+        while let Some(node) = topo.next(&self.poa.graph) {
+            let mut best_weight_score_next: (i32, i32, usize) = (0, 0, usize::MAX);
+            let mut neighbour_nodes = self.poa.graph.neighbors_directed(node, Incoming);
+            // go through the incoming neighbour nodes
+            while let Some(neighbour_node) = neighbour_nodes.next() {
+                let mut weight = 0;
+                let neighbour_index = neighbour_node.index();
+                let neighbour_score = weight_score_next_vec[neighbour_index].1;
+                let mut edges = self.poa.graph.edges_connecting(neighbour_node, node);
+                while let Some(edge) = edges.next() {
+                    weight += edge.weight().clone();
+                }
+                let current_node_score = weight + neighbour_score;
+                // save the neighbour node with the highest weight and score as best
+                if (weight, current_node_score, neighbour_index) > best_weight_score_next {
+                    best_weight_score_next = (weight, current_node_score, neighbour_index);
+                }
+            }
+            weight_score_next_vec[node.index()] = best_weight_score_next;
+        }
+        // get the index of the max scored node (end of consensus)
+        let mut pos = weight_score_next_vec
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, &value)| value.1)
+            .map(|(idx, _)| idx)
+            .unwrap();
+        // go through weight_score_next_vec appending to the consensus
+        while pos != usize::MAX {
+            consensus.push(self.poa.graph.raw_nodes()[pos].weight);
+            pos = weight_score_next_vec[pos].2;
+        }
+        consensus.reverse();
+        consensus
     }
 }
 
@@ -345,18 +411,19 @@ impl<F: MatchFunc> Poa<F> {
         while let Some(node) = topo.next(&self.graph) {
             // reference base and index
             let r = self.graph.raw_nodes()[node.index()].weight; // reference base at previous index
-            let i = node.index() + 1;
+            let i = node.index() + 1; // 0 index is for initialization so we start at 1
             traceback.last = node;
             // iterate over the predecessors of this node
             let prevs: Vec<NodeIndex<usize>> =
                 self.graph.neighbors_directed(node, Incoming).collect();
             // query base and its index in the DAG (traceback matrix rows)
-            for (j_p, q) in query.iter().enumerate() {
-                let j = j_p + 1;
-                // match and deletion scores for the first reference base
+            for (query_index, query_base) in query.iter().enumerate() {
+                let j = query_index + 1; // 0 index is initialized so we start at 1
+                                         // match and deletion scores for the first reference base
                 let max_cell = if prevs.is_empty() {
                     TracebackCell {
-                        score: traceback.get(0, j - 1).score + self.scoring.match_fn.score(r, *q),
+                        score: traceback.get(0, j - 1).score
+                            + self.scoring.match_fn.score(r, *query_base),
                         op: AlignmentOperation::Match(None),
                     }
                 } else {
@@ -371,7 +438,7 @@ impl<F: MatchFunc> Poa<F> {
                             max(
                                 TracebackCell {
                                     score: traceback.get(i_p, j - 1).score
-                                        + self.scoring.match_fn.score(r, *q),
+                                        + self.scoring.match_fn.score(r, *query_base),
                                     op: AlignmentOperation::Match(Some((i_p - 1, i - 1))),
                                 },
                                 TracebackCell {
@@ -391,6 +458,104 @@ impl<F: MatchFunc> Poa<F> {
                         op: AlignmentOperation::Ins(Some(i - 1)),
                     },
                 );
+                traceback.set(i, j, score);
+            }
+        }
+
+        traceback
+    }
+
+    /// A global Needleman-Wunsch aligner on partially ordered graphs with banding.
+    ///
+    /// # Arguments
+    /// * `query` - the query TextSlice to align against the internal graph member
+    /// * `bandwidth` - width of band, if too small, alignment may be suboptimal
+    pub fn global_banded(&self, query: TextSlice, bandwidth: usize) -> Traceback {
+        assert!(self.graph.node_count() != 0);
+
+        // dimensions of the traceback matrix
+        let (m, n) = (self.graph.node_count(), query.len());
+        let mut traceback = Traceback::with_capacity(m, n);
+        traceback.initialize_scores(self.scoring.gap_open);
+
+        traceback.set(
+            0,
+            0,
+            TracebackCell {
+                score: 0,
+                op: AlignmentOperation::Match(None),
+            },
+        );
+
+        // construct the score matrix (O(n^2) space)
+        // but this sucks, we want linear time!!!
+        // at each row i we want to find the max scoring j
+        // and band
+        let mut topo = Topo::new(&self.graph);
+        while let Some(node) = topo.next(&self.graph) {
+            // reference base and index
+            let r = self.graph.raw_nodes()[node.index()].weight; // reference base at previous index
+            let i = node.index() + 1; // 0 index is for initialization so we start at 1
+            traceback.last = node;
+            // iterate over the predecessors of this node
+            let prevs: Vec<NodeIndex<usize>> =
+                self.graph.neighbors_directed(node, Incoming).collect();
+            // query base and its index in the DAG (traceback matrix rows)
+            let mut max_scoring_j = 0;
+            let mut max_score_for_row = MIN_SCORE;
+            let skip = if bandwidth > max_scoring_j {
+                0
+            } else {
+                max_scoring_j - bandwidth
+            };
+            for (query_index, query_base) in query.iter().enumerate().skip(skip) {
+                let j = query_index + 1; // 0 index is initialized so we start at 1
+                                         // match and deletion scores for the first reference base
+                if j > max_scoring_j + bandwidth {
+                    break;
+                }
+                let max_cell = if prevs.is_empty() {
+                    TracebackCell {
+                        score: traceback.get(0, j - 1).score
+                            + self.scoring.match_fn.score(r, *query_base),
+                        op: AlignmentOperation::Match(None),
+                    }
+                } else {
+                    let mut max_cell = TracebackCell {
+                        score: MIN_SCORE,
+                        op: AlignmentOperation::Match(None),
+                    };
+                    for prev_node in &prevs {
+                        let i_p: usize = prev_node.index() + 1; // index of previous node
+                        max_cell = max(
+                            max_cell,
+                            max(
+                                TracebackCell {
+                                    score: traceback.get(i_p, j - 1).score
+                                        + self.scoring.match_fn.score(r, *query_base),
+                                    op: AlignmentOperation::Match(Some((i_p - 1, i - 1))),
+                                },
+                                TracebackCell {
+                                    score: traceback.get(i_p, j).score + self.scoring.gap_open,
+                                    op: AlignmentOperation::Del(Some((i_p - 1, i))),
+                                },
+                            ),
+                        );
+                    }
+                    max_cell
+                };
+
+                let score = max(
+                    max_cell,
+                    TracebackCell {
+                        score: traceback.get(i, j - 1).score + self.scoring.gap_open,
+                        op: AlignmentOperation::Ins(Some(i - 1)),
+                    },
+                );
+                if score.score > max_score_for_row {
+                    max_scoring_j = j;
+                    max_score_for_row = score.score;
+                }
                 traceback.set(i, j, score);
             }
         }
@@ -608,6 +773,62 @@ mod tests {
             .add_to_graph();
         assert_eq!(aligner.alignment().score, 10);
     }
+
+    #[test]
+    fn test_global_banded() {
+        // need strings long enough for the band to matter
+        // create MSA with and without band and make sure they are the same
+        let s1 = b"TGGCATGCTCAAGGACCGTTGAATACTATCTTAATGGACCGCAAGCTCCCTGAAGGTGGGCCACATTCGAGGGCC\
+        CGGCCTCCACCTATTCCCAACGAAACTAGCATTAACATGGACAGGGGCGCATAAAACAGAGTTTCTCCTAATCCCCTTTCCCCTG\
+        GAGTGCTAGTCAGAACCGCACATGTTGACGCTTTGGTCAGGTGTAGCCGATTCACTACCCGGGGTAGTACGAGTGGTAGCACCAT\
+        GGTTAGCTTCTCCGGGATGTTCCGCGAAGAGAGCGGAGCGGGCGTGCACAAGCTCGGACAACCCTAGTGTGCATCAAATGCCATA\
+        TGTTCTGCTTTGTCTGTGACTCACGCCCACGTTTGACATCACTCTTACTATCCAACGGGCCAAGCTTAGGAGGGGCGGACCTATT\
+        GAACCATTAGAGGGGATCCTTCTGAAGTTAAGGCACAGCGTTGAGGGGCTATAGTCGATCCTCTTAGTAAATATAATGGACAGGT\
+        CTTTACGACACAGTATGAATTAGTCCAATGGAGCCATTGTAATCGATGAAACTGTTATATCTGTTGGCCTAGTCGCAACGGTCTA\
+        CATCGCTAGCGTAACGGTTAAGACCTCTTCCACGAGTGGGACACTCATAAAGCTCGCGGCCCTTACGATCTAGGGGAGCGCACTC\
+        CGTAGTCAATCACGGCCAGCCGGTGTGCGCTAAGTTACGAAACAGTCACGAGCGATGAACCGTATGAAGAATGGACCCTTCTAAG\
+        ATGTGAACACCTAGATGAGCAGCAAGACAATTGCTCTCGCCGACTCGTTCGAAAGTGTACCTCGAGAGCACAACACGCATTACCC\
+        AGGTGACCGTGTATTGACTGCCCGTTACTCAGAAACCTTACAGTATTAATCGCCTAGTCTGTATAGTATTCATTCTGCCCGTGAC
+        ATGCGGGAAGCCTGCTGAGATTGGCAGCGTCTTTGGAGGGTTACCAAGCGAGGACACGGGCAAATTGAGGTGT";
+        let s2 = b"TGGCTACATGCTCAAGCATCGTTGAAGCTCATCTTAATGGACCGCAACGGCCGCCTGAAGGTGGGACACGTGACG\
+        GGCGGGGGCCCGGCCTTAACCCATTCTCAAGCAACTAGCATACTGGACAGCGGCGCATATACAGAGAATCGCCTAAACCCACTTT\
+        TGCCCTGAGTGCTAGTCAGTCCCCCACATCTGACACTTCGGTGGCGCACGTTTAGCAGCTTACACTACCCGGGGCAGTACGAGTG\
+        CTAGCACGGTAGCCTCCGGAGGGCTGCGAGGAATAGAACGGAGAGGGCGTCCTCAAGCCGGACAACCCTAGTGTGCATCAAATGA\
+        TGCCTGCTGATTTTCTGTGCATTTCACGCCCAATTCACAATCACTCCTACTATCCAACGGGCAAGCATAAGGGAGGGGGGGAGTA\
+        CGTCTATTGCACCATTAGAGGGGTACTTCGAATTCGTTGAACTGAGATAGAGTCGATCCTCTTTGTATATAAACGCAGGTACTTT\
+        GCTATAAGGTGAATTATTCAAATGGAGCCATTGTAATCGATGACAATGTTATACCTTTAGGCCTAGATCAACGGTCTCCATCGCA\
+        AGCGTAACGATTATGACCCAACGAGTGGACACTCATAGAGCGGCCCTTACGAGCTAGGCGAGCGCAATCCGTGTGAATCACAGCC\
+        AGACGGGATGTTGCGTTAAGCTACGAAACATCACGCGGTGAGCGTATGAATAATGGACCCGTCAAAATGTGGGCAGCGAGCAGCA\
+        GGACAATTGCTCGGGTCCGGTAGCGACTCGTTCGAAACTGTAAACGTCGAGGCACAACACGCATTAGCCAGGTGAACATGTATTG\
+        ACCGCCCCGTAGATACCTTACAGTATTAATCGCCTAGTCTGTATGATCTTCGTTCTGCCTGTGAACATGAGGGAAGCCTGCTTGA\
+        GTTTGGCAGCGTCTTTGGGGTTTCCAAGCGAGCGACACGGGCAAATTGAGGTGT";
+        let s3 = b"TGGCATGCTCAAGGAGTGCTGAAGCTCATTTTAATGGACCGCAACGGCCGCCTGAAGGTGGGGCACGTGACGGGC\
+        GAGGGCCCGGCCTTAACCCATTCTCAAGAAACTCGTATACTGGACAGCGGCGCATATAGAGAGATTCTCCTAAACCCTCTTTTGC\
+        CCTGACATGTGCTAGTCAGTCGCCCACATCTGAACACTTCGGCAGCGCACGTCTAGCAGCTTACACTACCGGGCGGGGCAGGTAC\
+        GAGTGCTAGCACGGTAGCCTCTCCCGGAGTGCTGGGAATAGAAGGGAGAGGGCGTCCTCATGCCGGCGACCCTAGTGTGCATCAA\
+        ATGAGATGCCTGCTGTGATTTTCACATTCACAATCACTCTTACCATCCCAACGGGACAAGCATAAGGGAGGGGGGGAGCTATTGA\
+        ACCAAGAGGGGTCCTCCGGAATTCGTTGAGCTGCGATAGAGTCGATCCTCTTTGTATATAAACGCAGGTACTTTGCGATTAGGTG\
+        AAGTATTCAAATGGAGCCATTGTAATCGATGACAATGTGATGCCTTTAGGCCTAGATCACGGTCTACATCGCGTAAGCGTAACGA\
+        TTATGACCCAACGAGAGGCACACTCATAAAGCGCGGCCCTTACTAGCTAGGCGAGCTTAGCAATCCGTGCAATCACACCCAGACG\
+        GGTTGAGCTAAGCTACGGAACACCACGCGATGAGCCGTATGAAGAATGGACCCGTCGAAAATGTGGACAGCGAGCATCAGGACAA\
+        TTGCTCGGGTCCGCGACTCGTGCGGAACTGTAAACGTCGAGGCACAACACGATTAGCCAGGTGAACATGTAGACCGCCCCGTAGA\
+        TATTTTACAGTATTAATCGCCTAGTCTGTATAGGATCTTCGTTCTGCCTGTGAACATGCGGGAAGCCTGCTTGAGATTGGCAGCG\
+        TCTTTGGGCAAGCGAGGACACGGGCAAATCGAGGTGG";
+        let scoring = Scoring::from_scores(-2, -2, 2, -4);
+        let mut aligner_banded = Aligner::new(scoring, s1);
+        aligner_banded.global_banded(s2, 20).add_to_graph();
+        aligner_banded.global_banded(s3, 20).add_to_graph();
+        let scoring = Scoring::from_scores(-2, -2, 2, -4);
+        let mut aligner_unbanded = Aligner::new(scoring, s1);
+        aligner_unbanded.global(s2).add_to_graph();
+        aligner_unbanded.global(s3).add_to_graph();
+        let alignment_banded = aligner_banded.alignment();
+        let alignment_unbanded = aligner_unbanded.alignment();
+        for (i, operation) in alignment_banded.operations.iter().enumerate() {
+            assert_eq!(*operation, alignment_unbanded.operations[i]);
+        }
+    }
+
     #[test]
     fn test_edge_cases() {
         // case 1
@@ -638,5 +859,13 @@ mod tests {
         let g = aligner.graph().map(|_, n| (*n) as char, |_, e| *e);
         let dot = format!("{:?}", Dot::new(&g));
         assert_eq!(dot, "digraph {\n    0 [ label = \"'A'\" ]\n    1 [ label = \"'A'\" ]\n    2 [ label = \"'A'\" ]\n    3 [ label = \"'B'\" ]\n    4 [ label = \"'B'\" ]\n    5 [ label = \"'B'\" ]\n    6 [ label = \"'B'\" ]\n    7 [ label = \"'B'\" ]\n    0 -> 1 [ label = \"2\" ]\n    1 -> 2 [ label = \"2\" ]\n    3 -> 4 [ label = \"1\" ]\n    4 -> 5 [ label = \"1\" ]\n    5 -> 6 [ label = \"1\" ]\n    6 -> 7 [ label = \"1\" ]\n    7 -> 0 [ label = \"1\" ]\n}\n");
+    }
+    #[test]
+    fn test_consensus() {
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
+        let mut aligner = Aligner::new(scoring, b"GCATGCUx");
+        aligner.global(b"GCATGCU").add_to_graph();
+        aligner.global(b"xCATGCU").add_to_graph();
+        assert_eq!(aligner.consensus(), b"GCATGCUx");
     }
 }
