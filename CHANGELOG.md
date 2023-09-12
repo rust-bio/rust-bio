@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [1.4.0](https://www.github.com/rust-bio/rust-bio/compare/v1.3.1...v1.4.0) (2023-09-12)
+
+
+### Features
+
+* memory efficient banded poa ([#532](https://www.github.com/rust-bio/rust-bio/issues/532)) ([f03ee1c](https://www.github.com/rust-bio/rust-bio/commit/f03ee1cdf6d4a9b36f125bd72fcf5b6191324f0b))
+
+
+### Bug Fixes
+
+* include `doctests` in the test coverage of code that tarpaulin calculates ([#533](https://www.github.com/rust-bio/rust-bio/issues/533)) ([29cf0f5](https://www.github.com/rust-bio/rust-bio/commit/29cf0f59daf9377e218b62b118f209afe5fe3615))
+* make dependabot commit message follow conventional commits ([#542](https://www.github.com/rust-bio/rust-bio/issues/542)) ([bb88281](https://www.github.com/rust-bio/rust-bio/commit/bb882814395a172de48f670cd316429ea2e50864))
+
 ### [1.3.1](https://www.github.com/rust-bio/rust-bio/compare/v1.3.0...v1.3.1) (2023-06-23)
 
 
