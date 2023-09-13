@@ -173,7 +173,7 @@ impl Traceback {
 
     fn set(&mut self, i: usize, j: usize, cell: TracebackCell) {
         // set the matrix cell if in band range
-        if !(self.matrix[i].1 > j || self.matrix[i].2 < j) {
+        if !(self.matrix[i].1 >= j || self.matrix[i].2 < j) {
             let real_position = j - self.matrix[i].1;
             self.matrix[i].0[real_position] = cell;
         }
@@ -181,7 +181,7 @@ impl Traceback {
 
     fn get(&self, i: usize, j: usize) -> &TracebackCell {
         // get the matrix cell if in band range else return the appropriate values
-        if !(self.matrix[i].1 > j || self.matrix[i].2 < j) {
+        if !(self.matrix[i].1 >= j || self.matrix[i].2 < j) {
             let real_position = j - self.matrix[i].1;
             return &self.matrix[i].0[real_position];
         }
