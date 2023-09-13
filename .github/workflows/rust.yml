@@ -100,10 +100,6 @@ jobs:
       - name: check if README matches MSRV defined here
         run: grep $MSRV_VERSION README.md
 
-      - name: pin dependency versions for MSRV
-        run: |
-          cargo update -p indexmap --precise 1.8.2
-
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
