@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master]
 
+
+env:
+  MSRV_VERSION: 1.64.0
+
 jobs:
   Formatting:
     runs-on: ubuntu-latest
@@ -85,8 +89,6 @@ jobs:
   MSRV:
     needs: Formatting
     runs-on: ubuntu-latest
-    env:
-      MSRV_VERSION: 1.64.0
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -115,10 +117,10 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install nightly toolchain
+      - name: Install MSRV toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: ${{ env.MSRV_VERSION }}
           override: true
 
       - name: Install and run cargo-tarpaulin
