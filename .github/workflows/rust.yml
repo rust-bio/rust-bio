@@ -86,7 +86,7 @@ jobs:
     needs: Formatting
     runs-on: ubuntu-latest
     env:
-      MSRV_VERSION: 1.62.0
+      MSRV_VERSION: 1.64.0
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -99,10 +99,6 @@ jobs:
 
       - name: check if README matches MSRV defined here
         run: grep $MSRV_VERSION README.md
-
-      - name: pin dependency versions for MSRV
-        run: |
-          cargo update -p indexmap --precise 1.8.2
 
       - name: Run tests
         uses: actions-rs/cargo@v1
