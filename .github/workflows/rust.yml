@@ -86,7 +86,7 @@ jobs:
     needs: Formatting
     runs-on: ubuntu-latest
     env:
-      MSRV_VERSION: 1.62.0
+      MSRV_VERSION: 1.65.0
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -100,40 +100,39 @@ jobs:
       - name: check if README matches MSRV defined here
         run: grep $MSRV_VERSION README.md
 
-      - name: pin dependency versions for MSRV
-        run: |
-          cargo update -p indexmap --precise 1.8.2
-
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: --all --no-fail-fast
 
-  Coverage:
-    needs: Formatting
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          submodules: recursive
+  # TODO re-enable coverage estimation once we have removed the simd-dependency which is incompatible
+  # with nightly. We need to wait for the stdlib simd implementation to stabilize, see
+  # https://github.com/rust-lang/rust/issues/86656
+  # Coverage:
+  #   needs: Formatting
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v2
+  #       with:
+  #         submodules: recursive
 
-      - name: Install nightly toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
+  #     - name: Install nightly toolchain
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: nightly
+  #         override: true
 
-      - name: Install and run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
-        with:
-          # TODO: update to latest tarpaulin once artefact download is fixed: https://github.com/actions-rs/tarpaulin/pull/23
-          version: "0.22.0"
-          args: "--workspace --all-features --run-types Tests,Doctests --out Lcov --timeout 300"
+  #     - name: Install and run cargo-tarpaulin
+  #       uses: actions-rs/tarpaulin@v0.1
+  #       with:
+  #         # TODO: update to latest tarpaulin once artefact download is fixed: https://github.com/actions-rs/tarpaulin/pull/23
+  #         version: "0.22.0"
+  #         args: "--workspace --all-features --run-types Tests,Doctests --out Lcov --timeout 300"
 
-      - name: Upload coverage
-        uses: coverallsapp/github-action@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: ./lcov.info
+  #     - name: Upload coverage
+  #       uses: coverallsapp/github-action@v1
+  #       with:
+  #         github-token: ${{ secrets.GITHUB_TOKEN }}
+  #         path-to-lcov: ./lcov.info
