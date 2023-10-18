@@ -103,7 +103,7 @@ pub struct Traceback {
     // store the last visited node in topological order so that
     // we can index into the end of the alignment when we backtrack
     last: NodeIndex<usize>,
-    matrix: Vec<Vec<TracebackCell>>,
+    matrix: Vec<(Vec<TracebackCell>, usize, usize)>,
 }
 
 impl Traceback {
@@ -114,16 +114,8 @@ impl Traceback {
     /// * `m` - the number of nodes in the DAG
     /// * `n` - the length of the query sequence
     fn with_capacity(m: usize, n: usize) -> Self {
-        let matrix = vec![
-            vec![
-                TracebackCell {
-                    score: 0,
-                    op: AlignmentOperation::Match(None)
-                };
-                n + 1
-            ];
-            m + 1
-        ];
+        // each row of matrix contain start end position and vec of traceback cells
+        let matrix: Vec<(Vec<TracebackCell>, usize, usize)> = vec![(vec![], 0, n); m + 1];
         Traceback {
             rows: m,
             cols: n,
@@ -132,27 +124,18 @@ impl Traceback {
         }
     }
 
-    /// Populate the edges of the traceback matrix
+    /// Populate the first row of the traceback matrix
     fn initialize_scores(&mut self, gap_open: i32) {
-        for (i, row) in self
-            .matrix
-            .iter_mut()
-            .enumerate()
-            .take(self.rows + 1)
-            .skip(1)
-        {
-            // TODO: these should be -1 * distance from head node
-            row[0] = TracebackCell {
-                score: (i as i32) * gap_open, // gap_open penalty
-                op: AlignmentOperation::Del(None),
-            };
-        }
-        for j in 1..=self.cols {
-            self.matrix[0][j] = TracebackCell {
+        for j in 0..=self.cols {
+            self.matrix[0].0.push(TracebackCell {
                 score: (j as i32) * gap_open,
                 op: AlignmentOperation::Ins(None),
-            };
+            });
         }
+        self.matrix[0].0[0] = TracebackCell {
+            score: 0,
+            op: AlignmentOperation::Match(None),
+        };
     }
 
     fn new() -> Self {
@@ -164,43 +147,65 @@ impl Traceback {
         }
     }
 
+    // create a new row according to the parameters
+    fn new_row(&mut self, row: usize, size: usize, gap_open: i32, start: usize, end: usize) {
+        self.matrix[row].1 = start;
+        self.matrix[row].2 = end;
+        // when the row starts from the edge
+        if start == 0 {
+            self.matrix[row].0.push(TracebackCell {
+                score: (row as i32) * gap_open,
+                op: AlignmentOperation::Del(None),
+            });
+        } else {
+            self.matrix[row].0.push(TracebackCell {
+                score: MIN_SCORE,
+                op: AlignmentOperation::Match(None),
+            });
+        }
+        for _ in 1..=size {
+            self.matrix[row].0.push(TracebackCell {
+                score: MIN_SCORE,
+                op: AlignmentOperation::Match(None),
+            });
+        }
+    }
+
     fn set(&mut self, i: usize, j: usize, cell: TracebackCell) {
-        self.matrix[i][j] = cell;
+        // set the matrix cell if in band range
+        if !(self.matrix[i].1 > j || self.matrix[i].2 < j) {
+            let real_position = j - self.matrix[i].1;
+            self.matrix[i].0[real_position] = cell;
+        }
     }
 
     fn get(&self, i: usize, j: usize) -> &TracebackCell {
-        &self.matrix[i][j]
-    }
-
-    pub fn print(&self, g: &Graph<u8, i32, Directed, usize>, query: TextSlice) {
-        let (m, n) = (g.node_count(), query.len());
-        print!(".\t");
-        for base in query.iter().take(n) {
-            print!("{:?}\t", *base);
+        // get the matrix cell if in band range else return the appropriate values
+        if !(self.matrix[i].1 > j || self.matrix[i].2 < j) {
+            let real_position = j - self.matrix[i].1;
+            return &self.matrix[i].0[real_position];
         }
-        for i in 0..m {
-            print!("\n{:?}\t", g.raw_nodes()[i].weight);
-            for j in 0..n {
-                print!("{}.\t", self.get(i + 1, j + 1).score);
-            }
+        // behind the band, met the edge
+        else if j == 0 {
+            return &TracebackCell {
+                score: MIN_SCORE,
+                op: AlignmentOperation::Del(None),
+            };
         }
-        println!();
-    }
-
-    pub fn as_string(&self, g: &Graph<u8, i32, Directed, usize>, query: TextSlice) -> String {
-        let (m, n) = (g.node_count(), query.len());
-        let mut to_return = "".to_string();
-        to_return.push_str(".\t");
-        for base in query.iter().take(n) {
-            to_return.push_str(&format!("{:?}\t", *base));
+        // infront of the band
+        else if j > self.matrix[i].2 {
+            return &TracebackCell {
+                score: MIN_SCORE,
+                op: AlignmentOperation::Ins(None),
+            };
         }
-        for i in 0..m {
-            to_return.push_str(&format!("\n{:?}\t", g.raw_nodes()[i].weight));
-            for j in 0..n {
-                to_return.push_str(&format!("{}.\t", self.get(i + 1, j + 1).score));
-            }
+        // behind the band
+        else {
+            return &TracebackCell {
+                score: MIN_SCORE,
+                op: AlignmentOperation::Match(None),
+            };
         }
-        to_return
     }
 
     pub fn alignment(&self) -> Alignment {
@@ -214,8 +219,8 @@ impl Traceback {
         while i > 0 || j > 0 {
             // push operation and edge corresponding to (one of the) optimal
             // routes
-            ops.push(self.matrix[i][j].op);
-            match self.matrix[i][j].op {
+            ops.push(self.get(i, j).op.clone());
+            match self.get(i, j).op {
                 AlignmentOperation::Match(Some((p, _))) => {
                     i = p + 1;
                     j -= 1;
@@ -243,7 +248,7 @@ impl Traceback {
         ops.reverse();
 
         Alignment {
-            score: self.matrix[self.last.index() + 1][self.cols].score,
+            score: self.get(self.last.index() + 1, self.cols).score,
             operations: ops,
         }
     }
@@ -397,15 +402,6 @@ impl<F: MatchFunc> Poa<F> {
         let mut traceback = Traceback::with_capacity(m, n);
         traceback.initialize_scores(self.scoring.gap_open);
 
-        traceback.set(
-            0,
-            0,
-            TracebackCell {
-                score: 0,
-                op: AlignmentOperation::Match(None),
-            },
-        );
-
         // construct the score matrix (O(n^2) space)
         let mut topo = Topo::new(&self.graph);
         while let Some(node) = topo.next(&self.graph) {
@@ -416,6 +412,7 @@ impl<F: MatchFunc> Poa<F> {
             // iterate over the predecessors of this node
             let prevs: Vec<NodeIndex<usize>> =
                 self.graph.neighbors_directed(node, Incoming).collect();
+            traceback.new_row(i, n + 1, self.scoring.gap_open, 0, n);
             // query base and its index in the DAG (traceback matrix rows)
             for (query_index, query_base) in query.iter().enumerate() {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
@@ -491,6 +488,8 @@ impl<F: MatchFunc> Poa<F> {
         // but this sucks, we want linear time!!!
         // at each row i we want to find the max scoring j
         // and band
+        let mut max_scoring_j = 0;
+        let mut max_score_for_row = MIN_SCORE;
         let mut topo = Topo::new(&self.graph);
         while let Some(node) = topo.next(&self.graph) {
             // reference base and index
@@ -500,18 +499,16 @@ impl<F: MatchFunc> Poa<F> {
             // iterate over the predecessors of this node
             let prevs: Vec<NodeIndex<usize>> =
                 self.graph.neighbors_directed(node, Incoming).collect();
-            // query base and its index in the DAG (traceback matrix rows)
-            let mut max_scoring_j = 0;
-            let mut max_score_for_row = MIN_SCORE;
-            let skip = if bandwidth > max_scoring_j {
+            let start = if bandwidth > max_scoring_j {
                 0
             } else {
                 max_scoring_j - bandwidth
             };
-            for (query_index, query_base) in query.iter().enumerate().skip(skip) {
+            let end = max_scoring_j + bandwidth;
+            traceback.new_row(i, (end - start) + 1, self.scoring.gap_open, start, end);
+            for (query_index, query_base) in query.iter().enumerate().skip(start) {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
-                                         // match and deletion scores for the first reference base
-                if j > max_scoring_j + bandwidth {
+                if j > end {
                     break;
                 }
                 let max_cell = if prevs.is_empty() {
@@ -816,8 +813,8 @@ mod tests {
         TCTTTGGGCAAGCGAGGACACGGGCAAATCGAGGTGG";
         let scoring = Scoring::from_scores(-2, -2, 2, -4);
         let mut aligner_banded = Aligner::new(scoring, s1);
-        aligner_banded.global_banded(s2, 20).add_to_graph();
-        aligner_banded.global_banded(s3, 20).add_to_graph();
+        aligner_banded.global_banded(s2, 25).add_to_graph();
+        aligner_banded.global_banded(s3, 25).add_to_graph();
         let scoring = Scoring::from_scores(-2, -2, 2, -4);
         let mut aligner_unbanded = Aligner::new(scoring, s1);
         aligner_unbanded.global(s2).add_to_graph();
@@ -837,28 +834,42 @@ mod tests {
         aligner.global(b"AAA").add_to_graph();
         let g = aligner.graph().map(|_, n| (*n) as char, |_, e| *e);
         let dot = format!("{:?}", Dot::new(&g));
-        assert_eq!(dot, "digraph {\n    0 [ label = \"'B'\" ]\n    1 [ label = \"'B'\" ]\n    2 [ label = \"'A'\" ]\n    3 [ label = \"'A'\" ]\n    4 [ label = \"'A'\" ]\n    0 -> 1 [ label = \"1\" ]\n    1 -> 2 [ label = \"1\" ]\n    3 -> 4 [ label = \"1\" ]\n    4 -> 2 [ label = \"1\" ]\n}\n");
+        let output = "digraph {\n    0 [ label = \"'B'\" ]\n    1 [ label = \"'B'\" ]\n    2 [ label = \"'A'\" ]\
+        \n    3 [ label = \"'A'\" ]\n    4 [ label = \"'A'\" ]\n    0 -> 1 [ label = \"1\" ]\n    1 -> 2 [ label = \"1\" ]\
+        \n    3 -> 4 [ label = \"1\" ]\n    4 -> 2 [ label = \"1\" ]\n}\n".to_string();
+        assert_eq!(dot, output);
         // case 2
         let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
         let mut aligner = Aligner::new(scoring, b"AAA");
         aligner.global(b"ABA").add_to_graph();
         let g = aligner.graph().map(|_, n| (*n) as char, |_, e| *e);
         let dot = format!("{:?}", Dot::new(&g));
-        assert_eq!(dot, "digraph {\n    0 [ label = \"'A'\" ]\n    1 [ label = \"'A'\" ]\n    2 [ label = \"'A'\" ]\n    3 [ label = \"'B'\" ]\n    0 -> 1 [ label = \"1\" ]\n    1 -> 2 [ label = \"1\" ]\n    0 -> 3 [ label = \"1\" ]\n    3 -> 2 [ label = \"1\" ]\n}\n");
+        let output = "digraph {\n    0 [ label = \"'A'\" ]\n    1 [ label = \"'A'\" ]\n    2 [ label = \"'A'\" ]\
+        \n    3 [ label = \"'B'\" ]\n    0 -> 1 [ label = \"1\" ]\n    1 -> 2 [ label = \"1\" ]\n    0 -> 3 [ label = \"1\" ]\
+        \n    3 -> 2 [ label = \"1\" ]\n}\n".to_string();
+        assert_eq!(dot, output);
         // case 3
         let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
         let mut aligner = Aligner::new(scoring, b"BBBBBAAA");
         aligner.global(b"AAA").add_to_graph();
         let g = aligner.graph().map(|_, n| (*n) as char, |_, e| *e);
         let dot = format!("{:?}", Dot::new(&g));
-        assert_eq!(dot, "digraph {\n    0 [ label = \"'B'\" ]\n    1 [ label = \"'B'\" ]\n    2 [ label = \"'B'\" ]\n    3 [ label = \"'B'\" ]\n    4 [ label = \"'B'\" ]\n    5 [ label = \"'A'\" ]\n    6 [ label = \"'A'\" ]\n    7 [ label = \"'A'\" ]\n    0 -> 1 [ label = \"1\" ]\n    1 -> 2 [ label = \"1\" ]\n    2 -> 3 [ label = \"1\" ]\n    3 -> 4 [ label = \"1\" ]\n    4 -> 5 [ label = \"1\" ]\n    5 -> 6 [ label = \"2\" ]\n    6 -> 7 [ label = \"2\" ]\n}\n");
+        let output = "digraph {\n    0 [ label = \"'B'\" ]\n    1 [ label = \"'B'\" ]\n    2 [ label = \"'B'\" ]\
+        \n    3 [ label = \"'B'\" ]\n    4 [ label = \"'B'\" ]\n    5 [ label = \"'A'\" ]\n    6 [ label = \"'A'\" ]\
+        \n    7 [ label = \"'A'\" ]\n    0 -> 1 [ label = \"1\" ]\n    1 -> 2 [ label = \"1\" ]\n    2 -> 3 [ label = \"1\" ]\
+        \n    3 -> 4 [ label = \"1\" ]\n    4 -> 5 [ label = \"1\" ]\n    5 -> 6 [ label = \"2\" ]\n    6 -> 7 [ label = \"2\" ]\n}\n".to_string();
+        assert_eq!(dot, output);
         // case 4
         let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
         let mut aligner = Aligner::new(scoring, b"AAA");
         aligner.global(b"BBBBBAAA").add_to_graph();
         let g = aligner.graph().map(|_, n| (*n) as char, |_, e| *e);
         let dot = format!("{:?}", Dot::new(&g));
-        assert_eq!(dot, "digraph {\n    0 [ label = \"'A'\" ]\n    1 [ label = \"'A'\" ]\n    2 [ label = \"'A'\" ]\n    3 [ label = \"'B'\" ]\n    4 [ label = \"'B'\" ]\n    5 [ label = \"'B'\" ]\n    6 [ label = \"'B'\" ]\n    7 [ label = \"'B'\" ]\n    0 -> 1 [ label = \"2\" ]\n    1 -> 2 [ label = \"2\" ]\n    3 -> 4 [ label = \"1\" ]\n    4 -> 5 [ label = \"1\" ]\n    5 -> 6 [ label = \"1\" ]\n    6 -> 7 [ label = \"1\" ]\n    7 -> 0 [ label = \"1\" ]\n}\n");
+        let output = "digraph {\n    0 [ label = \"'A'\" ]\n    1 [ label = \"'A'\" ]\n    2 [ label = \"'A'\" ]\
+        \n    3 [ label = \"'B'\" ]\n    4 [ label = \"'B'\" ]\n    5 [ label = \"'B'\" ]\n    6 [ label = \"'B'\" ]\
+        \n    7 [ label = \"'B'\" ]\n    0 -> 1 [ label = \"2\" ]\n    1 -> 2 [ label = \"2\" ]\n    3 -> 4 [ label = \"1\" ]\
+        \n    4 -> 5 [ label = \"1\" ]\n    5 -> 6 [ label = \"1\" ]\n    6 -> 7 [ label = \"1\" ]\n    7 -> 0 [ label = \"1\" ]\n}\n".to_string();
+        assert_eq!(dot, output);
     }
     #[test]
     fn test_consensus() {
