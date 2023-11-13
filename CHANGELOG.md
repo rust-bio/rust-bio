@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+### [1.4.1](https://www.github.com/rust-bio/rust-bio/compare/v1.4.0...v1.4.1) (2023-11-13)
+
+
+### Bug Fixes
+
+* minimum ndarray version is 0.15 ([#558](https://www.github.com/rust-bio/rust-bio/issues/558)) ([2e3aff0](https://www.github.com/rust-bio/rust-bio/commit/2e3aff0b58a4b3b3d758b50174e387fa03cffbb1))
+
 ## [1.4.0](https://www.github.com/rust-bio/rust-bio/compare/v1.3.1...v1.4.0) (2023-09-12)
 
 
