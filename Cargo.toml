@@ -11,6 +11,9 @@ license = "MIT"
 edition = "2018"
 include = ["src/**/*", "LICENSE.md", "README.md", "CHANGELOG.md", "build.rs"]
 
+[lib]
+crate-type = ["cdylib"]
+
 [package.metadata.release]
 pre-release-commit-message = "release version {{version}}"
 tag-message = "Version {{version}} of Rust-Bio."
