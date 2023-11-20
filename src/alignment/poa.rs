@@ -193,7 +193,7 @@ impl Traceback {
             };
         }
         // infront of the band
-        else if j > self.matrix[i].2 {
+        else if j >= self.matrix[i].2 {
             return &TracebackCell {
                 score: MIN_SCORE,
                 op: AlignmentOperation::Ins(None),
