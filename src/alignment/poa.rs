@@ -115,7 +115,7 @@ impl Traceback {
     /// * `n` - the length of the query sequence
     fn with_capacity(m: usize, n: usize) -> Self {
         // each row of matrix contain start end position and vec of traceback cells
-        let matrix: Vec<(Vec<TracebackCell>, usize, usize)> = vec![(vec![], 0, n); m + 1];
+        let matrix: Vec<(Vec<TracebackCell>, usize, usize)> = vec![(vec![], 0, n + 1); m + 1];
         Traceback {
             rows: m,
             cols: n,
@@ -181,7 +181,7 @@ impl Traceback {
 
     fn get(&self, i: usize, j: usize) -> &TracebackCell {
         // get the matrix cell if in band range else return the appropriate values
-        if !(self.matrix[i].1 > j || self.matrix[i].2 <= j) {
+        if !(self.matrix[i].1 > j || self.matrix[i].2 <= j) && (self.matrix[i].0.len() > 0) {
             let real_position = j - self.matrix[i].1;
             return &self.matrix[i].0[real_position];
         }
@@ -412,7 +412,7 @@ impl<F: MatchFunc> Poa<F> {
             // iterate over the predecessors of this node
             let prevs: Vec<NodeIndex<usize>> =
                 self.graph.neighbors_directed(node, Incoming).collect();
-            traceback.new_row(i, n + 1, self.scoring.gap_open, 0, n);
+            traceback.new_row(i, n + 1, self.scoring.gap_open, 0, n + 1);
             // query base and its index in the DAG (traceback matrix rows)
             for (query_index, query_base) in query.iter().enumerate() {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
@@ -505,7 +505,7 @@ impl<F: MatchFunc> Poa<F> {
                 max_scoring_j - bandwidth
             };
             let end = max_scoring_j + bandwidth;
-            traceback.new_row(i, (end - start) + 1, self.scoring.gap_open, start, end);
+            traceback.new_row(i, (end - start) + 1, self.scoring.gap_open, start, end + 1);
             for (query_index, query_base) in query.iter().enumerate().skip(start) {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
                 if j > end {
