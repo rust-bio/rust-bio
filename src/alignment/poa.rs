@@ -67,6 +67,93 @@ pub struct Alignment {
     operations: Vec<AlignmentOperation>,
 }
 
+impl Alignment {
+    /// Return the pretty formatted poa alignment as a String. The string
+    /// contains sets of (number of queries + 1) lines of length (ncol). First line is for the
+    /// consensus sequence, rest are for the queries. A '-' in the sequence
+    /// indicates a blank (insertion/deletion).
+    /// 
+    /// # Example
+    ///
+    /// If we align the strings,
+    /// "ACCCCCTTTTTCCGG"
+    /// "ACTTCCCTTTTTCCGG"
+    /// "ACCGCCTTTTTCCGG"
+    /// "ACCCCCTGTTTCAAGG"
+    /// we will get the following output:
+    ///
+    /// ```c
+    ///cons:   ACC---CCCTT-TTTCC--GG
+    ///seq1:   ACC---CCCTT-TTTCC--GG
+    ///seq2:   AC--TTCCCTT-TTTCC--GG
+    ///seq3:   ACCG--CC-TT-TTTCC--GG
+    ///seq4:   ACC---CCCT-GTTTC-AAGG
+    /// ```
+    ///
+    pub fn pretty(&self, consensus: TextSlice, sequences: Vec<TextSlice>, graph: &POAGraph, ncol: usize) -> String {
+        // initialize required variables
+        let mut seq_indices: Vec<usize> = vec![0; sequences.len()];
+        let mut seq_pretty: Vec<Vec<u8>> = vec![vec![]; sequences.len()];
+        let mut con_index: usize = 0;
+        let mut con_pretty: Vec<u8> = vec![];
+        let mut topo = Topo::new(graph);
+        // go through the nodes topologically
+        while let Some(node) = topo.next(graph) {
+            let topo_base = graph.raw_nodes()[node.index()].weight;
+            let mut all_null = true;
+            // go through the sequences checking if bases match with the current node base
+            for current_seq in 0..sequences.len() {
+                if seq_indices[current_seq] >= sequences[current_seq].len() {
+                    seq_pretty[current_seq].push('-' as u8);
+                }
+                else if sequences[current_seq][seq_indices[current_seq]] == topo_base {
+                    seq_pretty[current_seq].push(topo_base);
+                    seq_indices[current_seq] += 1;
+                    all_null = false;
+                }
+                else {
+                    seq_pretty[current_seq].push('-' as u8);
+                }
+            }
+            // do the same for the consensus
+            if con_index >= consensus.len() {
+                con_pretty.push('-' as u8);
+            }
+            else if consensus[con_index] == topo_base {
+                con_pretty.push(topo_base);
+                con_index += 1;
+                all_null = false;
+                
+            }
+            else {
+                con_pretty.push('-' as u8);
+            }
+            if all_null {
+                for current_seq in 0..sequences.len() {
+                    seq_pretty[current_seq].pop();
+                }
+                con_pretty.pop();
+            }
+        }
+        let mut s = String::new();
+        let mut idx = 0;
+        use std::cmp::min;
+
+        let ml = con_pretty.len();
+        
+        while idx < ml {
+            let rng = idx..min(idx + ncol, ml);
+            s.push_str(&format!("cons:\t{}\n",&String::from_utf8_lossy(&con_pretty[rng.clone()])));
+            for (seq_index, seq) in seq_pretty.iter().enumerate() {
+                s.push_str(&format!("seq{}:\t{}\n", seq_index + 1, &String::from_utf8_lossy(&seq[rng.clone()])));
+            }
+            s.push('\n');
+            idx += ncol;
+        }
+        s
+    }
+}
+
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct TracebackCell {
     score: i32,
