@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [1.5.0](https://www.github.com/rust-bio/rust-bio/compare/v1.4.0...v1.5.0) (2023-12-09)
+
+
+### Features
+
+* Add pretty output for poa ([#563](https://www.github.com/rust-bio/rust-bio/issues/563)) ([8b8eea6](https://www.github.com/rust-bio/rust-bio/commit/8b8eea659ceab06242bd437a3cfa1035e01c15fb))
+
+
+### Bug Fixes
+
+* minimum ndarray version is 0.15 ([#558](https://www.github.com/rust-bio/rust-bio/issues/558)) ([2e3aff0](https://www.github.com/rust-bio/rust-bio/commit/2e3aff0b58a4b3b3d758b50174e387fa03cffbb1))
+
 ## [1.4.0](https://www.github.com/rust-bio/rust-bio/compare/v1.3.1...v1.4.0) (2023-09-12)
 
 
