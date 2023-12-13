@@ -5,6 +5,6 @@ updates:
     schedule:
       interval: "weekly"
     commit-message:
-      # Prefix all commit messages with "deps: ", which should be
-      # accepted as a conventional commit and trigger release-please
-      prefix: "deps"
+      # Prefix all commit messages with "build(deps): ", which is
+      # a conventional commit prefix and triggers release-please
+      prefix: "build(deps)"
