@@ -66,7 +66,7 @@ pub enum AlignmentOperation {
 pub struct Alignment {
     pub score: i32,
     //    xstart: Edge,
-    operations: Vec<AlignmentOperation>,
+    pub operations: Vec<AlignmentOperation>,
 }
 
 impl Alignment {
@@ -212,7 +212,7 @@ impl Traceback {
     /// * `n` - the length of the query sequence
     fn with_capacity(m: usize, n: usize) -> Self {
         // each row of matrix contain start end position and vec of traceback cells
-        let matrix: Vec<(Vec<TracebackCell>, usize, usize)> = vec![(vec![], 0, n); m + 1];
+        let matrix: Vec<(Vec<TracebackCell>, usize, usize)> = vec![(vec![], 0, n + 1); m + 1];
         Traceback {
             rows: m,
             cols: n,
@@ -232,7 +232,7 @@ impl Traceback {
                     },
                     TracebackCell {
                         score: yclip,
-                        op: AlignmentOperation::Yclip(j),
+                        op: AlignmentOperation::Yclip(0),
                     },
                 )
             );
@@ -253,22 +253,16 @@ impl Traceback {
     }
 
     // create a new row according to the parameters
-    fn new_row(&mut self, row: usize, size: usize, gap_open: i32, xclip: i32, start: usize, end: usize) {
+    fn new_row(&mut self, row: usize, size: usize, gap_open: i32, start: usize, end: usize) {
         self.matrix[row].1 = start;
         self.matrix[row].2 = end;
         // when the row starts from the edge
         if start == 0 {
             self.matrix[row].0.push(
-                max(
                     TracebackCell {
                         score: (row as i32) * gap_open,
                         op: AlignmentOperation::Del(None),
-                    },
-                    TracebackCell {
-                        score: xclip,
-                        op: AlignmentOperation::Xclip(row),
-                    },
-                )
+                    }
             );
         } else {
             self.matrix[row].0.push(TracebackCell {
@@ -294,7 +288,7 @@ impl Traceback {
 
     fn get(&self, i: usize, j: usize) -> &TracebackCell {
         // get the matrix cell if in band range else return the appropriate values
-        if !(self.matrix[i].1 > j || self.matrix[i].2 < j) {
+        if !(self.matrix[i].1 > j || self.matrix[i].2 <= j) && (self.matrix[i].0.len() > 0) {
             let real_position = j - self.matrix[i].1;
             return &self.matrix[i].0[real_position];
         }
@@ -306,7 +300,7 @@ impl Traceback {
             };
         }
         // infront of the band
-        else if j > self.matrix[i].2 {
+        else if j >= self.matrix[i].2 {
             return &TracebackCell {
                 score: MIN_SCORE,
                 op: AlignmentOperation::Ins(None),
@@ -355,11 +349,12 @@ impl Traceback {
                 AlignmentOperation::Ins(None) => {
                     j -= 1;
                 }
-                AlignmentOperation::Xclip(p) => {
-
+                AlignmentOperation::Xclip(r) => {
+                    i = r;
                 }
-                AlignmentOperation::Yclip(p) => {
-
+                AlignmentOperation::Yclip(r) => {
+                    j = r;
+                    println!("s");
                 }
             }
         }
@@ -409,6 +404,12 @@ impl<F: MatchFunc> Aligner<F> {
     pub fn global(&mut self, query: TextSlice) -> &mut Self {
         self.query = query.to_vec();
         self.traceback = self.poa.global(query);
+        self
+    }
+    // custom alignment
+    pub fn custom(&mut self, query: TextSlice) -> &mut Self {
+        self.query = query.to_vec();
+        self.traceback = self.poa.custom(query);
         self
     }
 
@@ -496,6 +497,7 @@ impl<F: MatchFunc> Poa<F> {
     /// * `scoring` - the score struct
     /// * `reference` - a reference TextSlice to populate the initial reference graph
     pub fn from_string(scoring: Scoring<F>, seq: TextSlice) -> Self {
+        println!("START scoring x clip {} y clip {}", scoring.xclip_prefix, scoring.yclip_prefix);
         let mut graph: Graph<u8, i32, Directed, usize> =
             Graph::with_capacity(seq.len(), seq.len() - 1);
         let mut prev: NodeIndex<usize> = graph.add_node(seq[0]);
@@ -531,7 +533,7 @@ impl<F: MatchFunc> Poa<F> {
             // iterate over the predecessors of this node
             let prevs: Vec<NodeIndex<usize>> =
                 self.graph.neighbors_directed(node, Incoming).collect();
-            traceback.new_row(i, n + 1, self.scoring.gap_open, self.scoring.xclip_prefix, 0, n);
+            traceback.new_row(i, n + 1, self.scoring.gap_open, 0, n + 1);
             // query base and its index in the DAG (traceback matrix rows)
             for (query_index, query_base) in query.iter().enumerate() {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
@@ -580,18 +582,46 @@ impl<F: MatchFunc> Poa<F> {
 
         traceback
     }
+    pub fn print_alignment (&self, op: AlignmentOperation) {
+        match op {
+            AlignmentOperation::Match(None) => {
+                println!("Match none");
+            }
+            AlignmentOperation::Match(Some((_, p))) => {
+                println!("Match some");
+            }
+            AlignmentOperation::Ins(None) => {
+                println!("Ins none");
+            }
+            AlignmentOperation::Ins(Some(_)) => {
+                println!("Ins some");
+            }
+            AlignmentOperation::Del(_) => {
+                println!("Del");
+            }
+            AlignmentOperation::Xclip(p) => {
+                println!("X clip");
+            }
+            AlignmentOperation::Yclip(p) => {
+                println!("Y clip");
+                
+            }
+        }
+    }
+
     pub fn custom(&self, query: TextSlice) -> Traceback {
         assert!(self.graph.node_count() != 0);
-        // make variables to save max x y and xy
-        
         // dimensions of the traceback matrix
         let (m, n) = (self.graph.node_count(), query.len());
+        // make vector to save max of each colomn for suffix clipping
+        let mut coloumn_max_cell = vec![(0, 0); n + 1]; // score location
         let mut traceback = Traceback::with_capacity(m, n);
         traceback.initialize_scores(self.scoring.gap_open, self.scoring.yclip_prefix);
-
+        println!("xclip {} y clip {}", self.scoring.xclip_prefix, self.scoring.yclip_prefix);
         // construct the score matrix (O(n^2) space)
         let mut topo = Topo::new(&self.graph);
         while let Some(node) = topo.next(&self.graph) {
+            println!("node {}", node.index());
             // reference base and index
             let r = self.graph.raw_nodes()[node.index()].weight; // reference base at previous index
             let i = node.index() + 1; // 0 index is for initialization so we start at 1
@@ -599,11 +629,12 @@ impl<F: MatchFunc> Poa<F> {
             // iterate over the predecessors of this node
             let prevs: Vec<NodeIndex<usize>> =
                 self.graph.neighbors_directed(node, Incoming).collect();
-            traceback.new_row(i, n + 1, self.scoring.gap_open, self.scoring.xclip_prefix, 0, n);
+            traceback.new_row(i, n + 1, self.scoring.gap_open, 0, n + 1);
             // query base and its index in the DAG (traceback matrix rows)
             for (query_index, query_base) in query.iter().enumerate() {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
                                          // match and deletion scores for the first reference base
+                println!("i = {} j = {}", i, j);
                 let max_cell = if prevs.is_empty() {
                     TracebackCell {
                         score: traceback.get(0, j - 1).score
@@ -611,11 +642,15 @@ impl<F: MatchFunc> Poa<F> {
                         op: AlignmentOperation::Match(None),
                     }
                 } else {
-                    let mut max_cell = TracebackCell {
+                    let mut max_cell = max(
+                        TracebackCell {
                         score: MIN_SCORE,
-                        op: AlignmentOperation::Match(None),
-                    };
+                        op: AlignmentOperation::Match(None)},
+                        TracebackCell {
+                        score: self.scoring.xclip_prefix,
+                        op: AlignmentOperation::Xclip(0)});
                     for prev_node in &prevs {
+                        println!("prev index {}", prev_node.index());
                         let i_p: usize = prev_node.index() + 1; // index of previous node
                         max_cell = max(
                             max_cell,
@@ -632,9 +667,10 @@ impl<F: MatchFunc> Poa<F> {
                             ),
                         );
                     }
+                    println!("out of loop");
                     max_cell
                 };
-
+                println!("entered here");
                 let score = max(
                     max_cell,
                     TracebackCell {
@@ -642,11 +678,44 @@ impl<F: MatchFunc> Poa<F> {
                         op: AlignmentOperation::Ins(Some(i - 1)),
                     },
                 );
-                // do the x clipping and y cliping here prefix
                 traceback.set(i, j, score);
+                if coloumn_max_cell[j].0 < score.score {
+                    coloumn_max_cell[j].0 = score.score;
+                    coloumn_max_cell[j].1 = i;
+                }
+                //self.print_alignment (score.op);
             }
         }
-        // do the connections with the last x y suffix clipping
+        // modify the last row with x suffix clipping
+        let mut max_in_row = (0, 0);
+        for j in 0..n + 1 {
+            println!("coloumn number {} max score {} location {}", j, coloumn_max_cell[j].0, coloumn_max_cell[j].1);
+            
+            let maxcell = max(
+                traceback.get(traceback.last.index() + 1, j).clone(),
+                TracebackCell {
+                    score: coloumn_max_cell[j].0 + self.scoring.xclip_suffix,
+                    op: AlignmentOperation::Xclip(coloumn_max_cell[j].1),
+                },
+            );
+            if max_in_row.0 < maxcell.score {
+                max_in_row.0 = maxcell.score;
+                max_in_row.1 = j;
+            }
+            traceback.set(traceback.last.index() + 1, j, maxcell);
+        }
+        // do the connections with the last y suffix clipping
+        let maxcell = max(
+            traceback.get(traceback.last.index() + 1, n).clone(),
+            TracebackCell {
+                score: max_in_row.0 + self.scoring.yclip_suffix,
+                op: AlignmentOperation::Yclip(max_in_row.1),
+            },
+        );
+        if max_in_row.1 != n {
+            traceback.set(traceback.last.index() + 1, n, maxcell);
+        }
+        // modify the last cell with y suffix clipping
         traceback
     }
     /// A global Needleman-Wunsch aligner on partially ordered graphs with banding.
@@ -692,7 +761,7 @@ impl<F: MatchFunc> Poa<F> {
                 max_scoring_j - bandwidth
             };
             let end = max_scoring_j + bandwidth;
-            traceback.new_row(i, (end - start) + 1, self.scoring.gap_open, self.scoring.xclip_prefix, start, end);
+            traceback.new_row(i, (end - start) + 1, self.scoring.gap_open, start, end + 1);
             for (query_index, query_base) in query.iter().enumerate().skip(start) {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
                 if j > end {
