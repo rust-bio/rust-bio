@@ -58,6 +58,8 @@ pub enum AlignmentOperation {
     Match(Option<(usize, usize)>),
     Del(Option<(usize, usize)>),
     Ins(Option<usize>),
+    Xclip(usize),
+    Yclip(usize),
 }
 
 #[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
@@ -218,14 +220,22 @@ impl Traceback {
             matrix,
         }
     }
-
+    
     /// Populate the first row of the traceback matrix
-    fn initialize_scores(&mut self, gap_open: i32) {
+    fn initialize_scores(&mut self, gap_open: i32, yclip: i32) {
         for j in 0..=self.cols {
-            self.matrix[0].0.push(TracebackCell {
-                score: (j as i32) * gap_open,
-                op: AlignmentOperation::Ins(None),
-            });
+            self.matrix[0].0.push(
+                max(
+                    TracebackCell {
+                        score: (j as i32) * gap_open,
+                        op: AlignmentOperation::Ins(None),
+                    },
+                    TracebackCell {
+                        score: yclip,
+                        op: AlignmentOperation::Yclip(j),
+                    },
+                )
+            );
         }
         self.matrix[0].0[0] = TracebackCell {
             score: 0,
@@ -243,15 +253,23 @@ impl Traceback {
     }
 
     // create a new row according to the parameters
-    fn new_row(&mut self, row: usize, size: usize, gap_open: i32, start: usize, end: usize) {
+    fn new_row(&mut self, row: usize, size: usize, gap_open: i32, xclip: i32, start: usize, end: usize) {
         self.matrix[row].1 = start;
         self.matrix[row].2 = end;
         // when the row starts from the edge
         if start == 0 {
-            self.matrix[row].0.push(TracebackCell {
-                score: (row as i32) * gap_open,
-                op: AlignmentOperation::Del(None),
-            });
+            self.matrix[row].0.push(
+                max(
+                    TracebackCell {
+                        score: (row as i32) * gap_open,
+                        op: AlignmentOperation::Del(None),
+                    },
+                    TracebackCell {
+                        score: xclip,
+                        op: AlignmentOperation::Xclip(row),
+                    },
+                )
+            );
         } else {
             self.matrix[row].0.push(TracebackCell {
                 score: MIN_SCORE,
@@ -336,6 +354,12 @@ impl Traceback {
                 }
                 AlignmentOperation::Ins(None) => {
                     j -= 1;
+                }
+                AlignmentOperation::Xclip(p) => {
+
+                }
+                AlignmentOperation::Yclip(p) => {
+
                 }
             }
         }
@@ -495,7 +519,7 @@ impl<F: MatchFunc> Poa<F> {
         // dimensions of the traceback matrix
         let (m, n) = (self.graph.node_count(), query.len());
         let mut traceback = Traceback::with_capacity(m, n);
-        traceback.initialize_scores(self.scoring.gap_open);
+        traceback.initialize_scores(self.scoring.gap_open, self.scoring.yclip_prefix);
 
         // construct the score matrix (O(n^2) space)
         let mut topo = Topo::new(&self.graph);
@@ -507,7 +531,7 @@ impl<F: MatchFunc> Poa<F> {
             // iterate over the predecessors of this node
             let prevs: Vec<NodeIndex<usize>> =
                 self.graph.neighbors_directed(node, Incoming).collect();
-            traceback.new_row(i, n + 1, self.scoring.gap_open, 0, n);
+            traceback.new_row(i, n + 1, self.scoring.gap_open, self.scoring.xclip_prefix, 0, n);
             // query base and its index in the DAG (traceback matrix rows)
             for (query_index, query_base) in query.iter().enumerate() {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
@@ -556,7 +580,75 @@ impl<F: MatchFunc> Poa<F> {
 
         traceback
     }
+    pub fn custom(&self, query: TextSlice) -> Traceback {
+        assert!(self.graph.node_count() != 0);
+        // make variables to save max x y and xy
+        
+        // dimensions of the traceback matrix
+        let (m, n) = (self.graph.node_count(), query.len());
+        let mut traceback = Traceback::with_capacity(m, n);
+        traceback.initialize_scores(self.scoring.gap_open, self.scoring.yclip_prefix);
 
+        // construct the score matrix (O(n^2) space)
+        let mut topo = Topo::new(&self.graph);
+        while let Some(node) = topo.next(&self.graph) {
+            // reference base and index
+            let r = self.graph.raw_nodes()[node.index()].weight; // reference base at previous index
+            let i = node.index() + 1; // 0 index is for initialization so we start at 1
+            traceback.last = node;
+            // iterate over the predecessors of this node
+            let prevs: Vec<NodeIndex<usize>> =
+                self.graph.neighbors_directed(node, Incoming).collect();
+            traceback.new_row(i, n + 1, self.scoring.gap_open, self.scoring.xclip_prefix, 0, n);
+            // query base and its index in the DAG (traceback matrix rows)
+            for (query_index, query_base) in query.iter().enumerate() {
+                let j = query_index + 1; // 0 index is initialized so we start at 1
+                                         // match and deletion scores for the first reference base
+                let max_cell = if prevs.is_empty() {
+                    TracebackCell {
+                        score: traceback.get(0, j - 1).score
+                            + self.scoring.match_fn.score(r, *query_base),
+                        op: AlignmentOperation::Match(None),
+                    }
+                } else {
+                    let mut max_cell = TracebackCell {
+                        score: MIN_SCORE,
+                        op: AlignmentOperation::Match(None),
+                    };
+                    for prev_node in &prevs {
+                        let i_p: usize = prev_node.index() + 1; // index of previous node
+                        max_cell = max(
+                            max_cell,
+                            max(
+                                TracebackCell {
+                                    score: traceback.get(i_p, j - 1).score
+                                        + self.scoring.match_fn.score(r, *query_base),
+                                    op: AlignmentOperation::Match(Some((i_p - 1, i - 1))),
+                                },
+                                TracebackCell {
+                                    score: traceback.get(i_p, j).score + self.scoring.gap_open,
+                                    op: AlignmentOperation::Del(Some((i_p - 1, i))),
+                                },
+                            ),
+                        );
+                    }
+                    max_cell
+                };
+
+                let score = max(
+                    max_cell,
+                    TracebackCell {
+                        score: traceback.get(i, j - 1).score + self.scoring.gap_open,
+                        op: AlignmentOperation::Ins(Some(i - 1)),
+                    },
+                );
+                // do the x clipping and y cliping here prefix
+                traceback.set(i, j, score);
+            }
+        }
+        // do the connections with the last x y suffix clipping
+        traceback
+    }
     /// A global Needleman-Wunsch aligner on partially ordered graphs with banding.
     ///
     /// # Arguments
@@ -568,7 +660,7 @@ impl<F: MatchFunc> Poa<F> {
         // dimensions of the traceback matrix
         let (m, n) = (self.graph.node_count(), query.len());
         let mut traceback = Traceback::with_capacity(m, n);
-        traceback.initialize_scores(self.scoring.gap_open);
+        traceback.initialize_scores(self.scoring.gap_open, self.scoring.yclip_prefix);
 
         traceback.set(
             0,
@@ -600,7 +692,7 @@ impl<F: MatchFunc> Poa<F> {
                 max_scoring_j - bandwidth
             };
             let end = max_scoring_j + bandwidth;
-            traceback.new_row(i, (end - start) + 1, self.scoring.gap_open, start, end);
+            traceback.new_row(i, (end - start) + 1, self.scoring.gap_open, self.scoring.xclip_prefix, start, end);
             for (query_index, query_base) in query.iter().enumerate().skip(start) {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
                 if j > end {
@@ -678,6 +770,11 @@ impl<F: MatchFunc> Poa<F> {
                 AlignmentOperation::Ins(None) => {}
                 AlignmentOperation::Ins(Some(_)) => {}
                 AlignmentOperation::Del(_) => {}
+                AlignmentOperation::Xclip(p) => {
+                }
+                AlignmentOperation::Yclip(p) => {
+                    
+                }
             }
         }
         path
@@ -747,6 +844,12 @@ impl<F: MatchFunc> Poa<F> {
                     i += 1;
                 }
                 AlignmentOperation::Del(_) => {} // we should only have to skip over deleted nodes
+                AlignmentOperation::Xclip(p) => {
+
+                }
+                AlignmentOperation::Yclip(p) => {
+                    
+                }
             }
         }
     }
