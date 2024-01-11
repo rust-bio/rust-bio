@@ -223,18 +223,16 @@ impl Traceback {
     /// Populate the first row of the traceback matrix
     fn initialize_scores(&mut self, gap_open: i32, yclip: i32) {
         for j in 0..=self.cols {
-            self.matrix[0].0.push(
-                max(
-                    TracebackCell {
+            self.matrix[0].0.push(max(
+                TracebackCell {
                         score: (j as i32) * gap_open,
                         op: AlignmentOperation::Ins(None),
-                    },
-                    TracebackCell {
-                        score: yclip,
-                        op: AlignmentOperation::Yclip(0, j),
-                    },
-                )
-            );
+                },
+                TracebackCell {
+                    score: yclip,
+                    op: AlignmentOperation::Yclip(0, j),
+                },
+            ));
         }
         self.matrix[0].0[0] = TracebackCell {
             score: 0,
@@ -252,23 +250,29 @@ impl Traceback {
     }
 
     // create a new row according to the parameters
-    fn new_row(&mut self, row: usize, size: usize, gap_open: i32, xclip: i32, start: usize, end: usize) {
+    fn new_row(
+        &mut self,
+        row: usize,
+        size: usize,
+        gap_open: i32,
+        xclip: i32,
+        start: usize,
+        end: usize
+    ) {
         self.matrix[row].1 = start;
         self.matrix[row].2 = end;
         // when the row starts from the edge
         if start == 0 {
-            self.matrix[row].0.push(
-                max(
-                    TracebackCell {
-                        score: (row as i32) * gap_open,
-                        op: AlignmentOperation::Del(None),
-                    },
-                    TracebackCell {
-                        score: xclip,
-                        op: AlignmentOperation::Xclip(0),
-                    },
-                )
-            );
+            self.matrix[row].0.push(max(
+                TracebackCell {
+                    score: (row as i32) * gap_open,
+                    op: AlignmentOperation::Del(None),
+                },
+                TracebackCell {
+                    score: xclip,
+                    op: AlignmentOperation::Xclip(0),
+                },
+            ));
         } else {
             self.matrix[row].0.push(TracebackCell {
                 score: MIN_SCORE,
@@ -428,7 +432,7 @@ impl<F: MatchFunc> Aligner<F> {
         self.poa.scoring.xclip_suffix = clip_penalties[1];
         self.poa.scoring.yclip_prefix = clip_penalties[2];
         self.poa.scoring.yclip_suffix = clip_penalties[3];
-        
+
         self
     }
 
@@ -456,7 +460,7 @@ impl<F: MatchFunc> Aligner<F> {
         self.poa.scoring.xclip_suffix = clip_penalties[1];
         self.poa.scoring.yclip_prefix = clip_penalties[2];
         self.poa.scoring.yclip_suffix = clip_penalties[3];
-        
+
         self
     }
 
@@ -484,7 +488,7 @@ impl<F: MatchFunc> Aligner<F> {
         self.poa.scoring.xclip_suffix = clip_penalties[1];
         self.poa.scoring.yclip_prefix = clip_penalties[2];
         self.poa.scoring.yclip_suffix = clip_penalties[3];
-        
+
         self
     }
 
@@ -613,7 +617,14 @@ impl<F: MatchFunc> Poa<F> {
             // iterate over the predecessors of this node
             let prevs: Vec<NodeIndex<usize>> =
                 self.graph.neighbors_directed(node, Incoming).collect();
-            traceback.new_row(i, n + 1, self.scoring.gap_open, self.scoring.xclip_prefix, 0, n + 1);
+            traceback.new_row(
+                i,
+                n + 1,
+                self.scoring.gap_open,
+                self.scoring.xclip_prefix,
+                0,
+                n + 1
+            );
             // query base and its index in the DAG (traceback matrix rows)
             for (query_index, query_base) in query.iter().enumerate() {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
@@ -627,12 +638,12 @@ impl<F: MatchFunc> Poa<F> {
                 } else {
                     let mut max_cell = max(
                         TracebackCell {
-                        score: MIN_SCORE,
-                        op: AlignmentOperation::Match(None)
+                            score: MIN_SCORE,
+                            op: AlignmentOperation::Match(None)
                         },
                         TracebackCell {
-                        score: self.scoring.xclip_prefix,
-                        op: AlignmentOperation::Xclip(0)
+                            score: self.scoring.xclip_prefix,
+                            op: AlignmentOperation::Xclip(0)
                         }
                     );
                     for prev_node in &prevs {
@@ -745,7 +756,14 @@ impl<F: MatchFunc> Poa<F> {
                 max_scoring_j - bandwidth
             };
             let end = max_scoring_j + bandwidth;
-            traceback.new_row(i, (end - start) + 1, self.scoring.gap_open, self.scoring.xclip_prefix, start, end + 1);
+            traceback.new_row(
+                i,
+                (end - start) + 1,
+                self.scoring.gap_open,
+                self.scoring.xclip_prefix,
+                start,
+                end + 1
+            );
             for (query_index, query_base) in query.iter().enumerate().skip(start) {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
                 if j > end {
@@ -1140,7 +1158,12 @@ mod tests {
 
         assert_eq!(
             alignment.operations,
-            [AlignmentOperation::Xclip(0), AlignmentOperation::Match(Some((5, 6))), AlignmentOperation::Match(Some((6, 7))), AlignmentOperation::Match(Some((7, 8)))]
+            [
+                AlignmentOperation::Xclip(0),
+                AlignmentOperation::Match(Some((5, 6))),
+                AlignmentOperation::Match(Some((6, 7))),
+                AlignmentOperation::Match(Some((7, 8)))
+            ]
         );
     }
 
@@ -1157,7 +1180,12 @@ mod tests {
 
         assert_eq!(
             alignment.operations,
-            [AlignmentOperation::Yclip(0, 6), AlignmentOperation::Match(None), AlignmentOperation::Match(Some((0, 1))), AlignmentOperation::Match(Some((1, 2)))]
+            [
+                AlignmentOperation::Yclip(0, 6),
+                AlignmentOperation::Match(None),
+                AlignmentOperation::Match(Some((0, 1))),
+                AlignmentOperation::Match(Some((1, 2)))
+            ]
         );
     }
 
@@ -1174,7 +1202,11 @@ mod tests {
 
         assert_eq!(
             alignment.operations,
-            [AlignmentOperation::Yclip(0, 1), AlignmentOperation::Match(None), AlignmentOperation::Xclip(1)]
+            [
+                AlignmentOperation::Yclip(0, 1),
+                AlignmentOperation::Match(None),
+                AlignmentOperation::Xclip(1)
+            ]
         );
     }
 
@@ -1191,7 +1223,10 @@ mod tests {
 
         assert_eq!(
             alignment.operations,
-            [AlignmentOperation::Yclip(0, 5), AlignmentOperation::Xclip(0)]
+            [
+                AlignmentOperation::Yclip(0, 5),
+                AlignmentOperation::Xclip(0)
+            ]
         );
     }
 }
