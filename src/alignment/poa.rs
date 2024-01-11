@@ -225,8 +225,8 @@ impl Traceback {
         for j in 0..=self.cols {
             self.matrix[0].0.push(max(
                 TracebackCell {
-                        score: (j as i32) * gap_open,
-                        op: AlignmentOperation::Ins(None),
+                    score: (j as i32) * gap_open,
+                    op: AlignmentOperation::Ins(None),
                 },
                 TracebackCell {
                     score: yclip,
@@ -257,7 +257,7 @@ impl Traceback {
         gap_open: i32,
         xclip: i32,
         start: usize,
-        end: usize
+        end: usize,
     ) {
         self.matrix[row].1 = start;
         self.matrix[row].2 = end;
@@ -623,7 +623,7 @@ impl<F: MatchFunc> Poa<F> {
                 self.scoring.gap_open,
                 self.scoring.xclip_prefix,
                 0,
-                n + 1
+                n + 1,
             );
             // query base and its index in the DAG (traceback matrix rows)
             for (query_index, query_base) in query.iter().enumerate() {
@@ -639,11 +639,11 @@ impl<F: MatchFunc> Poa<F> {
                     let mut max_cell = max(
                         TracebackCell {
                             score: MIN_SCORE,
-                            op: AlignmentOperation::Match(None)
+                            op: AlignmentOperation::Match(None),
                         },
                         TracebackCell {
                             score: self.scoring.xclip_prefix,
-                            op: AlignmentOperation::Xclip(0)
+                            op: AlignmentOperation::Xclip(0),
                         }
                     );
                     for prev_node in &prevs {
@@ -762,7 +762,7 @@ impl<F: MatchFunc> Poa<F> {
                 self.scoring.gap_open,
                 self.scoring.xclip_prefix,
                 start,
-                end + 1
+                end + 1,
             );
             for (query_index, query_base) in query.iter().enumerate().skip(start) {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
