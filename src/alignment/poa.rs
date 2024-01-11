@@ -43,6 +43,7 @@ use crate::alignment::pairwise::{MatchFunc, Scoring};
 
 use petgraph::graph::NodeIndex;
 use petgraph::visit::Topo;
+
 use petgraph::{Directed, Graph, Incoming};
 
 pub const MIN_SCORE: i32 = -858_993_459; // negative infinity; see alignment/pairwise/mod.rs
@@ -65,7 +66,7 @@ pub enum AlignmentOperation {
 pub struct Alignment {
     pub score: i32,
     //    xstart: Edge,
-    pub operations: Vec<AlignmentOperation>,
+    operations: Vec<AlignmentOperation>,
 }
 
 impl Alignment {
@@ -219,7 +220,6 @@ impl Traceback {
             matrix,
         }
     }
-    
     /// Populate the first row of the traceback matrix
     fn initialize_scores(&mut self, gap_open: i32, yclip: i32) {
         for j in 0..=self.cols {
@@ -699,7 +699,7 @@ impl<F: MatchFunc> Poa<F> {
         if max_in_row.1 != n {
             traceback.set(traceback.last.index() + 1, n, maxcell);
         }
-        
+
         traceback
     }
     /// A global Needleman-Wunsch aligner on partially ordered graphs with banding.
