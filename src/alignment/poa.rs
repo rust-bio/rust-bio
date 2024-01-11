@@ -1,4 +1,4 @@
-// Copyright 2017-2018 Brett Bowman, Jeff Knaggs
+// Copyright 2017-2024 Brett Bowman, Jeff Knaggs, Minindu Weerakoon
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -43,7 +43,6 @@ use crate::alignment::pairwise::{MatchFunc, Scoring};
 
 use petgraph::graph::NodeIndex;
 use petgraph::visit::Topo;
-
 use petgraph::{Directed, Graph, Incoming};
 
 pub const MIN_SCORE: i32 = -858_993_459; // negative infinity; see alignment/pairwise/mod.rs
@@ -59,7 +58,7 @@ pub enum AlignmentOperation {
     Del(Option<(usize, usize)>),
     Ins(Option<usize>),
     Xclip(usize),
-    Yclip(usize),
+    Yclip(usize, usize), // to, from
 }
 
 #[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
@@ -232,7 +231,7 @@ impl Traceback {
                     },
                     TracebackCell {
                         score: yclip,
-                        op: AlignmentOperation::Yclip(0),
+                        op: AlignmentOperation::Yclip(0, j),
                     },
                 )
             );
@@ -358,9 +357,8 @@ impl Traceback {
                 AlignmentOperation::Xclip(r) => {
                     i = r;
                 }
-                AlignmentOperation::Yclip(r) => {
+                AlignmentOperation::Yclip(r, _) => {
                     j = r;
-                    println!("s");
                 }
             }
         }
@@ -408,11 +406,89 @@ impl<F: MatchFunc> Aligner<F> {
 
     /// Globally align a given query against the graph.
     pub fn global(&mut self, query: TextSlice) -> &mut Self {
+        // Store the current clip penalties
+        let clip_penalties = [
+            self.poa.scoring.xclip_prefix,
+            self.poa.scoring.xclip_suffix,
+            self.poa.scoring.yclip_prefix,
+            self.poa.scoring.yclip_suffix,
+        ];
+
+        // Temporarily Over-write the clip penalties
+        self.poa.scoring.xclip_prefix = MIN_SCORE;
+        self.poa.scoring.xclip_suffix = MIN_SCORE;
+        self.poa.scoring.yclip_prefix = MIN_SCORE;
+        self.poa.scoring.yclip_suffix = MIN_SCORE;
+
         self.query = query.to_vec();
-        self.traceback = self.poa.global(query);
+        self.traceback = self.poa.custom(query);
+
+        // Set the clip penalties to the original values
+        self.poa.scoring.xclip_prefix = clip_penalties[0];
+        self.poa.scoring.xclip_suffix = clip_penalties[1];
+        self.poa.scoring.yclip_prefix = clip_penalties[2];
+        self.poa.scoring.yclip_suffix = clip_penalties[3];
+        
         self
     }
-    // custom alignment
+
+    /// Semi-globally align a given query against the graph.
+    pub fn semiglobal(&mut self, query: TextSlice) -> &mut Self {
+        // Store the current clip penalties
+        let clip_penalties = [
+            self.poa.scoring.xclip_prefix,
+            self.poa.scoring.xclip_suffix,
+            self.poa.scoring.yclip_prefix,
+            self.poa.scoring.yclip_suffix,
+        ];
+
+        // Temporarily Over-write the clip penalties
+        self.poa.scoring.xclip_prefix = MIN_SCORE;
+        self.poa.scoring.xclip_suffix = MIN_SCORE;
+        self.poa.scoring.yclip_prefix = 0;
+        self.poa.scoring.yclip_suffix = 0;
+
+        self.query = query.to_vec();
+        self.traceback = self.poa.custom(query);
+
+        // Set the clip penalties to the original values
+        self.poa.scoring.xclip_prefix = clip_penalties[0];
+        self.poa.scoring.xclip_suffix = clip_penalties[1];
+        self.poa.scoring.yclip_prefix = clip_penalties[2];
+        self.poa.scoring.yclip_suffix = clip_penalties[3];
+        
+        self
+    }
+
+    /// Locally align a given query against the graph.
+    pub fn local(&mut self, query: TextSlice) -> &mut Self {
+        // Store the current clip penalties
+        let clip_penalties = [
+            self.poa.scoring.xclip_prefix,
+            self.poa.scoring.xclip_suffix,
+            self.poa.scoring.yclip_prefix,
+            self.poa.scoring.yclip_suffix,
+        ];
+
+        // Temporarily Over-write the clip penalties
+        self.poa.scoring.xclip_prefix = 0;
+        self.poa.scoring.xclip_suffix = 0;
+        self.poa.scoring.yclip_prefix = 0;
+        self.poa.scoring.yclip_suffix = 0;
+
+        self.query = query.to_vec();
+        self.traceback = self.poa.custom(query);
+
+        // Set the clip penalties to the original values
+        self.poa.scoring.xclip_prefix = clip_penalties[0];
+        self.poa.scoring.xclip_suffix = clip_penalties[1];
+        self.poa.scoring.yclip_prefix = clip_penalties[2];
+        self.poa.scoring.yclip_suffix = clip_penalties[3];
+        
+        self
+    }
+
+    /// Custom align a given query against the graph with custom xclip and yclip penalties.
     pub fn custom(&mut self, query: TextSlice) -> &mut Self {
         self.query = query.to_vec();
         self.traceback = self.poa.custom(query);
@@ -503,7 +579,6 @@ impl<F: MatchFunc> Poa<F> {
     /// * `scoring` - the score struct
     /// * `reference` - a reference TextSlice to populate the initial reference graph
     pub fn from_string(scoring: Scoring<F>, seq: TextSlice) -> Self {
-        println!("START scoring x clip {} y clip {}", scoring.xclip_prefix, scoring.yclip_prefix);
         let mut graph: Graph<u8, i32, Directed, usize> =
             Graph::with_capacity(seq.len(), seq.len() - 1);
         let mut prev: NodeIndex<usize> = graph.add_node(seq[0]);
@@ -516,118 +591,21 @@ impl<F: MatchFunc> Poa<F> {
 
         Poa { scoring, graph }
     }
-
     /// A global Needleman-Wunsch aligner on partially ordered graphs.
     ///
     /// # Arguments
     /// * `query` - the query TextSlice to align against the internal graph member
-    pub fn global(&self, query: TextSlice) -> Traceback {
-        assert!(self.graph.node_count() != 0);
-
-        // dimensions of the traceback matrix
-        let (m, n) = (self.graph.node_count(), query.len());
-        let mut traceback = Traceback::with_capacity(m, n);
-        traceback.initialize_scores(self.scoring.gap_open, self.scoring.yclip_prefix);
-
-        // construct the score matrix (O(n^2) space)
-        let mut topo = Topo::new(&self.graph);
-        while let Some(node) = topo.next(&self.graph) {
-            // reference base and index
-            let r = self.graph.raw_nodes()[node.index()].weight; // reference base at previous index
-            let i = node.index() + 1; // 0 index is for initialization so we start at 1
-            traceback.last = node;
-            // iterate over the predecessors of this node
-            let prevs: Vec<NodeIndex<usize>> =
-                self.graph.neighbors_directed(node, Incoming).collect();
-            traceback.new_row(i, n + 1, self.scoring.gap_open, self.scoring.xclip_prefix, 0, n + 1);
-            // query base and its index in the DAG (traceback matrix rows)
-            for (query_index, query_base) in query.iter().enumerate() {
-                let j = query_index + 1; // 0 index is initialized so we start at 1
-                                         // match and deletion scores for the first reference base
-                let max_cell = if prevs.is_empty() {
-                    TracebackCell {
-                        score: traceback.get(0, j - 1).score
-                            + self.scoring.match_fn.score(r, *query_base),
-                        op: AlignmentOperation::Match(None),
-                    }
-                } else {
-                    let mut max_cell = TracebackCell {
-                        score: MIN_SCORE,
-                        op: AlignmentOperation::Match(None),
-                    };
-                    for prev_node in &prevs {
-                        let i_p: usize = prev_node.index() + 1; // index of previous node
-                        max_cell = max(
-                            max_cell,
-                            max(
-                                TracebackCell {
-                                    score: traceback.get(i_p, j - 1).score
-                                        + self.scoring.match_fn.score(r, *query_base),
-                                    op: AlignmentOperation::Match(Some((i_p - 1, i - 1))),
-                                },
-                                TracebackCell {
-                                    score: traceback.get(i_p, j).score + self.scoring.gap_open,
-                                    op: AlignmentOperation::Del(Some((i_p - 1, i))),
-                                },
-                            ),
-                        );
-                    }
-                    max_cell
-                };
-
-                let score = max(
-                    max_cell,
-                    TracebackCell {
-                        score: traceback.get(i, j - 1).score + self.scoring.gap_open,
-                        op: AlignmentOperation::Ins(Some(i - 1)),
-                    },
-                );
-                traceback.set(i, j, score);
-            }
-        }
-
-        traceback
-    }
-    pub fn print_alignment (&self, op: AlignmentOperation) {
-        match op {
-            AlignmentOperation::Match(None) => {
-                println!("Match none");
-            }
-            AlignmentOperation::Match(Some((_, p))) => {
-                println!("Match some");
-            }
-            AlignmentOperation::Ins(None) => {
-                println!("Ins none");
-            }
-            AlignmentOperation::Ins(Some(_)) => {
-                println!("Ins some");
-            }
-            AlignmentOperation::Del(_) => {
-                println!("Del");
-            }
-            AlignmentOperation::Xclip(p) => {
-                println!("X clip");
-            }
-            AlignmentOperation::Yclip(p) => {
-                println!("Y clip");
-                
-            }
-        }
-    }
-
     pub fn custom(&self, query: TextSlice) -> Traceback {
         assert!(self.graph.node_count() != 0);
         // dimensions of the traceback matrix
         let (m, n) = (self.graph.node_count(), query.len());
-        // make vector to save max of each colomn for suffix clipping
-        let mut coloumn_max_cell = vec![(0, 0); n + 1]; // score location
+        // save score location of the max scoring node for the query for suffix clipping
+        let mut max_in_column = vec![(0, 0); n + 1];
         let mut traceback = Traceback::with_capacity(m, n);
         traceback.initialize_scores(self.scoring.gap_open, self.scoring.yclip_prefix);
-        //println!("xclip {} y clip {}", self.scoring.xclip_prefix, self.scoring.yclip_prefix);
         // construct the score matrix (O(n^2) space)
         let mut topo = Topo::new(&self.graph);
         while let Some(node) = topo.next(&self.graph) {
-            //println!("node {}", node.index());
             // reference base and index
             let r = self.graph.raw_nodes()[node.index()].weight; // reference base at previous index
             let i = node.index() + 1; // 0 index is for initialization so we start at 1
@@ -640,7 +618,6 @@ impl<F: MatchFunc> Poa<F> {
             for (query_index, query_base) in query.iter().enumerate() {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
                                          // match and deletion scores for the first reference base
-                //println!("i = {} j = {}", i, j);
                 let max_cell = if prevs.is_empty() {
                     TracebackCell {
                         score: traceback.get(0, j - 1).score
@@ -651,12 +628,14 @@ impl<F: MatchFunc> Poa<F> {
                     let mut max_cell = max(
                         TracebackCell {
                         score: MIN_SCORE,
-                        op: AlignmentOperation::Match(None)},
+                        op: AlignmentOperation::Match(None)
+                        },
                         TracebackCell {
                         score: self.scoring.xclip_prefix,
-                        op: AlignmentOperation::Xclip(0)});
+                        op: AlignmentOperation::Xclip(0)
+                        }
+                    );
                     for prev_node in &prevs {
-                        //println!("prev index {}", prev_node.index());
                         let i_p: usize = prev_node.index() + 1; // index of previous node
                         max_cell = max(
                             max_cell,
@@ -673,10 +652,8 @@ impl<F: MatchFunc> Poa<F> {
                             ),
                         );
                     }
-                    //println!("out of loop");
                     max_cell
                 };
-                //println!("entered here");
                 let score = max(
                     max_cell,
                     TracebackCell {
@@ -684,32 +661,25 @@ impl<F: MatchFunc> Poa<F> {
                         op: AlignmentOperation::Ins(Some(i - 1)),
                     },
                 );
-                print!("{} ", score.score);
                 traceback.set(i, j, score);
-                if coloumn_max_cell[j].0 < score.score {
-                    coloumn_max_cell[j].0 = score.score;
-                    coloumn_max_cell[j].1 = i;
+                if max_in_column[j].0 < score.score {
+                    max_in_column[j].0 = score.score;
+                    max_in_column[j].1 = i;
                 }
-                //self.print_alignment (score.op);
             }
-            println!("");
         }
-        // modify the last row with x suffix clipping
+        // X suffix clipping
         let mut max_in_row = (0, 0);
-        for i in 0.. m + 1{
-            for j in 0.. n + 1 {
-                print!("{} ", traceback.get(i, j).score);
-            }
-            println!("");
-        }
         for j in 0..n + 1 {
-            println!("coloumn number {} max score {} location {}", j, coloumn_max_cell[j].0, coloumn_max_cell[j].1);
-            
+            // avoid pointing to itself
+            if max_in_column[j].1 == traceback.last.index() + 1 {
+                continue;
+            }
             let maxcell = max(
                 traceback.get(traceback.last.index() + 1, j).clone(),
                 TracebackCell {
-                    score: coloumn_max_cell[j].0 + self.scoring.xclip_suffix,
-                    op: AlignmentOperation::Xclip(coloumn_max_cell[j].1),
+                    score: max_in_column[j].0 + self.scoring.xclip_suffix,
+                    op: AlignmentOperation::Xclip(max_in_column[j].1),
                 },
             );
             if max_in_row.0 < maxcell.score {
@@ -718,19 +688,18 @@ impl<F: MatchFunc> Poa<F> {
             }
             traceback.set(traceback.last.index() + 1, j, maxcell);
         }
-        // do the connections with the last y suffix clipping
+        // Y suffix clipping from the last node
         let maxcell = max(
             traceback.get(traceback.last.index() + 1, n).clone(),
             TracebackCell {
                 score: max_in_row.0 + self.scoring.yclip_suffix,
-                op: AlignmentOperation::Yclip(max_in_row.1),
+                op: AlignmentOperation::Yclip(max_in_row.1, n),
             },
         );
         if max_in_row.1 != n {
             traceback.set(traceback.last.index() + 1, n, maxcell);
         }
-        // modify the last cell with y suffix clipping
-
+        
         traceback
     }
     /// A global Needleman-Wunsch aligner on partially ordered graphs with banding.
@@ -854,11 +823,8 @@ impl<F: MatchFunc> Poa<F> {
                 AlignmentOperation::Ins(None) => {}
                 AlignmentOperation::Ins(Some(_)) => {}
                 AlignmentOperation::Del(_) => {}
-                AlignmentOperation::Xclip(p) => {
-                }
-                AlignmentOperation::Yclip(p) => {
-                    
-                }
+                AlignmentOperation::Xclip(_) => {}
+                AlignmentOperation::Yclip(_, _) => {}
             }
         }
         path
@@ -927,12 +893,10 @@ impl<F: MatchFunc> Poa<F> {
                     prev = node;
                     i += 1;
                 }
-                AlignmentOperation::Del(_) => {} // we should only have to skip over deleted nodes
-                AlignmentOperation::Xclip(p) => {
-
-                }
-                AlignmentOperation::Yclip(p) => {
-                    
+                AlignmentOperation::Del(_) => {} // we should only have to skip over deleted nodes and xclip
+                AlignmentOperation::Xclip(_) => {}
+                AlignmentOperation::Yclip(_, r) => {
+                    i = *r;
                 }
             }
         }
@@ -964,13 +928,13 @@ mod tests {
         //let _seq1 = b"PKMIVRPQKNETV";
         //let _seq2 = b"THKMLVRNETIM";
         let poa = Poa::from_string(scoring, b"GATTACA");
-        let alignment = poa.global(b"GCATGCU").alignment();
+        let alignment = poa.custom(b"GCATGCU").alignment();
         assert_eq!(alignment.score, 0);
 
-        let alignment = poa.global(b"GCATGCUx").alignment();
+        let alignment = poa.custom(b"GCATGCUx").alignment();
         assert_eq!(alignment.score, -1);
 
-        let alignment = poa.global(b"xCATGCU").alignment();
+        let alignment = poa.custom(b"xCATGCU").alignment();
         assert_eq!(alignment.score, -2);
     }
 
@@ -987,7 +951,7 @@ mod tests {
         poa.graph.add_edge(head, node1, 1);
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
-        let alignment = poa.global(seq2).alignment();
+        let alignment = poa.custom(seq2).alignment();
         assert_eq!(alignment.score, 3);
     }
 
@@ -1005,7 +969,7 @@ mod tests {
         poa.graph.add_edge(head, node1, 1);
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, tail, 1);
-        let alignment = poa.global(seq2).alignment();
+        let alignment = poa.custom(seq2).alignment();
         poa.add_alignment(&alignment, seq2);
         assert_eq!(poa.graph.edge_count(), 14);
         assert!(poa
@@ -1033,10 +997,10 @@ mod tests {
         poa.graph.add_edge(node1, node2, 1);
         poa.graph.add_edge(node2, node3, 1);
         poa.graph.add_edge(node3, tail, 1);
-        let alignment = poa.global(seq2).alignment();
+        let alignment = poa.custom(seq2).alignment();
         assert_eq!(alignment.score, 2);
         poa.add_alignment(&alignment, seq2);
-        let alignment2 = poa.global(seq3).alignment();
+        let alignment2 = poa.custom(seq3).alignment();
 
         assert_eq!(alignment2.score, 10);
     }
@@ -1153,6 +1117,7 @@ mod tests {
         \n    4 -> 5 [ label = \"1\" ]\n    5 -> 6 [ label = \"1\" ]\n    6 -> 7 [ label = \"1\" ]\n    7 -> 0 [ label = \"1\" ]\n}\n".to_string();
         assert_eq!(dot, output);
     }
+
     #[test]
     fn test_consensus() {
         let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
@@ -1160,5 +1125,73 @@ mod tests {
         aligner.global(b"GCATGCU").add_to_graph();
         aligner.global(b"xCATGCU").add_to_graph();
         assert_eq!(aligner.consensus(), b"GCATGCUx");
+    }
+
+    #[test]
+    fn test_xclip_prefix_custom() {
+        let x = b"GGGGGGATG";
+        let y = b"ATG";
+
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let scoring = Scoring::new(-5, -1, &score).xclip(-5);
+
+        let mut aligner = Aligner::new(scoring, x);
+        let alignment = aligner.custom(y).alignment();
+
+        assert_eq!(
+            alignment.operations,
+            [AlignmentOperation::Xclip(0), AlignmentOperation::Match(Some((5, 6))), AlignmentOperation::Match(Some((6, 7))), AlignmentOperation::Match(Some((7, 8)))]
+        );
+    }
+
+    #[test]
+    fn test_yclip_prefix_custom() {
+        let y = b"GGGGGGATG";
+        let x = b"ATG";
+
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let scoring = Scoring::new(-5, -1, &score).yclip(-5);
+
+        let mut aligner = Aligner::new(scoring, x);
+        let alignment = aligner.custom(y).alignment();
+
+        assert_eq!(
+            alignment.operations,
+            [AlignmentOperation::Yclip(0, 6), AlignmentOperation::Match(None), AlignmentOperation::Match(Some((0, 1))), AlignmentOperation::Match(Some((1, 2)))]
+        );
+    }
+
+    #[test]
+    fn test_xclip_suffix_custom() {
+        let x = b"GAAAA";
+        let y = b"CG";
+
+        let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
+        let scoring = Scoring::new(-5, -1, &score).xclip(0).yclip(0);
+
+        let mut aligner = Aligner::new(scoring, x);
+        let alignment = aligner.custom(y).alignment();
+
+        assert_eq!(
+            alignment.operations,
+            [AlignmentOperation::Yclip(0, 1), AlignmentOperation::Match(None), AlignmentOperation::Xclip(1)]
+        );
+    }
+
+    #[test]
+    fn test_yclip_suffix_custom() {
+        let y = b"GAAAA";
+        let x = b"CG";
+
+        let score = |a: u8, b: u8| if a == b { 3i32 } else { -3i32 };
+        let scoring = Scoring::new(-5, -1, &score).yclip(-5).xclip(0);
+
+        let mut aligner = Aligner::new(scoring, x);
+        let alignment = aligner.custom(y).alignment();
+
+        assert_eq!(
+            alignment.operations,
+            [AlignmentOperation::Yclip(0, 5), AlignmentOperation::Xclip(0)]
+        );
     }
 }
