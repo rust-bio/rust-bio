@@ -253,16 +253,22 @@ impl Traceback {
     }
 
     // create a new row according to the parameters
-    fn new_row(&mut self, row: usize, size: usize, gap_open: i32, start: usize, end: usize) {
+    fn new_row(&mut self, row: usize, size: usize, gap_open: i32, xclip: i32, start: usize, end: usize) {
         self.matrix[row].1 = start;
         self.matrix[row].2 = end;
         // when the row starts from the edge
         if start == 0 {
             self.matrix[row].0.push(
+                max(
                     TracebackCell {
                         score: (row as i32) * gap_open,
                         op: AlignmentOperation::Del(None),
-                    }
+                    },
+                    TracebackCell {
+                        score: xclip,
+                        op: AlignmentOperation::Xclip(0),
+                    },
+                )
             );
         } else {
             self.matrix[row].0.push(TracebackCell {
@@ -533,7 +539,7 @@ impl<F: MatchFunc> Poa<F> {
             // iterate over the predecessors of this node
             let prevs: Vec<NodeIndex<usize>> =
                 self.graph.neighbors_directed(node, Incoming).collect();
-            traceback.new_row(i, n + 1, self.scoring.gap_open, 0, n + 1);
+            traceback.new_row(i, n + 1, self.scoring.gap_open, self.scoring.xclip_prefix, 0, n + 1);
             // query base and its index in the DAG (traceback matrix rows)
             for (query_index, query_base) in query.iter().enumerate() {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
@@ -617,11 +623,11 @@ impl<F: MatchFunc> Poa<F> {
         let mut coloumn_max_cell = vec![(0, 0); n + 1]; // score location
         let mut traceback = Traceback::with_capacity(m, n);
         traceback.initialize_scores(self.scoring.gap_open, self.scoring.yclip_prefix);
-        println!("xclip {} y clip {}", self.scoring.xclip_prefix, self.scoring.yclip_prefix);
+        //println!("xclip {} y clip {}", self.scoring.xclip_prefix, self.scoring.yclip_prefix);
         // construct the score matrix (O(n^2) space)
         let mut topo = Topo::new(&self.graph);
         while let Some(node) = topo.next(&self.graph) {
-            println!("node {}", node.index());
+            //println!("node {}", node.index());
             // reference base and index
             let r = self.graph.raw_nodes()[node.index()].weight; // reference base at previous index
             let i = node.index() + 1; // 0 index is for initialization so we start at 1
@@ -629,12 +635,12 @@ impl<F: MatchFunc> Poa<F> {
             // iterate over the predecessors of this node
             let prevs: Vec<NodeIndex<usize>> =
                 self.graph.neighbors_directed(node, Incoming).collect();
-            traceback.new_row(i, n + 1, self.scoring.gap_open, 0, n + 1);
+            traceback.new_row(i, n + 1, self.scoring.gap_open, self.scoring.xclip_prefix, 0, n + 1);
             // query base and its index in the DAG (traceback matrix rows)
             for (query_index, query_base) in query.iter().enumerate() {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
                                          // match and deletion scores for the first reference base
-                println!("i = {} j = {}", i, j);
+                //println!("i = {} j = {}", i, j);
                 let max_cell = if prevs.is_empty() {
                     TracebackCell {
                         score: traceback.get(0, j - 1).score
@@ -650,7 +656,7 @@ impl<F: MatchFunc> Poa<F> {
                         score: self.scoring.xclip_prefix,
                         op: AlignmentOperation::Xclip(0)});
                     for prev_node in &prevs {
-                        println!("prev index {}", prev_node.index());
+                        //println!("prev index {}", prev_node.index());
                         let i_p: usize = prev_node.index() + 1; // index of previous node
                         max_cell = max(
                             max_cell,
@@ -667,10 +673,10 @@ impl<F: MatchFunc> Poa<F> {
                             ),
                         );
                     }
-                    println!("out of loop");
+                    //println!("out of loop");
                     max_cell
                 };
-                println!("entered here");
+                //println!("entered here");
                 let score = max(
                     max_cell,
                     TracebackCell {
@@ -678,6 +684,7 @@ impl<F: MatchFunc> Poa<F> {
                         op: AlignmentOperation::Ins(Some(i - 1)),
                     },
                 );
+                print!("{} ", score.score);
                 traceback.set(i, j, score);
                 if coloumn_max_cell[j].0 < score.score {
                     coloumn_max_cell[j].0 = score.score;
@@ -685,9 +692,16 @@ impl<F: MatchFunc> Poa<F> {
                 }
                 //self.print_alignment (score.op);
             }
+            println!("");
         }
         // modify the last row with x suffix clipping
         let mut max_in_row = (0, 0);
+        for i in 0.. m + 1{
+            for j in 0.. n + 1 {
+                print!("{} ", traceback.get(i, j).score);
+            }
+            println!("");
+        }
         for j in 0..n + 1 {
             println!("coloumn number {} max score {} location {}", j, coloumn_max_cell[j].0, coloumn_max_cell[j].1);
             
@@ -716,6 +730,7 @@ impl<F: MatchFunc> Poa<F> {
             traceback.set(traceback.last.index() + 1, n, maxcell);
         }
         // modify the last cell with y suffix clipping
+
         traceback
     }
     /// A global Needleman-Wunsch aligner on partially ordered graphs with banding.
@@ -761,7 +776,7 @@ impl<F: MatchFunc> Poa<F> {
                 max_scoring_j - bandwidth
             };
             let end = max_scoring_j + bandwidth;
-            traceback.new_row(i, (end - start) + 1, self.scoring.gap_open, start, end + 1);
+            traceback.new_row(i, (end - start) + 1, self.scoring.gap_open, self.scoring.xclip_prefix, start, end + 1);
             for (query_index, query_base) in query.iter().enumerate().skip(start) {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
                 if j > end {
