@@ -644,7 +644,7 @@ impl<F: MatchFunc> Poa<F> {
                         TracebackCell {
                             score: self.scoring.xclip_prefix,
                             op: AlignmentOperation::Xclip(0),
-                        }
+                        },
                     );
                     for prev_node in &prevs {
                         let i_p: usize = prev_node.index() + 1; // index of previous node
