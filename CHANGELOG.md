@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [1.6.0](https://www.github.com/rust-bio/rust-bio/compare/v1.5.0...v1.6.0) (2024-02-07)
+
+
+### Features
+
+* POA semi-global, local, and custom alignment ([#569](https://www.github.com/rust-bio/rust-bio/issues/569)) ([440cb1c](https://www.github.com/rust-bio/rust-bio/commit/440cb1cef04d76b779e24bc298dca206bde16d05))
+
 ## [1.5.0](https://www.github.com/rust-bio/rust-bio/compare/v1.4.0...v1.5.0) (2023-12-09)
 
 
