@@ -349,7 +349,7 @@ impl Traceback {
                     j -= 1;
                 }
                 AlignmentOperation::Match(None) => {
-                    i -= 1;
+                    i = 0;
                     j -= 1;
                 }
                 AlignmentOperation::Del(None) => {
@@ -887,7 +887,7 @@ impl<F: MatchFunc> Poa<F> {
                                 *self.graph.edge_weight_mut(edge).unwrap() += 1;
                             }
                             None => {
-                                if prev.index() != head.index() {
+                                if prev.index() != head.index() && prev.index() != node.index() {
                                     self.graph.add_edge(prev, node, 1);
                                 }
                             }
