@@ -121,6 +121,7 @@ custom_derive! {
         NewtypeSub(*),
         Copy,
         Clone,
+        Eq,
         PartialEq,
         PartialOrd,
         Debug,
