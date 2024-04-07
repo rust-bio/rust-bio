@@ -171,9 +171,7 @@ impl RankSelect {
         let mut superblock = match superblocks.binary_search(&SuperblockRank::First(j)) {
             Ok(i) | Err(i) => i, // superblock with same rank exists
         };
-        if superblock > 0 {
-            superblock -= 1;
-        }
+        superblock = superblock.saturating_sub(1);
         let mut rank = *superblocks[superblock];
 
         let first_block = superblock * self.s / 8;
