@@ -485,7 +485,7 @@ mod tests {
     ) {
         let mut actual_entries: Vec<Entry<'_, i64, String>> = tree.find(&target).collect();
         println!("{:?}", actual_entries);
-        actual_entries.sort_by(|x1, x2| x1.data.cmp(&x2.data));
+        actual_entries.sort_by(|x1, x2| x1.data.cmp(x2.data));
         let expected_entries = make_entry_tuples(expected_results);
         assert_eq!(actual_entries.len(), expected_entries.len());
         for (actual, expected) in actual_entries.iter().zip(expected_entries.iter()) {
