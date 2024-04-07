@@ -71,7 +71,7 @@ impl QGramIndex {
         let text = text.into_iter();
         let ranks = RankTransform::new(alphabet);
 
-        let qgram_count = alphabet.len().pow(q as u32);
+        let qgram_count = alphabet.len().pow(q);
         let mut address = vec![0; qgram_count + 1];
 
         for qgram in ranks.qgrams(q, text.clone()) {
@@ -93,11 +93,11 @@ impl QGramIndex {
         {
             let mut offset = vec![0; qgram_count];
             for (i, qgram) in ranks.qgrams(q, text).enumerate() {
-                let a = address[qgram as usize];
-                if address[qgram as usize + 1] - a != 0 {
+                let a = address[qgram];
+                if address[qgram + 1] - a != 0 {
                     // if not masked, insert positions
-                    pos[a + offset[qgram as usize]] = i;
-                    offset[qgram as usize] += 1;
+                    pos[a + offset[qgram]] = i;
+                    offset[qgram] += 1;
                 }
             }
         }
