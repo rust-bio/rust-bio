@@ -343,9 +343,7 @@ pub fn hash_kmers(seq: &[u8], k: usize) -> HashMapFx<&[u8], Vec<u32>> {
     let slc = seq;
     let mut set: HashMapFx<&[u8], Vec<u32>> = HashMapFx::default();
     for i in 0..(slc.len() + 1).saturating_sub(k) {
-        set.entry(&slc[i..i + k])
-            .or_insert_with(Vec::new)
-            .push(i as u32);
+        set.entry(&slc[i..i + k]).or_default().push(i as u32);
     }
     set
 }
