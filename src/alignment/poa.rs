@@ -298,28 +298,28 @@ impl Traceback {
         // get the matrix cell if in band range else return the appropriate values
         if !(self.matrix[i].1 > j || self.matrix[i].2 <= j || self.matrix[i].0.is_empty()) {
             let real_position = j - self.matrix[i].1;
-            return &self.matrix[i].0[real_position];
+            &self.matrix[i].0[real_position]
         }
         // behind the band, met the edge
         else if j == 0 {
-            return &TracebackCell {
+            &TracebackCell {
                 score: MIN_SCORE,
                 op: AlignmentOperation::Del(None),
-            };
+            }
         }
         // infront of the band
         else if j >= self.matrix[i].2 {
-            return &TracebackCell {
+            &TracebackCell {
                 score: MIN_SCORE,
                 op: AlignmentOperation::Ins(None),
-            };
+            }
         }
         // behind the band
         else {
-            return &TracebackCell {
+            &TracebackCell {
                 score: MIN_SCORE,
                 op: AlignmentOperation::Match(None),
-            };
+            }
         }
     }
 
