@@ -262,7 +262,7 @@ mod tests {
         let occ = Occ::new(&bwt, 3, &alphabet);
         let wm = WaveletMatrix::new(&bwt);
 
-        for c in vec![b'A', b'C', b'G', b'T', b'$'] {
+        for c in [b'A', b'C', b'G', b'T', b'$'] {
             for p in 0..text.len() {
                 assert_eq!(occ.get(&bwt, p, c) as u64, wm.rank(c, p as u64));
             }
