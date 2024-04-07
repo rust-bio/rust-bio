@@ -1309,12 +1309,12 @@ mod tests {
         for len in 1..10 {
             let mut seq: Vec<usize> = vec![0; len];
             while seq.iter().sum::<usize>() != len {
-                for i in 0..len {
-                    if seq[i] == 0 {
-                        seq[i] = 1;
+                for elem in seq.iter_mut() {
+                    if *elem == 0 {
+                        *elem = 1;
                         break;
                     } else {
-                        seq[i] = 0;
+                        *elem = 0;
                     }
                 }
                 let prob_fwd = *Prob::from(forward(&hmm, &seq).1);
