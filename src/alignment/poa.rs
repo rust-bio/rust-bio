@@ -85,13 +85,12 @@ impl Alignment {
     /// we will get the following output:
     ///
     /// ```c
-    ///cons:   ACC---CCCTT-TTTCC--GG
-    ///seq1:   ACC---CCCTT-TTTCC--GG
-    ///seq2:   AC--TTCCCTT-TTTCC--GG
-    ///seq3:   ACCG--CC-TT-TTTCC--GG
-    ///seq4:   ACC---CCCT-GTTTC-AAGG
+    /// cons:   ACC---CCCTT-TTTCC--GG
+    /// seq1:   ACC---CCCTT-TTTCC--GG
+    /// seq2:   AC--TTCCCTT-TTTCC--GG
+    /// seq3:   ACCG--CC-TT-TTTCC--GG
+    /// seq4:   ACC---CCCT-GTTTC-AAGG
     /// ```
-    ///
     pub fn pretty(
         &self,
         consensus: TextSlice,
@@ -118,18 +117,18 @@ impl Alignment {
                     seq_indices[current_seq] += 1;
                     all_null = false;
                 } else {
-                    seq_pretty[current_seq].push('-' as u8);
+                    seq_pretty[current_seq].push(b'-');
                 }
             }
             // do the same for the consensus
             if con_index >= consensus.len() {
-                con_pretty.push('-' as u8);
+                con_pretty.push(b'-');
             } else if consensus[con_index] == topo_base {
                 con_pretty.push(topo_base);
                 con_index += 1;
                 all_null = false;
             } else {
-                con_pretty.push('-' as u8);
+                con_pretty.push(b'-');
             }
             if all_null {
                 for current_seq in 0..sequences.len() {
