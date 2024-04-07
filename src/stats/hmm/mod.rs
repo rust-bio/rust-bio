@@ -1393,8 +1393,8 @@ mod tests {
 
         let seqs = vec![vec![0.1, 0.5, 1.0, 1.5, 1.8, 2.1]];
         for seq in &seqs {
-            let prob_fwd = *Prob::from(forward(&hmm, &seq).1);
-            let prob_bck = *Prob::from(backward(&hmm, &seq).1);
+            let prob_fwd = *Prob::from(forward(&hmm, seq).1);
+            let prob_bck = *Prob::from(backward(&hmm, seq).1);
             assert_relative_eq!(prob_fwd, prob_bck, epsilon = 0.00001);
         }
     }
