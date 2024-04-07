@@ -134,7 +134,7 @@ impl WaveletMatrix {
             !self.check_overflow(p),
             "Invalid p (it must be in range 0..wm_size-1"
         );
-        let height = self.height as usize;
+        let height = self.height;
         let mut spos = 0;
         let mut epos = p + 1;
         for level in 0..height {
