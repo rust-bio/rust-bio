@@ -683,7 +683,7 @@ impl<F: MatchFunc> Poa<F> {
                 continue;
             }
             let maxcell = max(
-                traceback.get(traceback.last.index() + 1, j).clone(),
+                *traceback.get(traceback.last.index() + 1, j),
                 TracebackCell {
                     score: max_in_column[j].0 + self.scoring.xclip_suffix,
                     op: AlignmentOperation::Xclip(max_in_column[j].1),
@@ -697,7 +697,7 @@ impl<F: MatchFunc> Poa<F> {
         }
         // Y suffix clipping from the last node
         let maxcell = max(
-            traceback.get(traceback.last.index() + 1, n).clone(),
+            *traceback.get(traceback.last.index() + 1, n),
             TracebackCell {
                 score: max_in_row.0 + self.scoring.yclip_suffix,
                 op: AlignmentOperation::Yclip(max_in_row.1, n),
