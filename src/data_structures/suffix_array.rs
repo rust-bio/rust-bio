@@ -865,8 +865,8 @@ mod tests {
             let pos = suffix_array(text);
             for i in 0..(pos.len() - 2) {
                 // Check that every element in the suffix array is lexically <= the next elem
-                let cur = str_from_pos(&pos, &text, i);
-                let next = str_from_pos(&pos, &text, i + 1);
+                let cur = str_from_pos(&pos, text, i);
+                let next = str_from_pos(&pos, text, i + 1);
 
                 assert!(
                     cur <= next,
