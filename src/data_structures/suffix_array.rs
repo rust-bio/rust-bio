@@ -824,11 +824,9 @@ mod tests {
         let mut rng = rand::thread_rng();
         let alpha = [b'A', b'T', b'C', b'G', b'N'];
         let seqs = (0..num_seqs)
-            .into_iter()
             .map(|_| {
                 let len = rng.gen_range((seq_len / 2)..=seq_len);
                 (0..len)
-                    .into_iter()
                     .map(|_| *alpha.choose(&mut rng).unwrap())
                     .collect::<Vec<u8>>()
             })
@@ -857,7 +855,6 @@ mod tests {
              ];
         let num_rand = 100;
         let rand_cases = (0..num_rand)
-            .into_iter()
             .map(|i| rand_seqs(10, i * 10))
             .collect::<Vec<_>>();
         for i in 0..num_rand {
@@ -907,7 +904,6 @@ mod tests {
              ];
         let num_rand = 100;
         let rand_cases = (0..num_rand)
-            .into_iter()
             .map(|i| rand_seqs(10, i * 10))
             .collect::<Vec<_>>();
         for i in 0..num_rand {
