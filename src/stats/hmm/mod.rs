@@ -1259,7 +1259,7 @@ mod tests {
         let (path, log_prob) = viterbi(&hmm, &[2, 2, 1, 0, 1, 3, 2, 0, 0]);
         let prob = Prob::from(log_prob);
 
-        let expected = vec![0, 0, 0, 1, 1, 1, 1, 1, 1]
+        let expected = [0, 0, 0, 1, 1, 1, 1, 1, 1]
             .iter()
             .map(|i| State(*i))
             .collect::<Vec<State>>();
@@ -1338,7 +1338,7 @@ mod tests {
         let (path, log_prob) = viterbi(&hmm, &[-0.1, 0.1, -0.2, 0.5, 0.8, 1.1, 1.2, 1.5, 0.5, 0.2]);
         let prob = Prob::from(log_prob);
 
-        let expected = vec![0, 0, 0, 0, 0, 1, 1, 1, 0, 0]
+        let expected = [0, 0, 0, 0, 0, 1, 1, 1, 0, 0]
             .iter()
             .map(|i| State(*i))
             .collect::<Vec<State>>();
@@ -1482,19 +1482,19 @@ mod tests {
             .collect::<Vec<Prob>>();
 
         // Compare with the example given in Jason Eisner's spreadsheet (http://www.cs.jhu.edu/~jason/papers/#eisner-2002-tnlp)
-        let pi_hat_vec_ori = vec![0.0597, 0.9403]
+        let pi_hat_vec_ori = [0.0597, 0.9403]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
-        let transitions_hat_vec_ori = vec![0.8797, 0.1049, 0.0921, 0.8658]
+        let transitions_hat_vec_ori = [0.8797, 0.1049, 0.0921, 0.8658]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
-        let observations_hat_vec_ori = vec![0.6765, 0.2188, 0.1047, 0.0584, 0.4251, 0.5165]
+        let observations_hat_vec_ori = [0.6765, 0.2188, 0.1047, 0.0584, 0.4251, 0.5165]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
-        let end_hat_vec_ori = vec![0.0153, 0.0423]
+        let end_hat_vec_ori = [0.0153, 0.0423]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
@@ -1559,19 +1559,19 @@ mod tests {
             .collect::<Vec<Prob>>();
 
         // Example based on Jason Eisner spreadsheet (http://www.cs.jhu.edu/~jason/papers/#eisner-2002-tnlp)
-        let pi_hat_vec_ori = vec![0.0, 1.0]
+        let pi_hat_vec_ori = [0.0, 1.0]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
-        let transitions_hat_vec_ori = vec![0.9337, 0.0663, 0.0718, 0.865]
+        let transitions_hat_vec_ori = [0.9337, 0.0663, 0.0718, 0.865]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
-        let observations_hat_vec_ori = vec![0.6407, 0.1481, 0.2112, 1.5e-4, 0.5341, 0.4657]
+        let observations_hat_vec_ori = [0.6407, 0.1481, 0.2112, 1.5e-4, 0.5341, 0.4657]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
-        let end_hat_vec_ori = vec![0.0, 0.0632]
+        let end_hat_vec_ori = [0.0, 0.0632]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
