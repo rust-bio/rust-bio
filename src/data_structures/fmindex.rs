@@ -726,8 +726,8 @@ mod tests {
             let pattern = b"ATTGGGG";
             let intervals = fmdindex.all_smems(pattern, 0);
             assert_eq!(intervals.len(), 2);
-            let solutions = vec![[0, 14, 0, 3], [4, 9, 3, 4]];
-            for (i, interval) in intervals.iter().enumerate() {
+            let solutions = [[0, 14, 0, 3], [4, 9, 3, 4]];
+            for (interval, &solution) in intervals.iter().zip(solutions.iter()) {
                 let forward_positions = interval.0.forward().occ(&sa);
                 let revcomp_positions = interval.0.revcomp().occ(&sa);
                 let pattern_position = interval.1;
@@ -739,7 +739,7 @@ mod tests {
                         pattern_position,
                         smem_len
                     ],
-                    solutions[i]
+                    solution
                 );
             }
         }
