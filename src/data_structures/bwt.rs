@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn test_occ() {
         let bwt = vec![1u8, 3u8, 3u8, 1u8, 2u8, 0u8];
-        let alphabet = Alphabet::new(&[0u8, 1u8, 2u8, 3u8]);
+        let alphabet = Alphabet::new([0u8, 1u8, 2u8, 3u8]);
         let occ = Occ::new(&bwt, 3, &alphabet);
         assert_eq!(occ.occ, [[0, 0], [1, 2], [0, 0], [0, 2]]);
         assert_eq!(occ.get(&bwt, 4, 2u8), 1);
