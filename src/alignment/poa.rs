@@ -677,23 +677,23 @@ impl<F: MatchFunc> Poa<F> {
         }
         // X suffix clipping
         let mut max_in_row = (0, 0);
-        for j in 0..n + 1 {
+        for (col_index, &(score, col_max_row)) in max_in_column.iter().enumerate() {
             // avoid pointing to itself
-            if max_in_column[j].1 == traceback.last.index() + 1 {
+            if col_max_row == traceback.last.index() + 1 {
                 continue;
             }
             let maxcell = max(
-                *traceback.get(traceback.last.index() + 1, j),
+                *traceback.get(traceback.last.index() + 1, col_index),
                 TracebackCell {
-                    score: max_in_column[j].0 + self.scoring.xclip_suffix,
-                    op: AlignmentOperation::Xclip(max_in_column[j].1),
+                    score: score + self.scoring.xclip_suffix,
+                    op: AlignmentOperation::Xclip(col_max_row),
                 },
             );
             if max_in_row.0 < maxcell.score {
                 max_in_row.0 = maxcell.score;
-                max_in_row.1 = j;
+                max_in_row.1 = col_index;
             }
-            traceback.set(traceback.last.index() + 1, j, maxcell);
+            traceback.set(traceback.last.index() + 1, col_index, maxcell);
         }
         // Y suffix clipping from the last node
         let maxcell = max(
