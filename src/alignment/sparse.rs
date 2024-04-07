@@ -637,7 +637,7 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
     #[test]
     fn test_sdpkpp_tandem_repeat() {
         let k = 8;
-        let matches = super::find_kmer_matches(&QUERY_REPEAT, &TARGET_REPEAT, k);
+        let matches = super::find_kmer_matches(QUERY_REPEAT, TARGET_REPEAT, k);
         let res = super::sdpkpp(&matches, k, 1, -1, -1);
 
         // For debugging:
