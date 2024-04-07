@@ -857,8 +857,8 @@ mod tests {
         let rand_cases = (0..num_rand)
             .map(|i| rand_seqs(10, i * 10))
             .collect::<Vec<_>>();
-        for i in 0..num_rand {
-            test_cases.push((&rand_cases[i], "rand test case"));
+        for rand_case in rand_cases.iter() {
+            test_cases.push((rand_case, "rand test case"));
         }
 
         for &(text, test_name) in test_cases.iter() {
@@ -906,8 +906,8 @@ mod tests {
         let rand_cases = (0..num_rand)
             .map(|i| rand_seqs(10, i * 10))
             .collect::<Vec<_>>();
-        for i in 0..num_rand {
-            test_cases.push((&rand_cases[i], "rand test case"));
+        for rand_case in rand_cases.iter() {
+            test_cases.push((rand_case, "rand test case"));
         }
 
         for &(text, test_name) in test_cases.iter() {
