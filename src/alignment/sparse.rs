@@ -713,10 +713,7 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
         assert_eq!(
             expanded_matches,
-            (0..5)
-                .into_iter()
-                .map(|x| (x, x))
-                .collect::<Vec<(u32, u32)>>()
+            (0..5).map(|x| (x, x)).collect::<Vec<(u32, u32)>>()
         );
 
         let x = b"TTTTTTGGGCAAAAAA";
@@ -727,10 +724,7 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
         assert_eq!(
             expanded_matches,
-            (0..11)
-                .into_iter()
-                .map(|x| (x, x))
-                .collect::<Vec<(u32, u32)>>()
+            (0..11).map(|x| (x, x)).collect::<Vec<(u32, u32)>>()
         );
 
         let x = b"TTTTTTCCGCAAAAAA";
@@ -771,10 +765,7 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
         assert_eq!(
             expanded_matches,
-            (0..5)
-                .into_iter()
-                .map(|x| (x, x))
-                .collect::<Vec<(u32, u32)>>()
+            (0..5).map(|x| (x, x)).collect::<Vec<(u32, u32)>>()
         );
     }
 }
