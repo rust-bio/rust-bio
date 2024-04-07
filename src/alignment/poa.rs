@@ -334,7 +334,7 @@ impl Traceback {
         while i > 0 || j > 0 {
             // push operation and edge corresponding to (one of the) optimal
             // routes
-            ops.push(self.get(i, j).op.clone());
+            ops.push(self.get(i, j).op);
             match self.get(i, j).op {
                 AlignmentOperation::Match(Some((p, _))) => {
                     i = p + 1;
