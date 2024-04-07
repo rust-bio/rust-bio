@@ -171,7 +171,7 @@ mod tests {
                 true, false, true, true, false, true, false, true, false, true, false, true,
             ],
         ];
-        let zeros = vec![6, 7, 5];
+        let zeros = [6, 7, 5];
 
         assert_eq!(wm.height, zeros.len());
         assert_eq!(wm.width, levels[0].len());
@@ -198,7 +198,7 @@ mod tests {
                 false, true, false, true, false, true, false, true, false, true, false, true,
             ],
         ];
-        let zeros = vec![8, 8, 6];
+        let zeros = [8, 8, 6];
 
         assert_eq!(wm.height, zeros.len());
         assert_eq!(wm.width, levels[0].len());
@@ -266,7 +266,7 @@ mod tests {
             vec![0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
         ];
 
-        let alphabet = vec![b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7'];
+        let alphabet = [b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7'];
         for (i, c) in alphabet.iter().enumerate() {
             for p in 0..text.len() {
                 assert_eq!(wm.rank(*c, p as u64), ranks[i][p]);
@@ -288,7 +288,7 @@ mod tests {
             vec![0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2],
         ];
 
-        let alphabet = vec![b'A', b'C', b'G', b'T', b'N', b'$'];
+        let alphabet = [b'A', b'C', b'G', b'T', b'N', b'$'];
         for (i, c) in alphabet.iter().enumerate() {
             for p in 0..text.len() {
                 assert_eq!(wm.rank(*c, p as u64), ranks[i][p]);
