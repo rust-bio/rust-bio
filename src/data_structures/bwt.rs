@@ -171,14 +171,14 @@ impl Occ {
                 // If r is closer to the high checkpoint, count backwards from there.
                 let hi_idx = hi_checkpoint * self.k as usize;
                 if (hi_idx - r) < (self.k as usize / 2) {
-                    return hi_occ - bytecount::count(&bwt[r + 1..=hi_idx], a) as usize;
+                    return hi_occ - bytecount::count(&bwt[r + 1..=hi_idx], a);
                 }
             }
         }
 
         // Otherwise the default case is to count from the low checkpoint.
         let lo_idx = lo_checkpoint * self.k as usize;
-        bytecount::count(&bwt[lo_idx + 1..=r], a) as usize + lo_occ
+        bytecount::count(&bwt[lo_idx + 1..=r], a) + lo_occ
     }
 }
 
