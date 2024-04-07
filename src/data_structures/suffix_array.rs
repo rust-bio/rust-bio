@@ -854,12 +854,12 @@ mod tests {
                 "complex with revcomps"),
              ];
         let num_rand = 100;
-        let rand_cases = (0..num_rand)
-            .map(|i| rand_seqs(10, i * 10))
-            .collect::<Vec<_>>();
-        for rand_case in rand_cases.iter() {
-            test_cases.push((rand_case, "rand test case"));
-        }
+        let rand_cases: Vec<_> = (0..num_rand).map(|i| rand_seqs(10, i * 10)).collect();
+        test_cases.extend(
+            rand_cases
+                .iter()
+                .map(|case| (case.as_ref(), "rand test case")),
+        );
 
         for &(text, test_name) in test_cases.iter() {
             let pos = suffix_array(text);
@@ -903,12 +903,12 @@ mod tests {
              (&b"TACTCCGCTAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTT$AAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTAGCGGAGTA$TAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTTGTCCAGTA$TACTGGACAAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTA$ACGCACCCCGGCATTCGTCGACTCTACACTTAGTGGAACATACAAATTCGCTCGCAGGAGCGCCTCATACATTCTAACGCAGTGATCTTCGGCTGAGACT$AGTCTCAGCCGAAGATCACTGCGTTAGAATGTATGAGGCGCTCCTGCGAGCGAATTTGTATGTTCCACTAAGTGTAGAGTCGACGAATGCCGGGGTGCGT$"[..], "complex sentinels"),
              ];
         let num_rand = 100;
-        let rand_cases = (0..num_rand)
-            .map(|i| rand_seqs(10, i * 10))
-            .collect::<Vec<_>>();
-        for rand_case in rand_cases.iter() {
-            test_cases.push((rand_case, "rand test case"));
-        }
+        let rand_cases: Vec<_> = (0..num_rand).map(|i| rand_seqs(10, i * 10)).collect();
+        test_cases.extend(
+            rand_cases
+                .iter()
+                .map(|case| (case.as_ref(), "rand test case")),
+        );
 
         for &(text, test_name) in test_cases.iter() {
             for &sample_rate in &[2, 3, 5, 16] {
