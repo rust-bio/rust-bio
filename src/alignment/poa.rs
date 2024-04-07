@@ -519,16 +519,13 @@ impl<F: MatchFunc> Aligner<F> {
         // go through the nodes topologically
         while let Some(node) = topo.next(&self.poa.graph) {
             let mut best_weight_score_next: (i32, i32, usize) = (0, 0, usize::MAX);
-            let mut neighbour_nodes = self.poa.graph.neighbors_directed(node, Incoming);
+            let neighbour_nodes = self.poa.graph.neighbors_directed(node, Incoming);
             // go through the incoming neighbour nodes
-            while let Some(neighbour_node) = neighbour_nodes.next() {
-                let mut weight = 0;
+            for neighbour_node in neighbour_nodes {
                 let neighbour_index = neighbour_node.index();
                 let neighbour_score = weight_score_next_vec[neighbour_index].1;
-                let mut edges = self.poa.graph.edges_connecting(neighbour_node, node);
-                while let Some(edge) = edges.next() {
-                    weight += edge.weight().clone();
-                }
+                let edges = self.poa.graph.edges_connecting(neighbour_node, node);
+                let weight = edges.map(|edge| edge.weight()).sum();
                 let current_node_score = weight + neighbour_score;
                 // save the neighbour node with the highest weight and score as best
                 if (weight, current_node_score, neighbour_index) > best_weight_score_next {
