@@ -296,7 +296,7 @@ impl Traceback {
 
     fn get(&self, i: usize, j: usize) -> &TracebackCell {
         // get the matrix cell if in band range else return the appropriate values
-        if !(self.matrix[i].1 > j || self.matrix[i].2 <= j) && (self.matrix[i].0.len() > 0) {
+        if !(self.matrix[i].1 > j || self.matrix[i].2 <= j || self.matrix[i].0.is_empty()) {
             let real_position = j - self.matrix[i].1;
             return &self.matrix[i].0[real_position];
         }
