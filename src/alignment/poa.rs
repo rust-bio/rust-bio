@@ -111,7 +111,7 @@ impl Alignment {
             // go through the sequences checking if bases match with the current node base
             for current_seq in 0..sequences.len() {
                 if seq_indices[current_seq] >= sequences[current_seq].len() {
-                    seq_pretty[current_seq].push('-' as u8);
+                    seq_pretty[current_seq].push(b'-');
                 } else if sequences[current_seq][seq_indices[current_seq]] == topo_base {
                     seq_pretty[current_seq].push(topo_base);
                     seq_indices[current_seq] += 1;
@@ -131,8 +131,8 @@ impl Alignment {
                 con_pretty.push(b'-');
             }
             if all_null {
-                for current_seq in 0..sequences.len() {
-                    seq_pretty[current_seq].pop();
+                for current_seq in seq_pretty.iter_mut() {
+                    current_seq.pop();
                 }
                 con_pretty.pop();
             }
