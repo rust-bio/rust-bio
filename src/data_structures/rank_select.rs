@@ -315,9 +315,9 @@ mod tests {
         assert_eq!(rs.rank_0(5).unwrap(), 5);
         assert_eq!(rs.select_0(0), None);
         assert_eq!(rs.select_0(1).unwrap(), 0);
-        assert_eq!(rs.get(5), true);
-        assert_eq!(rs.get(1), false);
-        assert_eq!(rs.get(32), true);
+        assert!(rs.get(5));
+        assert!(!rs.get(1));
+        assert!(rs.get(32));
     }
 
     #[test]
