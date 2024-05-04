@@ -3,6 +3,54 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [1.6.0](https://www.github.com/rust-bio/rust-bio/compare/v1.5.0...v1.6.0) (2024-02-07)
+
+
+### Features
+
+* POA semi-global, local, and custom alignment ([#569](https://www.github.com/rust-bio/rust-bio/issues/569)) ([440cb1c](https://www.github.com/rust-bio/rust-bio/commit/440cb1cef04d76b779e24bc298dca206bde16d05))
+
+## [1.5.0](https://www.github.com/rust-bio/rust-bio/compare/v1.4.0...v1.5.0) (2023-12-09)
+
+
+### Features
+
+* Add pretty output for poa ([#563](https://www.github.com/rust-bio/rust-bio/issues/563)) ([8b8eea6](https://www.github.com/rust-bio/rust-bio/commit/8b8eea659ceab06242bd437a3cfa1035e01c15fb))
+
+
+### Bug Fixes
+
+* minimum ndarray version is 0.15 ([#558](https://www.github.com/rust-bio/rust-bio/issues/558)) ([2e3aff0](https://www.github.com/rust-bio/rust-bio/commit/2e3aff0b58a4b3b3d758b50174e387fa03cffbb1))
+
+## [1.4.0](https://www.github.com/rust-bio/rust-bio/compare/v1.3.1...v1.4.0) (2023-09-12)
+
+
+### Features
+
+* memory efficient banded poa ([#532](https://www.github.com/rust-bio/rust-bio/issues/532)) ([f03ee1c](https://www.github.com/rust-bio/rust-bio/commit/f03ee1cdf6d4a9b36f125bd72fcf5b6191324f0b))
+
+
+### Bug Fixes
+
+* include `doctests` in the test coverage of code that tarpaulin calculates ([#533](https://www.github.com/rust-bio/rust-bio/issues/533)) ([29cf0f5](https://www.github.com/rust-bio/rust-bio/commit/29cf0f59daf9377e218b62b118f209afe5fe3615))
+* make dependabot commit message follow conventional commits ([#542](https://www.github.com/rust-bio/rust-bio/issues/542)) ([bb88281](https://www.github.com/rust-bio/rust-bio/commit/bb882814395a172de48f670cd316429ea2e50864))
+
+### [1.3.1](https://www.github.com/rust-bio/rust-bio/compare/v1.3.0...v1.3.1) (2023-06-23)
+
+
+### Performance Improvements
+
+* improve alignment::distance::levenshtein and alignment::distance::bounded_levenshtein on strrings where distance is small ([#522](https://www.github.com/rust-bio/rust-bio/issues/522)) ([da7daea](https://www.github.com/rust-bio/rust-bio/commit/da7daea749bd2bbbaf892fff6f2740529ca45140))
+
+## [1.3.0](https://www.github.com/rust-bio/rust-bio/compare/v1.2.0...v1.3.0) (2023-06-14)
+
+
+### Features
+
+* banded partial order alignments ([#488](https://www.github.com/rust-bio/rust-bio/issues/488)) ([2947a36](https://www.github.com/rust-bio/rust-bio/commit/2947a36cccf7b7ded69f33cb367f994d5e129ae4))
+* Consensus sequence from partial order alignment graph ([#525](https://www.github.com/rust-bio/rust-bio/issues/525)) ([640caa0](https://www.github.com/rust-bio/rust-bio/commit/640caa03c7e5e0db36c17400ff9435836c243672))
+* update to bio-types 1.0 ([#524](https://www.github.com/rust-bio/rust-bio/issues/524)) ([0ede04c](https://www.github.com/rust-bio/rust-bio/commit/0ede04c8d5843f9ca0c47ed8741e1161ea54b52a))
+
 ## [1.2.0](https://www.github.com/rust-bio/rust-bio/compare/v1.1.0...v1.2.0) (2023-06-06)
 
 

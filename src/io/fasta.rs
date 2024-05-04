@@ -11,7 +11,7 @@
 //!
 //! In this example, we parse a fasta file from stdin and compute some statistics
 //!
-//! ```
+//! ```no_run
 //! use bio::io::fasta;
 //! use std::io;
 //!
@@ -34,7 +34,7 @@
 //!
 //! We can also use a `while` loop to iterate over records.
 //! This is slightly faster than the `for` loop.
-//! ```
+//! ```no_run
 //! use bio::io::fasta;
 //! use std::io;
 //! let mut records = fasta::Reader::new(io::stdin()).records();
@@ -79,7 +79,7 @@
 //!
 //! In this example we filter reads from stdin on sequence length and write them to stdout
 //!
-//! ```
+//! ```no_run
 //! use bio::io::fasta;
 //! use bio::io::fasta::FastaRead;
 //! use std::io;

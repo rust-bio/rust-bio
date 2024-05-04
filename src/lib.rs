@@ -82,20 +82,20 @@
 //!
 //! ```toml
 //! [dependencies]
-//! bio = "*"
+//! bio = "1"
 //! ```
 //!
-//! and import the crate from your source code:
+//! Now Rust-Bio modules can be used directly in your source code, for example:
 //!
 //! ```rust
-//! extern crate bio;
+//! use bio::io::fastq;
 //! ```
 //!
 //! ## Example: FM-index and FASTQ
 //!
 //! An example of using `rust-bio`:
 //!
-//! ```rust
+//! ```no_run
 //! // Import some modules
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
@@ -244,9 +244,6 @@ extern crate serde_derive;
 
 #[macro_use]
 extern crate strum_macros;
-
-#[macro_use]
-extern crate getset;
 
 #[cfg(feature = "phylogeny")]
 #[macro_use]
