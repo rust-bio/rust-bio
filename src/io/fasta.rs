@@ -864,9 +864,6 @@ impl<W: io::Write> Writer<W> {
     /// assert!(fs::remove_file(path).is_ok());
     /// assert_eq!(actual, expected)
     /// ```
-    pub fn set_linewrap(&mut self, width: usize) {
-        self.linewrap = Some(width);
-    }
 
     pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
         self.write(record.id(), record.desc(), record.seq())
@@ -889,10 +886,12 @@ impl<W: io::Write> Writer<W> {
     /// {
     ///     let handle = io::BufWriter::new(file);
     ///     let mut writer = Writer::new(handle);
-    ///     writer.set_linewrap(4);
-    ///     let record = Record::with_attrs("id", Some("desc"), b"ACGTACGT");
+    ///     
     ///     // For demonstration width is 4 chars, use 50, 60 or 70 instead for production
-    ///     let write_result = writer.write_record_width(&record);
+    ///     writer.set_linewrap(Some(4));
+    ///
+    ///     let record = Record::with_attrs("id", Some("desc"), b"ACGTACGT");
+    ///     let write_result = writer.write_record(&record);
     ///     assert!(write_result.is_ok());
     /// }
     ///
@@ -902,8 +901,9 @@ impl<W: io::Write> Writer<W> {
     /// assert!(fs::remove_file(path).is_ok());
     /// assert_eq!(actual, expected)
     /// ```
-    pub fn write_record_width(&mut self, record: &Record) -> io::Result<()> {
-        self.write_width(record.id(), record.desc(), record.seq())
+
+    pub fn set_linewrap(&mut self, linewrap: Option<usize>) {
+        self.linewrap = linewrap
     }
 
     pub fn write_record_header(&mut self, id: &str, desc: Option<&str>) -> io::Result<()> {
@@ -921,28 +921,20 @@ impl<W: io::Write> Writer<W> {
     /// Write a Fasta record with given id, optional description and sequence.
     pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> io::Result<()> {
         self.write_record_header(id, desc)?;
-        self.writer.write_all(seq)?;
-        self.writer.write_all(b"\n")?;
-
-        Ok(())
-    }
-
-    /// Write a Fasta record with given id, optional description and sequence with a line width.
-    pub fn write_width(
-        &mut self,
-        id: &str,
-        desc: Option<&str>,
-        seq: TextSlice<'_>
-    ) -> io::Result<()> {
-        assert!(self.linewrap != None,);
-        self.write_record_header(id, desc)?;
-
-        seq.chunks(self.linewrap.unwrap()).try_for_each(|chunk| -> io::Result<()> {
-            self.writer.write_all(chunk)?;
+        if self.linewrap == None {
+            self.writer.write_all(seq)?;
             self.writer.write_all(b"\n")?;
-
             Ok(())
-        })
+        } else {
+            // Write Fasta lines with a given linewrap instead of in a single line
+            seq.chunks(self.linewrap.unwrap())
+                .try_for_each(|chunk| -> io::Result<()> {
+                    self.writer.write_all(chunk)?;
+                    self.writer.write_all(b"\n")?;
+
+                    Ok(())
+                })
+        }
     }
 
     /// Flush the writer, ensuring that everything is written.
@@ -1854,7 +1846,10 @@ TTTA
         let file = fs::File::create(path).unwrap();
         {
             let handle = io::BufWriter::new(file);
-            let mut writer = Writer { writer: handle, linewrap: 4 };
+            let mut writer = Writer {
+                writer: handle,
+                linewrap: Some(4),
+            };
             let record = Record::with_attrs("id", Some("desc"), b"ACGT");
 
             let write_result = writer.write_record(&record);
@@ -1868,58 +1863,27 @@ TTTA
         assert_eq!(actual, expected)
     }
 
-    // THESE ARE NOT GOOD JUST COPY PASTED
     #[test]
-    fn test_write_record_formated() {
-        let path = Path::new("test.fa");
-        let file = fs::File::create(path).unwrap();
-        {
-            let handle = io::BufWriter::new(file);
-            let mut writer = Writer { writer: handle, linewrap: 4 };
-            let record = Record::with_attrs("id", Some("desc"), b"AGCTAGCT");
-
-            let write_result = writer.write_record_width(&record);
-            assert!(write_result.is_ok());
-        }
-
-        let actual = fs::read_to_string(path).unwrap();
-        let expected = ">id desc\nAGCT\nAGCT\n";
-
-        assert!(fs::remove_file(path).is_ok());
-        assert_eq!(actual, expected)
-    }
-
-    #[test]
-    fn test_write_width() {
+    fn test_write_with_linewrap() {
         let width = 4;
         let mut writer = Writer::new(Vec::new());
-        writer.set_linewrap(width);
-        writer
-            .write_width("id", Some("desc"), b"ACCGTAGGCTGA")
-            .unwrap();
-        writer
-            .write_width("id2", None, b"ATTGTTGTTTTA")
-            .unwrap();
+        writer.set_linewrap(Some(width));
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
+        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
         writer.flush().unwrap();
         assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE_WIDTH);
 
         let mut writer = Writer::with_capacity(100, Vec::new());
-        writer
-            .write_width("id", Some("desc"), b"ACCGTAGGCTGA")
-            .unwrap();
-        writer
-            .write_width("id2", None, b"ATTGTTGTTTTA")
-            .unwrap();
+        writer.set_linewrap(Some(width));
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
+        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
         writer.flush().unwrap();
         assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE_WIDTH);
 
         let mut writer = Writer::from_bufwriter(std::io::BufWriter::with_capacity(100, Vec::new()));
-        writer
-            .write_width("id", Some("desc"), b"ACCGTAGGCTGA")
-            .unwrap();
-        writer
-            .write_width("id2", None, b"ATTGTTGTTTTA")
-            .unwrap();
+        writer.set_linewrap(Some(width));
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
+        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
         writer.flush().unwrap();
         assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE_WIDTH);
     }
