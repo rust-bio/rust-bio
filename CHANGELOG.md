@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [1.6.1](https://github.com/rust-bio/rust-bio/compare/v1.6.0...v1.6.1) (2024-05-08)
+
+
+### Dependencies
+
+* update itertools requirement from &gt;=0.8, &lt;0.12 to >=0.8, <0.13 ([#562](https://github.com/rust-bio/rust-bio/issues/562)) ([a79e5c9](https://github.com/rust-bio/rust-bio/commit/a79e5c959d0e1234f41d1aaf19b5e6cc8d967615))
+
 ## [1.6.0](https://www.github.com/rust-bio/rust-bio/compare/v1.5.0...v1.6.0) (2024-02-07)
 
 
