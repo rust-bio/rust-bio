@@ -16,9 +16,7 @@ use std::cmp;
 use std::mem;
 use std::usize;
 
-pub use crate::stats::pairhmm::{
-    EmissionParameters, GapParameters, StartEndGapParameters, XYEmission,
-};
+pub use crate::stats::pairhmm::{EmissionParameters, GapParameters, StartEndGapParameters};
 use crate::stats::LogProb;
 
 /// Fast approximation of sum over the three given proabilities. If the largest is sufficiently
@@ -284,7 +282,7 @@ impl PairHMM {
 
 #[cfg(test)]
 mod tests {
-    use crate::stats::{LogProb, Prob};
+    use crate::stats::{pairhmm::XYEmission, LogProb, Prob};
 
     use super::*;
 

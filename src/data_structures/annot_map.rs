@@ -109,7 +109,7 @@ where
         let itree = self
             .refid_itrees
             .entry(location.refid().clone())
-            .or_insert_with(IntervalTree::new);
+            .or_default();
         let rng = location.start()..(location.start() + (location.length() as isize));
         itree.insert(rng, data);
     }
@@ -170,10 +170,7 @@ where
     /// assert_eq!(hits, vec![&assert_copy]);
     /// ```
     pub fn insert_loc(&mut self, data: T) {
-        let itree = self
-            .refid_itrees
-            .entry(data.refid().clone())
-            .or_insert_with(IntervalTree::new);
+        let itree = self.refid_itrees.entry(data.refid().clone()).or_default();
         let rng = data.start()..(data.start() + (data.length() as isize));
         itree.insert(rng, data);
     }

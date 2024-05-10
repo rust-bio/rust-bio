@@ -211,7 +211,7 @@ mod tests {
             assert_eq!(*loc, 4);
             assert_relative_eq!(*sum, 1.0, epsilon = f32::EPSILON);
         } else {
-            assert!(false);
+            panic!();
         }
     }
 

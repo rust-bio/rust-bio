@@ -109,10 +109,10 @@ impl<W: io::Write> Writer<W> {
     pub fn write(&mut self, record: &Record) -> csv::Result<()> {
         if record.aux.is_empty() {
             self.inner
-                .serialize(&(&record.chrom, record.start, record.end))
+                .serialize((&record.chrom, record.start, record.end))
         } else {
             self.inner
-                .serialize(&(&record.chrom, record.start, record.end, &record.aux))
+                .serialize((&record.chrom, record.start, record.end, &record.aux))
         }
     }
 }

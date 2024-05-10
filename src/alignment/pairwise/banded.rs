@@ -1262,7 +1262,7 @@ impl Band {
                     // Band to lower right corner
                     let rows = self.rows as u32;
                     let cols = self.cols as u32;
-                    self.add_gap((r as u32, c as u32), (rows as u32, cols as u32), w);
+                    self.add_gap((r as u32, c as u32), (rows, cols), w);
                 }
             }
         }

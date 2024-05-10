@@ -485,7 +485,7 @@ mod tests {
     ) {
         let mut actual_entries: Vec<Entry<'_, i64, String>> = tree.find(&target).collect();
         println!("{:?}", actual_entries);
-        actual_entries.sort_by(|x1, x2| x1.data.cmp(&x2.data));
+        actual_entries.sort_by(|x1, x2| x1.data.cmp(x2.data));
         let expected_entries = make_entry_tuples(expected_results);
         assert_eq!(actual_entries.len(), expected_entries.len());
         for (actual, expected) in actual_entries.iter().zip(expected_entries.iter()) {
@@ -498,7 +498,10 @@ mod tests {
         assert_intersections(tree, target, vec![]);
     }
 
+    // Clippy has a warning against `vec!` macros with a single range as argument.
+    // Since we do actually want that here, we disable the warning.
     #[test]
+    #[allow(clippy::single_range_in_vec_init)]
     fn test_insertion_and_intersection() {
         let mut tree: IntervalTree<i64, String> = IntervalTree::new();
         assert_eq!(tree.find(1..2).count(), 0);

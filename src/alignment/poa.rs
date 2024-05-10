@@ -85,13 +85,12 @@ impl Alignment {
     /// we will get the following output:
     ///
     /// ```c
-    ///cons:   ACC---CCCTT-TTTCC--GG
-    ///seq1:   ACC---CCCTT-TTTCC--GG
-    ///seq2:   AC--TTCCCTT-TTTCC--GG
-    ///seq3:   ACCG--CC-TT-TTTCC--GG
-    ///seq4:   ACC---CCCT-GTTTC-AAGG
+    /// cons:   ACC---CCCTT-TTTCC--GG
+    /// seq1:   ACC---CCCTT-TTTCC--GG
+    /// seq2:   AC--TTCCCTT-TTTCC--GG
+    /// seq3:   ACCG--CC-TT-TTTCC--GG
+    /// seq4:   ACC---CCCT-GTTTC-AAGG
     /// ```
-    ///
     pub fn pretty(
         &self,
         consensus: TextSlice,
@@ -112,28 +111,28 @@ impl Alignment {
             // go through the sequences checking if bases match with the current node base
             for current_seq in 0..sequences.len() {
                 if seq_indices[current_seq] >= sequences[current_seq].len() {
-                    seq_pretty[current_seq].push('-' as u8);
+                    seq_pretty[current_seq].push(b'-');
                 } else if sequences[current_seq][seq_indices[current_seq]] == topo_base {
                     seq_pretty[current_seq].push(topo_base);
                     seq_indices[current_seq] += 1;
                     all_null = false;
                 } else {
-                    seq_pretty[current_seq].push('-' as u8);
+                    seq_pretty[current_seq].push(b'-');
                 }
             }
             // do the same for the consensus
             if con_index >= consensus.len() {
-                con_pretty.push('-' as u8);
+                con_pretty.push(b'-');
             } else if consensus[con_index] == topo_base {
                 con_pretty.push(topo_base);
                 con_index += 1;
                 all_null = false;
             } else {
-                con_pretty.push('-' as u8);
+                con_pretty.push(b'-');
             }
             if all_null {
-                for current_seq in 0..sequences.len() {
-                    seq_pretty[current_seq].pop();
+                for current_seq in seq_pretty.iter_mut() {
+                    current_seq.pop();
                 }
                 con_pretty.pop();
             }
@@ -297,30 +296,30 @@ impl Traceback {
 
     fn get(&self, i: usize, j: usize) -> &TracebackCell {
         // get the matrix cell if in band range else return the appropriate values
-        if !(self.matrix[i].1 > j || self.matrix[i].2 <= j) && (self.matrix[i].0.len() > 0) {
+        if !(self.matrix[i].1 > j || self.matrix[i].2 <= j || self.matrix[i].0.is_empty()) {
             let real_position = j - self.matrix[i].1;
-            return &self.matrix[i].0[real_position];
+            &self.matrix[i].0[real_position]
         }
         // behind the band, met the edge
         else if j == 0 {
-            return &TracebackCell {
+            &TracebackCell {
                 score: MIN_SCORE,
                 op: AlignmentOperation::Del(None),
-            };
+            }
         }
         // infront of the band
         else if j >= self.matrix[i].2 {
-            return &TracebackCell {
+            &TracebackCell {
                 score: MIN_SCORE,
                 op: AlignmentOperation::Ins(None),
-            };
+            }
         }
         // behind the band
         else {
-            return &TracebackCell {
+            &TracebackCell {
                 score: MIN_SCORE,
                 op: AlignmentOperation::Match(None),
-            };
+            }
         }
     }
 
@@ -335,7 +334,7 @@ impl Traceback {
         while i > 0 || j > 0 {
             // push operation and edge corresponding to (one of the) optimal
             // routes
-            ops.push(self.get(i, j).op.clone());
+            ops.push(self.get(i, j).op);
             match self.get(i, j).op {
                 AlignmentOperation::Match(Some((p, _))) => {
                     i = p + 1;
@@ -520,16 +519,13 @@ impl<F: MatchFunc> Aligner<F> {
         // go through the nodes topologically
         while let Some(node) = topo.next(&self.poa.graph) {
             let mut best_weight_score_next: (i32, i32, usize) = (0, 0, usize::MAX);
-            let mut neighbour_nodes = self.poa.graph.neighbors_directed(node, Incoming);
+            let neighbour_nodes = self.poa.graph.neighbors_directed(node, Incoming);
             // go through the incoming neighbour nodes
-            while let Some(neighbour_node) = neighbour_nodes.next() {
-                let mut weight = 0;
+            for neighbour_node in neighbour_nodes {
                 let neighbour_index = neighbour_node.index();
                 let neighbour_score = weight_score_next_vec[neighbour_index].1;
-                let mut edges = self.poa.graph.edges_connecting(neighbour_node, node);
-                while let Some(edge) = edges.next() {
-                    weight += edge.weight().clone();
-                }
+                let edges = self.poa.graph.edges_connecting(neighbour_node, node);
+                let weight = edges.map(|edge| edge.weight()).sum();
                 let current_node_score = weight + neighbour_score;
                 // save the neighbour node with the highest weight and score as best
                 if (weight, current_node_score, neighbour_index) > best_weight_score_next {
@@ -681,27 +677,27 @@ impl<F: MatchFunc> Poa<F> {
         }
         // X suffix clipping
         let mut max_in_row = (0, 0);
-        for j in 0..n + 1 {
+        for (col_index, &(score, col_max_row)) in max_in_column.iter().enumerate() {
             // avoid pointing to itself
-            if max_in_column[j].1 == traceback.last.index() + 1 {
+            if col_max_row == traceback.last.index() + 1 {
                 continue;
             }
             let maxcell = max(
-                traceback.get(traceback.last.index() + 1, j).clone(),
+                *traceback.get(traceback.last.index() + 1, col_index),
                 TracebackCell {
-                    score: max_in_column[j].0 + self.scoring.xclip_suffix,
-                    op: AlignmentOperation::Xclip(max_in_column[j].1),
+                    score: score + self.scoring.xclip_suffix,
+                    op: AlignmentOperation::Xclip(col_max_row),
                 },
             );
             if max_in_row.0 < maxcell.score {
                 max_in_row.0 = maxcell.score;
-                max_in_row.1 = j;
+                max_in_row.1 = col_index;
             }
-            traceback.set(traceback.last.index() + 1, j, maxcell);
+            traceback.set(traceback.last.index() + 1, col_index, maxcell);
         }
         // Y suffix clipping from the last node
         let maxcell = max(
-            traceback.get(traceback.last.index() + 1, n).clone(),
+            *traceback.get(traceback.last.index() + 1, n),
             TracebackCell {
                 score: max_in_row.0 + self.scoring.yclip_suffix,
                 op: AlignmentOperation::Yclip(max_in_row.1, n),

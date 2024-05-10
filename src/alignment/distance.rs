@@ -163,15 +163,12 @@ pub mod simd {
     /// assert_eq!(ldist, None);
     /// ```
     pub fn bounded_levenshtein(alpha: TextSlice<'_>, beta: TextSlice<'_>, k: u32) -> Option<u32> {
-        if let Some(x) = editdistancek::edit_distance_bounded(
+        editdistancek::edit_distance_bounded(
             alpha,
             beta,
             min(k as usize, max(alpha.len(), beta.len())),
-        ) {
-            Some(x as u32)
-        } else {
-            None
-        }
+        )
+        .map(|x| x as u32)
     }
 }
 
