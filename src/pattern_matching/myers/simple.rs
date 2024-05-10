@@ -145,8 +145,7 @@ impl<'a, T: BitVec + 'a> StatesHandler<'a, T, T::DistType> for ShortStatesHandle
 
     #[inline]
     fn set_max_state(&self, pos: usize, states: &mut [State<T, T::DistType>]) {
-        //states[pos] = State::max();
-        *unsafe { states.get_unchecked_mut(pos) } = State::max();
+        states[pos] = State::max();
     }
 
     #[inline]
@@ -156,8 +155,7 @@ impl<'a, T: BitVec + 'a> StatesHandler<'a, T, T::DistType> for ShortStatesHandle
         pos: usize,
         states: &mut [State<T, T::DistType>],
     ) {
-        //states[pos] = source.clone();
-        *unsafe { states.get_unchecked_mut(pos) } = *source;
+        states[pos] = *source;
     }
 
     #[inline]
