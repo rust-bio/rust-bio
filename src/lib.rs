@@ -34,7 +34,8 @@
 //! * [serde](https://github.com/serde-rs/serde) support for all data structures when built with `nightly` feature,
 //! * readers and writers for FASTQ, FASTA and BED,
 //! * helper functions for combinatorics and dealing with log probabilities,
-//! * an implementation of the Hidden Markov Model and related algorithms.
+//! * an implementation of the Hidden Markov Model and related algorithms,
+//! * [transcription] and [translation] of sequences.
 //!
 //! For reading and writing SAM/BAM/CRAM, VCF/BCF files or tabix indexed files, have a look at [rust-htslib](https://docs.rs/rust-htslib).
 //!
@@ -209,6 +210,31 @@
 //! }
 //! ```
 //!
+//! ## Example: Transcription and Translation
+//!
+//! ```ignore
+//! # TODO: Remove `ignore` once `transcribe` and `translate` are implemented.
+//! use bio::sequence::{Dna, Rna, Protein};
+//!
+//! let coding_dna = "ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG";
+//! let dna: Dna = coding_dna.parse(); // TODO: Maybe use of `into` instead of `parse`?
+//! assert_eq!(dna, "ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG");
+//!
+//! let rna: Rna = dna.transcribe();
+//! assert_eq!(rna, "AUGGCCAUUGUAAUGGGCCGCUGAAAGGGUGCCCGAUAG"); // NOTE: Only changes 'T' to 'U'.
+//!
+//! let protein: Protein = rna.translate();
+//! assert_eq!(protein, "MAIVMGR*KGAR*");
+//!
+//! // Optionally, you can use `translate_with_terminal` to specify the terminal symbol.
+//! // The terminal symbol is not included in the resulting protein.
+//! assert_eq!(rna.translate_with_terminal(bio::alphabets::protein::TERMINATOR),
+//!            "MAIVMGR");
+//!
+//! // It should be always possible to back-transcribe and get the original DNA sequence.
+//! assert_eq!(dna, rna.back_transcribe());
+//! ```
+//!
 //! Documentation and further examples for each module can be found in the module descriptions below.
 //!
 //! # Benchmarks
@@ -226,6 +252,9 @@
 //! Initialization time of each algorithm for the given pattern was included in each iteration. Benchmarks were conducted with *Cargo bench* for Rust-Bio and *Python timeit* for Seqan on an Intel Core i5-3427U CPU.
 //! Benchmarking Seqan from *Python timeit* entails an overhead of 1.46ms for calling a C++ binary. This overhead was subtracted from above Seqan run times.
 //! Note that this benchmark only compares the two libraries to exemplify that Rust-Bio has comparable speed to C++ libraries: all used algorithms have their advantages for specific text and pattern structures and lengths (see [the pattern matching section in the documentation](https://docs.rs/bio/0.28.2/bio/pattern_matching/index.html))./!
+//!
+//! [transcription]: https://en.wikipedia.org/wiki/Transcription_(biology)
+//! [translation]: https://en.wikipedia.org/wiki/Translation_(biology)
 
 #[macro_use]
 extern crate approx;
