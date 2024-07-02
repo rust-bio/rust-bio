@@ -369,7 +369,7 @@ impl Record {
         }
     }
 
-    /// Phase of the feature. The phase is one of the integers 0, 1, or 2, indicating the number of bases that should be removed from the beginning of this feature to reach the first base of the next codon. `"."` if not applicable.
+    /// Phase of the feature. The phase is one of the integers 0, 1, or 2, indicating the number of bases that should be removed from the beginning of this feature to reach the first base of the next codon. `None` if not applicable (`"."` in GFF file).
     pub fn phase(&self) -> &Phase {
         &self.phase
     }
