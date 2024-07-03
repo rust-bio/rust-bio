@@ -58,11 +58,11 @@ impl Finder {
         Finder {
             start_codons: start_codons
                 .iter()
-                .map(|x| x.iter().map(|&x| x as u8).collect::<VecDeque<u8>>())
+                .map(|x| x.iter().copied().collect::<VecDeque<u8>>())
                 .collect(),
             stop_codons: stop_codons
                 .iter()
-                .map(|x| x.iter().map(|&x| x as u8).collect::<VecDeque<u8>>())
+                .map(|x| x.iter().copied().collect::<VecDeque<u8>>())
                 .collect(),
             min_len,
         }

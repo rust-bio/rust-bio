@@ -824,11 +824,9 @@ mod tests {
         let mut rng = rand::thread_rng();
         let alpha = [b'A', b'T', b'C', b'G', b'N'];
         let seqs = (0..num_seqs)
-            .into_iter()
             .map(|_| {
                 let len = rng.gen_range((seq_len / 2)..=seq_len);
                 (0..len)
-                    .into_iter()
                     .map(|_| *alpha.choose(&mut rng).unwrap())
                     .collect::<Vec<u8>>()
             })
@@ -856,20 +854,19 @@ mod tests {
                 "complex with revcomps"),
              ];
         let num_rand = 100;
-        let rand_cases = (0..num_rand)
-            .into_iter()
-            .map(|i| rand_seqs(10, i * 10))
-            .collect::<Vec<_>>();
-        for i in 0..num_rand {
-            test_cases.push((&rand_cases[i], "rand test case"));
-        }
+        let rand_cases: Vec<_> = (0..num_rand).map(|i| rand_seqs(10, i * 10)).collect();
+        test_cases.extend(
+            rand_cases
+                .iter()
+                .map(|case| (case.as_ref(), "rand test case")),
+        );
 
         for &(text, test_name) in test_cases.iter() {
             let pos = suffix_array(text);
             for i in 0..(pos.len() - 2) {
                 // Check that every element in the suffix array is lexically <= the next elem
-                let cur = str_from_pos(&pos, &text, i);
-                let next = str_from_pos(&pos, &text, i + 1);
+                let cur = str_from_pos(&pos, text, i);
+                let next = str_from_pos(&pos, text, i + 1);
 
                 assert!(
                     cur <= next,
@@ -906,13 +903,12 @@ mod tests {
              (&b"TACTCCGCTAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTT$AAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTAGCGGAGTA$TAGGGACACCTAAATAGATACTCGCAAAGGCGACTGATATATCCTTAGGTCGAAGAGATACCAGAGAAATAGTAGGTCTTAGGCTAGTCCTTGTCCAGTA$TACTGGACAAGGACTAGCCTAAGACCTACTATTTCTCTGGTATCTCTTCGACCTAAGGATATATCAGTCGCCTTTGCGAGTATCTATTTAGGTGTCCCTA$ACGCACCCCGGCATTCGTCGACTCTACACTTAGTGGAACATACAAATTCGCTCGCAGGAGCGCCTCATACATTCTAACGCAGTGATCTTCGGCTGAGACT$AGTCTCAGCCGAAGATCACTGCGTTAGAATGTATGAGGCGCTCCTGCGAGCGAATTTGTATGTTCCACTAAGTGTAGAGTCGACGAATGCCGGGGTGCGT$"[..], "complex sentinels"),
              ];
         let num_rand = 100;
-        let rand_cases = (0..num_rand)
-            .into_iter()
-            .map(|i| rand_seqs(10, i * 10))
-            .collect::<Vec<_>>();
-        for i in 0..num_rand {
-            test_cases.push((&rand_cases[i], "rand test case"));
-        }
+        let rand_cases: Vec<_> = (0..num_rand).map(|i| rand_seqs(10, i * 10)).collect();
+        test_cases.extend(
+            rand_cases
+                .iter()
+                .map(|case| (case.as_ref(), "rand test case")),
+        );
 
         for &(text, test_name) in test_cases.iter() {
             for &sample_rate in &[2, 3, 5, 16] {
