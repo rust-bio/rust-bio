@@ -3,6 +3,31 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [2.0.0](https://github.com/rust-bio/rust-bio/compare/v1.6.0...v2.0.0) (2024-07-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* Refactor misleadingly named method io::gff::Record::frame to phase and improve typing ([#593](https://github.com/rust-bio/rust-bio/issues/593))
+
+### refactor
+
+* Refactor misleadingly named method io::gff::Record::frame to phase and improve typing ([#593](https://github.com/rust-bio/rust-bio/issues/593)) ([216d925](https://github.com/rust-bio/rust-bio/commit/216d925e323631d6c49a668460d1ca790347d4e7))
+
+
+### Bug Fixes
+
+* Fix clippy warnings ([#584](https://github.com/rust-bio/rust-bio/issues/584)) ([68791f3](https://github.com/rust-bio/rust-bio/commit/68791f3b10573b15ce066648c7c397e1700137ba))
+
+
+### Dependencies
+
+* update itertools requirement from &gt;=0.8, &lt;0.12 to >=0.8, <0.13 ([#562](https://github.com/rust-bio/rust-bio/issues/562)) ([a79e5c9](https://github.com/rust-bio/rust-bio/commit/a79e5c959d0e1234f41d1aaf19b5e6cc8d967615))
+* update itertools requirement from &gt;=0.8, &lt;0.13 to >=0.8, <0.14 ([#590](https://github.com/rust-bio/rust-bio/issues/590)) ([973ac0c](https://github.com/rust-bio/rust-bio/commit/973ac0c08c9f2f910cb7d28a50142bf2d3416729))
+* update multimap requirement from &gt;=0.6, &lt;0.10 to >=0.6, <0.11 ([#587](https://github.com/rust-bio/rust-bio/issues/587)) ([fe8f10c](https://github.com/rust-bio/rust-bio/commit/fe8f10c6da6f6802f15b959cb0c746b07e279da8))
+* update ordered-float requirement from 3.1 to 4.2 ([#565](https://github.com/rust-bio/rust-bio/issues/565)) ([3b87ecd](https://github.com/rust-bio/rust-bio/commit/3b87ecdc8395df4ac4814cdd64a7b3952fc3eb82))
+* update strum_macros requirement from &gt;= 0.16, &lt; 0.26 to >= 0.16, < 0.27 ([#586](https://github.com/rust-bio/rust-bio/issues/586)) ([9912528](https://github.com/rust-bio/rust-bio/commit/99125281548cb07fe884b5c9cc79f6a8fa1197ae))
+
 ## [1.6.0](https://www.github.com/rust-bio/rust-bio/compare/v1.5.0...v1.6.0) (2024-02-07)
 
 
