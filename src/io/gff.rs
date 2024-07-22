@@ -157,6 +157,13 @@ type GffRecordInner = (
 pub struct Phase(Option<u8>);
 
 impl From<u8> for Phase {
+    /// Create a new Phase from a u8.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::io::gff::Phase;
+    /// let p = Phase::from(0);
+    /// ```
     fn from(p: u8) -> Self {
         Phase(Some(p))
     }
@@ -165,6 +172,17 @@ impl From<u8> for Phase {
 impl TryInto<u8> for Phase {
     type Error = ();
 
+    /// Try to convert a Phase into a u8.
+    ///
+    /// # Example
+    /// ```
+    /// use std::convert::TryInto;
+    /// use bio::io::gff::Phase;
+    ///
+    /// let p = Phase::from(0);
+    /// let u: u8 = p.try_into().unwrap();
+    /// assert_eq!(u, 0);
+    /// ```
     fn try_into(self) -> Result<u8, Self::Error> {
         match self.0 {
             Some(p) => Ok(p),
