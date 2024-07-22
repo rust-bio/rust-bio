@@ -3,6 +3,20 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [2.0.1](https://github.com/rust-bio/rust-bio/compare/v2.0.0...v2.0.1) (2024-07-22)
+
+
+### Bug Fixes
+
+* Add missing method to access phase of gff record ([#597](https://github.com/rust-bio/rust-bio/issues/597)) ([72910e8](https://github.com/rust-bio/rust-bio/commit/72910e8d537ac3f3de663aa1f22d9aae790b71eb))
+
+
+### Dependencies
+
+* update bit-set requirement from 0.5 to 0.8 ([#596](https://github.com/rust-bio/rust-bio/issues/596)) ([29a85fb](https://github.com/rust-bio/rust-bio/commit/29a85fb0110d02470cfab1766aad78dc471af2ab))
+* update statrs requirement from &gt;= 0.11, &lt; 0.17 to >= 0.11, < 0.18 ([#595](https://github.com/rust-bio/rust-bio/issues/595)) ([9c352c0](https://github.com/rust-bio/rust-bio/commit/9c352c071061269224c3d8797b129ade7833fa03))
+* update strum requirement from &gt;= 0.16, &lt; 0.26 to >= 0.16, < 0.27 ([#588](https://github.com/rust-bio/rust-bio/issues/588)) ([d53c9d1](https://github.com/rust-bio/rust-bio/commit/d53c9d1a930f5a39d2be8bf795768a9418de140d))
+
 ## [2.0.0](https://github.com/rust-bio/rust-bio/compare/v1.6.0...v2.0.0) (2024-07-03)
 
 
