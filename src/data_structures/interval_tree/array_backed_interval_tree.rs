@@ -199,7 +199,7 @@ impl<N: Ord + Clone + Copy, D: Clone> ArrayBackedIntervalTree<N, D> {
 
         let interval = interval.into();
         let (start, end) = (interval.start, interval.end);
-        let n = self.entries.len() as usize;
+        let n = self.entries.len();
         let a = &self.entries;
         results.clear();
         let mut stack = [StackCell::empty(); 64];
