@@ -164,14 +164,27 @@ impl Phase {
     /// ```
     /// use bio::io::gff::Phase;
     ///
-    /// let phase = Phase(Some(1));
+    /// let phase = Phase::new(Some(1));
     /// assert_eq!(phase.as_u8(), Some(1));
     ///
-    /// let phase = Phase(None);
+    /// let phase = Phase::new(None);
     /// assert_eq!(phase.as_u8(), None);
     /// ```
     pub fn as_u8(&self) -> Option<u8> {
         self.0
+    }
+
+    /// Create a new `Phase` from an `Option<u8>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bio::io::gff::Phase;
+    ///
+    /// let phase = Phase::new(Some(1));
+    /// ```
+    pub fn new(phase: Option<u8>) -> Self {
+        Phase(phase)
     }
 }
 
