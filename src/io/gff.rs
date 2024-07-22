@@ -692,4 +692,24 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
             Err("String 'xtf9' is not a valid GFFType (GFF/GTF format version).".to_string())
         )
     }
+
+    #[test]
+    fn test_from_u8_creates_phase_with_value() {
+        let phase = Phase::from(1);
+        assert_eq!(phase, Phase(Some(1)));
+    }
+
+    #[test]
+    fn test_try_into_u8_returns_value_for_phase_with_value() {
+        let phase = Phase(Some(2));
+        let result: Result<u8, ()> = phase.try_into();
+        assert_eq!(result, Ok(2));
+    }
+
+    #[test]
+    fn test_try_into_u8_returns_error_for_phase_with_none() {
+        let phase = Phase(None);
+        let result: Result<u8, ()> = phase.try_into();
+        assert_eq!(result, Err(()));
+    }
 }
