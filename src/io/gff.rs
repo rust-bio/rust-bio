@@ -28,7 +28,7 @@ use anyhow::Context;
 use itertools::Itertools;
 use multimap::MultiMap;
 use regex::Regex;
-use std::convert::AsRef;
+use std::convert::{AsRef, TryInto};
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -155,6 +155,41 @@ type GffRecordInner = (
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Phase(Option<u8>);
+
+impl From<u8> for Phase {
+    /// Create a new Phase from a u8.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::io::gff::Phase;
+    /// let p = Phase::from(0);
+    /// ```
+    fn from(p: u8) -> Self {
+        Phase(Some(p))
+    }
+}
+
+impl TryInto<u8> for Phase {
+    type Error = ();
+
+    /// Try to convert a Phase into a u8.
+    ///
+    /// # Example
+    /// ```
+    /// use std::convert::TryInto;
+    /// use bio::io::gff::Phase;
+    ///
+    /// let p = Phase::from(0);
+    /// let u: u8 = p.try_into().unwrap();
+    /// assert_eq!(u, 0);
+    /// ```
+    fn try_into(self) -> Result<u8, Self::Error> {
+        match self.0 {
+            Some(p) => Ok(p),
+            None => Err(()),
+        }
+    }
+}
 
 impl<'de> Deserialize<'de> for Phase {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -674,5 +709,25 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
             GffType::from_str("xtf9"),
             Err("String 'xtf9' is not a valid GFFType (GFF/GTF format version).".to_string())
         )
+    }
+
+    #[test]
+    fn test_from_u8_creates_phase_with_value() {
+        let phase = Phase::from(1);
+        assert_eq!(phase, Phase(Some(1)));
+    }
+
+    #[test]
+    fn test_try_into_u8_returns_value_for_phase_with_value() {
+        let phase = Phase(Some(2));
+        let result: Result<u8, ()> = phase.try_into();
+        assert_eq!(result, Ok(2));
+    }
+
+    #[test]
+    fn test_try_into_u8_returns_error_for_phase_with_none() {
+        let phase = Phase(None);
+        let result: Result<u8, ()> = phase.try_into();
+        assert_eq!(result, Err(()));
     }
 }
