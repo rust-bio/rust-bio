@@ -28,7 +28,7 @@ use anyhow::Context;
 use itertools::Itertools;
 use multimap::MultiMap;
 use regex::Regex;
-use std::convert::AsRef;
+use std::convert::{AsRef, TryInto};
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -156,35 +156,20 @@ type GffRecordInner = (
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Phase(Option<u8>);
 
-impl Phase {
-    /// Returns the phase of the feature as an `Option<u8>`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use bio::io::gff::Phase;
-    ///
-    /// let phase = Phase::new(Some(1));
-    /// assert_eq!(phase.as_u8(), Some(1));
-    ///
-    /// let phase = Phase::new(None);
-    /// assert_eq!(phase.as_u8(), None);
-    /// ```
-    pub fn as_u8(&self) -> Option<u8> {
-        self.0
+impl From<u8> for Phase {
+    fn from(p: u8) -> Self {
+        Phase(Some(p))
     }
+}
 
-    /// Create a new `Phase` from an `Option<u8>`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use bio::io::gff::Phase;
-    ///
-    /// let phase = Phase::new(Some(1));
-    /// ```
-    pub fn new(phase: Option<u8>) -> Self {
-        Phase(phase)
+impl TryInto<u8> for Phase {
+    type Error = ();
+
+    fn try_into(self) -> Result<u8, Self::Error> {
+        match self.0 {
+            Some(p) => Ok(p),
+            None => Err(()),
+        }
     }
 }
 
