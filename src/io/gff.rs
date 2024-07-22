@@ -157,22 +157,22 @@ type GffRecordInner = (
 pub struct Phase(Option<u8>);
 
 impl Phase {
-/// Returns the phase of the feature as an `Option<u8>`.
-///
-/// # Examples
-///
-/// ```
-/// use bio::io::gff::Phase;
-///
-/// let phase = Phase(Some(1));
-/// assert_eq!(phase.as_u8(), Some(1));
-///
-/// let phase = Phase(None);
-/// assert_eq!(phase.as_u8(), None);
-/// ```
-pub fn as_u8(&self) -> Option<u8> {
-    self.0
-}
+    /// Returns the phase of the feature as an `Option<u8>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bio::io::gff::Phase;
+    ///
+    /// let phase = Phase(Some(1));
+    /// assert_eq!(phase.as_u8(), Some(1));
+    ///
+    /// let phase = Phase(None);
+    /// assert_eq!(phase.as_u8(), None);
+    /// ```
+    pub fn as_u8(&self) -> Option<u8> {
+        self.0
+    }
 }
 
 impl<'de> Deserialize<'de> for Phase {
