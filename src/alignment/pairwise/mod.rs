@@ -11,9 +11,10 @@
 //! # Example
 //!
 //! ```
-//! use bio::alignment::pairwise::*;
-//! use bio::alignment::AlignmentOperation::*;
-//! use bio::scores::blosum62;
+//! use bio::{
+//!     alignment::{pairwise::*, AlignmentOperation::*},
+//!     scores::blosum62,
+//! };
 //!
 //! let x = b"ACCGTGGAT";
 //! let y = b"AAAAACCGTTGAT";
@@ -150,12 +151,12 @@
 //! );
 //! ```
 
-use std::cmp::max;
-use std::i32;
-use std::iter::repeat;
+use std::{cmp::max, i32, iter::repeat};
 
-use crate::alignment::{Alignment, AlignmentMode, AlignmentOperation};
-use crate::utils::TextSlice;
+use crate::{
+    alignment::{Alignment, AlignmentMode, AlignmentOperation},
+    utils::TextSlice,
+};
 
 pub mod banded;
 
@@ -1163,8 +1164,7 @@ impl Traceback {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::alignment::AlignmentOperation::*;
-    use crate::scores::blosum62;
+    use crate::{alignment::AlignmentOperation::*, scores::blosum62};
 
     #[test]
     fn traceback_cell() {

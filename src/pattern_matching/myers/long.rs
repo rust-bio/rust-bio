@@ -7,23 +7,26 @@
 //! For short patterns, the 'simple' version is still to be preferred, as the block-based
 //! algorithm is slower.
 
-use std::borrow::Borrow;
-use std::cmp::{max, min};
-use std::collections::HashMap;
-use std::iter;
-use std::marker::PhantomData;
-use std::mem::replace;
-use std::slice;
-use std::u64;
+use std::{
+    borrow::Borrow,
+    cmp::{max, min},
+    collections::HashMap,
+    iter,
+    marker::PhantomData,
+    mem::replace,
+    slice, u64,
+};
 
 use itertools::Itertools;
 use num_traits::ToPrimitive;
 
-use crate::pattern_matching::myers::traceback::{StatesHandler, TracebackHandler};
-use crate::pattern_matching::myers::{ceil_div, State};
+use crate::pattern_matching::myers::{
+    ceil_div,
+    traceback::{StatesHandler, TracebackHandler},
+    State,
+};
 
-use super::word_size;
-use super::BitVec;
+use super::{word_size, BitVec};
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 struct Peq<T: BitVec> {

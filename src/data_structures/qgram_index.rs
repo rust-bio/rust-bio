@@ -8,8 +8,7 @@
 //! # Example
 //!
 //! ```
-//! use bio::alphabets;
-//! use bio::data_structures::qgram_index;
+//! use bio::{alphabets, data_structures::qgram_index};
 //!
 //! let text = b"ACGGCTGAGATGAT";
 //! let alphabet = alphabets::dna::alphabet();
@@ -28,12 +27,12 @@
 //! );
 //! ```
 
-use std::cmp;
-use std::collections;
-use std::collections::hash_map::Entry;
+use std::{cmp, collections, collections::hash_map::Entry};
 
-use crate::alphabets::{Alphabet, RankTransform};
-use crate::utils;
+use crate::{
+    alphabets::{Alphabet, RankTransform},
+    utils,
+};
 
 /// A classical, flexible, q-gram index implementation.
 ///

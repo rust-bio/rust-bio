@@ -5,8 +5,10 @@
 
 use super::*;
 use ndarray::prelude::Array2;
-use std::f32;
-use std::f32::{INFINITY, NEG_INFINITY};
+use std::{
+    f32,
+    f32::{INFINITY, NEG_INFINITY},
+};
 
 /// Position-specific scoring matrix for DNA sequences
 #[derive(Default, Clone, PartialEq, Debug)]

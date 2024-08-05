@@ -11,8 +11,10 @@
 //! Example usage of all CDF functions:
 //! ```
 //! use approx::assert_relative_eq;
-//! use bio::stats::probs::cdf::{Entry, CDF};
-//! use bio::stats::probs::{LogProb, Prob};
+//! use bio::stats::probs::{
+//!     cdf::{Entry, CDF},
+//!     LogProb, Prob,
+//! };
 //! use ordered_float::NotNan;
 //! use std::ops::Range;
 //! // pmf1 is an example PMF with `LogProb(0.0)` at `0`, with `LogProb(0.1)`
@@ -94,10 +96,7 @@
 //! assert_eq!(cdf_from_vec.len(), 5);
 //! ```
 
-use std::f64;
-use std::iter;
-use std::ops::Range;
-use std::slice;
+use std::{f64, iter, ops::Range, slice};
 
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
@@ -124,8 +123,7 @@ impl<T: Ord> Entry<T> {
     /// # Example
     ///
     /// ```
-    /// use bio::stats::probs::cdf::Entry;
-    /// use bio::stats::LogProb;
+    /// use bio::stats::{probs::cdf::Entry, LogProb};
     /// let entry = Entry::new(5, LogProb(0.6));
     /// assert_eq!(entry.value, 5);
     /// assert_eq!(entry.prob, LogProb(0.6));

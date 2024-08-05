@@ -18,8 +18,7 @@
 //! assert_eq!(occ, 8);
 //! ```
 
-use std::borrow::Borrow;
-use std::iter::Enumerate;
+use std::{borrow::Borrow, iter::Enumerate};
 
 /// `ShiftAnd` algorithm.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]

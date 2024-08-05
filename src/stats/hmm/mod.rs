@@ -14,9 +14,10 @@
 //!
 //! ```rust
 //! use approx::assert_relative_eq;
-//! use bio::stats::hmm::discrete_emission::Model as DiscreteEmissionHMM;
-//! use bio::stats::hmm::viterbi;
-//! use bio::stats::Prob;
+//! use bio::stats::{
+//!     hmm::{discrete_emission::Model as DiscreteEmissionHMM, viterbi},
+//!     Prob,
+//! };
 //! use ndarray::array;
 //!
 //! let transition = array![[0.5, 0.5], [0.4, 0.6]];
@@ -34,9 +35,10 @@
 //!
 //! ```rust
 //! use approx::assert_relative_eq;
-//! use bio::stats::hmm::univariate_continuous_emission::GaussianModel as GaussianHMM;
-//! use bio::stats::hmm::viterbi;
-//! use bio::stats::Prob;
+//! use bio::stats::{
+//!     hmm::{univariate_continuous_emission::GaussianModel as GaussianHMM, viterbi},
+//!     Prob,
+//! };
 //! use ndarray::array;
 //! use statrs::distribution::Normal;
 //!
@@ -91,13 +93,10 @@ pub use self::errors::{Error, Result};
 
 use super::LogProb;
 
-use std::cmp::Eq;
-use std::fmt::Debug;
-use std::hash::Hash;
+use std::{cmp::Eq, fmt::Debug, hash::Hash};
 
 use super::Prob;
-use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::{cell::RefCell, collections::BTreeMap};
 
 custom_derive! {
     /// A newtype for HMM states.
@@ -712,8 +711,10 @@ pub trait Trainable<Observation> {
 
 /// Implementation of Hidden Markov Model with emission values from discrete distributions.
 pub mod discrete_emission {
-    use super::super::{LogProb, Prob};
-    use super::*;
+    use super::{
+        super::{LogProb, Prob},
+        *,
+    };
 
     /// Implementation of a `hmm::Model` with emission values from discrete distributions.
     ///
@@ -834,8 +835,10 @@ pub mod discrete_emission {
 /// Implementation of Hidden Markov Model with emission values from discrete distributions and an optional explicity end state.
 /// This module also implements the `Trainable` trait allowing to be trainned by Baum-Welch algorithm.
 pub mod discrete_emission_opt_end {
-    use super::super::{LogProb, Prob};
-    use super::*;
+    use super::{
+        super::{LogProb, Prob},
+        *,
+    };
 
     /// Implementation of a `hmm::Model` with emission values from discrete distributions and an optional declared end state.
     ///
@@ -1114,8 +1117,10 @@ pub mod discrete_emission_opt_end {
 /// Implementation of Hidden Markov Models with emission values from univariate continuous
 /// distributions.
 pub mod univariate_continuous_emission {
-    use super::super::{LogProb, Prob};
-    use super::*;
+    use super::{
+        super::{LogProb, Prob},
+        *,
+    };
 
     /// Implementation of a `hmm::Model` with emission values from univariate continuous distributions.
     ///
@@ -1237,10 +1242,11 @@ mod tests {
     use ndarray::array;
     use statrs::distribution::Normal;
 
-    use super::discrete_emission::Model as DiscreteEmissionHMM;
-    use super::discrete_emission_opt_end::Model as DiscreteEmissionHMMoptEND;
-    use super::univariate_continuous_emission::GaussianModel as GaussianHMM;
-    use super::*;
+    use super::{
+        discrete_emission::Model as DiscreteEmissionHMM,
+        discrete_emission_opt_end::Model as DiscreteEmissionHMMoptEND,
+        univariate_continuous_emission::GaussianModel as GaussianHMM, *,
+    };
 
     #[test]
     fn test_discrete_viterbi_toy_example() {

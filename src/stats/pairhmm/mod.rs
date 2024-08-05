@@ -10,10 +10,10 @@
 //! # Examples
 //! ```
 //! use approx::assert_relative_eq;
-//! use bio::stats::pairhmm::{
-//!     EmissionParameters, GapParameters, PairHMM, StartEndGapParameters, XYEmission,
+//! use bio::stats::{
+//!     pairhmm::{EmissionParameters, GapParameters, PairHMM, StartEndGapParameters, XYEmission},
+//!     LogProb, Prob,
 //! };
-//! use bio::stats::{LogProb, Prob};
 //! use num_traits::Zero;
 //!
 //! // Two sequences for which we'd like to know if they are likely related.

@@ -21,13 +21,10 @@
 //! );
 //! ```
 
-use std::borrow::Borrow;
-use std::cmp;
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::hash::BuildHasherDefault;
-use std::iter;
-use std::ops::Deref;
+use std::{
+    borrow::Borrow, cmp, collections::HashMap, fmt::Debug, hash::BuildHasherDefault, iter,
+    ops::Deref,
+};
 
 use num_integer::Integer;
 use num_traits::{cast, NumCast, Unsigned};
@@ -37,9 +34,13 @@ use vec_map::VecMap;
 
 use fxhash::FxHasher;
 
-use crate::alphabets::{Alphabet, RankTransform};
-use crate::data_structures::bwt::{Less, Occ, BWT};
-use crate::data_structures::smallints::SmallInts;
+use crate::{
+    alphabets::{Alphabet, RankTransform},
+    data_structures::{
+        bwt::{Less, Occ, BWT},
+        smallints::SmallInts,
+    },
+};
 
 pub type LCPArray = SmallInts<i8, isize>;
 pub type RawSuffixArray = Vec<usize>;
@@ -66,9 +67,13 @@ pub trait SuffixArray {
     /// # Example
     ///
     /// ```
-    /// use bio::alphabets::dna;
-    /// use bio::data_structures::bwt::{bwt, less, Occ};
-    /// use bio::data_structures::suffix_array::{suffix_array, SuffixArray};
+    /// use bio::{
+    ///     alphabets::dna,
+    ///     data_structures::{
+    ///         bwt::{bwt, less, Occ},
+    ///         suffix_array::{suffix_array, SuffixArray},
+    ///     },
+    /// };
     ///
     /// let text = b"ACGCGAT$";
     /// let alphabet = dna::n_alphabet();
@@ -298,10 +303,7 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
 /// use bio::data_structures::suffix_array::suffix_array_int;
 /// let text: Vec<usize> = vec![3, 2, 2, 4, 4, 1, 2, 1, 0];
 /// let sa = suffix_array_int(&text);
-/// assert_eq!(
-///     sa,
-///     vec![8, 7, 5, 6, 1, 2, 0, 4, 3]
-/// );
+/// assert_eq!(sa, vec![8, 7, 5, 6, 1, 2, 0, 4, 3]);
 /// ```
 pub fn suffix_array_int<T>(text: &[T]) -> RawSuffixArray
 where
@@ -751,13 +753,13 @@ impl PosTypes {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::{transform_text, PosTypes, Sais};
-    use crate::alphabets::{dna, Alphabet};
-    use crate::data_structures::bwt::{bwt, less};
+    use super::{transform_text, PosTypes, Sais, *};
+    use crate::{
+        alphabets::{dna, Alphabet},
+        data_structures::bwt::{bwt, less},
+    };
     use bv::{BitVec, BitsPush};
-    use rand;
-    use rand::prelude::*;
+    use rand::{self, prelude::*};
     use std::str;
 
     #[test]

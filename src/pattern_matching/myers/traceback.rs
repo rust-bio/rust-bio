@@ -1,7 +1,4 @@
-use std::default::Default;
-use std::iter;
-use std::marker::PhantomData;
-use std::ops::Range;
+use std::{default::Default, iter, marker::PhantomData, ops::Range};
 
 use crate::alignment::AlignmentOperation;
 

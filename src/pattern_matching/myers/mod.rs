@@ -108,8 +108,7 @@
 //!
 //! ```
 //! # extern crate bio;
-//! use bio::alignment::Alignment;
-//! use bio::pattern_matching::myers::Myers;
+//! use bio::{alignment::Alignment, pattern_matching::myers::Myers};
 //!
 //! # fn main() {
 //! let text = b"CGGTCCTGAGGGATTAGCAC";
@@ -171,8 +170,7 @@
 //!
 //! ```
 //! # extern crate bio;
-//! use bio::alignment::Alignment;
-//! use bio::pattern_matching::myers::Myers;
+//! use bio::{alignment::Alignment, pattern_matching::myers::Myers};
 //!
 //! # fn main() {
 //! let text = b"CGGTCCTGAGGGATTAGCAC";
@@ -239,10 +237,8 @@ pub mod long;
 mod simple;
 mod traceback;
 
-pub use self::builder::MyersBuilder;
-pub use self::helpers::*;
 use self::myers_impl::*;
-pub use self::simple::*;
+pub use self::{builder::MyersBuilder, helpers::*, simple::*};
 
 #[cfg(test)]
 mod tests {

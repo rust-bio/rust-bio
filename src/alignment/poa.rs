@@ -19,8 +19,7 @@
 //! # Example
 //!
 //! ```
-//! use bio::alignment::pairwise::Scoring;
-//! use bio::alignment::poa::*;
+//! use bio::alignment::{pairwise::Scoring, poa::*};
 //!
 //! let x = b"AAAAAAA";
 //! let y = b"AABBBAA";
@@ -41,8 +40,7 @@ use crate::utils::TextSlice;
 
 use crate::alignment::pairwise::{MatchFunc, Scoring};
 
-use petgraph::graph::NodeIndex;
-use petgraph::visit::Topo;
+use petgraph::{graph::NodeIndex, visit::Topo};
 
 use petgraph::{Directed, Graph, Incoming};
 
@@ -921,8 +919,7 @@ impl<F: MatchFunc> Poa<F> {
 mod tests {
     use super::*;
     use crate::alignment::pairwise::Scoring;
-    use petgraph::dot::Dot;
-    use petgraph::graph::NodeIndex;
+    use petgraph::{dot::Dot, graph::NodeIndex};
 
     #[test]
     fn test_init_graph() {

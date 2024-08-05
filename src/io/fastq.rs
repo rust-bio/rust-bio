@@ -79,8 +79,7 @@
 //! In this example we filter reads from stdin on mean quality (Phred + 33) and write them to stdout
 //!
 //! ```no_run
-//! use bio::io::fastq;
-//! use bio::io::fastq::FastqRead;
+//! use bio::io::{fastq, fastq::FastqRead};
 //! use std::io;
 //!
 //! let mut reader = fastq::Reader::new(io::stdin());
@@ -102,12 +101,12 @@
 //! ```
 
 use anyhow::Context;
-use std::convert::AsRef;
-use std::fmt;
-use std::fs;
-use std::io;
-use std::io::prelude::*;
-use std::path::{Path, PathBuf};
+use std::{
+    convert::AsRef,
+    fmt, fs, io,
+    io::prelude::*,
+    path::{Path, PathBuf},
+};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -235,8 +234,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use bio::io::fastq::Record;
-    /// use bio::io::fastq::{FastqRead, Reader};
+    /// use bio::io::fastq::{FastqRead, Reader, Record};
     /// const FASTQ_FILE: &'static [u8] = b"@id desc
     /// AAAA
     /// +
@@ -584,8 +582,7 @@ impl<W: io::Write> Writer<W> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fmt::Write as FmtWrite;
-    use std::io;
+    use std::{fmt::Write as FmtWrite, io};
 
     const FASTQ_FILE: &[u8] = b"@id desc
 ACCGTAGGCTGA

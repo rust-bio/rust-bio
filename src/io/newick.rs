@@ -20,12 +20,12 @@
 //!  ```
 
 use bio_types::phylogeny::{Tree, TreeGraph};
-use pest::iterators::Pair;
-use pest::Parser;
+use pest::{iterators::Pair, Parser};
 use petgraph::graph::NodeIndex;
-use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+};
 use thiserror::Error;
 
 /// A `thiserror` error type gathering all the potential bad outcomes

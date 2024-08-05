@@ -13,8 +13,7 @@
 //! # extern crate bio;
 //! # fn main() {
 //! use bio::data_structures::rank_select::RankSelect;
-//! use bv::BitVec;
-//! use bv::BitsMut;
+//! use bv::{BitVec, BitsMut};
 //!
 //! let mut bits: BitVec<u8> = BitVec::new_fill(false, 64);
 //! bits.set_bit(5, true);
@@ -24,11 +23,9 @@
 //! # }
 //! ```
 
-use std::cmp;
-use std::ops::Deref;
+use std::{cmp, ops::Deref};
 
-use bv::BitVec;
-use bv::Bits;
+use bv::{BitVec, Bits};
 
 /// A rank/select data structure.
 #[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
@@ -271,9 +268,7 @@ fn superblocks(t: bool, n: usize, s: usize, bits: &BitVec<u8>) -> Vec<Superblock
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bv::bit_vec;
-    use bv::BitVec;
-    use bv::BitsMut;
+    use bv::{bit_vec, BitVec, BitsMut};
 
     #[test]
     fn test_select_start() {
