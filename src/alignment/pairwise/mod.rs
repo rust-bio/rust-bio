@@ -151,7 +151,7 @@
 //! );
 //! ```
 
-use std::{cmp::max, i32, iter::repeat};
+use std::{cmp::max, iter::repeat};
 
 use crate::{
     alignment::{Alignment, AlignmentMode, AlignmentOperation},

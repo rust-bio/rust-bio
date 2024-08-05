@@ -32,7 +32,7 @@
 //!            b"ARNNYM".to_vec(),
 //!        ].as_ref(), None).unwrap();
 
-use std::{borrow::Borrow, f32::NEG_INFINITY};
+use std::{borrow::Borrow};
 
 use itertools::Itertools;
 use ndarray::prelude::Array2;
@@ -66,7 +66,7 @@ impl Default for ScoredPos {
     fn default() -> ScoredPos {
         ScoredPos {
             loc: 0,
-            sum: NEG_INFINITY,
+            sum: f32::NEG_INFINITY,
             scores: Vec::new(),
         }
     }

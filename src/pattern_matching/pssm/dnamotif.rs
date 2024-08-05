@@ -5,10 +5,6 @@
 
 use super::*;
 use ndarray::prelude::Array2;
-use std::{
-    f32,
-    f32::{INFINITY, NEG_INFINITY},
-};
 
 /// Position-specific scoring matrix for DNA sequences
 #[derive(Default, Clone, PartialEq, Debug)]
@@ -65,7 +61,7 @@ impl DNAMotif {
         self.min_score = 0.0;
         for i in 0..pssm_len {
             // can't use the regular min/max on f32, so we use f32::min
-            let min_sc = (0..4).map(|b| self.scores[[i, b]]).fold(INFINITY, f32::min);
+            let min_sc = (0..4).map(|b| self.scores[[i, b]]).fold(f32::INFINITY, f32::min);
             self.min_score += min_sc;
         }
 
@@ -74,7 +70,7 @@ impl DNAMotif {
         for i in 0..pssm_len {
             let max_sc = (0..4)
                 .map(|b| self.scores[[i, b]])
-                .fold(NEG_INFINITY, f32::max);
+                .fold(f32::NEG_INFINITY, f32::max);
             self.max_score += max_sc;
         }
     }

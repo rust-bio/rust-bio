@@ -64,7 +64,7 @@
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
 //! GY  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |    |  x
 
-use std::{cmp, fmt::Debug, iter::once, mem, ops::Shr, usize};
+use std::{cmp, fmt::Debug, iter::once, mem, ops::Shr};
 
 use enum_map::{Enum, EnumMap};
 use itertools::Itertools;

@@ -9,9 +9,9 @@
 //!
 //! For the original concept and theory, see:
 //! * Lee, Christopher, Catherine Grasso, and Mark F. Sharlow. "Multiple sequence alignment using
-//! partial order graphs." Bioinformatics 18.3 (2002): 452-464.
+//!   partial order graphs." Bioinformatics 18.3 (2002): 452-464.
 //! * Lee, Christopher. "Generating consensus sequences from partial order multiple sequence
-//! alignment graphs." Bioinformatics 19.8 (2003): 999-1008.
+//!   alignment graphs." Bioinformatics 19.8 (2003): 999-1008.
 //!
 //! For a modern reference implementation, see poapy:
 //! https://github.com/ljdursi/poapy

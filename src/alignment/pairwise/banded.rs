@@ -87,7 +87,6 @@ use crate::{
 };
 use std::{
     cmp::{max, min, Ordering},
-    i32,
     ops::Range,
 };
 
@@ -326,7 +325,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `y` - Textslice
     /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
     /// * `allowed_mismatches` - Extend the matches diagonally allowing upto
-    /// the specified number of mismatches (Option<usize>)
+    ///   the specified number of mismatches (Option<usize>)
     /// * `use_lcskpp_union` - Extend the results from sdpkpp using lcskpp
     pub fn custom_with_expanded_matches(
         &mut self,
@@ -380,7 +379,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `y` - Textslice
     /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
     /// * `path` - Vector of indices pointing to `matches` vector
-    /// which defines a path. The validity of the path is not checked.
+    ///   which defines a path. The validity of the path is not checked.
     pub fn custom_with_match_path(
         &mut self,
         x: TextSlice,

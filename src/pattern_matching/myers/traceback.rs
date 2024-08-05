@@ -93,10 +93,10 @@ where
     ///
     /// * adjust_dist: If true, the distance score of the block is adjusted
     ///   based on the current cursor position before moving it up.
-    ///  *Note concerning the block based Myers algorithm:*
-    ///  The the active bit in bit vector returned by `pos_bitvec()`
-    ///  is expected to jump back to the maximum (lowest) position
-    ///  when reaching the uppermost position (like `rotate_right()` does).
+    ///   *Note concerning the block based Myers algorithm:*
+    ///    The the active bit in bit vector returned by `pos_bitvec()`
+    ///    is expected to jump back to the maximum (lowest) position
+    ///    when reaching the uppermost position (like `rotate_right()` does).
     fn move_up(&mut self, adjust_dist: bool);
 
     /// Move up left cursor by one position in traceback matrix.
