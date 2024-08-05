@@ -29,10 +29,12 @@
 //! assert_eq!(values, [50000, 4, 255, 305093]);
 //! ```
 
-use std::collections::BTreeMap;
-use std::iter::{repeat, Enumerate};
-use std::mem::size_of;
-use std::slice;
+use std::{
+    collections::BTreeMap,
+    iter::{repeat, Enumerate},
+    mem::size_of,
+    slice,
+};
 
 use num_integer::Integer;
 use num_traits::{cast, Bounded, Num, NumCast};

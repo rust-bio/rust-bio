@@ -64,23 +64,20 @@
 //! ----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|----|---
 //! GY  |  x |  x |  x |  x |     |     |     |     |     |     |     |     |    |  x
 
-use std::cmp;
-use std::fmt::Debug;
-use std::iter::once;
-use std::mem;
-use std::ops::Shr;
-use std::usize;
+use std::{cmp, fmt::Debug, iter::once, mem, ops::Shr};
 
 use enum_map::{Enum, EnumMap};
 use itertools::Itertools;
 use num_traits::Zero;
 
-use crate::stats::pairhmm::homopolypairhmm::State::*;
-use crate::stats::pairhmm::{
-    Emission, EmissionParameters, GapParameters, StartEndGapParameters, XYEmission,
+use crate::stats::{
+    pairhmm::{
+        homopolypairhmm::State::*, Emission, EmissionParameters, GapParameters,
+        StartEndGapParameters, XYEmission,
+    },
+    probs::LogProb,
+    Prob,
 };
-use crate::stats::probs::LogProb;
-use crate::stats::Prob;
 use std::collections::HashMap;
 
 #[repr(usize)]
@@ -615,9 +612,13 @@ fn min3<T: Ord>(a: T, b: T, c: T) -> T {
 mod tests {
     use std::iter::repeat;
 
-    use crate::stats::pairhmm::homopolypairhmm::tests::AlignmentMode::{Global, Semiglobal};
-    use crate::stats::pairhmm::PairHMM;
-    use crate::stats::{LogProb, Prob};
+    use crate::stats::{
+        pairhmm::{
+            homopolypairhmm::tests::AlignmentMode::{Global, Semiglobal},
+            PairHMM,
+        },
+        LogProb, Prob,
+    };
 
     use super::*;
 

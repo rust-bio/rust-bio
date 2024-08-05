@@ -4,9 +4,13 @@ extern crate test;
 
 use test::Bencher;
 
-use bio::alignment::Alignment;
-use bio::pattern_matching::myers::{long, Myers};
-use bio::pattern_matching::ukkonen::*;
+use bio::{
+    alignment::Alignment,
+    pattern_matching::{
+        myers::{long, Myers},
+        ukkonen::*,
+    },
+};
 
 static TEXT: &[u8] = b"GATCACAGGTCTATCACCCTATTAACCACTCACGGGAGCTCTCCATGC\
 ATTTGGTATTTTCGTCTGGGGGGTATGCACGCGATAGCATTGCGAGACGCTGGAGCCGGAGCACCCTATGTCGCAGTAT\

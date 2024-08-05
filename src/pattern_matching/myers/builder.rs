@@ -1,8 +1,6 @@
-use std::borrow::Borrow;
-use std::collections::HashMap;
+use std::{borrow::Borrow, collections::HashMap};
 
-use super::long::Myers as MyersLong;
-use super::{BitVec, Myers};
+use super::{long::Myers as MyersLong, BitVec, Myers};
 
 /// Builds a Myers instance, allowing to specify ambiguities.
 ///

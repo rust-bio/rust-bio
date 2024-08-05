@@ -9,8 +9,7 @@
 //!
 //! # Example
 //! ```
-//! use bio::data_structures::interval_tree::ArrayBackedIntervalTree;
-//! use bio::utils::Interval;
+//! use bio::{data_structures::interval_tree::ArrayBackedIntervalTree, utils::Interval};
 //! use std::iter::FromIterator;
 //!
 //! let mut tree = ArrayBackedIntervalTree::new();
@@ -34,8 +33,7 @@
 //! ```
 
 use crate::utils::Interval;
-use std::cmp::min;
-use std::iter::FromIterator;
+use std::{cmp::min, iter::FromIterator};
 
 /// A `find` query on the interval tree does not directly return references to the intervals in the
 /// tree but wraps the fields `interval` and `data` in an `Entry`.

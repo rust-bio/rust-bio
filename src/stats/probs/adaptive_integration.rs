@@ -3,12 +3,12 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp;
-use std::collections::HashMap;
-use std::convert::{Into, TryFrom};
-use std::hash::Hash;
 use std::{
+    cmp,
+    collections::HashMap,
+    convert::{Into, TryFrom},
     fmt::Debug,
+    hash::Hash,
     ops::{Add, Div, Mul, Sub},
 };
 
@@ -27,11 +27,12 @@ use ordered_float::NotNan;
 ///
 /// ```rust
 /// use approx::abs_diff_eq;
-/// use bio::stats::probs::adaptive_integration::ln_integrate_exp;
-/// use bio::stats::probs::{LogProb, Prob};
+/// use bio::stats::probs::{adaptive_integration::ln_integrate_exp, LogProb, Prob};
 /// use ordered_float::NotNan;
-/// use statrs::distribution::{Continuous, Normal};
-/// use statrs::statistics::Distribution;
+/// use statrs::{
+///     distribution::{Continuous, Normal},
+///     statistics::Distribution,
+/// };
 ///
 /// let ndist = Normal::new(0.0, 1.0).unwrap();
 ///

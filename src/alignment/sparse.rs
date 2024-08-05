@@ -29,9 +29,11 @@
 
 use crate::data_structures::bit_tree::MaxBitTree;
 use fxhash::FxHasher;
-use std::cmp::{max, min};
-use std::collections::HashMap;
-use std::hash::BuildHasherDefault;
+use std::{
+    cmp::{max, min},
+    collections::HashMap,
+    hash::BuildHasherDefault,
+};
 
 pub type HashMapFx<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
 

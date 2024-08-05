@@ -2,11 +2,9 @@
 
 extern crate test;
 
-use bio::pattern_matching::bndm::BNDM;
-use bio::pattern_matching::bom::BOM;
-use bio::pattern_matching::horspool::Horspool;
-use bio::pattern_matching::kmp::KMP;
-use bio::pattern_matching::shift_and::ShiftAnd;
+use bio::pattern_matching::{
+    bndm::BNDM, bom::BOM, horspool::Horspool, kmp::KMP, shift_and::ShiftAnd,
+};
 use test::Bencher;
 
 static TEXT: &[u8] = b"GATCACAGGTCTATCACCCTATTAACCACTCACGGGAGCTCTCCATGC\

@@ -21,13 +21,10 @@
 //! );
 //! ```
 
-use std::borrow::Borrow;
-use std::cmp;
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::hash::BuildHasherDefault;
-use std::iter;
-use std::ops::Deref;
+use std::{
+    borrow::Borrow, cmp, collections::HashMap, fmt::Debug, hash::BuildHasherDefault, iter,
+    ops::Deref,
+};
 
 use num_integer::Integer;
 use num_traits::{cast, NumCast, Unsigned};
@@ -37,9 +34,13 @@ use vec_map::VecMap;
 
 use fxhash::FxHasher;
 
-use crate::alphabets::{Alphabet, RankTransform};
-use crate::data_structures::bwt::{Less, Occ, BWT};
-use crate::data_structures::smallints::SmallInts;
+use crate::{
+    alphabets::{Alphabet, RankTransform},
+    data_structures::{
+        bwt::{Less, Occ, BWT},
+        smallints::SmallInts,
+    },
+};
 
 pub type LCPArray = SmallInts<i8, isize>;
 pub type RawSuffixArray = Vec<usize>;
@@ -66,9 +67,13 @@ pub trait SuffixArray {
     /// # Example
     ///
     /// ```
-    /// use bio::alphabets::dna;
-    /// use bio::data_structures::bwt::{bwt, less, Occ};
-    /// use bio::data_structures::suffix_array::{suffix_array, SuffixArray};
+    /// use bio::{
+    ///     alphabets::dna,
+    ///     data_structures::{
+    ///         bwt::{bwt, less, Occ},
+    ///         suffix_array::{suffix_array, SuffixArray},
+    ///     },
+    /// };
     ///
     /// let text = b"ACGCGAT$";
     /// let alphabet = dna::n_alphabet();
@@ -267,13 +272,13 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
     let mut sais = Sais::new(n);
 
     match alphabet.len() + sentinel_count {
-        a if a <= std::u8::MAX as usize => {
+        a if a <= u8::MAX as usize => {
             sais.construct(&transform_text::<u8>(text, &alphabet, sentinel_count))
         }
-        a if a <= std::u16::MAX as usize => {
+        a if a <= u16::MAX as usize => {
             sais.construct(&transform_text::<u16>(text, &alphabet, sentinel_count))
         }
-        a if a <= std::u32::MAX as usize => {
+        a if a <= u32::MAX as usize => {
             sais.construct(&transform_text::<u32>(text, &alphabet, sentinel_count))
         }
         _ => sais.construct(&transform_text::<u64>(text, &alphabet, sentinel_count)),
@@ -287,10 +292,10 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
 /// # Arguments
 ///
 /// * `text` - the text, ended by sentinel symbol (being lexicographically smallest).
-/// All symbols, from lexicographically smallest to largest, need to be present in the text,
-/// otherwise SAIS algorithm panics on 'index out of bounds' error.
-/// The text may also contain multiple sentinel symbols, used to concatenate
-/// multiple sequences without mixing their suffixes together.
+///   All symbols, from lexicographically smallest to largest, need to be present in the text,
+///   otherwise SAIS algorithm panics on 'index out of bounds' error.
+///   The text may also contain multiple sentinel symbols, used to concatenate
+///   multiple sequences without mixing their suffixes together.
 ///
 /// # Example
 ///
@@ -298,17 +303,14 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
 /// use bio::data_structures::suffix_array::suffix_array_int;
 /// let text: Vec<usize> = vec![3, 2, 2, 4, 4, 1, 2, 1, 0];
 /// let sa = suffix_array_int(&text);
-/// assert_eq!(
-///     sa,
-///     vec![8, 7, 5, 6, 1, 2, 0, 4, 3]
-/// );
+/// assert_eq!(sa, vec![8, 7, 5, 6, 1, 2, 0, 4, 3]);
 /// ```
 pub fn suffix_array_int<T>(text: &[T]) -> RawSuffixArray
 where
     T: Integer + Unsigned + NumCast + Copy + Debug,
 {
     let mut sais = Sais::new(text.len());
-    sais.construct(&text);
+    sais.construct(text);
     sais.pos
 }
 
@@ -629,11 +631,11 @@ impl Sais {
 
         let lms_substring_count = self.lms_pos.len();
 
-        if lms_substring_count <= std::u8::MAX as usize {
+        if lms_substring_count <= u8::MAX as usize {
             self.sort_lms_suffixes::<T, u8>(text, pos_types, lms_substring_count);
-        } else if lms_substring_count <= std::u16::MAX as usize {
+        } else if lms_substring_count <= u16::MAX as usize {
             self.sort_lms_suffixes::<T, u16>(text, pos_types, lms_substring_count);
-        } else if lms_substring_count <= std::u32::MAX as usize {
+        } else if lms_substring_count <= u32::MAX as usize {
             self.sort_lms_suffixes::<T, u32>(text, pos_types, lms_substring_count);
         } else {
             self.sort_lms_suffixes::<T, u64>(text, pos_types, lms_substring_count);
@@ -751,13 +753,13 @@ impl PosTypes {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::{transform_text, PosTypes, Sais};
-    use crate::alphabets::{dna, Alphabet};
-    use crate::data_structures::bwt::{bwt, less};
+    use super::{transform_text, PosTypes, Sais, *};
+    use crate::{
+        alphabets::{dna, Alphabet},
+        data_structures::bwt::{bwt, less},
+    };
     use bv::{BitVec, BitsPush};
-    use rand;
-    use rand::prelude::*;
+    use rand::{self, prelude::*};
     use std::str;
 
     #[test]

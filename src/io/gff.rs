@@ -28,11 +28,12 @@ use anyhow::Context;
 use itertools::Itertools;
 use multimap::MultiMap;
 use regex::Regex;
-use std::convert::{AsRef, TryInto};
-use std::fs;
-use std::io;
-use std::path::Path;
-use std::str::FromStr;
+use std::{
+    convert::{AsRef, TryInto},
+    fs, io,
+    path::Path,
+    str::FromStr,
+};
 
 use bio_types::strand::Strand;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -176,8 +177,8 @@ impl TryInto<u8> for Phase {
     ///
     /// # Example
     /// ```
-    /// use std::convert::TryInto;
     /// use bio::io::gff::Phase;
+    /// use std::convert::TryInto;
     ///
     /// let p = Phase::from(0);
     /// let u: u8 = p.try_into().unwrap();

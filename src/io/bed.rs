@@ -19,18 +19,10 @@
 //! }
 //! ```
 
-use std::convert::AsRef;
-use std::fmt::Write;
-use std::fs;
-use std::io;
-use std::marker::Copy;
-use std::ops::Deref;
-use std::path::Path;
+use std::{convert::AsRef, fmt::Write, fs, io, marker::Copy, ops::Deref, path::Path};
 
 use anyhow::Context;
-use bio_types::annot;
-use bio_types::annot::loc::Loc;
-use bio_types::strand;
+use bio_types::{annot, annot::loc::Loc, strand};
 
 /// A BED reader.
 #[derive(Debug)]
@@ -231,8 +223,7 @@ impl<'a> From<&'a Record> for annot::contig::Contig<String, strand::Strand> {
     ///
     /// ```
     /// use bio::io::bed;
-    /// use bio_types::annot::contig::Contig;
-    /// use bio_types::strand::Strand;
+    /// use bio_types::{annot::contig::Contig, strand::Strand};
     /// let example = b"chr1\t5\t5000\tname1\t0.5";
     /// let mut reader = bed::Reader::new(&example[..]);
     /// let rec = reader
@@ -307,9 +298,13 @@ where
 /// # extern crate bio;
 /// # extern crate bio_types;
 /// use bio::io::bed;
-/// use bio_types::annot::spliced::{Spliced, SplicingError};
-/// use bio_types::annot::AnnotError;
-/// use bio_types::strand::ReqStrand;
+/// use bio_types::{
+///     annot::{
+///         spliced::{Spliced, SplicingError},
+///         AnnotError,
+///     },
+///     strand::ReqStrand,
+/// };
 /// # fn try_main() -> Result<(), Box<SplicingError>> {
 /// let tad3 = Spliced::with_lengths_starts(
 ///     "chrXII".to_owned(),
@@ -387,8 +382,10 @@ where
 mod tests {
     use super::*;
 
-    use bio_types::annot::{contig::Contig, pos::Pos, spliced::Spliced};
-    use bio_types::strand::{ReqStrand, Strand};
+    use bio_types::{
+        annot::{contig::Contig, pos::Pos, spliced::Spliced},
+        strand::{ReqStrand, Strand},
+    };
 
     const BED_FILE: &[u8] = b"1\t5\t5000\tname1\tup
 2\t3\t5005\tname2\tup

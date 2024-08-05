@@ -10,11 +10,11 @@ pub mod adaptive_integration;
 pub mod cdf;
 pub mod errors;
 
-use std::convert::TryFrom;
-use std::f64;
-use std::iter;
-use std::mem;
-use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+use std::{
+    convert::TryFrom,
+    f64, iter, mem,
+    ops::{Add, AddAssign, Div, Mul, Sub, SubAssign},
+};
 
 use itertools::Itertools;
 use itertools_num::linspace;

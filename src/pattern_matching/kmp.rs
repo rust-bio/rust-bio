@@ -22,8 +22,10 @@
 //! assert_eq!(occ, [4, 15]);
 //! ```
 
-use std::borrow::Borrow;
-use std::iter::{repeat, Enumerate};
+use std::{
+    borrow::Borrow,
+    iter::{repeat, Enumerate},
+};
 
 use crate::utils::TextSlice;
 

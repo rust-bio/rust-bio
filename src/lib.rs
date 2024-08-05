@@ -97,12 +97,15 @@
 //!
 //! ```no_run
 //! // Import some modules
-//! use bio::alphabets;
-//! use bio::data_structures::bwt::{bwt, less, Occ};
-//! use bio::data_structures::fmindex::{BackwardSearchResult, FMIndex, FMIndexable};
-//! use bio::data_structures::suffix_array::suffix_array;
-//! use bio::io::fastq;
-//! use bio::io::fastq::FastqRead;
+//! use bio::{
+//!     alphabets,
+//!     data_structures::{
+//!         bwt::{bwt, less, Occ},
+//!         fmindex::{BackwardSearchResult, FMIndex, FMIndexable},
+//!         suffix_array::suffix_array,
+//!     },
+//!     io::{fastq, fastq::FastqRead},
+//! };
 //! use std::io;
 //!
 //! // a given text
@@ -173,12 +176,15 @@
 //! ## Example: Multithreaded
 //!
 //! ```rust
-//! use bio::alphabets;
-//! use bio::data_structures::bwt::{bwt, less, Occ};
-//! use bio::data_structures::fmindex::{BackwardSearchResult, FMIndex, FMIndexable};
-//! use bio::data_structures::suffix_array::suffix_array;
-//! use std::sync::Arc;
-//! use std::thread;
+//! use bio::{
+//!     alphabets,
+//!     data_structures::{
+//!         bwt::{bwt, less, Occ},
+//!         fmindex::{BackwardSearchResult, FMIndex, FMIndexable},
+//!         suffix_array::suffix_array,
+//!     },
+//! };
+//! use std::{sync::Arc, thread};
 //!
 //! let text = b"ACGGATGCTGGATCGGATCGCGCTAGCTA$";
 //! let patterns = vec![b"ACCG", b"TGCT"];

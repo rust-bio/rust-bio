@@ -18,8 +18,7 @@
 //! assert_eq!(occ, [7, 17]);
 //! ```
 
-use crate::pattern_matching::shift_and::masks;
-use crate::utils::TextSlice;
+use crate::{pattern_matching::shift_and::masks, utils::TextSlice};
 use std::borrow::Borrow;
 
 /// BNDM algorithm.

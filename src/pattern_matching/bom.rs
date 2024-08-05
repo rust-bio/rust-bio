@@ -19,9 +19,7 @@
 //! ```
 
 use crate::utils::TextSlice;
-use std::borrow::Borrow;
-use std::cmp::Ord;
-use std::iter::repeat;
+use std::{borrow::Borrow, cmp::Ord, iter::repeat};
 
 use vec_map::VecMap;
 

@@ -12,9 +12,7 @@
 //! Note that if the number of states weren't fixed in this implementation, we would have to include
 //! these in both time and memory complexity above as an additional factor.
 
-use std::cmp;
-use std::mem;
-use std::usize;
+use std::{cmp, mem};
 
 pub use crate::stats::pairhmm::{EmissionParameters, GapParameters, StartEndGapParameters};
 use crate::stats::LogProb;

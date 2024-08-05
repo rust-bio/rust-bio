@@ -25,8 +25,7 @@
 //! and store these using `BitEnc`.
 //!
 //! ```
-//! use bio::alphabets;
-//! use bio::data_structures::bitenc::BitEnc;
+//! use bio::{alphabets, data_structures::bitenc::BitEnc};
 //!
 //! let dna_alphabet = alphabets::Alphabet::new(b"ACGT");
 //! let dna_ranks = alphabets::RankTransform::new(&dna_alphabet);

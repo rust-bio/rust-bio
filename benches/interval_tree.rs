@@ -4,10 +4,11 @@ extern crate test;
 
 use test::Bencher;
 
-use bio::data_structures::interval_tree::*;
-use bio::utils::Interval;
-use std::cmp::{max, min};
-use std::ops::Range;
+use bio::{data_structures::interval_tree::*, utils::Interval};
+use std::{
+    cmp::{max, min},
+    ops::Range,
+};
 
 #[bench]
 fn bench_interval_few_large_queries(b: &mut Bencher) {

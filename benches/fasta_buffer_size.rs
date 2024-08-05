@@ -6,8 +6,7 @@ use test::Bencher;
 
 use bio::io::fasta;
 
-use std::io::Seek;
-use std::io::Write;
+use std::io::{Seek, Write};
 
 use rand::SeedableRng;
 

@@ -24,10 +24,7 @@
 //! assert_eq!(occ, [(13, 1), (14, 1)]);
 //! ```
 
-use std::borrow::Borrow;
-use std::cmp::min;
-use std::iter;
-use std::iter::repeat;
+use std::{borrow::Borrow, cmp::min, iter, iter::repeat};
 
 use crate::utils::TextSlice;
 

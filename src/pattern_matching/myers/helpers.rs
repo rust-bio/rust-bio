@@ -1,5 +1,7 @@
-use std::fmt::{Binary, Debug};
-use std::ops::*;
+use std::{
+    fmt::{Binary, Debug},
+    ops::*,
+};
 
 use num_traits::{AsPrimitive, FromPrimitive, PrimInt, ToPrimitive, WrappingAdd};
 

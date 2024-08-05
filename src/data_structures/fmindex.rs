@@ -11,10 +11,14 @@
 //! ## Generate
 //!
 //! ```
-//! use bio::alphabets::dna;
-//! use bio::data_structures::bwt::{bwt, less, Occ};
-//! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
-//! use bio::data_structures::suffix_array::suffix_array;
+//! use bio::{
+//!     alphabets::dna,
+//!     data_structures::{
+//!         bwt::{bwt, less, Occ},
+//!         fmindex::{FMIndex, FMIndexable},
+//!         suffix_array::suffix_array,
+//!     },
+//! };
 //!
 //! let text = b"GCCTTAACATTATTACGCCTA$";
 //! let alphabet = dna::n_alphabet();
@@ -31,11 +35,15 @@
 //! It can take a reference (`&`), owned structs or any of the more complex pointer types.
 //!
 //! ```
-//! use bio::alphabets::dna;
-//! use bio::data_structures::bwt::{bwt, less, Less, Occ, BWT};
-//! use bio::data_structures::fmindex::{FMIndex, FMIndexable};
-//! use bio::data_structures::suffix_array::suffix_array;
-//! use bio::utils::TextSlice;
+//! use bio::{
+//!     alphabets::dna,
+//!     data_structures::{
+//!         bwt::{bwt, less, Less, Occ, BWT},
+//!         fmindex::{FMIndex, FMIndexable},
+//!         suffix_array::suffix_array,
+//!     },
+//!     utils::TextSlice,
+//! };
 //!
 //! pub struct Example {
 //!     fmindex: FMIndex<BWT, Less, Occ>,
@@ -54,12 +62,15 @@
 //! }
 //! ```
 
-use std::borrow::Borrow;
-use std::iter::DoubleEndedIterator;
+use std::{borrow::Borrow, iter::DoubleEndedIterator};
 
-use crate::alphabets::dna;
-use crate::data_structures::bwt::{Less, Occ, BWT};
-use crate::data_structures::suffix_array::SuffixArray;
+use crate::{
+    alphabets::dna,
+    data_structures::{
+        bwt::{Less, Occ, BWT},
+        suffix_array::SuffixArray,
+    },
+};
 use std::mem::swap;
 
 /// A suffix array interval.
@@ -117,10 +128,14 @@ pub trait FMIndexable {
     /// # Example
     ///
     /// ```
-    /// use bio::alphabets::dna;
-    /// use bio::data_structures::bwt::{bwt, less, Occ};
-    /// use bio::data_structures::fmindex::{BackwardSearchResult, FMIndex, FMIndexable};
-    /// use bio::data_structures::suffix_array::suffix_array;
+    /// use bio::{
+    ///     alphabets::dna,
+    ///     data_structures::{
+    ///         bwt::{bwt, less, Occ},
+    ///         fmindex::{BackwardSearchResult, FMIndex, FMIndexable},
+    ///         suffix_array::suffix_array,
+    ///     },
+    /// };
     ///
     /// let text = b"GCCTTAACATTATTACGCCTA$";
     /// let alphabet = dna::n_alphabet();
@@ -330,10 +345,14 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
     /// # Example
     ///
     /// ```
-    /// use bio::alphabets::dna;
-    /// use bio::data_structures::bwt::{bwt, less, Occ};
-    /// use bio::data_structures::fmindex::{FMDIndex, FMIndex};
-    /// use bio::data_structures::suffix_array::suffix_array;
+    /// use bio::{
+    ///     alphabets::dna,
+    ///     data_structures::{
+    ///         bwt::{bwt, less, Occ},
+    ///         fmindex::{FMDIndex, FMIndex},
+    ///         suffix_array::suffix_array,
+    ///     },
+    /// };
     ///
     /// let text = b"ATTC$GAAT$";
     /// let alphabet = dna::n_alphabet();
@@ -432,10 +451,14 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
     /// # Example
     ///
     /// ```
-    /// use bio::alphabets::dna;
-    /// use bio::data_structures::bwt::{bwt, less, Occ};
-    /// use bio::data_structures::fmindex::{FMDIndex, FMIndex};
-    /// use bio::data_structures::suffix_array::suffix_array;
+    /// use bio::{
+    ///     alphabets::dna,
+    ///     data_structures::{
+    ///         bwt::{bwt, less, Occ},
+    ///         fmindex::{FMDIndex, FMIndex},
+    ///         suffix_array::suffix_array,
+    ///     },
+    /// };
     ///
     /// let text = b"ATTCGGGG$CCCCGAAT$";
     /// let alphabet = dna::n_alphabet();
@@ -571,9 +594,13 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::alphabets::dna;
-    use crate::data_structures::bwt::{bwt, less, Occ};
-    use crate::data_structures::suffix_array::suffix_array;
+    use crate::{
+        alphabets::dna,
+        data_structures::{
+            bwt::{bwt, less, Occ},
+            suffix_array::suffix_array,
+        },
+    };
 
     #[test]
     fn test_fmindex() {
