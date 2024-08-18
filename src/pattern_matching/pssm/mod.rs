@@ -32,7 +32,7 @@
 //!            b"ARNNYM".to_vec(),
 //!        ].as_ref(), None).unwrap();
 
-use std::{borrow::Borrow};
+use std::borrow::Borrow;
 
 use itertools::Itertools;
 use ndarray::prelude::Array2;

@@ -4,7 +4,7 @@ use std::{
     iter,
     marker::PhantomData,
     mem::{replace, size_of},
-    slice
+    slice,
 };
 
 use num_traits::{FromPrimitive, One, ToPrimitive, Zero};

@@ -6,7 +6,6 @@
 use super::*;
 use ndarray::prelude::Array2;
 
-
 /// Position-specific scoring matrix for protein sequences
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct ProtMotif {

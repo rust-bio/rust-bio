@@ -14,7 +14,7 @@ use std::{
     iter,
     marker::PhantomData,
     mem::replace,
-    slice
+    slice,
 };
 
 use itertools::Itertools;
