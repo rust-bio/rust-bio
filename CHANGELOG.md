@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [2.0.3](https://github.com/rust-bio/rust-bio/compare/v2.0.2...v2.0.3) (2024-09-11)
+
+
+### Dependencies
+
+* update ndarray requirement from &gt;=0.15, &lt;0.16 to >=0.15, <0.17 ([#599](https://github.com/rust-bio/rust-bio/issues/599)) ([6f02382](https://github.com/rust-bio/rust-bio/commit/6f02382d67b7809f468b99101bd09409240edf4c))
+
 ## [2.0.2](https://github.com/rust-bio/rust-bio/compare/v2.0.1...v2.0.2) (2024-09-11)
 
 
