@@ -2,8 +2,7 @@
 
 extern crate test;
 
-use bio::stats::pairhmm::*;
-use bio::stats::{LogProb, Prob};
+use bio::stats::{pairhmm::*, LogProb, Prob};
 use test::Bencher;
 
 static TEXT: &[u8] = b"GATCACAGGTCTATCACCCTATTAACCACTCACGGGAGCTCTCCATGC\

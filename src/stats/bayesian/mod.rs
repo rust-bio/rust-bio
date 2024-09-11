@@ -7,8 +7,7 @@
 
 pub mod bayes_factors;
 pub mod model;
-pub use self::bayes_factors::BayesFactor;
-pub use self::model::Model;
+pub use self::{bayes_factors::BayesFactor, model::Model};
 
 use itertools::Itertools;
 use ordered_float::OrderedFloat;

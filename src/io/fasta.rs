@@ -80,8 +80,7 @@
 //! In this example we filter reads from stdin on sequence length and write them to stdout
 //!
 //! ```no_run
-//! use bio::io::fasta;
-//! use bio::io::fasta::FastaRead;
+//! use bio::io::{fasta, fasta::FastaRead};
 //! use std::io;
 //!
 //! let mut reader = fasta::Reader::new(io::stdin());
@@ -130,13 +129,7 @@
 //! assert_eq!(seq, b"GTAGGCTGAA");
 //! ```
 
-use std::cmp::min;
-use std::collections;
-use std::convert::AsRef;
-use std::fs;
-use std::io;
-use std::io::prelude::*;
-use std::path::Path;
+use std::{cmp::min, collections, convert::AsRef, fs, io, io::prelude::*, path::Path};
 
 use crate::utils::{Text, TextSlice};
 use anyhow::Context;
@@ -295,8 +288,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use bio::io::fasta::Record;
-    /// use bio::io::fasta::{FastaRead, Reader};
+    /// use bio::io::fasta::{FastaRead, Reader, Record};
     ///
     /// const fasta_file: &'static [u8] = b">id desc
     /// AAAA
@@ -837,9 +829,7 @@ impl<W: io::Write> Writer<W> {
     /// # Examples
     /// ```rust
     /// use bio::io::fasta::{Record, Writer};
-    /// use std::fs;
-    /// use std::io;
-    /// use std::path::Path;
+    /// use std::{fs, io, path::Path};
     ///
     /// let path = Path::new("test.fa");
     /// let file = fs::File::create(path).unwrap();
@@ -1045,8 +1035,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fmt::Write as FmtWrite;
-    use std::io;
+    use std::{fmt::Write as FmtWrite, io};
 
     const FASTA_FILE: &[u8] = b">id desc
 ACCGTAGGCTGA

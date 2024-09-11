@@ -5,10 +5,7 @@
 
 //! A trait system for Bayesian statistical modelling.
 
-use std::cmp::Eq;
-use std::collections::HashMap;
-use std::hash::Hash;
-use std::marker::PhantomData;
+use std::{cmp::Eq, collections::HashMap, hash::Hash, marker::PhantomData};
 
 use itertools::Itertools;
 use ordered_float::NotNan;

@@ -1,8 +1,9 @@
 macro_rules! impl_tests {
     ($mod_:ident, $bitvec:ty, $dist_type:ty, $builder_method:ident) => {
-        use crate::alignment::AlignmentOperation::*;
-        use crate::alignment::{Alignment, AlignmentMode};
-        use crate::pattern_matching::myers::MyersBuilder;
+        use crate::{
+            alignment::{Alignment, AlignmentMode, AlignmentOperation::*},
+            pattern_matching::myers::MyersBuilder,
+        };
         use itertools::Itertools;
         use $mod_::Myers;
 

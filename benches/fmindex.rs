@@ -2,10 +2,14 @@
 
 extern crate test;
 
-use bio::alphabets;
-use bio::data_structures::bwt::{bwt, less, Occ};
-use bio::data_structures::fmindex::{BackwardSearchResult, FMIndex, FMIndexable};
-use bio::data_structures::suffix_array::suffix_array;
+use bio::{
+    alphabets,
+    data_structures::{
+        bwt::{bwt, less, Occ},
+        fmindex::{BackwardSearchResult, FMIndex, FMIndexable},
+        suffix_array::suffix_array,
+    },
+};
 use test::Bencher;
 
 #[bench]

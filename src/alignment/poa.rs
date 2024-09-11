@@ -9,9 +9,9 @@
 //!
 //! For the original concept and theory, see:
 //! * Lee, Christopher, Catherine Grasso, and Mark F. Sharlow. "Multiple sequence alignment using
-//! partial order graphs." Bioinformatics 18.3 (2002): 452-464.
+//!   partial order graphs." Bioinformatics 18.3 (2002): 452-464.
 //! * Lee, Christopher. "Generating consensus sequences from partial order multiple sequence
-//! alignment graphs." Bioinformatics 19.8 (2003): 999-1008.
+//!   alignment graphs." Bioinformatics 19.8 (2003): 999-1008.
 //!
 //! For a modern reference implementation, see poapy:
 //! https://github.com/ljdursi/poapy
@@ -19,8 +19,7 @@
 //! # Example
 //!
 //! ```
-//! use bio::alignment::pairwise::Scoring;
-//! use bio::alignment::poa::*;
+//! use bio::alignment::{pairwise::Scoring, poa::*};
 //!
 //! let x = b"AAAAAAA";
 //! let y = b"AABBBAA";
@@ -41,8 +40,7 @@ use crate::utils::TextSlice;
 
 use crate::alignment::pairwise::{MatchFunc, Scoring};
 
-use petgraph::graph::NodeIndex;
-use petgraph::visit::Topo;
+use petgraph::{graph::NodeIndex, visit::Topo};
 
 use petgraph::{Directed, Graph, Incoming};
 
@@ -925,8 +923,7 @@ impl<F: MatchFunc> Poa<F> {
 mod tests {
     use super::*;
     use crate::alignment::pairwise::Scoring;
-    use petgraph::dot::Dot;
-    use petgraph::graph::NodeIndex;
+    use petgraph::{dot::Dot, graph::NodeIndex};
 
     #[test]
     fn test_init_graph() {

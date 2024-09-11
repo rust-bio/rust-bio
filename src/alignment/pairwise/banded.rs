@@ -18,10 +18,11 @@
 //! # Example
 //!
 //! ```
-//! use bio::alignment::pairwise::banded::*;
-//! use bio::alignment::pairwise::{Scoring, MIN_SCORE};
-//! use bio::alignment::sparse::hash_kmers;
-//! use bio::alignment::AlignmentOperation::*;
+//! use bio::alignment::{
+//!     pairwise::{banded::*, Scoring, MIN_SCORE},
+//!     sparse::hash_kmers,
+//!     AlignmentOperation::*,
+//! };
 //! use std::iter::repeat;
 //!
 //! let x = b"AGCACACGTGTGCGCTATACAGTAAGTAGTAGTACACGTGTCACAGTTGTACTAGCATGAC";
@@ -80,16 +81,17 @@
 //! // aligner.custom_with_prehash(x, y, &y_kmers_hash) is also supported
 //! ```
 
-use crate::alignment::{Alignment, AlignmentOperation};
-use crate::utils::TextSlice;
-use std::cmp::{max, min, Ordering};
-use std::i32;
-use std::ops::Range;
+use crate::{
+    alignment::{Alignment, AlignmentOperation},
+    utils::TextSlice,
+};
+use std::{
+    cmp::{max, min, Ordering},
+    ops::Range,
+};
 
 use super::*;
-use crate::alignment::pairwise::Scoring;
-use crate::alignment::sparse;
-use crate::alignment::sparse::HashMapFx;
+use crate::alignment::{pairwise::Scoring, sparse, sparse::HashMapFx};
 
 const MAX_CELLS: usize = 5_000_000;
 const DEFAULT_MATCH_SCORE: i32 = 2;
@@ -323,7 +325,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `y` - Textslice
     /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
     /// * `allowed_mismatches` - Extend the matches diagonally allowing upto
-    /// the specified number of mismatches (Option<usize>)
+    ///   the specified number of mismatches (Option<usize>)
     /// * `use_lcskpp_union` - Extend the results from sdpkpp using lcskpp
     pub fn custom_with_expanded_matches(
         &mut self,
@@ -377,7 +379,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `y` - Textslice
     /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
     /// * `path` - Vector of indices pointing to `matches` vector
-    /// which defines a path. The validity of the path is not checked.
+    ///   which defines a path. The validity of the path is not checked.
     pub fn custom_with_match_path(
         &mut self,
         x: TextSlice,
@@ -1407,9 +1409,13 @@ impl Band {
 
 #[cfg(test)]
 mod banded {
-    use crate::alignment::pairwise::{self, banded, Scoring};
-    use crate::alignment::sparse::hash_kmers;
-    use crate::utils::TextSlice;
+    use crate::{
+        alignment::{
+            pairwise::{self, banded, Scoring},
+            sparse::hash_kmers,
+        },
+        utils::TextSlice,
+    };
 
     // Check that the banded alignment is equivalent to the exhaustive SW alignment
     fn compare_to_full_alignment_local(x: TextSlice<'_>, y: TextSlice<'_>) {
@@ -1752,8 +1758,7 @@ mod banded {
     //     compare_to_full_alignment_semiglobal(x, y);
     // }
 
-    use crate::alignment::AlignmentOperation::*;
-    use crate::scores::blosum62;
+    use crate::{alignment::AlignmentOperation::*, scores::blosum62};
     use std::iter::repeat;
 
     #[test]

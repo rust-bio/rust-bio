@@ -8,8 +8,7 @@
 //! # Example
 //!
 //! ```
-//! use bio::alphabets;
-//! use bio::data_structures::qgram_index;
+//! use bio::{alphabets, data_structures::qgram_index};
 //!
 //! let text = b"ACGGCTGAGATGAT";
 //! let alphabet = alphabets::dna::alphabet();
@@ -28,12 +27,12 @@
 //! );
 //! ```
 
-use std::cmp;
-use std::collections;
-use std::collections::hash_map::Entry;
+use std::{cmp, collections, collections::hash_map::Entry};
 
-use crate::alphabets::{Alphabet, RankTransform};
-use crate::utils;
+use crate::{
+    alphabets::{Alphabet, RankTransform},
+    utils,
+};
 
 /// A classical, flexible, q-gram index implementation.
 ///
@@ -57,7 +56,7 @@ impl QGramIndex {
         I: Iterator<Item = &'a u8> + ExactSizeIterator + Clone,
         T: IntoIterator<Item = &'a u8, IntoIter = I> + Sized,
     {
-        QGramIndex::with_max_count(q, text, alphabet, std::usize::MAX)
+        QGramIndex::with_max_count(q, text, alphabet, usize::MAX)
     }
 
     /// Create a new q-gram index, only considering q-grams that occur at most `max_count` times.

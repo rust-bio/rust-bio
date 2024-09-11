@@ -6,8 +6,7 @@
 //! ```
 //! extern crate bio_types;
 //! use bio::data_structures::annot_map::AnnotMap;
-//! use bio_types::annot::contig::Contig;
-//! use bio_types::strand::ReqStrand;
+//! use bio_types::{annot::contig::Contig, strand::ReqStrand};
 //!
 //! // Insert a String annotation into the annotation map at a specified location.
 //! let mut genes: AnnotMap<String, String> = AnnotMap::new();
@@ -25,12 +24,15 @@
 //! assert_eq!(hits, vec!["TMA22"]);
 //! ```
 
-use std::collections::HashMap;
-use std::hash::Hash;
+use std::{collections::HashMap, hash::Hash};
 
-use crate::data_structures::interval_tree;
-use crate::data_structures::interval_tree::{IntervalTree, IntervalTreeIterator};
-use crate::utils::Interval;
+use crate::{
+    data_structures::{
+        interval_tree,
+        interval_tree::{IntervalTree, IntervalTreeIterator},
+    },
+    utils::Interval,
+};
 use bio_types::annot::loc::Loc;
 
 /// Efficient container for querying annotations, using `HashMap` and
@@ -89,8 +91,7 @@ where
     /// ```
     /// extern crate bio_types;
     /// use bio::data_structures::annot_map::AnnotMap;
-    /// use bio_types::annot::contig::Contig;
-    /// use bio_types::strand::ReqStrand;
+    /// use bio_types::{annot::contig::Contig, strand::ReqStrand};
     ///
     /// let mut genes: AnnotMap<String, String> = AnnotMap::new();
     /// let tma22 = Contig::new(
@@ -152,8 +153,7 @@ where
     /// ```
     /// extern crate bio_types;
     /// use bio::data_structures::annot_map::AnnotMap;
-    /// use bio_types::annot::contig::Contig;
-    /// use bio_types::strand::ReqStrand;
+    /// use bio_types::{annot::contig::Contig, strand::ReqStrand};
     ///
     /// let mut gene_locs = AnnotMap::new();
     /// let tma19 = Contig::new(
@@ -244,8 +244,7 @@ where
 mod tests {
     use super::*;
 
-    use bio_types::annot::contig::Contig;
-    use bio_types::strand::ReqStrand;
+    use bio_types::{annot::contig::Contig, strand::ReqStrand};
 
     #[test]
     fn lookup() {

@@ -33,7 +33,6 @@
 //!        ].as_ref(), None).unwrap();
 
 use std::borrow::Borrow;
-use std::f32::NEG_INFINITY;
 
 use itertools::Itertools;
 use ndarray::prelude::Array2;
@@ -42,9 +41,11 @@ mod dnamotif;
 pub mod errors;
 mod protmotif;
 
-pub use self::dnamotif::DNAMotif;
-pub use self::errors::{Error, Result};
-pub use self::protmotif::ProtMotif;
+pub use self::{
+    dnamotif::DNAMotif,
+    errors::{Error, Result},
+    protmotif::ProtMotif,
+};
 
 /// default pseudocount - used to prevent 0 tallies
 pub const DEF_PSEUDO: f32 = 0.5;
@@ -65,7 +66,7 @@ impl Default for ScoredPos {
     fn default() -> ScoredPos {
         ScoredPos {
             loc: 0,
-            sum: NEG_INFINITY,
+            sum: f32::NEG_INFINITY,
             scores: Vec::new(),
         }
     }

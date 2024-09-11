@@ -1,15 +1,18 @@
-use std::borrow::Borrow;
-use std::collections::HashMap;
-use std::iter;
-use std::marker::PhantomData;
-use std::mem::{replace, size_of};
-use std::slice;
-use std::u64;
+use std::{
+    borrow::Borrow,
+    collections::HashMap,
+    iter,
+    marker::PhantomData,
+    mem::{replace, size_of},
+    slice,
+};
 
 use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
 
-use crate::pattern_matching::myers::traceback::{StatesHandler, TracebackHandler};
-use crate::pattern_matching::myers::{BitVec, State};
+use crate::pattern_matching::myers::{
+    traceback::{StatesHandler, TracebackHandler},
+    BitVec, State,
+};
 
 /// Myers algorithm.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]

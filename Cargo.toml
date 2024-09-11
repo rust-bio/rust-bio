@@ -22,40 +22,40 @@ phylogeny = ["pest", "pest_derive", "bio-types/phylogeny"]
 
 
 [dependencies]
-bytecount = "0.6"
-csv = "1.1"
-num-traits = "0.2"
-num-integer = "0.1"
+bytecount = "0.6.8"
+csv = "1.3"
+num-traits = "0.2.19"
+num-integer = "0.1.46"
 itertools = ">=0.8, <0.14"
-itertools-num = "0.1"
-bv = { version = "0.11", features = ["serde"] }
+itertools-num = "0.1.3"
+bv = { version = "0.11.1", features = ["serde"] }
 bit-set = "0.8"
 ndarray= ">=0.15, <0.16"
-lazy_static = "1.4"
-serde = "1.0"
-serde_derive = "1.0"
+lazy_static = "1.5"
+serde = "1.0.204"
+serde_derive = "1.0.204"
 approx = ">=0.3, <0.6"
-custom_derive = "0.1"
-newtype_derive = "0.1"
-ordered-float = "4.2"
-regex = { version = "1.3", default-features = false, features = ["std", "perf"] }
+custom_derive = "0.1.7"
+newtype_derive = "0.1.6"
+ordered-float = "4.2.2"
+regex = { version = "1.10.6", default-features = false, features = ["std", "perf"] }
 multimap = ">=0.6, <0.11"
-fxhash = "0.2"
+fxhash = "0.2.1"
 statrs = ">= 0.11, < 0.18"
 bio-types = ">=1.0.0"
-pest = { version = "2", optional = true }
-pest_derive = { version = "2", optional = true }
+pest = { version = "2.7.11", optional = true }
+pest_derive = { version = "2.7.11", optional = true }
 strum = ">= 0.16, < 0.27"
 strum_macros = ">= 0.16, < 0.27"
 enum-map = ">=0.6.4, <3"
 triple_accel = ">=0.3, <0.5"
-thiserror = "1"
-anyhow = "1"
+thiserror = "1.0.63"
+anyhow = "1.0.86"
 rand = ">=0.7.3, < 0.9"
 editdistancek = ">=1.0.1, <2"
 
 [dependencies.vec_map]
-version = "0.8"
+version = "0.8.2"
 features = ["eders"]
 
 [dependencies.petgraph]

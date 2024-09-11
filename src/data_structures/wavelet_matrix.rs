@@ -14,8 +14,7 @@
 //! ```
 
 use crate::data_structures::rank_select::RankSelect;
-use bv::BitVec;
-use bv::BitsMut;
+use bv::{BitVec, BitsMut};
 
 const DNA2INT: [u8; 128] = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //  0

@@ -9,9 +9,9 @@
 
 use std::iter::repeat;
 
-use crate::alphabets::Alphabet;
-use crate::data_structures::suffix_array::RawSuffixArraySlice;
-use crate::utils::prescan;
+use crate::{
+    alphabets::Alphabet, data_structures::suffix_array::RawSuffixArraySlice, utils::prescan,
+};
 
 pub type BWT = Vec<u8>;
 pub type BWTSlice = [u8];
@@ -29,8 +29,7 @@ pub type BWTFind = Vec<usize>;
 /// # Example
 ///
 /// ```
-/// use bio::data_structures::bwt::bwt;
-/// use bio::data_structures::suffix_array::suffix_array;
+/// use bio::data_structures::{bwt::bwt, suffix_array::suffix_array};
 /// let text = b"GCCTTAACATTATTACGCCTA$";
 /// let pos = suffix_array(text);
 /// let bwt = bwt(text, &pos);
@@ -215,10 +214,10 @@ pub fn bwtfind(bwt: &BWTSlice, alphabet: &Alphabet) -> BWTFind {
 #[cfg(test)]
 mod tests {
     use super::{bwt, bwtfind, invert_bwt, Occ};
-    use crate::alphabets::dna;
-    use crate::alphabets::Alphabet;
-    use crate::data_structures::suffix_array::suffix_array;
-    use crate::data_structures::wavelet_matrix::WaveletMatrix;
+    use crate::{
+        alphabets::{dna, Alphabet},
+        data_structures::{suffix_array::suffix_array, wavelet_matrix::WaveletMatrix},
+    };
 
     #[test]
     fn test_bwtfind() {

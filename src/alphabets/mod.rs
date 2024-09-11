@@ -14,8 +14,7 @@
 //! assert!(!alphabet.is_word(b"AXYZ"));
 //! ```
 
-use std::borrow::Borrow;
-use std::mem;
+use std::{borrow::Borrow, mem};
 
 use bit_set::BitSet;
 use vec_map::VecMap;

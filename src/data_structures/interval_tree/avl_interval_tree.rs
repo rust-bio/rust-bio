@@ -12,8 +12,7 @@
 //!
 //! # Example
 //! ```
-//! use bio::data_structures::interval_tree::IntervalTree;
-//! use bio::utils::Interval;
+//! use bio::{data_structures::interval_tree::IntervalTree, utils::Interval};
 //!
 //! let mut tree = IntervalTree::new();
 //! tree.insert(11..20, "Range_1");
@@ -27,9 +26,7 @@
 //! ```
 
 use crate::utils::Interval;
-use std::cmp;
-use std::iter::FromIterator;
-use std::mem;
+use std::{cmp, iter::FromIterator, mem};
 
 /// An interval tree for storing intervals with data
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
@@ -381,9 +378,11 @@ fn intersect<N: Ord + Clone>(range_1: &Interval<N>, range_2: &Interval<N>) -> bo
 mod tests {
     use super::{Entry, IntervalTree, Node};
     use crate::utils::Interval;
-    use std::cmp;
-    use std::cmp::{max, min};
-    use std::ops::Range;
+    use std::{
+        cmp,
+        cmp::{max, min},
+        ops::Range,
+    };
 
     fn validate(node: &Node<i64, String>) {
         validate_height(node);
