@@ -11,13 +11,13 @@
 //! ```rust
 //! use bio::io::cmap;
 //!
-//! let path = "my/path/to/file.cmap";
-//! let reader = cmap::Reader::from(&path);
+//! let path = "tests/resources/valid_input.cmap";
+//! let mut reader = cmap::Reader::from_path(&path).unwrap();
 //!
-//! let num_contigs = 0;
-//! let num_labels = 0;
+//! let mut num_contigs = 0;
+//! let mut num_labels = 0;
 //!
-//! while let Some(Ok(record)) = reader.next() {
+//! while let Some(Ok(mut record)) = reader.next() {
 //!     num_contigs += 1;
 //!     num_labels += record.labels().len() - 1;
 //! }
@@ -33,8 +33,8 @@
 //! ```rust
 //! use bio::io::cmap;
 //!
-//! let path = "my/path/to/file.cmap";
-//! let container = cmap::Container::from_path(&path);
+//! let path = "tests/resources/valid_input.cmap";
+//! let mut container = cmap::Container::from_path(&path).unwrap();
 //!
 //! println!("CMAP header: {:?}", container.header());
 //! println!("CMAP label: {:?}", container.labels());
@@ -87,16 +87,16 @@ impl Record {
     ///
     /// # Example
     /// ```rust
-    /// use bio::io::cmap::Reader;
+    /// use bio::io::cmap::Record;
     ///
     /// let mut lines = Vec::new();
-    /// label_lines.push("1\t248936424.0\t3\t1\t1\t4454.0\t1.0\t1\t1");
-    /// label_lines.push("1\t248936424.0\t3\t2\t1\t27579.0\t1.0\t1\t1");
-    /// label_lines.push("1\t248936424.0\t3\t3\t1\t98003.0\t1.0\t1\t1");
-    /// label_lines.push("1\t248936424.0\t3\t4\t0\t248936424.0\t1.0\t1\t0");
+    /// lines.push("1\t248936424.0\t3\t1\t1\t4454.0\t1.0\t1\t1");
+    /// lines.push("1\t248936424.0\t3\t2\t1\t27579.0\t1.0\t1\t1");
+    /// lines.push("1\t248936424.0\t3\t3\t1\t98003.0\t1.0\t1\t1");
+    /// lines.push("1\t248936424.0\t3\t4\t0\t248936424.0\t1.0\t1\t0");
     ///
-    /// let mut reader = Reader::new();
-    /// reader.fill(lines);
+    /// let mut rec = Record::new();
+    /// rec.fill(lines);
     /// ```
     pub fn fill(&mut self, lines: Vec<&str>) -> Result<()> {
         let split = &mut lines[0].split('\t');
@@ -186,8 +186,8 @@ impl Reader<BufReader<File>> {
     /// ```rust
     /// use bio::io::cmap::Reader;
     ///
-    /// let path = "input/valid_input.cmap";
-    /// let reader = Reader::from_path(&path);
+    /// let path = "tests/resources/valid_input.cmap";
+    /// let reader = Reader::from_path(&path).unwrap();
     /// let container = reader.into_container();
     /// ```
     pub fn into_container(self) -> Result<Container> {

@@ -11,10 +11,10 @@
 //! ```rust
 //! use bio::io::xmap;
 //!
-//! let path = "my/path/to/file.xmap";
-//! let reader = xmap::Reader::from(&path);
+//! let path = "tests/resources/valid_input.xmap";
+//! let mut reader = xmap::Reader::from_path(&path).unwrap();
 //!
-//! let num_alignments = 0;
+//! let mut num_aligns = 0;
 //!
 //! while let Some(Ok(record)) = reader.next() {
 //!     num_aligns += 1;
@@ -30,8 +30,8 @@
 //! ```rust
 //! use bio::io::xmap;
 //!
-//! let path = "my/path/to/file.xmap";
-//! let container = xmap::Container::from_path(&path);
+//! let path = "tests/resources/valid_input.xmap";
+//! let mut container = xmap::Container::from_path(&path).unwrap();
 //!
 //! println!("XMAP header: {:?}", container.header());
 //! println!("XMAP trees: {:?}", container.trees());
@@ -107,12 +107,12 @@ impl Record {
     ///
     /// # Example
     /// ```rust
-    /// use bio::io::xmap::Reader;
+    /// use bio::io::xmap::Record;
     ///
     /// let line = "1\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)";
     ///
-    /// let mut reader = Reader::new();
-    /// reader.fill(&line);
+    /// let mut rec = Record::new();
+    /// rec.fill(&line);
     /// ```
     pub fn fill(&mut self, line: &str) -> Result<()> {
         let mut split = line.split('\t');
@@ -247,8 +247,8 @@ impl<R: BufRead> Reader<R> {
     /// ```rust
     /// use bio::io::xmap::Reader;
     ///
-    /// let path = "input/valid_input.xmap";
-    /// let reader = Reader::from_path(&path);
+    /// let path = "tests/resources/valid_input.xmap";
+    /// let reader = Reader::from_path(&path).unwrap();
     /// let container = reader.into_container();
     /// ```
     pub fn into_container(self) -> Result<Container> {

@@ -11,19 +11,22 @@
 //! ```rust
 //! use bio::io::bnx;
 //!
-//! let path = "my/path/to/file.bnx";
-//! let reader = bnx::Reader::from(&path);
+//! let path = "tests/resources/valid_input.bnx";
+//! let mut reader = bnx::Reader::from_path(&path).unwrap();
 //!
-//! let num_molecules = 0;
-//! let num_labels = 0;
+//! let mut num_molecules = 0;
+//! let mut num_labels_channel_1 = 0;
+//! let mut num_labels_channel_2 = 0;
 //!
-//! while let Some(Ok(record)) = reader.next() {
+//! while let Some(Ok(mut record)) = reader.next() {
 //!     num_molecules += 1;
-//!     num_labels += record.labels().len() - 1;
+//!     num_labels_channel_1 += record.channel_1().len() - 1;
+//!     num_labels_channel_2 += record.channel_2().len() - 1;
 //! }
 //!
 //! println!("Number of molecules: {}", num_molecules);
-//! println!("Number of labels: {}", num_labels);
+//! println!("Number of labels in channel 1: {}", num_labels_channel_1);
+//! println!("Number of labels in channel 2: {}", num_labels_channel_2);
 //! ```
 //!
 //! ## Container
@@ -33,8 +36,8 @@
 //! ```rust
 //! use bio::io::bnx;
 //!
-//! let path = "my/path/to/file.bnx";
-//! let container = bnx::Container::from_path(&path);
+//! let path = "tests/resources/valid_input.bnx";
+//! let mut container = bnx::Container::from_path(&path).unwrap();
 //!
 //! println!("BNX header: {:?}", container.header());
 //! println!("BNX label: {:?}", container.labels());
@@ -119,7 +122,7 @@ impl Record {
     ///
     /// # Example
     /// ```rust
-    /// use bio::io::bnx::Reader;
+    /// use bio::io::bnx::Record;
     ///
     /// let meta_line = "0\t1\t134.5\t0.6\t5.3\t2\t1\t3\t-1\tTBA\t4\t5\t1";
     /// let mut label_lines = Vec::new();
@@ -127,8 +130,8 @@ impl Record {
     /// label_lines.push("QX11\t4.5\t7.3");
     /// label_lines.push("QX12\t0.4\t0.8");
     ///
-    /// let mut reader = Reader::new();
-    /// reader.fill(&meta_line, label_lines);
+    /// let mut rec = Record::new();
+    /// rec.fill(&meta_line, label_lines);
     /// ```
     pub fn fill(&mut self, meta_line: &str, label_lines: Vec<&str>) -> Result<()> {
         let mut split = meta_line.split('\t');
@@ -287,8 +290,8 @@ impl Reader<BufReader<File>> {
     /// ```rust
     /// use bio::io::bnx::Reader;
     ///
-    /// let path = "input/valid_input.bnx";
-    /// let reader = Reader::from_path(&path);
+    /// let path = "tests/resources/valid_input.bnx";
+    /// let reader = Reader::from_path(&path).unwrap();
     /// let container = reader.into_container();
     /// ```
     pub fn into_container(self) -> Result<Container> {
