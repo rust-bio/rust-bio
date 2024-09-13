@@ -45,6 +45,7 @@
 
 use anyhow::{bail, Context, Result};
 use derive_new::new;
+use getset::Getters;
 use itertools::izip;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -79,8 +80,9 @@ pub struct Label {
 }
 
 /// A BNX record.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Getters, PartialEq)]
 pub struct Record {
+    #[getset(get = "pub")]
     id: u32,
     len: f64,
     avg_intensity: f32,
@@ -93,7 +95,9 @@ pub struct Record {
     flowcell: u8,
     run_id: u32,
     global_scan_number: u32,
+    #[getset(get = "pub")]
     channel_1: Vec<Label>,
+    #[getset(get = "pub")]
     channel_2: Vec<Label>,
 }
 
@@ -245,21 +249,6 @@ impl Record {
         }
         Ok(labels)
     }
-
-    /// Returns molecule ID (BNX ID).
-    pub fn id(&mut self) -> u32 {
-        self.id
-    }
-
-    /// Returns labels from channel 1.
-    pub fn channel_1(&mut self) -> Vec<Label> {
-        self.channel_1.clone()
-    }
-
-    /// Return labels from channel 2.
-    pub fn channel_2(&mut self) -> Vec<Label> {
-        self.channel_2.clone()
-    }
 }
 
 /// Trait for BNX readers.
@@ -298,11 +287,11 @@ impl Reader<BufReader<File>> {
         let header = self.header.clone();
         let mut inner = HashMap::new();
         for rec in self {
-            let mut rec = match rec {
+            let rec = match rec {
                 Ok(rec) => rec,
                 Err(e) => return Err(e),
             };
-            inner.insert(rec.id(), rec);
+            inner.insert(*rec.id(), rec);
         }
         Ok(Container::new(header, inner))
     }
@@ -383,8 +372,9 @@ impl<R: BufRead> Iterator for Reader<R> {
 }
 
 /// A container with BNX header and records.
-#[derive(Debug, new, PartialEq)]
+#[derive(Debug, new, Getters, PartialEq)]
 pub struct Container {
+    #[getset(get = "pub")]
     header: Vec<String>,
     molecules: HashMap<u32, Record>,
 }
@@ -394,11 +384,6 @@ impl Container {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let reader = Reader::from_path(path)?;
         reader.into_container()
-    }
-
-    /// Returns header.
-    pub fn header(&self) -> &Vec<String> {
-        &self.header
     }
 
     /// Returns label positions (for each molecule respectively).
@@ -1186,8 +1171,8 @@ mod tests {
         label_lines.push("QX11\t0.4\t0.8");
         label_lines.push("QX12\t4.5\t7.3");
 
-        let mut rec = Record::from(&meta_line, label_lines).unwrap();
-        assert_eq!(rec.id(), 15)
+        let rec = Record::from(&meta_line, label_lines).unwrap();
+        assert_eq!(*rec.id(), 15)
     }
 
     #[test]
@@ -1199,10 +1184,10 @@ mod tests {
         label_lines.push("QX11\t0.4\t0.8");
         label_lines.push("QX12\t4.5\t7.3");
 
-        let mut rec = Record::from(&meta_line, label_lines).unwrap();
+        let rec = Record::from(&meta_line, label_lines).unwrap();
         assert_eq!(
             rec.channel_1(),
-            Vec::from([
+            &Vec::from([
                 Label {
                     pos: 23.4,
                     snr: 0.4,
@@ -1234,10 +1219,10 @@ mod tests {
         label_lines.push("QX12\t4.5\t7.3");
         label_lines.push("QX22\t4.6\t7.4");
 
-        let mut rec = Record::from(&meta_line, label_lines).unwrap();
+        let rec = Record::from(&meta_line, label_lines).unwrap();
         assert_eq!(
             rec.channel_2(),
-            Vec::from([
+            &Vec::from([
                 Label {
                     pos: 23.5,
                     snr: 0.5,

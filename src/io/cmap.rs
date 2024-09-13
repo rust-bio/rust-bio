@@ -42,6 +42,7 @@
 
 use anyhow::{bail, Context, Result};
 use derive_new::new;
+use getset::Getters;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -62,12 +63,14 @@ pub struct Label {
 }
 
 /// A CMAP record.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Getters, PartialEq)]
 pub struct Record {
+    #[getset(get = "pub")]
     id: u32,
     len: f64,
     num_labels: u32,
     label_channel: u8,
+    #[getset(get = "pub")]
     labels: Vec<Label>,
 }
 
@@ -147,16 +150,6 @@ impl Record {
         }
         Ok(labels)
     }
-
-    /// Returns molecule ID (CMAP ID).
-    pub fn id(&mut self) -> u32 {
-        self.id
-    }
-
-    /// Returns labels in record.
-    pub fn labels(&mut self) -> Vec<Label> {
-        self.labels.clone()
-    }
 }
 
 /// Trait for CMAP readers.
@@ -194,11 +187,11 @@ impl Reader<BufReader<File>> {
         let header = self.header.clone();
         let mut inner = HashMap::new();
         for rec in self {
-            let mut rec = match rec {
+            let rec = match rec {
                 Ok(rec) => rec,
                 Err(e) => return Err(e),
             };
-            inner.insert(rec.id(), rec);
+            inner.insert(*rec.id(), rec);
         }
         Ok(Container::new(header, inner))
     }
@@ -299,8 +292,9 @@ impl<R: BufRead> Iterator for Reader<R> {
 }
 
 /// A container with CMAP header and records.
-#[derive(Debug, new, PartialEq)]
+#[derive(Debug, Getters, new, PartialEq)]
 pub struct Container {
+    #[getset(get = "pub")]
     header: Vec<String>,
     contigs: HashMap<u32, Record>,
 }
@@ -310,11 +304,6 @@ impl Container {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let reader = Reader::from_path(path)?;
         reader.into_container()
-    }
-
-    /// Returns header.
-    pub fn header(&self) -> &Vec<String> {
-        &self.header
     }
 
     /// Returns label positions (for each contig respectively).
@@ -789,8 +778,8 @@ mod tests {
         label_lines.push("1\t248936424.0\t3\t3\t1\t98003.0\t1.0\t1\t1");
         label_lines.push("1\t248936424.0\t3\t4\t1\t248936424.0\t1.0\t1\t0");
 
-        let mut rec = Record::from(label_lines).unwrap();
-        assert_eq!(rec.id(), 1)
+        let rec = Record::from(label_lines).unwrap();
+        assert_eq!(*rec.id(), 1)
     }
 
     #[test]
@@ -801,10 +790,10 @@ mod tests {
         label_lines.push("1\t248936424.0\t3\t3\t1\t98003.0\t1.0\t1\t1");
         label_lines.push("1\t248936424.0\t3\t4\t1\t248936424.0\t1.0\t1\t0");
 
-        let mut rec = Record::from(label_lines).unwrap();
+        let rec = Record::from(label_lines).unwrap();
         assert_eq!(
             rec.labels(),
-            Vec::from([
+            &Vec::from([
                 Label {
                     id: 1,
                     pos: 4454.0,

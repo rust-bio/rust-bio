@@ -34,11 +34,11 @@
 //! let mut container = xmap::Container::from_path(&path).unwrap();
 //!
 //! println!("XMAP header: {:?}", container.header());
-//! println!("XMAP trees: {:?}", container.trees());
 //! ```
 
 use anyhow::{bail, Context, Result};
 use derive_new::new;
+use getset::Getters;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::{btree_map::Range, BTreeMap, HashMap};
@@ -64,13 +64,16 @@ lazy_static! {
 }
 
 /// A XMAP record.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Getters, PartialEq)]
 pub struct Record {
+    #[getset(get = "pub")]
     id: u32,
     qry_id: u32,
+    #[getset(get = "pub")]
     ref_id: u32,
     qry_start: f64,
     qry_end: f64,
+    #[getset(get = "pub")]
     ref_start: f64,
     ref_end: f64,
     orientation: Orientation,
@@ -179,21 +182,6 @@ impl Record {
             bail!(Error::InvalidAlignment);
         }
     }
-
-    /// Returns alignment entry ID (XMAP ID).
-    pub fn id(&mut self) -> u32 {
-        self.id
-    }
-
-    /// Returns chromosome/contig ID in reference.
-    pub fn contig(&mut self) -> u32 {
-        self.ref_id
-    }
-
-    /// Returns start of aligned region in reference.
-    pub fn start(&mut self) -> f64 {
-        self.ref_start
-    }
 }
 
 /// Trait for XMAP readers.
@@ -255,14 +243,14 @@ impl<R: BufRead> Reader<R> {
         let header = self.header.clone();
         let mut inner = HashMap::new();
         for rec in self {
-            let mut rec = match rec {
+            let rec = match rec {
                 Ok(rec) => rec,
                 Err(e) => return Err(e),
             };
             inner
-                .entry(rec.contig())
+                .entry(*rec.ref_id())
                 .or_insert_with(BTreeMap::new)
-                .insert(rec.start() as u64, rec);
+                .insert(*rec.ref_start() as u64, rec);
         }
         Ok(Container::new(header, inner))
     }
@@ -302,8 +290,9 @@ impl<R: BufRead> Iterator for Reader<R> {
 /// A container with CMAP header and records stored in B-trees.
 ///
 /// Each tree corresponds to one reference contig and is ordered by start position.
-#[derive(Debug, new, PartialEq)]
+#[derive(Debug, Getters, new, PartialEq)]
 pub struct Container {
+    #[getset(get = "pub")]
     header: Vec<String>,
     pos_trees: HashMap<u32, BTreeMap<u64, Record>>,
     //     pos_trees: HashMap<u32, BTreeMap<u32, Rc<Record>>>,
@@ -370,16 +359,6 @@ impl Container {
             None => Default::default(),
         };
         Ok(hits)
-    }
-
-    /// Returns header.
-    pub fn header(&self) -> &Vec<String> {
-        &self.header
-    }
-
-    /// Returns B-trees of start positions (for each contig).
-    pub fn trees(&mut self) -> HashMap<u32, BTreeMap<u64, Record>> {
-        self.pos_trees.clone()
     }
 }
 
@@ -877,25 +856,25 @@ mod tests {
     #[test]
     fn test_get_id() {
         let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)");
-        let mut rec = Record::from(&line).unwrap();
+        let rec = Record::from(&line).unwrap();
 
-        assert_eq!(rec.id(), 15)
+        assert_eq!(*rec.id(), 15)
     }
 
     #[test]
-    fn test_get_contig() {
+    fn test_get_ref_id() {
         let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)");
-        let mut rec = Record::from(&line).unwrap();
+        let rec = Record::from(&line).unwrap();
 
-        assert_eq!(rec.contig(), 3)
+        assert_eq!(*rec.ref_id(), 3)
     }
 
     #[test]
-    fn test_get_start() {
+    fn test_get_ref_start() {
         let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)");
-        let mut rec = Record::from(&line).unwrap();
+        let rec = Record::from(&line).unwrap();
 
-        assert_eq!(rec.start(), 6.0)
+        assert_eq!(*rec.ref_start(), 6.0)
     }
 
     #[test]
@@ -1305,53 +1284,5 @@ mod tests {
         ));
 
         assert_eq!(container.header(), &header,)
-    }
-
-    #[test]
-    fn test_get_trees() {
-        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
-        let mut tree_17 = BTreeMap::new();
-        tree_17.insert(
-            3888 as u64,
-            Record::from(
-                "36\t1\t17\t5119.30\t465.17\t3888.0\t9624.0\t-\t8606\
-                \t4M1D2M1D1M1D1M1D1M\t4654.13\t5736.0\t1\
-                \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)",
-            )
-            .unwrap(),
-        );
-        tree_17.insert(
-            5396 as u64,
-            Record::from(
-                "37\t2\t17\t2617.12\t5942.70\t5396.0\t8148.0\t+\t4434\
-                \t1M1D1M1D6M\t3325.58\t2752.0\t1\
-                \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)",
-            )
-            .unwrap(),
-        );
-        tree_17.insert(
-            6152 as u64,
-            Record::from(
-                "38\t3\t17\t538.88\t4004.65\t6152.0\t1568.0\t+\t1726\
-                 \t1M1D2M2D3M1D1M\t3465.77\t4594.0\t1\
-                 \t(62,1)(64,2)(65,3)(68,4)(69,5)(70,6)(72,7)",
-            )
-            .unwrap(),
-        );
-        let mut tree_22 = BTreeMap::new();
-        tree_22.insert(
-            4974 as u64,
-            Record::from(
-                "40\t4\t22\t477.62\t2933.80\t4974.0\t7257.0\t+\t3416\
-                \t2M2D3M1D1M1D1M\t2456.18\t3283.0\t1\
-                \t(84,1)(85,2)(88,3)(89,4)(90,5)(92,6)(94,7)",
-            )
-            .unwrap(),
-        );
-        let mut tree_map = HashMap::new();
-        tree_map.insert(22 as u32, tree_22);
-        tree_map.insert(17 as u32, tree_17);
-
-        assert_eq!(container.trees(), tree_map,)
     }
 }
