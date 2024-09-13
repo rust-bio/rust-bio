@@ -9,7 +9,7 @@
 //! In this example, we parse a CMAP file, iterate over its records. and output some statistics.
 //!
 //! ```rust
-//! use bio::io::cmap;
+//! use bio::io::om::cmap;
 //!
 //! let path = "tests/resources/valid_input.cmap";
 //! let mut reader = cmap::Reader::from_path(&path).unwrap();
@@ -31,7 +31,7 @@
 //! If feasible, we can also build a container over the content of a CMAP file.
 //!
 //! ```rust
-//! use bio::io::cmap;
+//! use bio::io::om::cmap;
 //!
 //! let path = "tests/resources/valid_input.cmap";
 //! let mut container = cmap::Container::from_path(&path).unwrap();
@@ -48,9 +48,9 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use crate::io::om_utils::Error;
-use crate::io::om_utils::NextToErr;
-use crate::io::om_utils::ParseToErr;
+use crate::io::om::common::Error;
+use crate::io::om::common::NextToErr;
+use crate::io::om::common::ParseToErr;
 
 /// A label as given in a CMAP file.
 #[derive(Clone, Debug, PartialEq)]
@@ -90,7 +90,7 @@ impl Record {
     ///
     /// # Example
     /// ```rust
-    /// use bio::io::cmap::Record;
+    /// use bio::io::om::cmap::Record;
     ///
     /// let mut lines = Vec::new();
     /// lines.push("1\t248936424.0\t3\t1\t1\t4454.0\t1.0\t1\t1");
@@ -177,7 +177,7 @@ impl Reader<BufReader<File>> {
     ///
     /// # Example
     /// ```rust
-    /// use bio::io::cmap::Reader;
+    /// use bio::io::om::cmap::Reader;
     ///
     /// let path = "tests/resources/valid_input.cmap";
     /// let reader = Reader::from_path(&path).unwrap();

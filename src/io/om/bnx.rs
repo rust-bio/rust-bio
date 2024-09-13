@@ -9,7 +9,7 @@
 //! In this example, we parse a BNX file, iterate over its records. and output some statistics.
 //!
 //! ```rust
-//! use bio::io::bnx;
+//! use bio::io::om::bnx;
 //!
 //! let path = "tests/resources/valid_input.bnx";
 //! let mut reader = bnx::Reader::from_path(&path).unwrap();
@@ -34,7 +34,7 @@
 //! If feasible, we can also build a container over the content of a BNX file.
 //!
 //! ```rust
-//! use bio::io::bnx;
+//! use bio::io::om::bnx;
 //!
 //! let path = "tests/resources/valid_input.bnx";
 //! let mut container = bnx::Container::from_path(&path).unwrap();
@@ -54,10 +54,10 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use crate::io::om_utils::Error;
-use crate::io::om_utils::NextToErr;
-use crate::io::om_utils::Orientation;
-use crate::io::om_utils::ParseToErr;
+use crate::io::om::common::Error;
+use crate::io::om::common::NextToErr;
+use crate::io::om::common::Orientation;
+use crate::io::om::common::ParseToErr;
 
 lazy_static! {
     /// Regex command to describe valid position lines in BNX.
@@ -126,7 +126,7 @@ impl Record {
     ///
     /// # Example
     /// ```rust
-    /// use bio::io::bnx::Record;
+    /// use bio::io::om::bnx::Record;
     ///
     /// let meta_line = "0\t1\t134.5\t0.6\t5.3\t2\t1\t3\t-1\tTBA\t4\t5\t1";
     /// let mut label_lines = Vec::new();
@@ -277,7 +277,7 @@ impl Reader<BufReader<File>> {
     ///
     /// # Example
     /// ```rust
-    /// use bio::io::bnx::Reader;
+    /// use bio::io::om::bnx::Reader;
     ///
     /// let path = "tests/resources/valid_input.bnx";
     /// let reader = Reader::from_path(&path).unwrap();

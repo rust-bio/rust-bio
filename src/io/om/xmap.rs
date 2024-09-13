@@ -9,7 +9,7 @@
 //! In this example, we parse a BNX file, iterate over its records. and output some statistics.
 //!
 //! ```rust
-//! use bio::io::xmap;
+//! use bio::io::om::xmap;
 //!
 //! let path = "tests/resources/valid_input.xmap";
 //! let mut reader = xmap::Reader::from_path(&path).unwrap();
@@ -28,7 +28,7 @@
 //! If feasible, we can also build a container over the content of a XMAP file.
 //!
 //! ```rust
-//! use bio::io::xmap;
+//! use bio::io::om::xmap;
 //!
 //! let path = "tests/resources/valid_input.xmap";
 //! let mut container = xmap::Container::from_path(&path).unwrap();
@@ -47,10 +47,10 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use crate::io::om_utils::Error;
-use crate::io::om_utils::NextToErr;
-use crate::io::om_utils::Orientation;
-use crate::io::om_utils::ParseToErr;
+use crate::io::om::common::Error;
+use crate::io::om::common::NextToErr;
+use crate::io::om::common::Orientation;
+use crate::io::om::common::ParseToErr;
 
 lazy_static! {
     /// Regex command to describe globally valid alignment strings in XMAP.
@@ -110,7 +110,7 @@ impl Record {
     ///
     /// # Example
     /// ```rust
-    /// use bio::io::xmap::Record;
+    /// use bio::io::om::xmap::Record;
     ///
     /// let line = "1\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)";
     ///
@@ -233,7 +233,7 @@ impl<R: BufRead> Reader<R> {
     ///
     /// # Example
     /// ```rust
-    /// use bio::io::xmap::Reader;
+    /// use bio::io::om::xmap::Reader;
     ///
     /// let path = "tests/resources/valid_input.xmap";
     /// let reader = Reader::from_path(&path).unwrap();
