@@ -75,7 +75,7 @@ lazy_static! {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Label {
     pos: f64,
-    snr: f32,
+    signal_to_noise_ratio: f32,
     intensity: f32,
 }
 
@@ -86,7 +86,7 @@ pub struct Record {
     id: u32,
     len: f64,
     avg_intensity: f32,
-    snr: f32,
+    signal_to_noise_ratio: f32,
     num_labels: u32,
     original_id: u32,
     scan_number: u8,
@@ -108,7 +108,7 @@ impl Record {
             id: 0,
             len: -1.0,
             avg_intensity: -1.0,
-            snr: -1.0,
+            signal_to_noise_ratio: -1.0,
             num_labels: 0,
             original_id: 0,
             scan_number: 0,
@@ -144,7 +144,7 @@ impl Record {
         self.id = split.try_parse("MoleculeID")?;
         self.len = split.try_parse("Length")?;
         self.avg_intensity = split.try_parse("AvgIntensity")?;
-        self.snr = split.try_parse("SNR")?;
+        self.signal_to_noise_ratio = split.try_parse("SNR")?;
         self.num_labels = split.try_parse("NumberofLabels")?;
         self.original_id = split.try_parse("OriginalMoleculeId")?;
         self.scan_number = split.try_parse("ScanNumber")?;
@@ -237,7 +237,7 @@ impl Record {
                     .0
                     .parse()
                     .context(Error::InvalidType("LabelPosition", "f64 float"))?,
-                snr: entry
+                signal_to_noise_ratio: entry
                     .1
                     .parse()
                     .context(Error::InvalidType("QualityScore (SNR)", "f32 float"))?,
@@ -422,7 +422,7 @@ mod tests {
                 id: 0,
                 len: -1.0,
                 avg_intensity: -1.0,
-                snr: -1.0,
+                signal_to_noise_ratio: -1.0,
                 num_labels: 0,
                 original_id: 0,
                 scan_number: 0,
@@ -475,17 +475,17 @@ mod tests {
         let mut output = Vec::new();
         output.push(Label {
             pos: 23.4,
-            snr: 0.4,
+            signal_to_noise_ratio: 0.4,
             intensity: 4.5,
         });
         output.push(Label {
             pos: 42.6,
-            snr: 0.8,
+            signal_to_noise_ratio: 0.8,
             intensity: 7.3,
         });
         output.push(Label {
             pos: 134.5,
-            snr: 0.0,
+            signal_to_noise_ratio: 0.0,
             intensity: 0.0,
         });
 
@@ -612,17 +612,17 @@ mod tests {
         let mut output = Vec::new();
         output.push(Label {
             pos: 23.4,
-            snr: 0.4,
+            signal_to_noise_ratio: 0.4,
             intensity: 4.5,
         });
         output.push(Label {
             pos: 42.6,
-            snr: 0.8,
+            signal_to_noise_ratio: 0.8,
             intensity: 7.3,
         });
         output.push(Label {
             pos: 134.5,
-            snr: 0.0,
+            signal_to_noise_ratio: 0.0,
             intensity: 0.0,
         });
 
@@ -645,34 +645,34 @@ mod tests {
         let mut output_1 = Vec::new();
         output_1.push(Label {
             pos: 23.4,
-            snr: 0.4,
+            signal_to_noise_ratio: 0.4,
             intensity: 4.5,
         });
         output_1.push(Label {
             pos: 42.6,
-            snr: 0.8,
+            signal_to_noise_ratio: 0.8,
             intensity: 7.3,
         });
         output_1.push(Label {
             pos: 134.5,
-            snr: 0.0,
+            signal_to_noise_ratio: 0.0,
             intensity: 0.0,
         });
 
         let mut output_2 = Vec::new();
         output_2.push(Label {
             pos: 23.5,
-            snr: 0.5,
+            signal_to_noise_ratio: 0.5,
             intensity: 4.6,
         });
         output_2.push(Label {
             pos: 42.7,
-            snr: 0.9,
+            signal_to_noise_ratio: 0.9,
             intensity: 7.4,
         });
         output_2.push(Label {
             pos: 134.6,
-            snr: 0.0,
+            signal_to_noise_ratio: 0.0,
             intensity: 0.0,
         });
 
@@ -758,17 +758,17 @@ mod tests {
         let mut output = Vec::new();
         output.push(Label {
             pos: 23.4,
-            snr: 0.4,
+            signal_to_noise_ratio: 0.4,
             intensity: 4.5,
         });
         output.push(Label {
             pos: 42.6,
-            snr: 0.8,
+            signal_to_noise_ratio: 0.8,
             intensity: 7.3,
         });
         output.push(Label {
             pos: 134.5,
-            snr: 0.0,
+            signal_to_noise_ratio: 0.0,
             intensity: 0.0,
         });
 
@@ -778,7 +778,7 @@ mod tests {
                 id: 1,
                 len: 134.5,
                 avg_intensity: 0.6,
-                snr: 5.3,
+                signal_to_noise_ratio: 5.3,
                 num_labels: 2,
                 original_id: 1,
                 scan_number: 3,
@@ -1092,17 +1092,17 @@ mod tests {
         let mut output = Vec::new();
         output.push(Label {
             pos: 23.4,
-            snr: 0.4,
+            signal_to_noise_ratio: 0.4,
             intensity: 4.5,
         });
         output.push(Label {
             pos: 42.6,
-            snr: 0.8,
+            signal_to_noise_ratio: 0.8,
             intensity: 7.3,
         });
         output.push(Label {
             pos: 134.5,
-            snr: 0.0,
+            signal_to_noise_ratio: 0.0,
             intensity: 0.0,
         });
 
@@ -1112,7 +1112,7 @@ mod tests {
                 id: 1,
                 len: 134.5,
                 avg_intensity: 0.6,
-                snr: 5.3,
+                signal_to_noise_ratio: 5.3,
                 num_labels: 2,
                 original_id: 1,
                 scan_number: 3,
@@ -1190,17 +1190,17 @@ mod tests {
             &Vec::from([
                 Label {
                     pos: 23.4,
-                    snr: 0.4,
+                    signal_to_noise_ratio: 0.4,
                     intensity: 4.5
                 },
                 Label {
                     pos: 42.6,
-                    snr: 0.8,
+                    signal_to_noise_ratio: 0.8,
                     intensity: 7.3
                 },
                 Label {
                     pos: 134.5,
-                    snr: 0.0,
+                    signal_to_noise_ratio: 0.0,
                     intensity: 0.0
                 },
             ])
@@ -1225,17 +1225,17 @@ mod tests {
             &Vec::from([
                 Label {
                     pos: 23.5,
-                    snr: 0.5,
+                    signal_to_noise_ratio: 0.5,
                     intensity: 4.6
                 },
                 Label {
                     pos: 42.7,
-                    snr: 0.9,
+                    signal_to_noise_ratio: 0.9,
                     intensity: 7.4
                 },
                 Label {
                     pos: 134.6,
-                    snr: 0.0,
+                    signal_to_noise_ratio: 0.0,
                     intensity: 0.0
                 },
             ])
@@ -1259,7 +1259,7 @@ mod tests {
                 id: 1,
                 len: 134.5,
                 avg_intensity: 0.6,
-                snr: 5.3,
+                signal_to_noise_ratio: 5.3,
                 num_labels: 2,
                 original_id: 1,
                 scan_number: 3,
@@ -1271,34 +1271,34 @@ mod tests {
                 channel_1: Vec::from([
                     Label {
                         pos: 23.4,
-                        snr: 4.5,
+                        signal_to_noise_ratio: 4.5,
                         intensity: 0.4,
                     },
                     Label {
                         pos: 42.6,
-                        snr: 7.3,
+                        signal_to_noise_ratio: 7.3,
                         intensity: 0.8,
                     },
                     Label {
                         pos: 134.5,
-                        snr: 0.0,
+                        signal_to_noise_ratio: 0.0,
                         intensity: 0.0,
                     },
                 ]),
                 channel_2: Vec::from([
                     Label {
                         pos: 23.5,
-                        snr: 4.6,
+                        signal_to_noise_ratio: 4.6,
                         intensity: 0.5,
                     },
                     Label {
                         pos: 42.7,
-                        snr: 7.4,
+                        signal_to_noise_ratio: 7.4,
                         intensity: 0.9,
                     },
                     Label {
                         pos: 134.4,
-                        snr: 0.0,
+                        signal_to_noise_ratio: 0.0,
                         intensity: 0.0,
                     },
                 ]),
@@ -1310,7 +1310,7 @@ mod tests {
                 id: 2,
                 len: 350.87,
                 avg_intensity: 0.15,
-                snr: 11.22,
+                signal_to_noise_ratio: 11.22,
                 num_labels: 4,
                 original_id: 2,
                 scan_number: 1,
@@ -1322,54 +1322,54 @@ mod tests {
                 channel_1: Vec::from([
                     Label {
                         pos: 98.92,
-                        snr: 10.0380,
+                        signal_to_noise_ratio: 10.0380,
                         intensity: 0.0378,
                     },
                     Label {
                         pos: 120.27,
-                        snr: 8.1317,
+                        signal_to_noise_ratio: 8.1317,
                         intensity: 0.1308,
                     },
                     Label {
                         pos: 241.73,
-                        snr: 21.5573,
+                        signal_to_noise_ratio: 21.5573,
                         intensity: 0.0716,
                     },
                     Label {
                         pos: 252.47,
-                        snr: 9.8626,
+                        signal_to_noise_ratio: 9.8626,
                         intensity: 0.1518,
                     },
                     Label {
                         pos: 350.87,
-                        snr: 0.0,
+                        signal_to_noise_ratio: 0.0,
                         intensity: 0.0,
                     },
                 ]),
                 channel_2: Vec::from([
                     Label {
                         pos: 98.8,
-                        snr: 9.0380,
+                        signal_to_noise_ratio: 9.0380,
                         intensity: 1.0378,
                     },
                     Label {
                         pos: 120.1,
-                        snr: 9.1317,
+                        signal_to_noise_ratio: 9.1317,
                         intensity: 1.1308,
                     },
                     Label {
                         pos: 241.6,
-                        snr: 20.5573,
+                        signal_to_noise_ratio: 20.5573,
                         intensity: 1.0716,
                     },
                     Label {
                         pos: 252.3,
-                        snr: 10.8626,
+                        signal_to_noise_ratio: 10.8626,
                         intensity: 1.1518,
                     },
                     Label {
                         pos: 350.7,
-                        snr: 0.0,
+                        signal_to_noise_ratio: 0.0,
                         intensity: 0.0,
                     },
                 ]),
