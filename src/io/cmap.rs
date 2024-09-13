@@ -9,7 +9,7 @@
 //! In this example, we parse a CMAP file, iterate over its records. and output some statistics.
 //!
 //! ```rust
-//! use om_io::cmap;
+//! use bio::io::cmap;
 //!
 //! let path = "my/path/to/file.cmap";
 //! let reader = cmap::Reader::from(&path);
@@ -31,7 +31,7 @@
 //! If feasible, we can also build a container over the content of a CMAP file.
 //!
 //! ```rust
-//! use om_io::cmap;
+//! use bio::io::cmap;
 //!
 //! let path = "my/path/to/file.cmap";
 //! let container = cmap::Container::from_path(&path);
@@ -87,7 +87,7 @@ impl Record {
     ///
     /// # Example
     /// ```rust
-    /// use om_io::cmap::Reader;
+    /// use bio::io::cmap::Reader;
     ///
     /// let mut lines = Vec::new();
     /// label_lines.push("1\t248936424.0\t3\t1\t1\t4454.0\t1.0\t1\t1");
@@ -128,7 +128,7 @@ impl Record {
         let mut labels = Vec::new();
         for idx in 0..label_lines.len() {
             let mut line_split = label_lines[idx].split('\t');
-            let _ : u32 = line_split.try_parse("CMapID")?;
+            let _: u32 = line_split.try_parse("CMapID")?;
             line_split.try_next("ContigLength")?;
             line_split.try_next("NumSites")?;
             let id = line_split.try_parse("SiteID")?;
@@ -137,9 +137,13 @@ impl Record {
             let std_dev = line_split.try_parse("StdDev")?;
             let coverage = line_split.try_parse("Coverage")?;
             let occurrence = line_split.try_parse("Occurrence")?;
-            labels.push(
-                Label {id, pos, std_dev, coverage, occurrence}
-            );
+            labels.push(Label {
+                id,
+                pos,
+                std_dev,
+                coverage,
+                occurrence,
+            });
         }
         Ok(labels)
     }
@@ -180,7 +184,7 @@ impl Reader<BufReader<File>> {
     ///
     /// # Example
     /// ```rust
-    /// use om_io::cmap::Reader;
+    /// use bio::io::cmap::Reader;
     ///
     /// let path = "input/valid_input.cmap";
     /// let reader = Reader::from_path(&path);
@@ -225,8 +229,10 @@ impl<R: BufRead> Reader<R> {
             if res == 0 {
                 bail!(Error::IncompleteCmapRecord);
             }
-            if buffer.ends_with("\t0") || buffer.ends_with("\t0\n") ||
-            buffer.is_empty() {
+            if buffer.ends_with("\t0")
+                || buffer.ends_with("\t0\n")
+                || buffer.is_empty()
+            {
                 break;
             }
         }
@@ -255,13 +261,20 @@ impl<R: BufRead> CmapRead for Reader<R> {
         self.buffer.clear();
         loop {
             res = match self.stream.read_line(&mut self.buffer) {
-                Ok(0) => if self.buffer.is_empty() {res} else {bail!
-                    (Error::IncompleteCmapRecord)},
+                Ok(0) => {
+                    if self.buffer.is_empty() {
+                        res
+                    } else {
+                        bail!(Error::IncompleteCmapRecord)
+                    }
+                }
                 Ok(_) => res,
                 Err(e) => Err(e.into()),
             };
-            if self.buffer.ends_with("\t0") || self.buffer.ends_with
-            ("\t0\n") || self.buffer.is_empty() {
+            if self.buffer.ends_with("\t0")
+                || self.buffer.ends_with("\t0\n")
+                || self.buffer.is_empty()
+            {
                 break;
             }
         }
@@ -304,13 +317,19 @@ impl Container {
 
     /// Returns label positions (for each contig respectively).
     pub fn labels(&mut self) -> HashMap<u32, Vec<f64>> {
-        self.contigs.clone().iter_mut().map(
-            |(id, rec)|
-            (
-                *id,
-                rec.labels().iter().map(|label| label.pos).collect::<Vec<_>>(),
-            )
-        ).collect::<HashMap<_, _>>()
+        self.contigs
+            .clone()
+            .iter_mut()
+            .map(|(id, rec)| {
+                (
+                    *id,
+                    rec.labels()
+                        .iter()
+                        .map(|label| label.pos)
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect::<HashMap<_, _>>()
     }
 }
 
@@ -343,14 +362,34 @@ mod tests {
         assert_eq!(
             Record::read_labels(label_lines).unwrap(),
             Vec::from([
-                Label {id: 1, pos: 4454.0, std_dev: 1.0, coverage: 1,
-                    occurrence: 1},
-                Label {id: 2, pos: 27579.0, std_dev: 1.0, coverage: 1,
-                    occurrence: 1},
-                Label {id: 3, pos: 98003.0, std_dev: 1.0, coverage: 1,
-                    occurrence: 1},
-                Label {id: 4, pos: 248936424.0, std_dev: 1.0, coverage: 1,
-                    occurrence: 0},
+                Label {
+                    id: 1,
+                    pos: 4454.0,
+                    std_dev: 1.0,
+                    coverage: 1,
+                    occurrence: 1
+                },
+                Label {
+                    id: 2,
+                    pos: 27579.0,
+                    std_dev: 1.0,
+                    coverage: 1,
+                    occurrence: 1
+                },
+                Label {
+                    id: 3,
+                    pos: 98003.0,
+                    std_dev: 1.0,
+                    coverage: 1,
+                    occurrence: 1
+                },
+                Label {
+                    id: 4,
+                    pos: 248936424.0,
+                    std_dev: 1.0,
+                    coverage: 1,
+                    occurrence: 0
+                },
             ]),
         );
     }
@@ -474,14 +513,34 @@ mod tests {
                 num_labels: 3,
                 label_channel: 1,
                 labels: Vec::from([
-                    Label {id: 1, pos: 4454.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 1},
-                    Label {id: 2, pos: 27579.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 1},
-                    Label {id: 3, pos: 98003.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 1},
-                    Label {id: 4, pos: 248936424.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 0},
+                    Label {
+                        id: 1,
+                        pos: 4454.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 1
+                    },
+                    Label {
+                        id: 2,
+                        pos: 27579.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 1
+                    },
+                    Label {
+                        id: 3,
+                        pos: 98003.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 1
+                    },
+                    Label {
+                        id: 4,
+                        pos: 248936424.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 0
+                    },
                 ]),
             },
         )
@@ -656,14 +715,34 @@ mod tests {
                 num_labels: 3,
                 label_channel: 1,
                 labels: Vec::from([
-                    Label {id: 1, pos: 4454.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 1},
-                    Label {id: 2, pos: 27579.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 1},
-                    Label {id: 3, pos: 98003.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 1},
-                    Label {id: 4, pos: 248936424.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 0},
+                    Label {
+                        id: 1,
+                        pos: 4454.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 1
+                    },
+                    Label {
+                        id: 2,
+                        pos: 27579.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 1
+                    },
+                    Label {
+                        id: 3,
+                        pos: 98003.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 1
+                    },
+                    Label {
+                        id: 4,
+                        pos: 248936424.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 0
+                    },
                 ]),
             },
         );
@@ -721,23 +800,45 @@ mod tests {
         label_lines.push("1\t248936424.0\t3\t4\t1\t248936424.0\t1.0\t1\t0");
 
         let mut rec = Record::from(label_lines).unwrap();
-        assert_eq!(rec.labels(), Vec::from([
-            Label{id: 1, pos: 4454.0, std_dev: 1.0, coverage: 1,
-                occurrence: 1},
-            Label{id: 2, pos: 27579.0, std_dev: 1.0, coverage: 1,
-                occurrence: 1},
-            Label{id: 3, pos: 98003.0, std_dev: 1.0, coverage: 1,
-                occurrence: 1},
-            Label{id: 4, pos: 248936424.0, std_dev: 1.0, coverage: 1,
-                occurrence: 0},
-        ]))
+        assert_eq!(
+            rec.labels(),
+            Vec::from([
+                Label {
+                    id: 1,
+                    pos: 4454.0,
+                    std_dev: 1.0,
+                    coverage: 1,
+                    occurrence: 1
+                },
+                Label {
+                    id: 2,
+                    pos: 27579.0,
+                    std_dev: 1.0,
+                    coverage: 1,
+                    occurrence: 1
+                },
+                Label {
+                    id: 3,
+                    pos: 98003.0,
+                    std_dev: 1.0,
+                    coverage: 1,
+                    occurrence: 1
+                },
+                Label {
+                    id: 4,
+                    pos: 248936424.0,
+                    std_dev: 1.0,
+                    coverage: 1,
+                    occurrence: 0
+                },
+            ])
+        )
     }
 
     #[test]
     fn test_from_path_container_with_valid_input() {
-        let container = Container::from_path(
-            "tests/resources/valid_input.cmap"
-        );
+        let container =
+            Container::from_path("tests/resources/valid_input.cmap");
 
         let mut header = Vec::new();
         header.push(String::from("# CMAP File Version:\t0.1"));
@@ -746,10 +847,10 @@ mod tests {
         header.push(String::from("# Number of Consensus Nanomaps:\t2"));
         header.push(String::from(
             "#h CMapId\tContigLength\tNumSites\tSiteID\tLabelChannel\
-            \tPosition\tStdDev\tCoverage\tOccurrence"
+            \tPosition\tStdDev\tCoverage\tOccurrence",
         ));
         header.push(String::from(
-            "#f int\tfloat\tint\tint\tint\tfloat\tfloat\tint\tint"
+            "#f int\tfloat\tint\tint\tint\tfloat\tfloat\tint\tint",
         ));
 
         let mut contigs = HashMap::new();
@@ -760,16 +861,36 @@ mod tests {
                 len: 248936424.0,
                 num_labels: 3,
                 label_channel: 1,
-                labels:  Vec::from([
-                    Label{id: 1, pos: 4454.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 1},
-                    Label{id: 2, pos: 27579.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 1},
-                    Label{id: 3, pos: 98003.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 1},
-                    Label{id: 4, pos: 248936424.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 0},
-                ])
+                labels: Vec::from([
+                    Label {
+                        id: 1,
+                        pos: 4454.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 1,
+                    },
+                    Label {
+                        id: 2,
+                        pos: 27579.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 1,
+                    },
+                    Label {
+                        id: 3,
+                        pos: 98003.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 1,
+                    },
+                    Label {
+                        id: 4,
+                        pos: 248936424.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 0,
+                    },
+                ]),
             },
         );
         contigs.insert(
@@ -779,28 +900,38 @@ mod tests {
                 len: 242173531.0,
                 num_labels: 2,
                 label_channel: 1,
-                labels:  Vec::from([
-                    Label{id: 1, pos: 5925.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 1},
-                    Label{id: 2, pos: 12065.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 1},
-                    Label{id: 3, pos: 242173531.0, std_dev: 1.0, coverage: 1,
-                        occurrence: 0},
-                ])
+                labels: Vec::from([
+                    Label {
+                        id: 1,
+                        pos: 5925.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 1,
+                    },
+                    Label {
+                        id: 2,
+                        pos: 12065.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 1,
+                    },
+                    Label {
+                        id: 3,
+                        pos: 242173531.0,
+                        std_dev: 1.0,
+                        coverage: 1,
+                        occurrence: 0,
+                    },
+                ]),
             },
         );
 
-        assert_eq!(
-            container.unwrap(),
-            Container {header, contigs},
-        );
+        assert_eq!(container.unwrap(), Container { header, contigs },);
     }
 
     #[test]
     fn test_from_path_container_with_invalid_channel() {
-        let res = Container::from_path(
-            "tests/resources/invalid_channel.cmap"
-        );
+        let res = Container::from_path("tests/resources/invalid_channel.cmap");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "InvalidFormat: No valid label channel number was given. \
@@ -810,9 +941,7 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_invalid_input() {
-        let res = Container::from_path(
-            "tests/resources/invalid_input.cmap"
-        );
+        let res = Container::from_path("tests/resources/invalid_input.cmap");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "Truncated file: Cannot extract field Occurrence.",
@@ -821,9 +950,8 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_incomplete_input() {
-        let res = Container::from_path(
-            "tests/resources/incomplete_input.cmap"
-        );
+        let res =
+            Container::from_path("tests/resources/incomplete_input.cmap");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "Truncated file: Cannot extract complete CMAP record. The last \
@@ -853,7 +981,7 @@ mod tests {
     #[test]
     fn test_from_path_container_with_non_utf8_file_without_record() {
         let res = Container::from_path(
-            "tests/resources/non_utf8_without_record.txt"
+            "tests/resources/non_utf8_without_record.txt",
         );
         assert_eq!(
             format!("{}", res.unwrap_err()),
@@ -864,7 +992,7 @@ mod tests {
     #[test]
     fn test_from_path_container_with_non_utf8_file_with_incomplete_record() {
         let res = Container::from_path(
-            "tests/resources/non_utf8_with_incomplete_record.cmap"
+            "tests/resources/non_utf8_with_incomplete_record.cmap",
         );
         assert_eq!(
             format!("{}", res.unwrap_err()),
@@ -875,7 +1003,7 @@ mod tests {
     #[test]
     fn test_from_path_container_with_non_utf8_file_with_complete_record() {
         let res = Container::from_path(
-            "tests/resources/non_utf8_with_complete_record.cmap"
+            "tests/resources/non_utf8_with_complete_record.cmap",
         );
         assert_eq!(
             format!("{}", res.unwrap_err()),
@@ -885,9 +1013,8 @@ mod tests {
 
     #[test]
     fn test_get_header() {
-        let container = Container::from_path(
-            "tests/resources/valid_input.cmap"
-        ).unwrap();
+        let container =
+            Container::from_path("tests/resources/valid_input.cmap").unwrap();
 
         let mut header = Vec::new();
         header.push(String::from("# CMAP File Version:\t0.1"));
@@ -896,31 +1023,24 @@ mod tests {
         header.push(String::from("# Number of Consensus Nanomaps:\t2"));
         header.push(String::from(
             "#h CMapId\tContigLength\tNumSites\tSiteID\tLabelChannel\
-            \tPosition\tStdDev\tCoverage\tOccurrence"
+            \tPosition\tStdDev\tCoverage\tOccurrence",
         ));
         header.push(String::from(
-            "#f int\tfloat\tint\tint\tint\tfloat\tfloat\tint\tint"
+            "#f int\tfloat\tint\tint\tint\tfloat\tfloat\tint\tint",
         ));
 
-        assert_eq!(
-            container.header(),
-            &header,
-        )
+        assert_eq!(container.header(), &header,)
     }
 
     #[test]
     fn test_get_contigs() {
-        let mut container = Container::from_path(
-            "tests/resources/valid_input.cmap"
-        ).unwrap();
+        let mut container =
+            Container::from_path("tests/resources/valid_input.cmap").unwrap();
 
         let mut output = HashMap::new();
         output.insert(1, Vec::from([4454.0, 27579.0, 98003.0, 248936424.0]));
         output.insert(2, Vec::from([5925.0, 12065.0, 242173531.0]));
 
-        assert_eq!(
-            container.labels(),
-            output,
-        )
+        assert_eq!(container.labels(), output,)
     }
 }

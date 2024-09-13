@@ -9,7 +9,7 @@
 //! In this example, we parse a BNX file, iterate over its records. and output some statistics.
 //!
 //! ```rust
-//! use om_io::xmap;
+//! use bio::io::xmap;
 //!
 //! let path = "my/path/to/file.xmap";
 //! let reader = xmap::Reader::from(&path);
@@ -28,7 +28,7 @@
 //! If feasible, we can also build a container over the content of a XMAP file.
 //!
 //! ```rust
-//! use om_io::xmap;
+//! use bio::io::xmap;
 //!
 //! let path = "my/path/to/file.xmap";
 //! let container = xmap::Container::from_path(&path);
@@ -47,10 +47,10 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use crate::io::om_utils::NextToErr;
-use crate::io::om_utils::ParseToErr;
-use crate::io::om_utils::Orientation;
 use crate::io::om_utils::Error;
+use crate::io::om_utils::NextToErr;
+use crate::io::om_utils::Orientation;
+use crate::io::om_utils::ParseToErr;
 
 lazy_static! {
     /// Regex command to describe globally valid alignment strings in XMAP.
@@ -107,7 +107,7 @@ impl Record {
     ///
     /// # Example
     /// ```rust
-    /// use om_io::xmap::Reader;
+    /// use bio::io::xmap::Reader;
     ///
     /// let line = "1\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)";
     ///
@@ -124,8 +124,8 @@ impl Record {
         self.qry_end = split.try_parse("QryEndPos")?;
         self.ref_start = split.try_parse("RefStartPos")?;
         self.ref_end = split.try_parse("RefEndPos")?;
-        self.orientation = Record::read_orientation(split.try_next
-            ("Orientation")?)?;
+        self.orientation =
+            Record::read_orientation(split.try_next("Orientation")?)?;
         self.confidence = split.try_parse("Confidence")?;
         self.hit_enum =
             Record::is_valid_cigar(String::from(split.try_next("HitEnum")?))?;
@@ -138,7 +138,7 @@ impl Record {
     }
 
     /// Constructs a new `Record` based on alignment line of a XMAP.
-        pub fn from(line: &str) -> Result<Self> {
+    pub fn from(line: &str) -> Result<Self> {
         let mut rec = Record::new();
         let _ = rec.fill(&line)?;
         Ok(rec)
@@ -247,7 +247,7 @@ impl<R: BufRead> Reader<R> {
     ///
     /// # Example
     /// ```rust
-    /// use om_io::xmap::Reader;
+    /// use bio::io::xmap::Reader;
     ///
     /// let path = "input/valid_input.xmap";
     /// let reader = Reader::from_path(&path);
@@ -476,8 +476,10 @@ mod tests {
     #[test]
     fn test_is_valid_cigar_without_count() {
         assert_eq!(
-            format!("{}", Record::is_valid_cigar(String::from("M"))
-            .unwrap_err()),
+            format!(
+                "{}",
+                Record::is_valid_cigar(String::from("M")).unwrap_err()
+            ),
             "InvalidData: HitEnum is an invalid CIGAR string.",
         );
     }
@@ -485,8 +487,10 @@ mod tests {
     #[test]
     fn test_is_valid_cigar_without_indicator() {
         assert_eq!(
-            format!("{}", Record::is_valid_cigar(String::from("2"))
-            .unwrap_err()),
+            format!(
+                "{}",
+                Record::is_valid_cigar(String::from("2")).unwrap_err()
+            ),
             "InvalidData: HitEnum is an invalid CIGAR string.",
         );
     }
@@ -494,8 +498,10 @@ mod tests {
     #[test]
     fn test_is_valid_cigar_with_invalid_indicator() {
         assert_eq!(
-            format!("{}", Record::is_valid_cigar(String::from("2MM"))
-            .unwrap_err()),
+            format!(
+                "{}",
+                Record::is_valid_cigar(String::from("2MM")).unwrap_err()
+            ),
             "InvalidData: HitEnum is an invalid CIGAR string.",
         );
     }
@@ -516,8 +522,10 @@ mod tests {
     #[test]
     fn test_read_alignment_with_invalid_input() {
         assert_eq!(
-            format!("{}", Record::read_alignment("(5,6)(,7)(8,f)6")
-            .unwrap_err()),
+            format!(
+                "{}",
+                Record::read_alignment("(5,6)(,7)(8,f)6").unwrap_err()
+            ),
             "InvalidData: Alignment is not formatted correctly.",
         );
     }
@@ -666,9 +674,7 @@ mod tests {
     #[test]
     fn test_fill_record_without_orientation() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -696,9 +702,7 @@ mod tests {
     #[test]
     fn test_fill_record_without_confidence() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -727,9 +731,7 @@ mod tests {
     #[test]
     fn test_fill_record_without_hit_enum() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -772,9 +774,7 @@ mod tests {
     #[test]
     fn test_fill_record_without_ref_len() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -802,9 +802,8 @@ mod tests {
     #[test]
     fn test_fill_record_without_label_channel() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0",
-        );
+        let line =
+            String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -894,9 +893,7 @@ mod tests {
 
     #[test]
     fn test_from_record_with_invalid_input() {
-        let line = String::from(
-            "1\t2\t3\t4.1\t5.3\t6.0\t7.0\t-",
-        );
+        let line = String::from("1\t2\t3\t4.1\t5.3\t6.0\t7.0\t-");
         let rec = Record::from(&line);
 
         assert_eq!(
@@ -910,7 +907,7 @@ mod tests {
         let line = String::from(
             "36\t1\t17\t5119.30\t465.17\t3888.0\t9624.0\t-\t8606\
             \t4M1D2M1D1M1D1M1D1M\t4654.13\t5736.0\t1\
-            \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)"
+            \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)",
         );
 
         let mut rec_fill = Record::new();
@@ -954,9 +951,8 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_valid_path() {
-        let container = Container::from_path(
-            "tests/resources/valid_input.xmap"
-        );
+        let container =
+            Container::from_path("tests/resources/valid_input.xmap");
         let mut header = Vec::new();
         header.push(String::from("# XMAP File Version:\t0.2"));
         header.push(String::from("# Label Channels:\t1"));
@@ -976,16 +972,18 @@ mod tests {
             Record::from(
                 "36\t1\t17\t5119.30\t465.17\t3888.0\t9624.0\t-\t8606\
                 \t4M1D2M1D1M1D1M1D1M\t4654.13\t5736.0\t1\
-                \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)"
-            ).unwrap()
+                \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)",
+            )
+            .unwrap(),
         );
         tree_17.insert(
             5396 as u64,
             Record::from(
                 "37\t2\t17\t2617.12\t5942.70\t5396.0\t8148.0\t+\t4434\
                 \t1M1D1M1D6M\t3325.58\t2752.0\t1\
-                \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)"
-            ).unwrap()
+                \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)",
+            )
+            .unwrap(),
         );
         tree_17.insert(
             6152 as u64,
@@ -1002,8 +1000,9 @@ mod tests {
             Record::from(
                 "40\t4\t22\t477.62\t2933.80\t4974.0\t7257.0\t+\t3416\
                 \t2M2D3M1D1M1D1M\t2456.18\t3283.0\t1\
-                \t(84,1)(85,2)(88,3)(89,4)(90,5)(92,6)(94,7)"
-            ).unwrap()
+                \t(84,1)(85,2)(88,3)(89,4)(90,5)(92,6)(94,7)",
+            )
+            .unwrap(),
         );
         let mut tree_map = HashMap::new();
         tree_map.insert(22 as u32, tree_22);
@@ -1038,9 +1037,8 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_empty_file() {
-        let container = Container::from_path(
-            "tests/resources/empty_file.txt"
-        ).unwrap();
+        let container =
+            Container::from_path("tests/resources/empty_file.txt").unwrap();
         assert_eq!(
             container,
             Container {
@@ -1053,7 +1051,7 @@ mod tests {
     #[test]
     fn test_from_path_container_with_non_utf8_file_without_record() {
         let res = Container::from_path(
-            "tests/resources/non_utf8_without_record.txt"
+            "tests/resources/non_utf8_without_record.txt",
         );
         assert_eq!(
             format!("{}", res.unwrap_err()),
@@ -1063,9 +1061,8 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_non_utf8_file_with_record() {
-        let res = Container::from_path(
-            "tests/resources/non_utf8_with_record.xmap"
-        );
+        let res =
+            Container::from_path("tests/resources/non_utf8_with_record.xmap");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "stream did not contain valid UTF-8",
@@ -1081,12 +1078,12 @@ mod tests {
         header.push(String::from("# XMAP File Version:\t0.2"));
         header.push(String::from("# Label Channels:\t1"));
         header.push(String::from(
-           "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
+            "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
             \tQryEndPos\tRefStartPos\tRefEndPos\tOrientation\tConfidence\
             \tHitEnum\tQryLen\tRefLen\tLabelChannel\tAlignment",
         ));
         header.push(String::from(
-           "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
+            "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
             \tstring\tfloat\tfloat\tint\tstring",
         ));
 
@@ -1096,16 +1093,18 @@ mod tests {
             Record::from(
                 "36\t1\t17\t5119.30\t465.17\t3888.0\t9624.0\t-\t8606\
                 \t4M1D2M1D1M1D1M1D1M\t4654.13\t5736.0\t1\
-                \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)"
-            ).unwrap()
+                \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)",
+            )
+            .unwrap(),
         );
         tree_17.insert(
             5396 as u64,
             Record::from(
                 "37\t2\t17\t2617.12\t5942.70\t5396.0\t8148.0\t+\t4434\
                 \t1M1D1M1D6M\t3325.58\t2752.0\t1\
-                \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)"
-            ).unwrap()
+                \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)",
+            )
+            .unwrap(),
         );
 
         let mut trees = HashMap::new();
@@ -1120,7 +1119,6 @@ mod tests {
         )
     }
 
-
     #[test]
     fn test_subset_filter_by_region_without_existing_contig() {
         let mut container =
@@ -1130,12 +1128,12 @@ mod tests {
         header.push(String::from("# XMAP File Version:\t0.2"));
         header.push(String::from("# Label Channels:\t1"));
         header.push(String::from(
-           "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
+            "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
             \tQryEndPos\tRefStartPos\tRefEndPos\tOrientation\tConfidence\
             \tHitEnum\tQryLen\tRefLen\tLabelChannel\tAlignment",
         ));
         header.push(String::from(
-           "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
+            "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
             \tstring\tfloat\tfloat\tint\tstring",
         ));
 
@@ -1160,12 +1158,12 @@ mod tests {
         header.push(String::from("# XMAP File Version:\t0.2"));
         header.push(String::from("# Label Channels:\t1"));
         header.push(String::from(
-           "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
+            "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
             \tQryEndPos\tRefStartPos\tRefEndPos\tOrientation\tConfidence\
             \tHitEnum\tQryLen\tRefLen\tLabelChannel\tAlignment",
         ));
         header.push(String::from(
-           "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
+            "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
             \tstring\tfloat\tfloat\tint\tstring",
         ));
 
@@ -1175,16 +1173,18 @@ mod tests {
             Record::from(
                 "36\t1\t17\t5119.30\t465.17\t3888.0\t9624.0\t-\t8606\
                 \t4M1D2M1D1M1D1M1D1M\t4654.13\t5736.0\t1\
-                \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)"
-            ).unwrap()
+                \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)",
+            )
+            .unwrap(),
         );
         tree_17.insert(
             5396 as u64,
             Record::from(
                 "37\t2\t17\t2617.12\t5942.70\t5396.0\t8148.0\t+\t4434\
                 \t1M1D1M1D6M\t3325.58\t2752.0\t1\
-                \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)"
-            ).unwrap()
+                \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)",
+            )
+            .unwrap(),
         );
         tree_17.insert(
             6152 as u64,
@@ -1217,12 +1217,12 @@ mod tests {
         header.push(String::from("# XMAP File Version:\t0.2"));
         header.push(String::from("# Label Channels:\t1"));
         header.push(String::from(
-           "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
+            "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
             \tQryEndPos\tRefStartPos\tRefEndPos\tOrientation\tConfidence\
             \tHitEnum\tQryLen\tRefLen\tLabelChannel\tAlignment",
         ));
         header.push(String::from(
-           "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
+            "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
             \tstring\tfloat\tfloat\tint\tstring",
         ));
 
@@ -1247,31 +1247,24 @@ mod tests {
         let rec_1 = Record::from(
             "36\t1\t17\t5119.30\t465.17\t3888.0\t9624.0\t-\t8606\
             \t4M1D2M1D1M1D1M1D1M\t4654.13\t5736.0\t1\
-            \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)"
-        ).unwrap();
+            \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)",
+        )
+        .unwrap();
         let rec_2 = Record::from(
             "37\t2\t17\t2617.12\t5942.70\t5396.0\t8148.0\t+\t4434\
             \t1M1D1M1D6M\t3325.58\t2752.0\t1\
-            \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)"
-        ).unwrap();
-        trees.push((
-            &(3888 as u64),
-            &rec_1,)
-        );
-        trees.push((
-            &(5396 as u64),
-            &rec_2,)
-        );
-
-        let mut range = container.range_filter_by_region(17, 1, 70000000)
+            \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)",
+        )
         .unwrap();
+        trees.push((&(3888 as u64), &rec_1));
+        trees.push((&(5396 as u64), &rec_2));
+
+        let mut range =
+            container.range_filter_by_region(17, 1, 70000000).unwrap();
 
         let mut count = 0;
         loop {
-            assert_eq!(
-                range.next().unwrap(),
-                trees[count],
-            );
+            assert_eq!(range.next().unwrap(), trees[count],);
             count += 1;
             if count == trees.len() {
                 break;
@@ -1285,7 +1278,10 @@ mod tests {
             Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
         assert_eq!(
-            container.range_filter_by_region(1, 43, 234).unwrap().count(),
+            container
+                .range_filter_by_region(1, 43, 234)
+                .unwrap()
+                .count(),
             0
         )
     }
@@ -1299,39 +1295,30 @@ mod tests {
         let rec_1 = Record::from(
             "36\t1\t17\t5119.30\t465.17\t3888.0\t9624.0\t-\t8606\
             \t4M1D2M1D1M1D1M1D1M\t4654.13\t5736.0\t1\
-            \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)"
-        ).unwrap();
+            \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)",
+        )
+        .unwrap();
         let rec_2 = Record::from(
             "37\t2\t17\t2617.12\t5942.70\t5396.0\t8148.0\t+\t4434\
             \t1M1D1M1D6M\t3325.58\t2752.0\t1\
-            \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)"
-        ).unwrap();
+            \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)",
+        )
+        .unwrap();
         let rec_3 = Record::from(
             "38\t3\t17\t538.88\t4004.65\t6152.0\t1568.0\t+\t1726\
              \t1M1D2M2D3M1D1M\t3465.77\t4594.0\t1\
              \t(62,1)(64,2)(65,3)(68,4)(69,5)(70,6)(72,7)",
-        ).unwrap();
-        trees.push((
-            &(3888 as u64),
-            &rec_1,)
-        );
-        trees.push((
-            &(5396 as u64),
-            &rec_2,)
-        );
-        trees.push((
-            &(6152 as u64),
-            &rec_3,)
-        );
+        )
+        .unwrap();
+        trees.push((&(3888 as u64), &rec_1));
+        trees.push((&(5396 as u64), &rec_2));
+        trees.push((&(6152 as u64), &rec_3));
 
         let mut range = container.range_filter_by_contig(17).unwrap();
 
         let mut count = 0;
         loop {
-            assert_eq!(
-                range.next().unwrap(),
-                trees[count],
-            );
+            assert_eq!(range.next().unwrap(), trees[count],);
             count += 1;
             if count == trees.len() {
                 break;
@@ -1344,18 +1331,16 @@ mod tests {
         let mut container =
             Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
-        assert_eq!(
-            container.range_filter_by_contig(1).unwrap().count(),
-            0
-        )
+        assert_eq!(container.range_filter_by_contig(1).unwrap().count(), 0)
     }
 
     #[test]
     fn test_fmt_display() {
-        let container = Container::from_path(
-            "tests/resources/valid_input.xmap"
-        ).unwrap()
-        .subset_filter_by_contig(22).unwrap();
+        let container =
+            Container::from_path("tests/resources/valid_input.xmap")
+                .unwrap()
+                .subset_filter_by_contig(22)
+                .unwrap();
         assert_eq!(
             container.to_string(),
             "Container { header: [\"# XMAP File Version:\\t0.2\", \
@@ -1371,49 +1356,46 @@ mod tests {
 
     #[test]
     fn test_get_header() {
-        let container = Container::from_path(
-            "tests/resources/valid_input.xmap"
-        ).unwrap();
+        let container =
+            Container::from_path("tests/resources/valid_input.xmap").unwrap();
         let mut header = Vec::new();
         header.push(String::from("# XMAP File Version:\t0.2"));
         header.push(String::from("# Label Channels:\t1"));
         header.push(String::from(
-           "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
+            "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
             \tQryEndPos\tRefStartPos\tRefEndPos\tOrientation\tConfidence\
             \tHitEnum\tQryLen\tRefLen\tLabelChannel\tAlignment",
         ));
         header.push(String::from(
-           "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
+            "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
             \tstring\tfloat\tfloat\tint\tstring",
         ));
 
-        assert_eq!(
-            container.header(),
-            &header,
-        )
+        assert_eq!(container.header(), &header,)
     }
 
     #[test]
     fn test_get_trees() {
-        let mut container = Container::from_path(
-            "tests/resources/valid_input.xmap"
-        ).unwrap();
+        let mut container =
+            Container::from_path("tests/resources/valid_input.xmap").unwrap();
         let mut tree_17 = BTreeMap::new();
         tree_17.insert(
             3888 as u64,
             Record::from(
                 "36\t1\t17\t5119.30\t465.17\t3888.0\t9624.0\t-\t8606\
                 \t4M1D2M1D1M1D1M1D1M\t4654.13\t5736.0\t1\
-                \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)"
-            ).unwrap()
+                \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)",
+            )
+            .unwrap(),
         );
         tree_17.insert(
             5396 as u64,
             Record::from(
                 "37\t2\t17\t2617.12\t5942.70\t5396.0\t8148.0\t+\t4434\
                 \t1M1D1M1D6M\t3325.58\t2752.0\t1\
-                \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)"
-            ).unwrap()
+                \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)",
+            )
+            .unwrap(),
         );
         tree_17.insert(
             6152 as u64,
@@ -1430,16 +1412,14 @@ mod tests {
             Record::from(
                 "40\t4\t22\t477.62\t2933.80\t4974.0\t7257.0\t+\t3416\
                 \t2M2D3M1D1M1D1M\t2456.18\t3283.0\t1\
-                \t(84,1)(85,2)(88,3)(89,4)(90,5)(92,6)(94,7)"
-            ).unwrap()
+                \t(84,1)(85,2)(88,3)(89,4)(90,5)(92,6)(94,7)",
+            )
+            .unwrap(),
         );
         let mut tree_map = HashMap::new();
         tree_map.insert(22 as u32, tree_22);
         tree_map.insert(17 as u32, tree_17);
 
-        assert_eq!(
-            container.trees(),
-            tree_map,
-        )
+        assert_eq!(container.trees(), tree_map,)
     }
 }

@@ -9,7 +9,7 @@
 //! In this example, we parse a BNX file, iterate over its records. and output some statistics.
 //!
 //! ```rust
-//! use om_io::bnx;
+//! use bio::io::bnx;
 //!
 //! let path = "my/path/to/file.bnx";
 //! let reader = bnx::Reader::from(&path);
@@ -31,7 +31,7 @@
 //! If feasible, we can also build a container over the content of a BNX file.
 //!
 //! ```rust
-//! use om_io::bnx;
+//! use bio::io::bnx;
 //!
 //! let path = "my/path/to/file.bnx";
 //! let container = bnx::Container::from_path(&path);
@@ -119,7 +119,7 @@ impl Record {
     ///
     /// # Example
     /// ```rust
-    /// use om_io::bnx::Reader;
+    /// use bio::io::bnx::Reader;
     ///
     /// let meta_line = "0\t1\t134.5\t0.6\t5.3\t2\t1\t3\t-1\tTBA\t4\t5\t1";
     /// let mut label_lines = Vec::new();
@@ -231,7 +231,7 @@ impl Record {
         let pos_count = pos_line.matches('\t').count();
         let snr_count = snr_line.matches('\t').count();
         let intensity_count = intensity_line.matches('\t').count();
-        if  pos_count-1 != snr_count || snr_count != intensity_count {
+        if pos_count - 1 != snr_count || snr_count != intensity_count {
             bail!(Error::InvalidBnxLabel)
         }
         let snr_line = &(snr_line.to_string() + "\t0.0");
@@ -242,12 +242,18 @@ impl Record {
             intensity_line.split('\t')
         ) {
             labels.push(Label {
-                pos: entry.0.parse().context(Error::InvalidType
-                    ("LabelPosition", "f64 float"))?,
-                snr: entry.1.parse().context(Error::InvalidType
-                    ("QualityScore (SNR)", "f32 float"))?,
-                intensity: entry.2.parse().context(Error::InvalidType
-                    ("QualityScore (Intensity)", "f32 float"))?,
+                pos: entry.0.parse().context(Error::InvalidType(
+                    "LabelPosition",
+                    "f64 float",
+                ))?,
+                snr: entry.1.parse().context(Error::InvalidType(
+                    "QualityScore (SNR)",
+                    "f32 float",
+                ))?,
+                intensity: entry.2.parse().context(Error::InvalidType(
+                    "QualityScore (Intensity)",
+                    "f32 float",
+                ))?,
             });
         }
         Ok(labels)
@@ -295,7 +301,7 @@ impl Reader<BufReader<File>> {
     ///
     /// # Example
     /// ```rust
-    /// use om_io::bnx::Reader;
+    /// use bio::io::bnx::Reader;
     ///
     /// let path = "input/valid_input.bnx";
     /// let reader = Reader::from_path(&path);
@@ -331,13 +337,14 @@ impl<R: BufRead> Reader<R> {
                     num_channels = 1;
                 } else if buffer.starts_with("# Label Channels:\t2") {
                     num_channels = 2;
-                } else {};
+                } else {
+                };
                 header.push(String::from(buffer.trim_end()));
             } else {
                 break;
             }
         }
-        for _ in 0..3*num_channels {
+        for _ in 0..3 * num_channels {
             stream.read_line(&mut buffer)?;
         }
         if num_channels == 0 {
@@ -359,13 +366,13 @@ impl<R: BufRead> BnxRead for Reader<R> {
             return Ok(false);
         }
         let buf_lines: Vec<&str> = self.buffer.trim().split('\n').collect();
-        let mut res = match record.fill(
-            buf_lines[0], buf_lines[1..].to_vec()) {
+        let mut res = match record.fill(buf_lines[0], buf_lines[1..].to_vec())
+        {
             Ok(()) => Ok(true),
             Err(e) => Err(e),
         };
         self.buffer.clear();
-        for _ in 0..3*self.num_channels+1 {
+        for _ in 0..3 * self.num_channels + 1 {
             res = match self.stream.read_line(&mut self.buffer) {
                 Ok(_) => res,
                 Err(e) => Err(e.into()),
@@ -410,18 +417,25 @@ impl Container {
 
     /// Returns label positions (for each molecule respectively).
     pub fn labels(&mut self) -> HashMap<u32, (Vec<f64>, Vec<f64>)> {
-        self.molecules.clone().iter_mut().map(
-            |(id, rec)|
-            (
-                *id,
+        self.molecules
+            .clone()
+            .iter_mut()
+            .map(|(id, rec)| {
                 (
-                    rec.channel_1().iter().map(|label| label.pos)
-                    .collect::<Vec<_>>(),
-                    rec.channel_2().iter().map(|label| label.pos)
-                    .collect::<Vec<_>>(),
+                    *id,
+                    (
+                        rec.channel_1()
+                            .iter()
+                            .map(|label| label.pos)
+                            .collect::<Vec<_>>(),
+                        rec.channel_2()
+                            .iter()
+                            .map(|label| label.pos)
+                            .collect::<Vec<_>>(),
+                    ),
                 )
-            )
-        ).collect::<HashMap<_, _>>()
+            })
+            .collect::<HashMap<_, _>>()
     }
 }
 
@@ -491,13 +505,25 @@ mod tests {
         let intensity_line = "QX12\t4.5\t7.3";
 
         let mut output = Vec::new();
-        output.push(Label{pos: 23.4, snr: 0.4, intensity: 4.5});
-        output.push(Label{pos: 42.6, snr: 0.8, intensity: 7.3});
-        output.push(Label{pos: 134.5, snr: 0.0, intensity: 0.0});
+        output.push(Label {
+            pos: 23.4,
+            snr: 0.4,
+            intensity: 4.5,
+        });
+        output.push(Label {
+            pos: 42.6,
+            snr: 0.8,
+            intensity: 7.3,
+        });
+        output.push(Label {
+            pos: 134.5,
+            snr: 0.0,
+            intensity: 0.0,
+        });
 
         assert_eq!(
-            Record::read_label_for_channel(pos_line, snr_line,
-                intensity_line).unwrap(),
+            Record::read_label_for_channel(pos_line, snr_line, intensity_line)
+                .unwrap(),
             output,
         )
     }
@@ -509,8 +535,15 @@ mod tests {
         let intensity_line = "QX12\t4.5\t7.3";
 
         assert_eq!(
-            format!("{}", Record::read_label_for_channel(pos_line, snr_line,
-                intensity_line).unwrap_err()),
+            format!(
+                "{}",
+                Record::read_label_for_channel(
+                    pos_line,
+                    snr_line,
+                    intensity_line
+                )
+                .unwrap_err()
+            ),
             "InvalidFormat: Number of entries in label lines is not \
             compatible with BNX structure (one position more than both SNR \
             and intensity)."
@@ -524,8 +557,15 @@ mod tests {
         let intensity_line = "QX12\t4.5\t7.3";
 
         assert_eq!(
-            format!("{}", Record::read_label_for_channel(pos_line, snr_line,
-                intensity_line).unwrap_err()),
+            format!(
+                "{}",
+                Record::read_label_for_channel(
+                    pos_line,
+                    snr_line,
+                    intensity_line
+                )
+                .unwrap_err()
+            ),
             "InvalidData: LabelChannel is not formatted correctly.",
         )
     }
@@ -537,8 +577,15 @@ mod tests {
         let intensity_line = "QX12\t4.5\t7.3";
 
         assert_eq!(
-            format!("{}", Record::read_label_for_channel(pos_line, snr_line,
-                intensity_line).unwrap_err()),
+            format!(
+                "{}",
+                Record::read_label_for_channel(
+                    pos_line,
+                    snr_line,
+                    intensity_line
+                )
+                .unwrap_err()
+            ),
             "InvalidData: Label SNR is not formatted correctly.",
         )
     }
@@ -550,8 +597,15 @@ mod tests {
         let intensity_line = "QX12\t4.5\t7f.3";
 
         assert_eq!(
-            format!("{}", Record::read_label_for_channel(pos_line, snr_line,
-                intensity_line).unwrap_err()),
+            format!(
+                "{}",
+                Record::read_label_for_channel(
+                    pos_line,
+                    snr_line,
+                    intensity_line
+                )
+                .unwrap_err()
+            ),
             "InvalidData: Label Intensity is not formatted correctly.",
         )
     }
@@ -563,8 +617,15 @@ mod tests {
         let intensity_line = "QX12\t4.5\t7.3";
 
         assert_eq!(
-            format!("{}", Record::read_label_for_channel(pos_line, snr_line,
-                intensity_line).unwrap_err()),
+            format!(
+                "{}",
+                Record::read_label_for_channel(
+                    pos_line,
+                    snr_line,
+                    intensity_line
+                )
+                .unwrap_err()
+            ),
             "InvalidData: LabelPosition is not a valid f64 float.",
         )
     }
@@ -576,8 +637,15 @@ mod tests {
         let intensity_line = "QX12\t4.5\t7.3";
 
         assert_eq!(
-            format!("{}", Record::read_label_for_channel(pos_line, snr_line,
-                intensity_line).unwrap_err()),
+            format!(
+                "{}",
+                Record::read_label_for_channel(
+                    pos_line,
+                    snr_line,
+                    intensity_line
+                )
+                .unwrap_err()
+            ),
             "InvalidData: QualityScore (SNR) is not a valid f32 float.",
         )
     }
@@ -589,12 +657,18 @@ mod tests {
         let intensity_line = "QX12\t4.5\t7..3";
 
         assert_eq!(
-            format!("{}", Record::read_label_for_channel(pos_line, snr_line,
-                intensity_line).unwrap_err()),
+            format!(
+                "{}",
+                Record::read_label_for_channel(
+                    pos_line,
+                    snr_line,
+                    intensity_line
+                )
+                .unwrap_err()
+            ),
             "InvalidData: QualityScore (Intensity) is not a valid f32 float.",
         )
     }
-
 
     #[test]
     fn test_read_labels_with_valid_single_channel_data() {
@@ -604,9 +678,21 @@ mod tests {
         label_lines.push("QX12\t4.5\t7.3");
 
         let mut output = Vec::new();
-        output.push(Label{pos: 23.4, snr: 0.4, intensity: 4.5});
-        output.push(Label{pos: 42.6, snr: 0.8, intensity: 7.3});
-        output.push(Label{pos: 134.5, snr: 0.0, intensity: 0.0});
+        output.push(Label {
+            pos: 23.4,
+            snr: 0.4,
+            intensity: 4.5,
+        });
+        output.push(Label {
+            pos: 42.6,
+            snr: 0.8,
+            intensity: 7.3,
+        });
+        output.push(Label {
+            pos: 134.5,
+            snr: 0.0,
+            intensity: 0.0,
+        });
 
         assert_eq!(
             Record::read_labels(label_lines).unwrap(),
@@ -625,14 +711,38 @@ mod tests {
         label_lines.push("QX22\t4.6\t7.4");
 
         let mut output_1 = Vec::new();
-        output_1.push(Label{pos: 23.4, snr: 0.4, intensity: 4.5});
-        output_1.push(Label{pos: 42.6, snr: 0.8, intensity: 7.3});
-        output_1.push(Label{pos: 134.5, snr: 0.0, intensity: 0.0});
+        output_1.push(Label {
+            pos: 23.4,
+            snr: 0.4,
+            intensity: 4.5,
+        });
+        output_1.push(Label {
+            pos: 42.6,
+            snr: 0.8,
+            intensity: 7.3,
+        });
+        output_1.push(Label {
+            pos: 134.5,
+            snr: 0.0,
+            intensity: 0.0,
+        });
 
         let mut output_2 = Vec::new();
-        output_2.push(Label{pos: 23.5, snr: 0.5, intensity: 4.6});
-        output_2.push(Label{pos: 42.7, snr: 0.9, intensity: 7.4});
-        output_2.push(Label{pos: 134.6, snr: 0.0, intensity: 0.0});
+        output_2.push(Label {
+            pos: 23.5,
+            snr: 0.5,
+            intensity: 4.6,
+        });
+        output_2.push(Label {
+            pos: 42.7,
+            snr: 0.9,
+            intensity: 7.4,
+        });
+        output_2.push(Label {
+            pos: 134.6,
+            snr: 0.0,
+            intensity: 0.0,
+        });
 
         assert_eq!(
             Record::read_labels(label_lines).unwrap(),
@@ -646,7 +756,6 @@ mod tests {
         label_lines.push("1\t23.4\t42.6\t13f4.5");
         label_lines.push("QX11\t0.4");
         label_lines.push("QX12\t4..5");
-
 
         assert_eq!(
             format!("{}", Record::read_labels(label_lines).unwrap_err()),
@@ -715,9 +824,21 @@ mod tests {
         assert!(rec.fill(&meta_line, label_lines.clone()).is_ok());
 
         let mut output = Vec::new();
-        output.push(Label{pos: 23.4, snr: 0.4, intensity: 4.5});
-        output.push(Label{pos: 42.6, snr: 0.8, intensity: 7.3});
-        output.push(Label{pos: 134.5, snr: 0.0, intensity: 0.0});
+        output.push(Label {
+            pos: 23.4,
+            snr: 0.4,
+            intensity: 4.5,
+        });
+        output.push(Label {
+            pos: 42.6,
+            snr: 0.8,
+            intensity: 7.3,
+        });
+        output.push(Label {
+            pos: 134.5,
+            snr: 0.0,
+            intensity: 0.0,
+        });
 
         assert_eq!(
             rec,
@@ -759,7 +880,6 @@ mod tests {
         );
     }
 
-
     #[test]
     fn test_fill_record_with_invalid_len() {
         let mut rec = Record::new();
@@ -778,7 +898,6 @@ mod tests {
             "InvalidData: Length is not a valid f64 float.",
         );
     }
-
 
     #[test]
     fn test_fill_record_with_invalid_avg_intensity() {
@@ -836,7 +955,6 @@ mod tests {
             "InvalidData: SNR is not a valid f32 float.",
         );
     }
-
 
     #[test]
     fn test_fill_record_with_invalid_num_labels() {
@@ -1040,9 +1158,21 @@ mod tests {
         let rec = Record::from(&meta_line, label_lines);
 
         let mut output = Vec::new();
-        output.push(Label{pos: 23.4, snr: 0.4, intensity: 4.5});
-        output.push(Label{pos: 42.6, snr: 0.8, intensity: 7.3});
-        output.push(Label{pos: 134.5, snr: 0.0, intensity: 0.0});
+        output.push(Label {
+            pos: 23.4,
+            snr: 0.4,
+            intensity: 4.5,
+        });
+        output.push(Label {
+            pos: 42.6,
+            snr: 0.8,
+            intensity: 7.3,
+        });
+        output.push(Label {
+            pos: 134.5,
+            snr: 0.0,
+            intensity: 0.0,
+        });
 
         assert_eq!(
             rec.unwrap(),
@@ -1091,7 +1221,6 @@ mod tests {
         label_lines.push("QX11\t0.4\t0.8");
         label_lines.push("QX12\t4.5\t7.3");
 
-
         let mut rec_fill = Record::new();
         assert!(rec_fill.fill(&meta_line, label_lines.clone()).is_ok());
 
@@ -1124,11 +1253,26 @@ mod tests {
         label_lines.push("QX12\t4.5\t7.3");
 
         let mut rec = Record::from(&meta_line, label_lines).unwrap();
-        assert_eq!(rec.channel_1(), Vec::from([
-            Label{pos: 23.4, snr: 0.4, intensity: 4.5},
-            Label{pos: 42.6, snr: 0.8, intensity: 7.3},
-            Label{pos: 134.5, snr: 0.0, intensity: 0.0},
-        ]))
+        assert_eq!(
+            rec.channel_1(),
+            Vec::from([
+                Label {
+                    pos: 23.4,
+                    snr: 0.4,
+                    intensity: 4.5
+                },
+                Label {
+                    pos: 42.6,
+                    snr: 0.8,
+                    intensity: 7.3
+                },
+                Label {
+                    pos: 134.5,
+                    snr: 0.0,
+                    intensity: 0.0
+                },
+            ])
+        )
     }
 
     #[test]
@@ -1144,19 +1288,33 @@ mod tests {
         label_lines.push("QX22\t4.6\t7.4");
 
         let mut rec = Record::from(&meta_line, label_lines).unwrap();
-        assert_eq!(rec.channel_2(), Vec::from([
-            Label{pos: 23.5, snr: 0.5, intensity: 4.6},
-            Label{pos: 42.7, snr: 0.9, intensity: 7.4},
-            Label{pos: 134.6, snr: 0.0, intensity: 0.0},
-        ]))
+        assert_eq!(
+            rec.channel_2(),
+            Vec::from([
+                Label {
+                    pos: 23.5,
+                    snr: 0.5,
+                    intensity: 4.6
+                },
+                Label {
+                    pos: 42.7,
+                    snr: 0.9,
+                    intensity: 7.4
+                },
+                Label {
+                    pos: 134.6,
+                    snr: 0.0,
+                    intensity: 0.0
+                },
+            ])
+        )
     }
 
     #[test]
     fn test_from_path_container_with_valid_input() {
         println!("{:?}", std::env::current_dir());
-        let container = Container::from_path(
-            "tests/resources/valid_input.bnx"
-        );
+        let container =
+            Container::from_path("tests/resources/valid_input.bnx");
 
         let mut header = Vec::new();
         header.push(String::from("# BNX File Version:\t1.2"));
@@ -1180,14 +1338,38 @@ mod tests {
                 run_id: 5,
                 global_scan_number: 1,
                 channel_1: Vec::from([
-                    Label{pos: 23.4, snr: 4.5, intensity: 0.4},
-                    Label{pos: 42.6, snr: 7.3, intensity: 0.8},
-                    Label{pos: 134.5, snr: 0.0, intensity: 0.0},
+                    Label {
+                        pos: 23.4,
+                        snr: 4.5,
+                        intensity: 0.4,
+                    },
+                    Label {
+                        pos: 42.6,
+                        snr: 7.3,
+                        intensity: 0.8,
+                    },
+                    Label {
+                        pos: 134.5,
+                        snr: 0.0,
+                        intensity: 0.0,
+                    },
                 ]),
                 channel_2: Vec::from([
-                    Label{pos: 23.5, snr: 4.6, intensity: 0.5},
-                    Label{pos: 42.7, snr: 7.4, intensity: 0.9},
-                    Label{pos: 134.4, snr: 0.0, intensity: 0.0},
+                    Label {
+                        pos: 23.5,
+                        snr: 4.6,
+                        intensity: 0.5,
+                    },
+                    Label {
+                        pos: 42.7,
+                        snr: 7.4,
+                        intensity: 0.9,
+                    },
+                    Label {
+                        pos: 134.4,
+                        snr: 0.0,
+                        intensity: 0.0,
+                    },
                 ]),
             },
         );
@@ -1207,33 +1389,68 @@ mod tests {
                 run_id: 1,
                 global_scan_number: 1,
                 channel_1: Vec::from([
-                    Label{pos: 98.92, snr: 10.0380, intensity: 0.0378},
-                    Label{pos: 120.27, snr: 8.1317, intensity: 0.1308},
-                    Label{pos: 241.73, snr: 21.5573, intensity: 0.0716},
-                    Label{pos: 252.47, snr: 9.8626, intensity: 0.1518},
-                    Label{pos: 350.87, snr: 0.0, intensity: 0.0},
+                    Label {
+                        pos: 98.92,
+                        snr: 10.0380,
+                        intensity: 0.0378,
+                    },
+                    Label {
+                        pos: 120.27,
+                        snr: 8.1317,
+                        intensity: 0.1308,
+                    },
+                    Label {
+                        pos: 241.73,
+                        snr: 21.5573,
+                        intensity: 0.0716,
+                    },
+                    Label {
+                        pos: 252.47,
+                        snr: 9.8626,
+                        intensity: 0.1518,
+                    },
+                    Label {
+                        pos: 350.87,
+                        snr: 0.0,
+                        intensity: 0.0,
+                    },
                 ]),
                 channel_2: Vec::from([
-                    Label{pos: 98.8, snr: 9.0380, intensity: 1.0378},
-                    Label{pos: 120.1, snr: 9.1317, intensity: 1.1308},
-                    Label{pos: 241.6, snr: 20.5573, intensity: 1.0716},
-                    Label{pos: 252.3, snr: 10.8626, intensity: 1.1518},
-                    Label{pos: 350.7, snr: 0.0, intensity: 0.0},
+                    Label {
+                        pos: 98.8,
+                        snr: 9.0380,
+                        intensity: 1.0378,
+                    },
+                    Label {
+                        pos: 120.1,
+                        snr: 9.1317,
+                        intensity: 1.1308,
+                    },
+                    Label {
+                        pos: 241.6,
+                        snr: 20.5573,
+                        intensity: 1.0716,
+                    },
+                    Label {
+                        pos: 252.3,
+                        snr: 10.8626,
+                        intensity: 1.1518,
+                    },
+                    Label {
+                        pos: 350.7,
+                        snr: 0.0,
+                        intensity: 0.0,
+                    },
                 ]),
             },
         );
 
-        assert_eq!(
-            container.unwrap(),
-            Container {header, molecules},
-        );
+        assert_eq!(container.unwrap(), Container { header, molecules },);
     }
 
     #[test]
     fn test_from_path_container_with_invalid_input() {
-        let res = Container::from_path(
-            "tests/resources/invalid_input.bnx"
-        );
+        let res = Container::from_path("tests/resources/invalid_input.bnx");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "Truncated file: Cannot extract field MoleculeID.",
@@ -1262,7 +1479,7 @@ mod tests {
     #[test]
     fn test_from_path_container_with_non_utf8_file_without_record() {
         let res = Container::from_path(
-            "tests/resources/non_utf8_without_record.txt"
+            "tests/resources/non_utf8_without_record.txt",
         );
         assert_eq!(
             format!("{}", res.unwrap_err()),
@@ -1273,7 +1490,7 @@ mod tests {
     #[test]
     fn test_from_path_container_with_non_utf8_file_with_incomplete_record() {
         let res = Container::from_path(
-            "tests/resources/non_utf8_with_incomplete_record.bnx"
+            "tests/resources/non_utf8_with_incomplete_record.bnx",
         );
         assert_eq!(
             format!("{}", res.unwrap_err()),
@@ -1284,7 +1501,7 @@ mod tests {
     #[test]
     fn test_from_path_container_with_non_utf8_file_with_complete_record() {
         let res = Container::from_path(
-            "tests/resources/non_utf8_with_complete_record.bnx"
+            "tests/resources/non_utf8_with_complete_record.bnx",
         );
         assert_eq!(
             format!("{}", res.unwrap_err()),
@@ -1294,26 +1511,21 @@ mod tests {
 
     #[test]
     fn test_get_header() {
-        let container = Container::from_path(
-            "tests/resources/valid_input.bnx"
-        ).unwrap();
+        let container =
+            Container::from_path("tests/resources/valid_input.bnx").unwrap();
 
         let mut header = Vec::new();
         header.push(String::from("# BNX File Version:\t1.2"));
         header.push(String::from("# Label Channels:\t2"));
         header.push(String::from("# Nickase Recognition Site 1:\tCTTAAG"));
 
-        assert_eq!(
-            container.header(),
-            &header,
-        )
+        assert_eq!(container.header(), &header,)
     }
 
     #[test]
     fn test_get_labels() {
-        let mut container = Container::from_path(
-            "tests/resources/valid_input.bnx"
-        ).unwrap();
+        let mut container =
+            Container::from_path("tests/resources/valid_input.bnx").unwrap();
 
         let mut output = HashMap::new();
         output.insert(
@@ -1321,19 +1533,16 @@ mod tests {
             (
                 Vec::from([23.4, 42.6, 134.5]),
                 Vec::from([23.5, 42.7, 134.4]),
-            )
+            ),
         );
         output.insert(
             2,
             (
                 Vec::from([98.92, 120.27, 241.73, 252.47, 350.87]),
                 Vec::from([98.8, 120.1, 241.6, 252.3, 350.7]),
-            )
+            ),
         );
 
-        assert_eq!(
-            container.labels(),
-            output,
-        )
+        assert_eq!(container.labels(), output,)
     }
 }
