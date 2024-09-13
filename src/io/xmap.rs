@@ -325,7 +325,7 @@ impl Container {
     ) -> Result<Self> {
         let hits = match self.pos_trees.get_mut(&region_contig) {
             Some(hit_tree) => hit_tree.range(region_start..region_end),
-            None => Range::default(),
+            None => Default::default(),
         };
         let mut tree = BTreeMap::new();
         for entry in hits {
@@ -358,7 +358,7 @@ impl Container {
     ) -> Result<Range<u64, Record>> {
         let hits = match self.pos_trees.get_mut(&region_contig) {
             Some(hit_tree) => hit_tree.range(region_start..region_end),
-            None => Range::default(),
+            None => Default::default(),
         };
         Ok(hits)
     }
@@ -367,7 +367,7 @@ impl Container {
     pub fn range_filter_by_contig(&mut self, region_contig: u32) -> Result<Range<u64, Record>> {
         let hits = match self.pos_trees.get_mut(&region_contig) {
             Some(hit_tree) => hit_tree.range(1..),
-            None => Range::default(),
+            None => Default::default(),
         };
         Ok(hits)
     }
