@@ -280,7 +280,7 @@ pub struct Reader<R: BufRead> {
 impl Reader<BufReader<File>> {
     /// Reads BNX from given file path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let stream = BufReader::new(File::open(path)?);
+        let stream = BufReader::new(File::open(path).context(Error::InvalidPath)?);
         Reader::from_stream(stream)
     }
 
@@ -352,7 +352,7 @@ impl<R: BufRead> BnxRead for Reader<R> {
         if self.buffer.is_empty() {
             return Ok(false);
         }
-        let buf_lines: Vec<&str> = self.buffer.trim().split('\n').collect();
+        let buf_lines: Vec<&str> = self.buffer.trim().lines().collect();
         let mut res = match record.fill(buf_lines[0], buf_lines[1..].to_vec()) {
             Ok(()) => Ok(true),
             Err(e) => Err(e),
@@ -1408,7 +1408,7 @@ mod tests {
         let res = Container::from_path("/not/a/real/path.bnx");
         assert_eq!(
             format!("{}", res.unwrap_err()),
-            "No such file or directory (os error 2)",
+            "Invalid Path: Cannot locate specified path.",
         )
     }
 

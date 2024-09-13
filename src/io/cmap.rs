@@ -40,7 +40,7 @@
 //! println!("CMAP label: {:?}", container.labels());
 //! ```
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use derive_new::new;
 use std::collections::HashMap;
 use std::fs::File;
@@ -176,7 +176,7 @@ pub struct Reader<R: BufRead> {
 impl Reader<BufReader<File>> {
     /// Reads CMAP from given file path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let stream = BufReader::new(File::open(path)?);
+        let stream = BufReader::new(File::open(path).context(Error::InvalidPath)?);
         Reader::from_stream(stream)
     }
 
@@ -229,7 +229,11 @@ impl<R: BufRead> Reader<R> {
             if res == 0 {
                 bail!(Error::IncompleteCmapRecord);
             }
-            if buffer.ends_with("\t0") || buffer.ends_with("\t0\n") || buffer.is_empty() {
+            if buffer.ends_with("\t0")
+                || buffer.ends_with("\t0\n")
+                || buffer.ends_with("\t0\r\n")
+                || buffer.is_empty()
+            {
                 break;
             }
         }
@@ -250,7 +254,7 @@ impl<R: BufRead> CmapRead for Reader<R> {
         if self.buffer.is_empty() {
             return Ok(false);
         }
-        let buf_lines: Vec<&str> = self.buffer.trim().split('\n').collect();
+        let buf_lines: Vec<&str> = self.buffer.trim().lines().collect();
         let mut res = match record.fill(buf_lines) {
             Ok(()) => Ok(true),
             Err(e) => Err(e),
@@ -270,6 +274,7 @@ impl<R: BufRead> CmapRead for Reader<R> {
             };
             if self.buffer.ends_with("\t0")
                 || self.buffer.ends_with("\t0\n")
+                || self.buffer.ends_with("\t0\r\n")
                 || self.buffer.is_empty()
             {
                 break;
@@ -959,7 +964,7 @@ mod tests {
         let res = Container::from_path("/not/a/real/path.cmap");
         assert_eq!(
             format!("{}", res.unwrap_err()),
-            "No such file or directory (os error 2)",
+            "Invalid Path: Cannot locate specified path.",
         )
     }
 

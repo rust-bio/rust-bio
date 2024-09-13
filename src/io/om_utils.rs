@@ -18,6 +18,7 @@ pub enum Orientation {
 /// Enum to define custom errors for optical mapping files.
 ///
 /// # Variants
+/// * `InvalidPath` - Path cannot be located.
 /// * `IncompleteRecord` - Missing field in record.
 /// * `InvalidLabelChannel` - No supported label channel was given.
 /// * `InvalidBnxRecord` - Too few or many lines per BNX record.
@@ -30,6 +31,9 @@ pub enum Orientation {
 /// * `InvalidAlignment` - Field `Alignment` in XMAP is formatted incorrectly.
 #[derive(Clone, Debug, Eq, thiserror::Error, PartialEq)]
 pub enum Error<'a> {
+    #[error("Invalid Path: Cannot locate specified path.")]
+    InvalidPath,
+
     #[error("Truncated file: Cannot extract field {0}.")]
     IncompleteRecord(String),
 

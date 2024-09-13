@@ -37,7 +37,7 @@
 //! println!("XMAP trees: {:?}", container.trees());
 //! ```
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use derive_new::new;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -213,7 +213,7 @@ pub struct Reader<R: BufRead> {
 impl Reader<BufReader<File>> {
     /// Reads XMAP from given file path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let stream = BufReader::new(File::open(path)?);
+        let stream = BufReader::new(File::open(path).context(Error::InvalidPath)?);
         Reader::from_stream(stream)
     }
 }
@@ -979,7 +979,7 @@ mod tests {
         let res = Container::from_path("/not/a/real/path.xmap");
         assert_eq!(
             format!("{}", res.unwrap_err()),
-            "No such file or directory (os error 2)",
+            "Invalid Path: Cannot locate specified path.",
         )
     }
 
