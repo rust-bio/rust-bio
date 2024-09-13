@@ -124,11 +124,9 @@ impl Record {
         self.qry_end = split.try_parse("QryEndPos")?;
         self.ref_start = split.try_parse("RefStartPos")?;
         self.ref_end = split.try_parse("RefEndPos")?;
-        self.orientation =
-            Record::read_orientation(split.try_next("Orientation")?)?;
+        self.orientation = Record::read_orientation(split.try_next("Orientation")?)?;
         self.confidence = split.try_parse("Confidence")?;
-        self.hit_enum =
-            Record::is_valid_cigar(String::from(split.try_next("HitEnum")?))?;
+        self.hit_enum = Record::is_valid_cigar(String::from(split.try_next("HitEnum")?))?;
         self.qry_len = split.try_parse("QryLen")?;
         self.ref_len = split.try_parse("RefLen")?;
         self.label_channel = split.try_parse("LabelChannel")?;
@@ -340,10 +338,7 @@ impl Container {
     }
 
     /// Returns the subset of records contained in given contig.
-    pub fn subset_filter_by_contig(
-        &mut self,
-        region_contig: u32,
-    ) -> Result<Self> {
+    pub fn subset_filter_by_contig(&mut self, region_contig: u32) -> Result<Self> {
         let hits = match self.pos_trees.get_mut(&region_contig) {
             Some(hit_tree) => hit_tree.clone(),
             None => BTreeMap::default(),
@@ -369,10 +364,7 @@ impl Container {
     }
 
     /// Returns the range over records contained in given contig.
-    pub fn range_filter_by_contig(
-        &mut self,
-        region_contig: u32,
-    ) -> Result<Range<u64, Record>> {
+    pub fn range_filter_by_contig(&mut self, region_contig: u32) -> Result<Range<u64, Record>> {
         let hits = match self.pos_trees.get_mut(&region_contig) {
             Some(hit_tree) => hit_tree.range(1..),
             None => Range::default(),
@@ -443,10 +435,7 @@ mod tests {
 
     #[test]
     fn test_read_forward_orientation() {
-        assert_eq!(
-            Record::read_orientation("+").unwrap(),
-            Orientation::Forward,
-        );
+        assert_eq!(Record::read_orientation("+").unwrap(), Orientation::Forward,);
     }
 
     #[test]
@@ -476,10 +465,7 @@ mod tests {
     #[test]
     fn test_is_valid_cigar_without_count() {
         assert_eq!(
-            format!(
-                "{}",
-                Record::is_valid_cigar(String::from("M")).unwrap_err()
-            ),
+            format!("{}", Record::is_valid_cigar(String::from("M")).unwrap_err()),
             "InvalidData: HitEnum is an invalid CIGAR string.",
         );
     }
@@ -487,10 +473,7 @@ mod tests {
     #[test]
     fn test_is_valid_cigar_without_indicator() {
         assert_eq!(
-            format!(
-                "{}",
-                Record::is_valid_cigar(String::from("2")).unwrap_err()
-            ),
+            format!("{}", Record::is_valid_cigar(String::from("2")).unwrap_err()),
             "InvalidData: HitEnum is an invalid CIGAR string.",
         );
     }
@@ -522,10 +505,7 @@ mod tests {
     #[test]
     fn test_read_alignment_with_invalid_input() {
         assert_eq!(
-            format!(
-                "{}",
-                Record::read_alignment("(5,6)(,7)(8,f)6").unwrap_err()
-            ),
+            format!("{}", Record::read_alignment("(5,6)(,7)(8,f)6").unwrap_err()),
             "InvalidData: Alignment is not formatted correctly.",
         );
     }
@@ -533,9 +513,7 @@ mod tests {
     #[test]
     fn test_fill_record_with_valid_input() {
         let mut rec = Record::new();
-        let line = String::from(
-            "1\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)",
-        );
+        let line = String::from("1\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)");
         assert!(rec.fill(&line).is_ok());
 
         let mut output_vec = Vec::new();
@@ -566,9 +544,7 @@ mod tests {
     #[test]
     fn test_fill_record_with_invalid_id() {
         let mut rec = Record::new();
-        let line = String::from(
-            "1f5\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)",
-        );
+        let line = String::from("1f5\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -629,9 +605,7 @@ mod tests {
     #[test]
     fn test_fill_record_with_invalid_qry_end() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\tf\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)",
-        );
+        let line = String::from("15\t2\t3\t4.1\tf\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -644,9 +618,7 @@ mod tests {
     #[test]
     fn test_fill_record_with_invalid_ref_start() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\tf\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\tf\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -659,9 +631,7 @@ mod tests {
     #[test]
     fn test_fill_record_with_invalid_ref_end() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\tf\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\tf\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -687,9 +657,7 @@ mod tests {
     #[test]
     fn test_fill_record_with_invalid_orientation() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0\t#\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t#\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -744,9 +712,7 @@ mod tests {
     #[test]
     fn test_fill_record_with_invalid_hit_enum() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2\t1.2\t1.0\t1\t(5,3)(6,2)",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2\t1.2\t1.0\t1\t(5,3)(6,2)");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -759,9 +725,7 @@ mod tests {
     #[test]
     fn test_fill_record_with_invalid_qry_len() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\tf\t1.0\t1\t(5,3)(6,2)",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\tf\t1.0\t1\t(5,3)(6,2)");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -787,9 +751,7 @@ mod tests {
     #[test]
     fn test_fill_record_with_invalid_ref_len() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\tf\t1\t(5,3)(6,2)",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\tf\t1\t(5,3)(6,2)");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -802,8 +764,7 @@ mod tests {
     #[test]
     fn test_fill_record_without_label_channel() {
         let mut rec = Record::new();
-        let line =
-            String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0");
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -832,9 +793,7 @@ mod tests {
     #[test]
     fn test_fill_record_without_alignment() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -847,9 +806,7 @@ mod tests {
     #[test]
     fn test_fill_record_with_invalid_alignment() {
         let mut rec = Record::new();
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)5",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)5");
         let result = rec.fill(&line);
         assert!(result.is_err());
 
@@ -861,9 +818,7 @@ mod tests {
 
     #[test]
     fn test_from_record_with_valid_input() {
-        let line = String::from(
-            "1\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)",
-        );
+        let line = String::from("1\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)");
         let rec = Record::from(&line);
 
         let mut output_vec = Vec::new();
@@ -921,9 +876,7 @@ mod tests {
 
     #[test]
     fn test_get_id() {
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)");
         let mut rec = Record::from(&line).unwrap();
 
         assert_eq!(rec.id(), 15)
@@ -931,9 +884,7 @@ mod tests {
 
     #[test]
     fn test_get_contig() {
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)");
         let mut rec = Record::from(&line).unwrap();
 
         assert_eq!(rec.contig(), 3)
@@ -941,9 +892,7 @@ mod tests {
 
     #[test]
     fn test_get_start() {
-        let line = String::from(
-            "15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)",
-        );
+        let line = String::from("15\t2\t3\t4.1\t5.3\t6.0\t7.0\t-\t8\t2M\t1.2\t1.0\t1\t(5,3)(6,2)");
         let mut rec = Record::from(&line).unwrap();
 
         assert_eq!(rec.start(), 6.0)
@@ -951,8 +900,7 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_valid_path() {
-        let container =
-            Container::from_path("tests/resources/valid_input.xmap");
+        let container = Container::from_path("tests/resources/valid_input.xmap");
         let mut header = Vec::new();
         header.push(String::from("# XMAP File Version:\t0.2"));
         header.push(String::from("# Label Channels:\t1"));
@@ -1037,8 +985,7 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_empty_file() {
-        let container =
-            Container::from_path("tests/resources/empty_file.txt").unwrap();
+        let container = Container::from_path("tests/resources/empty_file.txt").unwrap();
         assert_eq!(
             container,
             Container {
@@ -1050,9 +997,7 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_non_utf8_file_without_record() {
-        let res = Container::from_path(
-            "tests/resources/non_utf8_without_record.txt",
-        );
+        let res = Container::from_path("tests/resources/non_utf8_without_record.txt");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "stream did not contain valid UTF-8",
@@ -1061,8 +1006,7 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_non_utf8_file_with_record() {
-        let res =
-            Container::from_path("tests/resources/non_utf8_with_record.xmap");
+        let res = Container::from_path("tests/resources/non_utf8_with_record.xmap");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "stream did not contain valid UTF-8",
@@ -1071,8 +1015,7 @@ mod tests {
 
     #[test]
     fn test_subset_filter_by_region_with_existing_contig() {
-        let mut container =
-            Container::from_path("tests/resources/valid_input.xmap").unwrap();
+        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
         let mut header = Vec::new();
         header.push(String::from("# XMAP File Version:\t0.2"));
@@ -1121,8 +1064,7 @@ mod tests {
 
     #[test]
     fn test_subset_filter_by_region_without_existing_contig() {
-        let mut container =
-            Container::from_path("tests/resources/valid_input.xmap").unwrap();
+        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
         let mut header = Vec::new();
         header.push(String::from("# XMAP File Version:\t0.2"));
@@ -1151,8 +1093,7 @@ mod tests {
 
     #[test]
     fn test_subset_filter_by_contig_with_existing_contig() {
-        let mut container =
-            Container::from_path("tests/resources/valid_input.xmap").unwrap();
+        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
         let mut header = Vec::new();
         header.push(String::from("# XMAP File Version:\t0.2"));
@@ -1210,8 +1151,7 @@ mod tests {
 
     #[test]
     fn test_subset_filter_by_contig_without_existing_contig() {
-        let mut container =
-            Container::from_path("tests/resources/valid_input.xmap").unwrap();
+        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
         let mut header = Vec::new();
         header.push(String::from("# XMAP File Version:\t0.2"));
@@ -1240,8 +1180,7 @@ mod tests {
 
     #[test]
     fn test_range_filter_by_region_with_existing_contig() {
-        let mut container =
-            Container::from_path("tests/resources/valid_input.xmap").unwrap();
+        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
         let mut trees = Vec::new();
         let rec_1 = Record::from(
@@ -1259,8 +1198,7 @@ mod tests {
         trees.push((&(3888 as u64), &rec_1));
         trees.push((&(5396 as u64), &rec_2));
 
-        let mut range =
-            container.range_filter_by_region(17, 1, 70000000).unwrap();
+        let mut range = container.range_filter_by_region(17, 1, 70000000).unwrap();
 
         let mut count = 0;
         loop {
@@ -1274,8 +1212,7 @@ mod tests {
 
     #[test]
     fn test_range_filter_by_region_without_existing_contig() {
-        let mut container =
-            Container::from_path("tests/resources/valid_input.xmap").unwrap();
+        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
         assert_eq!(
             container
@@ -1288,8 +1225,7 @@ mod tests {
 
     #[test]
     fn test_range_filter_by_contig_with_existing_contig() {
-        let mut container =
-            Container::from_path("tests/resources/valid_input.xmap").unwrap();
+        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
         let mut trees = Vec::new();
         let rec_1 = Record::from(
@@ -1328,19 +1264,17 @@ mod tests {
 
     #[test]
     fn test_range_filter_by_contig_without_existing_contig() {
-        let mut container =
-            Container::from_path("tests/resources/valid_input.xmap").unwrap();
+        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
         assert_eq!(container.range_filter_by_contig(1).unwrap().count(), 0)
     }
 
     #[test]
     fn test_fmt_display() {
-        let container =
-            Container::from_path("tests/resources/valid_input.xmap")
-                .unwrap()
-                .subset_filter_by_contig(22)
-                .unwrap();
+        let container = Container::from_path("tests/resources/valid_input.xmap")
+            .unwrap()
+            .subset_filter_by_contig(22)
+            .unwrap();
         assert_eq!(
             container.to_string(),
             "Container { header: [\"# XMAP File Version:\\t0.2\", \
@@ -1356,8 +1290,7 @@ mod tests {
 
     #[test]
     fn test_get_header() {
-        let container =
-            Container::from_path("tests/resources/valid_input.xmap").unwrap();
+        let container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
         let mut header = Vec::new();
         header.push(String::from("# XMAP File Version:\t0.2"));
         header.push(String::from("# Label Channels:\t1"));
@@ -1376,8 +1309,7 @@ mod tests {
 
     #[test]
     fn test_get_trees() {
-        let mut container =
-            Container::from_path("tests/resources/valid_input.xmap").unwrap();
+        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
         let mut tree_17 = BTreeMap::new();
         tree_17.insert(
             3888 as u64,

@@ -130,11 +130,7 @@ impl Record {
     /// let mut reader = Reader::new();
     /// reader.fill(&meta_line, label_lines);
     /// ```
-    pub fn fill(
-        &mut self,
-        meta_line: &str,
-        label_lines: Vec<&str>,
-    ) -> Result<()> {
+    pub fn fill(&mut self, meta_line: &str, label_lines: Vec<&str>) -> Result<()> {
         let mut split = meta_line.split('\t');
         split.next();
 
@@ -145,8 +141,7 @@ impl Record {
         self.num_labels = split.try_parse("NumberofLabels")?;
         self.original_id = split.try_parse("OriginalMoleculeId")?;
         self.scan_number = split.try_parse("ScanNumber")?;
-        self.scan_direction =
-            Record::read_orientation(split.try_next("ScanDirection")?)?;
+        self.scan_direction = Record::read_orientation(split.try_next("ScanDirection")?)?;
         self.chip_id = Vec::from(split.try_next("ChipId")?);
         self.flowcell = split.try_parse("Flowcell")?;
         self.run_id = split.try_parse("RunId")?;
@@ -177,28 +172,17 @@ impl Record {
     }
 
     /// Reads label information for all channels.
-    fn read_labels(
-        label_lines: Vec<&str>,
-    ) -> Result<(Vec<Label>, Vec<Label>)> {
+    fn read_labels(label_lines: Vec<&str>) -> Result<(Vec<Label>, Vec<Label>)> {
         let num_lines = label_lines.len();
         if num_lines == 3 {
-            let channel_1 = Record::read_label_for_channel(
-                label_lines[0],
-                label_lines[1],
-                label_lines[2],
-            )?;
+            let channel_1 =
+                Record::read_label_for_channel(label_lines[0], label_lines[1], label_lines[2])?;
             Ok((channel_1, Vec::new()))
         } else if num_lines == 6 {
-            let channel_1 = Record::read_label_for_channel(
-                label_lines[0],
-                label_lines[2],
-                label_lines[4],
-            )?;
-            let channel_2 = Record::read_label_for_channel(
-                label_lines[1],
-                label_lines[3],
-                label_lines[5],
-            )?;
+            let channel_1 =
+                Record::read_label_for_channel(label_lines[0], label_lines[2], label_lines[4])?;
+            let channel_2 =
+                Record::read_label_for_channel(label_lines[1], label_lines[3], label_lines[5])?;
             Ok((channel_1, channel_2))
         } else {
             bail!(Error::InvalidBnxRecord(num_lines));
@@ -242,18 +226,18 @@ impl Record {
             intensity_line.split('\t')
         ) {
             labels.push(Label {
-                pos: entry.0.parse().context(Error::InvalidType(
-                    "LabelPosition",
-                    "f64 float",
-                ))?,
-                snr: entry.1.parse().context(Error::InvalidType(
-                    "QualityScore (SNR)",
-                    "f32 float",
-                ))?,
-                intensity: entry.2.parse().context(Error::InvalidType(
-                    "QualityScore (Intensity)",
-                    "f32 float",
-                ))?,
+                pos: entry
+                    .0
+                    .parse()
+                    .context(Error::InvalidType("LabelPosition", "f64 float"))?,
+                snr: entry
+                    .1
+                    .parse()
+                    .context(Error::InvalidType("QualityScore (SNR)", "f32 float"))?,
+                intensity: entry
+                    .2
+                    .parse()
+                    .context(Error::InvalidType("QualityScore (Intensity)", "f32 float"))?,
             });
         }
         Ok(labels)
@@ -366,8 +350,7 @@ impl<R: BufRead> BnxRead for Reader<R> {
             return Ok(false);
         }
         let buf_lines: Vec<&str> = self.buffer.trim().split('\n').collect();
-        let mut res = match record.fill(buf_lines[0], buf_lines[1..].to_vec())
-        {
+        let mut res = match record.fill(buf_lines[0], buf_lines[1..].to_vec()) {
             Ok(()) => Ok(true),
             Err(e) => Err(e),
         };
@@ -468,10 +451,7 @@ mod tests {
 
     #[test]
     fn test_read_forward_orientation() {
-        assert_eq!(
-            Record::read_orientation("0").unwrap(),
-            Orientation::Forward,
-        );
+        assert_eq!(Record::read_orientation("0").unwrap(), Orientation::Forward,);
     }
 
     #[test]
@@ -522,8 +502,7 @@ mod tests {
         });
 
         assert_eq!(
-            Record::read_label_for_channel(pos_line, snr_line, intensity_line)
-                .unwrap(),
+            Record::read_label_for_channel(pos_line, snr_line, intensity_line).unwrap(),
             output,
         )
     }
@@ -537,12 +516,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                Record::read_label_for_channel(
-                    pos_line,
-                    snr_line,
-                    intensity_line
-                )
-                .unwrap_err()
+                Record::read_label_for_channel(pos_line, snr_line, intensity_line).unwrap_err()
             ),
             "InvalidFormat: Number of entries in label lines is not \
             compatible with BNX structure (one position more than both SNR \
@@ -559,12 +533,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                Record::read_label_for_channel(
-                    pos_line,
-                    snr_line,
-                    intensity_line
-                )
-                .unwrap_err()
+                Record::read_label_for_channel(pos_line, snr_line, intensity_line).unwrap_err()
             ),
             "InvalidData: LabelChannel is not formatted correctly.",
         )
@@ -579,12 +548,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                Record::read_label_for_channel(
-                    pos_line,
-                    snr_line,
-                    intensity_line
-                )
-                .unwrap_err()
+                Record::read_label_for_channel(pos_line, snr_line, intensity_line).unwrap_err()
             ),
             "InvalidData: Label SNR is not formatted correctly.",
         )
@@ -599,12 +563,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                Record::read_label_for_channel(
-                    pos_line,
-                    snr_line,
-                    intensity_line
-                )
-                .unwrap_err()
+                Record::read_label_for_channel(pos_line, snr_line, intensity_line).unwrap_err()
             ),
             "InvalidData: Label Intensity is not formatted correctly.",
         )
@@ -619,12 +578,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                Record::read_label_for_channel(
-                    pos_line,
-                    snr_line,
-                    intensity_line
-                )
-                .unwrap_err()
+                Record::read_label_for_channel(pos_line, snr_line, intensity_line).unwrap_err()
             ),
             "InvalidData: LabelPosition is not a valid f64 float.",
         )
@@ -639,12 +593,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                Record::read_label_for_channel(
-                    pos_line,
-                    snr_line,
-                    intensity_line
-                )
-                .unwrap_err()
+                Record::read_label_for_channel(pos_line, snr_line, intensity_line).unwrap_err()
             ),
             "InvalidData: QualityScore (SNR) is not a valid f32 float.",
         )
@@ -659,12 +608,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                Record::read_label_for_channel(
-                    pos_line,
-                    snr_line,
-                    intensity_line
-                )
-                .unwrap_err()
+                Record::read_label_for_channel(pos_line, snr_line, intensity_line).unwrap_err()
             ),
             "InvalidData: QualityScore (Intensity) is not a valid f32 float.",
         )
@@ -1313,8 +1257,7 @@ mod tests {
     #[test]
     fn test_from_path_container_with_valid_input() {
         println!("{:?}", std::env::current_dir());
-        let container =
-            Container::from_path("tests/resources/valid_input.bnx");
+        let container = Container::from_path("tests/resources/valid_input.bnx");
 
         let mut header = Vec::new();
         header.push(String::from("# BNX File Version:\t1.2"));
@@ -1478,9 +1421,7 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_non_utf8_file_without_record() {
-        let res = Container::from_path(
-            "tests/resources/non_utf8_without_record.txt",
-        );
+        let res = Container::from_path("tests/resources/non_utf8_without_record.txt");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "stream did not contain valid UTF-8",
@@ -1489,9 +1430,7 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_non_utf8_file_with_incomplete_record() {
-        let res = Container::from_path(
-            "tests/resources/non_utf8_with_incomplete_record.bnx",
-        );
+        let res = Container::from_path("tests/resources/non_utf8_with_incomplete_record.bnx");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "stream did not contain valid UTF-8",
@@ -1500,9 +1439,7 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_non_utf8_file_with_complete_record() {
-        let res = Container::from_path(
-            "tests/resources/non_utf8_with_complete_record.bnx",
-        );
+        let res = Container::from_path("tests/resources/non_utf8_with_complete_record.bnx");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "stream did not contain valid UTF-8",
@@ -1511,8 +1448,7 @@ mod tests {
 
     #[test]
     fn test_get_header() {
-        let container =
-            Container::from_path("tests/resources/valid_input.bnx").unwrap();
+        let container = Container::from_path("tests/resources/valid_input.bnx").unwrap();
 
         let mut header = Vec::new();
         header.push(String::from("# BNX File Version:\t1.2"));
@@ -1524,8 +1460,7 @@ mod tests {
 
     #[test]
     fn test_get_labels() {
-        let mut container =
-            Container::from_path("tests/resources/valid_input.bnx").unwrap();
+        let mut container = Container::from_path("tests/resources/valid_input.bnx").unwrap();
 
         let mut output = HashMap::new();
         output.insert(

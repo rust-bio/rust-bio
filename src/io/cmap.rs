@@ -229,10 +229,7 @@ impl<R: BufRead> Reader<R> {
             if res == 0 {
                 bail!(Error::IncompleteCmapRecord);
             }
-            if buffer.ends_with("\t0")
-                || buffer.ends_with("\t0\n")
-                || buffer.is_empty()
-            {
+            if buffer.ends_with("\t0") || buffer.ends_with("\t0\n") || buffer.is_empty() {
                 break;
             }
         }
@@ -837,8 +834,7 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_valid_input() {
-        let container =
-            Container::from_path("tests/resources/valid_input.cmap");
+        let container = Container::from_path("tests/resources/valid_input.cmap");
 
         let mut header = Vec::new();
         header.push(String::from("# CMAP File Version:\t0.1"));
@@ -950,8 +946,7 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_incomplete_input() {
-        let res =
-            Container::from_path("tests/resources/incomplete_input.cmap");
+        let res = Container::from_path("tests/resources/incomplete_input.cmap");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "Truncated file: Cannot extract complete CMAP record. The last \
@@ -980,9 +975,7 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_non_utf8_file_without_record() {
-        let res = Container::from_path(
-            "tests/resources/non_utf8_without_record.txt",
-        );
+        let res = Container::from_path("tests/resources/non_utf8_without_record.txt");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "stream did not contain valid UTF-8",
@@ -991,9 +984,7 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_non_utf8_file_with_incomplete_record() {
-        let res = Container::from_path(
-            "tests/resources/non_utf8_with_incomplete_record.cmap",
-        );
+        let res = Container::from_path("tests/resources/non_utf8_with_incomplete_record.cmap");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "stream did not contain valid UTF-8",
@@ -1002,9 +993,7 @@ mod tests {
 
     #[test]
     fn test_from_path_container_with_non_utf8_file_with_complete_record() {
-        let res = Container::from_path(
-            "tests/resources/non_utf8_with_complete_record.cmap",
-        );
+        let res = Container::from_path("tests/resources/non_utf8_with_complete_record.cmap");
         assert_eq!(
             format!("{}", res.unwrap_err()),
             "stream did not contain valid UTF-8",
@@ -1013,8 +1002,7 @@ mod tests {
 
     #[test]
     fn test_get_header() {
-        let container =
-            Container::from_path("tests/resources/valid_input.cmap").unwrap();
+        let container = Container::from_path("tests/resources/valid_input.cmap").unwrap();
 
         let mut header = Vec::new();
         header.push(String::from("# CMAP File Version:\t0.1"));
@@ -1034,8 +1022,7 @@ mod tests {
 
     #[test]
     fn test_get_contigs() {
-        let mut container =
-            Container::from_path("tests/resources/valid_input.cmap").unwrap();
+        let mut container = Container::from_path("tests/resources/valid_input.cmap").unwrap();
 
         let mut output = HashMap::new();
         output.insert(1, Vec::from([4454.0, 27579.0, 98003.0, 248936424.0]));
