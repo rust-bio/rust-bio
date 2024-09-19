@@ -45,7 +45,7 @@ use derive_new::new;
 use getset::Getters;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::collections::{btree_map::Range, BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -294,7 +294,7 @@ impl<R: BufRead> Iterator for Reader<R> {
 /// A container with XMAP header and records stored in B-trees.
 ///
 /// Each tree corresponds to one reference contig and is ordered by start position.
-#[derive(Debug, Getters, new, PartialEq)]
+#[derive(Clone, Debug, Getters, new, PartialEq)]
 pub struct Container {
     #[getset(get = "pub")]
     header: Vec<String>,
@@ -309,59 +309,18 @@ impl Container {
         reader.into_container()
     }
 
-    /// Returns the subset of records contained in given region in a contig.
-    pub fn subset_filter_by_region(
+    /// Fetches an iterator over records contained in a given region in a contig.
+    pub fn fetch(
         &mut self,
         region_contig: u32,
         region_start: u64,
         region_end: u64,
-    ) -> Result<Self> {
+    ) -> Result<impl Iterator<Item = &Record>> {
         let hits = match self.pos_trees.get_mut(&region_contig) {
             Some(hit_tree) => hit_tree.range(region_start..region_end),
             None => Default::default(),
         };
-        let mut tree = BTreeMap::new();
-        for entry in hits {
-            tree.insert(*entry.0, entry.1.clone());
-        }
-        Ok(Container {
-            header: self.header().clone(),
-            pos_trees: HashMap::from([(region_contig, tree)]),
-        })
-    }
-
-    /// Returns the subset of records contained in given contig.
-    pub fn subset_filter_by_contig(&mut self, region_contig: u32) -> Result<Self> {
-        let hits = match self.pos_trees.get_mut(&region_contig) {
-            Some(hit_tree) => hit_tree.clone(),
-            None => BTreeMap::default(),
-        };
-        Ok(Container {
-            header: self.header().clone(),
-            pos_trees: HashMap::from([(region_contig, hits)]),
-        })
-    }
-
-    /// Returns the range over records contained in a given region in a contig.
-    pub fn range_filter_by_region(
-        &mut self,
-        region_contig: u32,
-        region_start: u64,
-        region_end: u64,
-    ) -> Result<Range<u64, Record>> {
-        let hits = match self.pos_trees.get_mut(&region_contig) {
-            Some(hit_tree) => hit_tree.range(region_start..region_end),
-            None => Default::default(),
-        };
-        Ok(hits)
-    }
-
-    /// Returns the range over records contained in given contig.
-    pub fn range_filter_by_contig(&mut self, region_contig: u32) -> Result<Range<u64, Record>> {
-        let hits = match self.pos_trees.get_mut(&region_contig) {
-            Some(hit_tree) => hit_tree.range(1..),
-            None => Default::default(),
-        };
+        let hits = hits.map(|(_, rec)| rec);
         Ok(hits)
     }
 }
@@ -997,172 +956,7 @@ mod tests {
     }
 
     #[test]
-    fn test_subset_filter_by_region_with_existing_contig() {
-        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
-
-        let mut header = Vec::new();
-        header.push(String::from("# XMAP File Version:\t0.2"));
-        header.push(String::from("# Label Channels:\t1"));
-        header.push(String::from(
-            "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
-            \tQryEndPos\tRefStartPos\tRefEndPos\tOrientation\tConfidence\
-            \tHitEnum\tQryLen\tRefLen\tLabelChannel\tAlignment",
-        ));
-        header.push(String::from(
-            "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
-            \tstring\tfloat\tfloat\tint\tstring",
-        ));
-
-        let mut tree_17 = BTreeMap::new();
-        tree_17.insert(
-            3888 as u64,
-            Record::from(
-                "36\t1\t17\t5119.30\t465.17\t3888.0\t9624.0\t-\t8606\
-                \t4M1D2M1D1M1D1M1D1M\t4654.13\t5736.0\t1\
-                \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)",
-            )
-            .unwrap(),
-        );
-        tree_17.insert(
-            5396 as u64,
-            Record::from(
-                "37\t2\t17\t2617.12\t5942.70\t5396.0\t8148.0\t+\t4434\
-                \t1M1D1M1D6M\t3325.58\t2752.0\t1\
-                \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)",
-            )
-            .unwrap(),
-        );
-
-        let mut trees = HashMap::new();
-        trees.insert(17, tree_17);
-
-        assert_eq!(
-            container.subset_filter_by_region(17, 1, 6000).unwrap(),
-            Container {
-                header: header,
-                pos_trees: trees,
-            }
-        )
-    }
-
-    #[test]
-    fn test_subset_filter_by_region_without_existing_contig() {
-        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
-
-        let mut header = Vec::new();
-        header.push(String::from("# XMAP File Version:\t0.2"));
-        header.push(String::from("# Label Channels:\t1"));
-        header.push(String::from(
-            "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
-            \tQryEndPos\tRefStartPos\tRefEndPos\tOrientation\tConfidence\
-            \tHitEnum\tQryLen\tRefLen\tLabelChannel\tAlignment",
-        ));
-        header.push(String::from(
-            "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
-            \tstring\tfloat\tfloat\tint\tstring",
-        ));
-
-        let mut trees = HashMap::new();
-        trees.insert(1, BTreeMap::new());
-
-        assert_eq!(
-            container.subset_filter_by_region(1, 1, 700).unwrap(),
-            Container {
-                header: header,
-                pos_trees: trees,
-            }
-        )
-    }
-
-    #[test]
-    fn test_subset_filter_by_contig_with_existing_contig() {
-        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
-
-        let mut header = Vec::new();
-        header.push(String::from("# XMAP File Version:\t0.2"));
-        header.push(String::from("# Label Channels:\t1"));
-        header.push(String::from(
-            "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
-            \tQryEndPos\tRefStartPos\tRefEndPos\tOrientation\tConfidence\
-            \tHitEnum\tQryLen\tRefLen\tLabelChannel\tAlignment",
-        ));
-        header.push(String::from(
-            "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
-            \tstring\tfloat\tfloat\tint\tstring",
-        ));
-
-        let mut tree_17 = BTreeMap::new();
-        tree_17.insert(
-            3888 as u64,
-            Record::from(
-                "36\t1\t17\t5119.30\t465.17\t3888.0\t9624.0\t-\t8606\
-                \t4M1D2M1D1M1D1M1D1M\t4654.13\t5736.0\t1\
-                \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)",
-            )
-            .unwrap(),
-        );
-        tree_17.insert(
-            5396 as u64,
-            Record::from(
-                "37\t2\t17\t2617.12\t5942.70\t5396.0\t8148.0\t+\t4434\
-                \t1M1D1M1D6M\t3325.58\t2752.0\t1\
-                \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)",
-            )
-            .unwrap(),
-        );
-        tree_17.insert(
-            6152 as u64,
-            Record::from(
-                "38\t3\t17\t538.88\t4004.65\t6152.0\t1568.0\t+\t1726\
-                 \t1M1D2M2D3M1D1M\t3465.77\t4594.0\t1\
-                 \t(62,1)(64,2)(65,3)(68,4)(69,5)(70,6)(72,7)",
-            )
-            .unwrap(),
-        );
-
-        let mut trees = HashMap::new();
-        trees.insert(17, tree_17);
-
-        assert_eq!(
-            container.subset_filter_by_contig(17).unwrap(),
-            Container {
-                header: header,
-                pos_trees: trees,
-            }
-        )
-    }
-
-    #[test]
-    fn test_subset_filter_by_contig_without_existing_contig() {
-        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
-
-        let mut header = Vec::new();
-        header.push(String::from("# XMAP File Version:\t0.2"));
-        header.push(String::from("# Label Channels:\t1"));
-        header.push(String::from(
-            "#h\tXmapEntryID\tQryContigID\tRefContigID\tQryStartPos\
-            \tQryEndPos\tRefStartPos\tRefEndPos\tOrientation\tConfidence\
-            \tHitEnum\tQryLen\tRefLen\tLabelChannel\tAlignment",
-        ));
-        header.push(String::from(
-            "#f\tint\tint\tint\tfloat\tfloat\tfloat\tfloat\tstring\tfloat\
-            \tstring\tfloat\tfloat\tint\tstring",
-        ));
-
-        let mut trees = HashMap::new();
-        trees.insert(1, BTreeMap::new());
-
-        assert_eq!(
-            container.subset_filter_by_contig(1).unwrap(),
-            Container {
-                header: header,
-                pos_trees: trees,
-            }
-        )
-    }
-
-    #[test]
-    fn test_range_filter_by_region_with_existing_contig() {
+    fn test_fetch_with_existing_contig() {
         let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
         let mut trees = Vec::new();
@@ -1178,62 +972,10 @@ mod tests {
             \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)",
         )
         .unwrap();
-        trees.push((&(3888 as u64), &rec_1));
-        trees.push((&(5396 as u64), &rec_2));
+        trees.push(&rec_1);
+        trees.push(&rec_2);
 
-        let mut range = container.range_filter_by_region(17, 1, 70000000).unwrap();
-
-        let mut count = 0;
-        loop {
-            assert_eq!(range.next().unwrap(), trees[count],);
-            count += 1;
-            if count == trees.len() {
-                break;
-            }
-        }
-    }
-
-    #[test]
-    fn test_range_filter_by_region_without_existing_contig() {
-        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
-
-        assert_eq!(
-            container
-                .range_filter_by_region(1, 43, 234)
-                .unwrap()
-                .count(),
-            0
-        )
-    }
-
-    #[test]
-    fn test_range_filter_by_contig_with_existing_contig() {
-        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
-
-        let mut trees = Vec::new();
-        let rec_1 = Record::from(
-            "36\t1\t17\t5119.30\t465.17\t3888.0\t9624.0\t-\t8606\
-            \t4M1D2M1D1M1D1M1D1M\t4654.13\t5736.0\t1\
-            \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)",
-        )
-        .unwrap();
-        let rec_2 = Record::from(
-            "37\t2\t17\t2617.12\t5942.70\t5396.0\t8148.0\t+\t4434\
-            \t1M1D1M1D6M\t3325.58\t2752.0\t1\
-            \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)",
-        )
-        .unwrap();
-        let rec_3 = Record::from(
-            "38\t3\t17\t538.88\t4004.65\t6152.0\t1568.0\t+\t1726\
-             \t1M1D2M2D3M1D1M\t3465.77\t4594.0\t1\
-             \t(62,1)(64,2)(65,3)(68,4)(69,5)(70,6)(72,7)",
-        )
-        .unwrap();
-        trees.push((&(3888 as u64), &rec_1));
-        trees.push((&(5396 as u64), &rec_2));
-        trees.push((&(6152 as u64), &rec_3));
-
-        let mut range = container.range_filter_by_contig(17).unwrap();
+        let mut range = container.fetch(17, 1, 70000000).unwrap();
 
         let mut count = 0;
         loop {
@@ -1246,18 +988,15 @@ mod tests {
     }
 
     #[test]
-    fn test_range_filter_by_contig_without_existing_contig() {
+    fn test_fetch_without_existing_contig() {
         let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
-        assert_eq!(container.range_filter_by_contig(1).unwrap().count(), 0)
+        assert_eq!(container.fetch(1, 43, 234).unwrap().count(), 0)
     }
 
     #[test]
     fn test_fmt_display() {
-        let container = Container::from_path("tests/resources/valid_input.xmap")
-            .unwrap()
-            .subset_filter_by_contig(22)
-            .unwrap();
+        let container = Container::from_path("tests/resources/single_line.xmap").unwrap();
         assert_eq!(
             container.to_string(),
             "Container { header: [\"# XMAP File Version:\\t0.2\", \
