@@ -72,7 +72,6 @@ pub struct Record {
     #[getset(get = "pub")]
     id: u32,
     len: f64,
-    num_labels: u32,
     label_channel: u8,
     #[getset(get = "pub")]
     labels: Vec<Label>,
@@ -84,7 +83,6 @@ impl Record {
         Record {
             id: 0,
             len: -1.0,
-            num_labels: 0,
             label_channel: 0,
             labels: Vec::new(),
         }
@@ -110,7 +108,7 @@ impl Record {
 
         self.id = split.try_parse("CMapID")?;
         self.len = split.try_parse("ContigLength")?;
-        self.num_labels = split.try_parse("NumSites")?;
+        split.try_next("NumSites")?;
         split.try_next("SiteID")?;
         self.label_channel = split.try_parse("LabelChannel")?;
         split.try_next("Position")?;
@@ -339,7 +337,6 @@ mod tests {
             Record {
                 id: 0,
                 len: -1.0,
-                num_labels: 0,
                 label_channel: 0,
                 labels: Vec::new(),
             }
@@ -505,7 +502,6 @@ mod tests {
             Record {
                 id: 1,
                 len: 248936424.0,
-                num_labels: 3,
                 label_channel: 1,
                 labels: Vec::from([
                     Label {
@@ -707,7 +703,6 @@ mod tests {
             Record {
                 id: 1,
                 len: 248936424.0,
-                num_labels: 3,
                 label_channel: 1,
                 labels: Vec::from([
                     Label {
@@ -853,7 +848,6 @@ mod tests {
             Record {
                 id: 1,
                 len: 248936424.0,
-                num_labels: 3,
                 label_channel: 1,
                 labels: Vec::from([
                     Label {
@@ -892,7 +886,6 @@ mod tests {
             Record {
                 id: 2,
                 len: 242173531.0,
-                num_labels: 2,
                 label_channel: 1,
                 labels: Vec::from([
                     Label {
