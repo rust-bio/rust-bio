@@ -6,7 +6,8 @@
 //!
 //! ## Reader
 //!
-//! In this example, we parse a BNX file, iterate over its records. and output some statistics.
+//! In this example, we parse a BNX file, iterate over its records. and output
+//! some statistics.
 //!
 //! ```rust
 //! use bio::io::om::bnx;
@@ -32,6 +33,10 @@
 //! ## Container
 //!
 //! If feasible, we can also build a container over the content of a BNX file.
+//!
+//! This can be advantageous if the BNX is unsorted or if out-of-order access
+//! is preferred (e.g. when analyzing alignments, which are often not in
+//! order).
 //!
 //! ```rust
 //! use bio::io::om::bnx;

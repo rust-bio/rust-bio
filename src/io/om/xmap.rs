@@ -6,7 +6,8 @@
 //!
 //! ## Reader
 //!
-//! In this example, we parse a BNX file, iterate over its records. and output some statistics.
+//! In this example, we parse a XMAP file, iterate over its records. and output
+//! some statistics.
 //!
 //! ```rust
 //! use bio::io::om::xmap;
@@ -26,6 +27,9 @@
 //! ## Container
 //!
 //! If feasible, we can also build a container over the content of a XMAP file.
+//!
+//! This can be advantageous if out-of-order access is preferred or if the
+//! users only wants to fetch alignments spanning a specific region.
 //!
 //! ```rust
 //! use bio::io::om::xmap;
@@ -287,7 +291,7 @@ impl<R: BufRead> Iterator for Reader<R> {
     }
 }
 
-/// A container with CMAP header and records stored in B-trees.
+/// A container with XMAP header and records stored in B-trees.
 ///
 /// Each tree corresponds to one reference contig and is ordered by start position.
 #[derive(Debug, Getters, new, PartialEq)]

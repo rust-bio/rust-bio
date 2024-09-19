@@ -6,7 +6,8 @@
 //!
 //! ## Reader
 //!
-//! In this example, we parse a CMAP file, iterate over its records. and output some statistics.
+//! In this example, we parse a CMAP file, iterate over its records. and output
+//! some statistics.
 //!
 //! ```rust
 //! use bio::io::om::cmap;
@@ -29,6 +30,9 @@
 //! ## Container
 //!
 //! If feasible, we can also build a container over the content of a CMAP file.
+//!
+//! This can be advantageous if out-of-order access is preferred, which is
+//! often the case for CMAPs.
 //!
 //! ```rust
 //! use bio::io::om::cmap;
