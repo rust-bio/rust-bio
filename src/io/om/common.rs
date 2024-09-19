@@ -29,6 +29,7 @@ pub enum Orientation {
 /// * `InvalidOrientation` - Field `ScanDirection` (for BNX) or `Orientation` (for CMAP) cannot be converted into valid [Orientation](enum.Orientation.html).
 /// * `InvalidCigar` - Field `HitEnum` in XMAP does not contain a valid CIGAR.
 /// * `InvalidAlignment` - Field `Alignment` in XMAP is formatted incorrectly.
+/// * `InvalidKeyAccess` - Key is invalid and cannot be accessed.
 #[derive(Clone, Debug, Eq, thiserror::Error, PartialEq)]
 pub enum Error<'a> {
     #[error("Invalid Path: Cannot locate specified path.")]
@@ -75,6 +76,9 @@ pub enum Error<'a> {
 
     #[error("InvalidData: Alignment is not formatted correctly.")]
     InvalidAlignment,
+
+    #[error("InvalidKeyAccess: Key {0} does not exist and cannot be accessed.")]
+    InvalidKeyAccess(u32),
 }
 
 /// A helper trait to get next element from a split string.

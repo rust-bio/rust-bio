@@ -413,6 +413,14 @@ impl Container {
             })
             .collect::<HashMap<_, _>>()
     }
+
+    /// Returns record with given ID.
+    pub fn record(&self, id: u32) -> Result<&Record> {
+        if !self.molecules.contains_key(&id) {
+            bail!(Error::InvalidKeyAccess(id))
+        }
+        Ok(&self.molecules[&id])
+    }
 }
 
 #[cfg(test)]
@@ -1449,6 +1457,33 @@ mod tests {
         header.push(String::from("# Nickase Recognition Site 1:\tCTTAAG"));
 
         assert_eq!(container.header(), &header,)
+    }
+
+    #[test]
+    fn test_get_record_with_valid_key() {
+        let container = Container::from_path("tests/resources/valid_input.bnx").unwrap();
+        let meta_line = "0\t1\t134.5\t0.6\t5.3\t2\t1\t3\t-1\tTBA\t4\t5\t1";
+
+        let mut label_lines = Vec::new();
+        label_lines.push("1\t23.4\t42.6\t134.5");
+        label_lines.push("2\t23.5\t42.7\t134.4");
+        label_lines.push("QX11\t4.5\t7.3");
+        label_lines.push("QX21\t4.6\t7.4");
+        label_lines.push("QX12\t0.4\t0.8");
+        label_lines.push("QX22\t0.5\t0.9");
+
+        let rec = Record::from(&meta_line, label_lines).unwrap();
+        assert_eq!(container.record(1).unwrap(), &rec)
+    }
+
+    #[test]
+    fn test_get_record_with_invalid_key() {
+        let container = Container::from_path("tests/resources/valid_input.bnx").unwrap();
+        let res = container.record(17);
+        assert_eq!(
+            format!("{}", res.unwrap_err()),
+            "InvalidKeyAccess: Key 17 does not exist and cannot be accessed.",
+        )
     }
 
     #[test]

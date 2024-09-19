@@ -324,6 +324,14 @@ impl Container {
             })
             .collect::<HashMap<_, _>>()
     }
+
+    /// Returns record with given ID.
+    pub fn record(&self, id: u32) -> Result<&Record> {
+        if !self.contigs.contains_key(&id) {
+            bail!(Error::InvalidKeyAccess(id))
+        }
+        Ok(&self.contigs[&id])
+    }
 }
 
 #[cfg(test)]
@@ -1009,6 +1017,29 @@ mod tests {
         ));
 
         assert_eq!(container.header(), &header,)
+    }
+
+    #[test]
+    fn test_get_record_with_valid_key() {
+        let container = Container::from_path("tests/resources/valid_input.cmap").unwrap();
+        let mut label_lines = Vec::new();
+        label_lines.push("1\t248936424.0\t3\t1\t1\t4454.0\t1.0\t1\t1");
+        label_lines.push("1\t248936424.0\t3\t2\t1\t27579.0\t1.0\t1\t1");
+        label_lines.push("1\t248936424.0\t3\t3\t1\t98003.0\t1.0\t1\t1");
+        label_lines.push("1\t248936424.0\t3\t4\t1\t248936424.0\t1.0\t1\t0");
+
+        let rec = Record::from(label_lines).unwrap();
+        assert_eq!(container.record(1).unwrap(), &rec)
+    }
+
+    #[test]
+    fn test_get_record_with_invalid_key() {
+        let container = Container::from_path("tests/resources/valid_input.cmap").unwrap();
+        let res = container.record(17);
+        assert_eq!(
+            format!("{}", res.unwrap_err()),
+            "InvalidKeyAccess: Key 17 does not exist and cannot be accessed.",
+        )
     }
 
     #[test]
