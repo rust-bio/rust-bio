@@ -73,6 +73,7 @@ lazy_static! {
 pub struct Record {
     #[getset(get = "pub")]
     id: u32,
+    #[getset(get = "pub")]
     qry_id: u32,
     #[getset(get = "pub")]
     ref_id: u32,
