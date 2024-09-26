@@ -313,17 +313,16 @@ impl Container {
 
     /// Fetches an iterator over records contained in a given region in a contig.
     pub fn fetch(
-        &mut self,
+        &self,
         region_contig: u32,
         region_start: u64,
         region_end: u64,
     ) -> Result<impl Iterator<Item = &Rc<Record>>> {
-        let hits = match self.pos_trees.get_mut(&region_contig) {
+        let hits = match self.pos_trees.get(&region_contig) {
             Some(hit_tree) => hit_tree.range(region_start..region_end),
             None => Default::default(),
         };
-        let hits = hits.map(|(_, rec)| rec);
-        Ok(hits)
+        Ok(hits.map(|(_, rec)| rec))
     }
 }
 
@@ -963,7 +962,7 @@ mod tests {
 
     #[test]
     fn test_fetch_with_existing_contig() {
-        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
+        let container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
         let mut trees = Vec::new();
         let rec_1 = Record::from(
@@ -997,7 +996,7 @@ mod tests {
 
     #[test]
     fn test_fetch_without_existing_contig() {
-        let mut container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
+        let container = Container::from_path("tests/resources/valid_input.xmap").unwrap();
 
         assert_eq!(container.fetch(1, 43, 234).unwrap().count(), 0)
     }
