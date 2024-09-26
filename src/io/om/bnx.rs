@@ -416,7 +416,7 @@ impl Container {
     }
 
     /// Returns record with given ID.
-    pub fn record(&self, id: u32) -> Result<&Record> {
+    pub fn record(&self, id: u32) -> Result<&Rc<Record>> {
         if !self.molecules.contains_key(&id) {
             bail!(Error::InvalidKeyAccess(id))
         }
@@ -1476,7 +1476,7 @@ mod tests {
         label_lines.push("QX22\t0.5\t0.9");
 
         let rec = Record::from(&meta_line, label_lines).unwrap();
-        assert_eq!(container.record(1).unwrap(), &rec)
+        assert_eq!(container.record(1).unwrap(), &rec.into())
     }
 
     #[test]

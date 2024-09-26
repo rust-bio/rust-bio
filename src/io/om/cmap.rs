@@ -327,7 +327,7 @@ impl Container {
     }
 
     /// Returns record with given ID.
-    pub fn record(&self, id: u32) -> Result<&Record> {
+    pub fn record(&self, id: u32) -> Result<&Rc<Record>> {
         if !self.contigs.contains_key(&id) {
             bail!(Error::InvalidKeyAccess(id))
         }
@@ -1032,7 +1032,7 @@ mod tests {
         label_lines.push("1\t248936424.0\t3\t4\t1\t248936424.0\t1.0\t1\t0");
 
         let rec = Record::from(label_lines).unwrap();
-        assert_eq!(container.record(1).unwrap(), &rec)
+        assert_eq!(container.record(1).unwrap(), &rec.into())
     }
 
     #[test]
