@@ -51,6 +51,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use std::rc::Rc;
 
 use crate::io::om::common::Error;
 use crate::io::om::common::NextToErr;
@@ -193,7 +194,7 @@ impl Reader<BufReader<File>> {
                 Ok(rec) => rec,
                 Err(e) => return Err(e),
             };
-            inner.insert(*rec.id(), rec);
+            inner.insert(*rec.id(), rec.into());
         }
         Ok(Container::new(header, inner))
     }
@@ -298,7 +299,7 @@ impl<R: BufRead> Iterator for Reader<R> {
 pub struct Container {
     #[getset(get = "pub")]
     header: Vec<String>,
-    contigs: HashMap<u32, Record>,
+    contigs: HashMap<u32, Rc<Record>>,
 }
 
 impl Container {
@@ -887,7 +888,8 @@ mod tests {
                         occurrence: 0,
                     },
                 ]),
-            },
+            }
+            .into(),
         );
         contigs.insert(
             2,
@@ -918,7 +920,8 @@ mod tests {
                         occurrence: 0,
                     },
                 ]),
-            },
+            }
+            .into(),
         );
 
         assert_eq!(container.unwrap(), Container { header, contigs },);

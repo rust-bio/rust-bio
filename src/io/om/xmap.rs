@@ -50,6 +50,7 @@ use std::fmt;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use std::rc::Rc;
 
 use crate::io::om::common::Error;
 use crate::io::om::common::NextToErr;
@@ -255,7 +256,7 @@ impl<R: BufRead> Reader<R> {
             inner
                 .entry(*rec.ref_id())
                 .or_insert_with(BTreeMap::new)
-                .insert(*rec.ref_start() as u64, rec);
+                .insert(*rec.ref_start() as u64, rec.into());
         }
         Ok(Container::new(header, inner))
     }
@@ -299,8 +300,7 @@ impl<R: BufRead> Iterator for Reader<R> {
 pub struct Container {
     #[getset(get = "pub")]
     header: Vec<String>,
-    pos_trees: HashMap<u32, BTreeMap<u64, Record>>,
-    //     pos_trees: HashMap<u32, BTreeMap<u32, Rc<Record>>>,
+    pos_trees: HashMap<u32, BTreeMap<u64, Rc<Record>>>,
 }
 
 impl Container {
@@ -316,7 +316,7 @@ impl Container {
         region_contig: u32,
         region_start: u64,
         region_end: u64,
-    ) -> Result<impl Iterator<Item = &Record>> {
+    ) -> Result<impl Iterator<Item = &Rc<Record>>> {
         let hits = match self.pos_trees.get_mut(&region_contig) {
             Some(hit_tree) => hit_tree.range(region_start..region_end),
             None => Default::default(),
@@ -865,7 +865,8 @@ mod tests {
                 \t4M1D2M1D1M1D1M1D1M\t4654.13\t5736.0\t1\
                 \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)",
             )
-            .unwrap(),
+            .unwrap()
+            .into(),
         );
         tree_17.insert(
             5396 as u64,
@@ -874,7 +875,8 @@ mod tests {
                 \t1M1D1M1D6M\t3325.58\t2752.0\t1\
                 \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)",
             )
-            .unwrap(),
+            .unwrap()
+            .into(),
         );
         tree_17.insert(
             6152 as u64,
@@ -883,7 +885,8 @@ mod tests {
                  \t1M1D2M2D3M1D1M\t3465.77\t4594.0\t1\
                  \t(62,1)(64,2)(65,3)(68,4)(69,5)(70,6)(72,7)",
             )
-            .unwrap(),
+            .unwrap()
+            .into(),
         );
         let mut tree_22 = BTreeMap::new();
         tree_22.insert(
@@ -893,7 +896,8 @@ mod tests {
                 \t2M2D3M1D1M1D1M\t2456.18\t3283.0\t1\
                 \t(84,1)(85,2)(88,3)(89,4)(90,5)(92,6)(94,7)",
             )
-            .unwrap(),
+            .unwrap()
+            .into(),
         );
         let mut tree_map = HashMap::new();
         tree_map.insert(22 as u32, tree_22);
@@ -966,13 +970,15 @@ mod tests {
             \t4M1D2M1D1M1D1M1D1M\t4654.13\t5736.0\t1\
             \t(37,10)(38,9)(39,8)(40,7)(42,6)(43,5)(45,4)(47,3)(49,2)",
         )
-        .unwrap();
+        .unwrap()
+        .into();
         let rec_2 = Record::from(
             "37\t2\t17\t2617.12\t5942.70\t5396.0\t8148.0\t+\t4434\
             \t1M1D1M1D6M\t3325.58\t2752.0\t1\
             \t(22,1)(24,2)(26,3)(27,4)(28,5)(29,6)(30,7)(31,8)",
         )
-        .unwrap();
+        .unwrap()
+        .into();
         trees.push(&rec_1);
         trees.push(&rec_2);
 
