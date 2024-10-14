@@ -90,6 +90,7 @@ pub struct Record {
     qry_len: f64,
     ref_len: f64,
     label_channel: u8,
+    #[getset(get = "pub")]
     alignment: Vec<(u32, u32)>,
 }
 
