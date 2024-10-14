@@ -84,6 +84,7 @@ pub struct Record {
     ref_end: f64,
     orientation: Orientation,
     confidence: u32,
+    #[getset(get = "pub")]
     hit_enum: Vec<u8>,
     #[getset(get = "pub")]
     qry_len: f64,
