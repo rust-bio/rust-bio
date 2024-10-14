@@ -58,9 +58,10 @@ use crate::io::om::common::NextToErr;
 use crate::io::om::common::ParseToErr;
 
 /// A label as given in a CMAP file.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Getters, PartialEq)]
 pub struct Label {
     id: u32,
+    #[getset(get = "pub")]
     pos: f64,
     std_dev: f32,
     coverage: u32,
@@ -338,6 +339,14 @@ impl Container {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_get_label_pos() {
+        let label = Label {id: 5, pos: 12428.0, std_dev: 1.0, coverage: 1,
+            occurrence: 1};
+
+        assert_eq!(*label.pos(), 12428.0)
+    }
 
     #[test]
     fn test_create_new_record() {
