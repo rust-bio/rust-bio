@@ -342,8 +342,13 @@ mod tests {
 
     #[test]
     fn test_get_label_pos() {
-        let label = Label {id: 5, pos: 12428.0, std_dev: 1.0, coverage: 1,
-            occurrence: 1};
+        let label = Label {
+            id: 5,
+            pos: 12428.0,
+            std_dev: 1.0,
+            coverage: 1,
+            occurrence: 1,
+        };
 
         assert_eq!(*label.pos(), 12428.0)
     }
