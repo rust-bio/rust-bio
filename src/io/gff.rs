@@ -156,16 +156,29 @@ type GffRecordInner = (
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Phase(Option<u8>);
 
+impl Phase {
+    fn validate<T: Into<u8>>(p: T) -> Option<u8> {
+        let p = p.into();
+        if p < 3 {
+            Some(p)
+        } else {
+            None
+        }
+    }
+}
+
 impl From<u8> for Phase {
     /// Create a new Phase from a u8.
     ///
     /// # Example
     /// ```
     /// use bio::io::gff::Phase;
+    ///
     /// let p = Phase::from(0);
+    /// let p = Phase::from(3); // This will create Phase(None)
     /// ```
     fn from(p: u8) -> Self {
-        Phase(Some(p))
+        Phase(Self::validate(p))
     }
 }
 
@@ -175,11 +188,13 @@ impl From<Option<u8>> for Phase {
     /// # Example
     /// ```
     /// use bio::io::gff::Phase;
+    ///
     /// let p = Phase::from(Some(0));
-    /// let p_none = Phase::from(None);
+    /// let p = Phase::from(None);
+    /// let p = Phase::from(Some(3)); // This will create Phase(None)
     /// ```
     fn from(p: Option<u8>) -> Self {
-        Phase(p)
+        Phase(p.and_then(Self::validate))
     }
 }
 
@@ -190,8 +205,8 @@ impl TryInto<u8> for Phase {
     ///
     /// # Example
     /// ```
-    /// use std::convert::TryInto;
     /// use bio::io::gff::Phase;
+    /// use std::convert::TryInto;
     ///
     /// let p = Phase::from(0);
     /// let u: u8 = p.try_into().unwrap();
@@ -212,8 +227,8 @@ impl TryInto<Option<u8>> for Phase {
     ///
     /// # Example
     /// ```
-    /// use std::convert::TryInto;
     /// use bio::io::gff::Phase;
+    /// use std::convert::TryInto;
     ///
     /// let p = Phase::from(Some(0));
     /// let u: Option<u8> = p.try_into().unwrap();
@@ -237,16 +252,9 @@ impl<'de> Deserialize<'de> for Phase {
         match s.as_str() {
             "." => Ok(Phase(None)),
             _ => {
-                let p = u8::from_str(&s);
-                if let Ok(p) = p {
-                    if p < 3 {
-                        Ok(Phase(Some(p)))
-                    } else {
-                        Err(serde::de::Error::custom("Phase must be \".\", 0, 1, or 2"))
-                    }
-                } else {
-                    Err(serde::de::Error::custom("Phase must be \".\", 0, 1, or 2"))
-                }
+                let p = u8::from_str(&s)
+                    .map_err(|_| serde::de::Error::custom("Phase must be \".\", 0, 1, or 2"))?;
+                Ok(Phase(Self::validate(p)))
             }
         }
     }
