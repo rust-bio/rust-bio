@@ -169,6 +169,20 @@ impl From<u8> for Phase {
     }
 }
 
+impl From<Option<u8>> for Phase {
+    /// Create a new Phase from an Option<u8>.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::io::gff::Phase;
+    /// let p = Phase::from(Some(0));
+    /// let p_none = Phase::from(None);
+    /// ```
+    fn from(p: Option<u8>) -> Self {
+        Phase(p)
+    }
+}
+
 impl TryInto<u8> for Phase {
     type Error = ();
 
@@ -188,6 +202,29 @@ impl TryInto<u8> for Phase {
             Some(p) => Ok(p),
             None => Err(()),
         }
+    }
+}
+
+impl TryInto<Option<u8>> for Phase {
+    type Error = ();
+
+    /// Try to convert a Phase into an Option<u8>.
+    ///
+    /// # Example
+    /// ```
+    /// use std::convert::TryInto;
+    /// use bio::io::gff::Phase;
+    ///
+    /// let p = Phase::from(Some(0));
+    /// let u: Option<u8> = p.try_into().unwrap();
+    /// assert_eq!(u, Some(0));
+    ///
+    /// let p = Phase::from(None);
+    /// let u: Option<u8> = p.try_into().unwrap();
+    /// assert_eq!(u, None);
+    /// ```
+    fn try_into(self) -> Result<Option<u8>, Self::Error> {
+        Ok(self.0)
     }
 }
 
