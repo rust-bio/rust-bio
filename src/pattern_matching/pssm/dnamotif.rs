@@ -118,6 +118,7 @@ impl Motif for DNAMotif {
             b'D' => Ok(array![0.333, 0.333, 0.333, 0.0]),
             b'B' => Ok(array![0.0, 0.333, 0.333, 0.333]),
             b'N' => Ok(array![0.25, 0.25, 0.25, 0.25]),
+            b'0' => Ok(array![0.0, 0.0, 0.0, 0.0]),
             _ => Err(Error::InvalidMonomer { mono }),
         }
     }
