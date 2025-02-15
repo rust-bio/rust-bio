@@ -167,11 +167,17 @@ impl Alignment {
 pub struct Traceback {
     rows: usize,
     cols: usize,
-
+    // store these for xclipping and yclipping
+    best_in_last_row: usize,
+    best_in_last_col: usize,
+    best_overall: (usize, usize),
     // store the last visited node in topological order so that
     // we can index into the end of the alignment when we backtrack
     last: NodeIndex<usize>,
-    matrix: Vec<(Vec<i32>, usize, usize)>,
+    // start and end of each row in matrix for banded poa
+    start_end_vec: Vec<(usize, usize)>,
+    // score matrix
+    matrix: Vec<Vec<i32>>,
 }
 
 impl Traceback {
@@ -183,27 +189,36 @@ impl Traceback {
     /// * `n` - the length of the query sequence
     fn with_capacity(m: usize, n: usize) -> Self {
         // each row of matrix contain start end position and vec of traceback cells
-        let matrix: Vec<(Vec<i32>, usize, usize)> = vec![(vec![], 0, n + 1); m + 1];
+        let matrix: Vec<Vec<i32>> = vec![vec![]; m + 1];
+        let start_end_vec = vec![(0, n + 1); m + 1];
         Traceback {
             rows: m,
             cols: n,
+            best_in_last_row: 0,
+            best_in_last_col: 0,
+            best_overall: (0, 0),
             last: NodeIndex::new(0),
+            start_end_vec: start_end_vec,
             matrix,
         }
     }
     /// Populate the first row of the traceback matrix
-    fn initialize_scores(&mut self, gap_open: i32, yclip: i32) {
+    fn initialize_scores(&mut self, gap_open: i32) {
         for j in 0..=self.cols {
-            self.matrix[0].0.push(max((j as i32) * gap_open, yclip));
+            self.matrix[0].push((j as i32) * gap_open);
         }
-        self.matrix[0].0[0] = 0;
+        self.matrix[0][0] = 0;
     }
 
     fn new() -> Self {
         Traceback {
             rows: 0,
             cols: 0,
+            best_in_last_row: 0,
+            best_in_last_col: 0,
+            best_overall: (0, 0),
             last: NodeIndex::new(0),
+            start_end_vec: Vec::new(),
             matrix: Vec::new(),
         }
     }
@@ -214,36 +229,34 @@ impl Traceback {
         row: usize,
         size: usize,
         gap_open: i32,
-        xclip: i32,
         start: usize,
         end: usize,
     ) {
-        self.matrix[row].1 = start;
-        self.matrix[row].2 = end;
+        self.start_end_vec[row] = (start, end); 
         // when the row starts from the edge
         if start == 0 {
-            self.matrix[row].0.push(max((row as i32) * gap_open, xclip));
+            self.matrix[row].push((row as i32) * gap_open);
         } else {
-            self.matrix[row].0.push(MIN_SCORE);
+            self.matrix[row].push(MIN_SCORE);
         }
         for _ in 1..=size {
-            self.matrix[row].0.push(MIN_SCORE);
+            self.matrix[row].push(MIN_SCORE);
         }
     }
 
     fn set(&mut self, i: usize, j: usize, cell: i32) {
         // set the matrix cell if in band range
-        if !(self.matrix[i].1 > j || self.matrix[i].2 < j) {
-            let real_position = j - self.matrix[i].1;
-            self.matrix[i].0[real_position] = cell;
+        if !(self.start_end_vec[i].0 > j || self.start_end_vec[i].1 < j) {
+            let real_position = j - self.start_end_vec[i].0;
+            self.matrix[i][real_position] = cell;
         }
     }
 
     fn get(&self, i: usize, j: usize) -> i32 {
         // get the matrix cell if in band range else return the appropriate values
-        if !(self.matrix[i].1 > j || self.matrix[i].2 <= j || self.matrix[i].0.is_empty()) {
-            let real_position = j - self.matrix[i].1;
-            self.matrix[i].0[real_position]
+        if !(self.start_end_vec[i].0  > j || self.start_end_vec[i].1 <= j || self.matrix[i].is_empty()) {
+            let real_position = j - self.start_end_vec[i].0;
+            self.matrix[i][real_position]
         }
         // out of band
         else {
@@ -478,10 +491,14 @@ impl<F: MatchFunc> Poa<F> {
         let (m, n) = (self.graph.node_count(), query.len());
         // save score location of the max scoring node for the query for suffix clipping
         let mut traceback = Traceback::with_capacity(m, n);
-        traceback.initialize_scores(self.scoring.gap_open, self.scoring.yclip_prefix);
+        traceback.initialize_scores(self.scoring.gap_open);
         // construct the score matrix (O(n^2) space)
         let mut topo = Topo::new(&self.graph);
+        // required for semi global/ local alignment
+        let mut max_score_last_column = i32::MIN; // score, row
+        let mut max_score_overall = 0; // score, row, column
         while let Some(node) = topo.next(&self.graph) {
+            let mut max_score_last_row = i32::MIN; // score, column
             // reference base and index
             let r = self.graph.raw_nodes()[node.index()].weight; // reference base at previous index
             let i = node.index() + 1; // 0 index is for initialization so we start at 1
@@ -493,7 +510,6 @@ impl<F: MatchFunc> Poa<F> {
                 i,
                 n + 1,
                 self.scoring.gap_open,
-                self.scoring.xclip_prefix,
                 0,
                 n + 1,
             );
@@ -504,7 +520,7 @@ impl<F: MatchFunc> Poa<F> {
                 let max_cell = if prevs.is_empty() {
                         traceback.get(0, j - 1) + self.scoring.match_fn.score(r, *query_base)
                 } else {
-                    let mut max_cell = max(MIN_SCORE, self.scoring.xclip_prefix);
+                    let mut max_cell = MIN_SCORE;
                     for prev_node in &prevs {
                         let i_p: usize = prev_node.index() + 1; // index of previous node
                         max_cell = max(
@@ -515,73 +531,28 @@ impl<F: MatchFunc> Poa<F> {
                     max_cell
                 };
                 let score = max(max_cell, traceback.get(i, j - 1)+ self.scoring.gap_open);
+                if score > max_score_last_row {
+                    max_score_last_row = score;
+                    traceback.best_in_last_row = j;
+                }
+                if (score > max_score_last_column) && (query_index == query.len() - 1) {
+                    max_score_last_column = score;
+                    traceback.best_in_last_col = i;
+                }
+                if score > max_score_overall {
+                    max_score_overall = score;
+                    traceback.best_overall = (i, j);
+                }
                 traceback.set(i, j, score);
             }
         }
+        for i in 0..m + 1 {
+            for j in 0..n + 1 {
+                print!(" {:>4}", traceback.get(i, j));
+            }
+            println!("");
+        }
         traceback
-    }
-    // Recalculate the alignment using the traceback
-    // We need this in poa because we have to use the scoring 
-    pub fn recalculate_alignment(&self, traceback: &Traceback) -> Alignment {
-        // Get the alignment by backtracking and recalculating stuff
-        let mut ops: Vec<AlignmentOperation> = vec![];
-        // loop until we reach a node with no incoming
-        let mut curr_node = traceback.last.index() + 1;
-        let mut curr_query = traceback.cols;
-        let final_score = traceback.get(curr_node, curr_query);
-        loop {
-            let mut current_alignment_operation = AlignmentOperation::Match(None);
-            let current_cell_score = traceback.get(curr_node, curr_query);
-            let mut next_jump = 0;
-            let mut next_node = 0;
-            // check left if gap open difference with left
-            let prevs: Vec<NodeIndex<usize>> = self.graph.neighbors_directed(NodeIndex::new(curr_node - 1), Incoming).collect();
-            if current_cell_score == traceback.get(curr_node, curr_query - 1) + self.scoring.gap_open {
-                current_alignment_operation = AlignmentOperation::Ins(Some(curr_node - 1));
-                next_jump = curr_query - 1;
-                next_node = curr_node;
-            }
-            else {
-                for prev in &prevs {
-                    let prev_node = prev.index() + 1;
-                    // Top
-                    if current_cell_score == traceback.get(prev_node, curr_query) + self.scoring.gap_open {
-                        current_alignment_operation = AlignmentOperation::Del(None);
-                        next_jump = curr_query;
-                        next_node = prev_node;
-                    }
-                    // Diagonal
-                    else if (current_cell_score == traceback.get(prev_node, curr_query - 1) + self.scoring.match_fn.score(0, 0)) ||
-                    (current_cell_score == traceback.get(prev_node, curr_query - 1) + self.scoring.match_fn.score(0, 1)) {
-                        current_alignment_operation = AlignmentOperation::Match(Some((prev_node - 1, curr_node - 1)));
-                        next_jump = curr_query - 1;
-                        next_node = prev_node;
-                    }
-                }
-            }
-            // if out of band we can go left and if hit an edge go up
-            ops.push(current_alignment_operation);
-            // iterate to next
-            curr_query = next_jump;
-            curr_node = next_node;
-            // break point
-            if prevs.len() == 0 || curr_query <= 1 {
-                //if at end but not at start of query add bunch of ins(None)
-                if curr_query > 1 {
-                    for _ in 0..curr_query - 1 {
-                        ops.push(AlignmentOperation::Ins(None));
-                    }
-                }
-                ops.push(AlignmentOperation::Match(None));
-                //if at start of query but previous stuff available add bunch of del, this really doesnt matter though
-                break;
-            }
-        }
-        ops.reverse();
-        Alignment {
-            score: final_score as i32,
-            operations: ops
-        }
     }
     /// A global Needleman-Wunsch aligner on partially ordered graphs with banding.
     ///
@@ -594,7 +565,7 @@ impl<F: MatchFunc> Poa<F> {
         // dimensions of the traceback matrix
         let (m, n) = (self.graph.node_count(), query.len());
         let mut traceback = Traceback::with_capacity(m, n);
-        traceback.initialize_scores(self.scoring.gap_open, self.scoring.yclip_prefix);
+        traceback.initialize_scores(self.scoring.gap_open);
 
         traceback.set(
             0,
@@ -627,7 +598,6 @@ impl<F: MatchFunc> Poa<F> {
                 i,
                 (end - start) + 1,
                 self.scoring.gap_open,
-                self.scoring.xclip_prefix,
                 start,
                 end + 1,
             );
@@ -663,7 +633,99 @@ impl<F: MatchFunc> Poa<F> {
         }
         traceback
     }
+    // Recalculate the alignment using the traceback
+    // We need this in poa because we have to use the scoring 
+    pub fn recalculate_alignment(&self, traceback: &Traceback) -> Alignment {
+        // Get the alignment by backtracking and recalculating stuff
+        let mut ops: Vec<AlignmentOperation> = vec![];
+        // loop until we reach a node with no incoming
+        let mut last_node = traceback.last.index() + 1;
+        let mut last_query = traceback.cols;
+        let final_score = traceback.get(last_node, last_query);
 
+        let mut curr_node = traceback.last.index() + 1;
+        let mut curr_query = traceback.cols;
+        
+        let xy_score = traceback.get(traceback.best_overall.0, traceback.best_overall.1) + self.scoring.xclip_suffix + self.scoring.yclip_suffix;
+        let y_score = traceback.get(last_node, traceback.best_in_last_row) + self.scoring.yclip_suffix;
+        let x_score = traceback.get(traceback.best_in_last_col, last_query) + self.scoring.xclip_suffix;
+        println!("final score {}, xy score {}, x score {}, y score {}", final_score, xy_score, x_score, y_score);
+        // x and y suffix make sure not in last row and column
+        if (xy_score >= final_score) && (xy_score >= x_score) && (xy_score >= y_score) && (traceback.best_overall.1 != last_query) && (traceback.best_overall.0 != last_node) {
+            ops.push(AlignmentOperation::Xclip(traceback.best_overall.0));
+            ops.push(AlignmentOperation::Yclip(traceback.best_overall.1, last_query));
+            curr_node = traceback.best_overall.0;
+            curr_query = traceback.best_overall.1;
+        }
+        // y suffix
+        else if (y_score >= final_score) && (y_score >= x_score) && (traceback.best_in_last_row != last_query) {
+            ops.push(AlignmentOperation::Yclip(traceback.best_in_last_row, last_query));
+            curr_query = traceback.best_in_last_row;
+        }
+        // x suffix
+        else if (x_score >= final_score) && (traceback.best_in_last_col != last_node) {
+            ops.push(AlignmentOperation::Xclip(traceback.best_in_last_col));
+            curr_query = traceback.best_in_last_col;
+        }
+        loop {
+            let mut current_alignment_operation = AlignmentOperation::Match(None);
+            let current_cell_score = traceback.get(curr_node, curr_query);
+            let mut next_jump = curr_query;
+            let mut next_node = 1;
+            // check left if gap open difference with left
+            let prevs: Vec<NodeIndex<usize>> = self.graph.neighbors_directed(NodeIndex::new(curr_node - 1), Incoming).collect();
+            if current_cell_score == traceback.get(curr_node, curr_query - 1) + self.scoring.gap_open {
+                current_alignment_operation = AlignmentOperation::Ins(Some(curr_node - 1));
+                next_node = curr_node;
+                next_jump = curr_query - 1;
+            }
+            else {
+                for prev in &prevs {
+                    let prev_node = prev.index() + 1;
+                    // Top
+                    if current_cell_score == traceback.get(prev_node, curr_query) + self.scoring.gap_open {
+                        current_alignment_operation = AlignmentOperation::Del(None);
+                        next_jump = curr_query;
+                        next_node = prev_node;
+                    }
+                    // Diagonal
+                    else if (current_cell_score == traceback.get(prev_node, curr_query - 1) + self.scoring.match_fn.score(0, 0)) ||
+                    (current_cell_score == traceback.get(prev_node, curr_query - 1) + self.scoring.match_fn.score(0, 1)) {
+                        current_alignment_operation = AlignmentOperation::Match(Some((prev_node - 1, curr_node - 1)));
+                        next_node = prev_node;
+                        next_jump = curr_query - 1;
+                    }
+                }
+            }
+            ops.push(current_alignment_operation);
+            // iterate to next
+            curr_query = next_jump;
+            curr_node = next_node;
+            println!("current_query {} prev len {} ", curr_query, prevs.len());
+            // break point
+            if prevs.len() == 0 || curr_query == 0 {
+                //if at end but not at start of query add bunch of ins(None)
+                if prevs.len() == 0 {
+                    if curr_query > 0 {
+                        for _ in 0..curr_query {
+                            ops.push(AlignmentOperation::Ins(None));
+                        }
+                    }
+                }
+                else {
+                    //if at start of query but previous stuff available add bunch of del, this really doesnt matter thou
+                    ops.push(AlignmentOperation::Del(None));
+                }
+                break;
+            }
+        }
+        ops.reverse();
+        println!("{:?}", ops);
+        Alignment {
+            score: final_score as i32,
+            operations: ops
+        }
+    }
     /// Experimental: return sequence of traversed edges
     ///
     /// Only supports alignments for sequences that have already been added,
@@ -887,8 +949,7 @@ mod tests {
         aligner
             .global(b"TTGGTATGGGAA")
             .add_to_graph()
-            .global(b"TTGGTTTGCGAA")
-            .add_to_graph();
+            .global(b"TTGGTTTGCGAA");
         assert_eq!(aligner.alignment().score, 10);
     }
 
@@ -935,11 +996,11 @@ mod tests {
         let scoring = Scoring::from_scores(-2, -2, 2, -4);
         let mut aligner_banded = Aligner::new(scoring, s1);
         aligner_banded.global_banded(s2, 25).add_to_graph();
-        aligner_banded.global_banded(s3, 25).add_to_graph();
+        aligner_banded.global_banded(s3, 25);
         let scoring = Scoring::from_scores(-2, -2, 2, -4);
         let mut aligner_unbanded = Aligner::new(scoring, s1);
         aligner_unbanded.global(s2).add_to_graph();
-        aligner_unbanded.global(s3).add_to_graph();
+        aligner_unbanded.global(s3);
         let alignment_banded = aligner_banded.alignment();
         let alignment_unbanded = aligner_unbanded.alignment();
         for (i, operation) in alignment_banded.operations.iter().enumerate() {
