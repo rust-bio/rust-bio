@@ -654,7 +654,6 @@ impl<F: MatchFunc> Poa<F> {
 
         let mut curr_node = traceback.last.index() + 1;
         let mut curr_query = traceback.cols;
-        
         let xy_score = traceback.get(traceback.best_overall.0, traceback.best_overall.1)
             + self.scoring.xclip_suffix
             + self.scoring.yclip_suffix;
