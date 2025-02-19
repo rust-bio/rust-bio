@@ -233,7 +233,7 @@ impl Traceback {
         start: usize,
         end: usize,
     ) {
-        self.start_end_vec[row] = (start, end); 
+        self.start_end_vec[row] = (start, end);
         // when the row starts from the edge
         if start == 0 {
             self.matrix[row].push(max((row as i32) * gap_open, xclip_prefix));
@@ -255,7 +255,10 @@ impl Traceback {
 
     fn get(&self, i: usize, j: usize) -> i32 {
         // get the matrix cell if in band range else return the appropriate values
-        if !(self.start_end_vec[i].0  > j || self.start_end_vec[i].1 <= j || self.matrix[i].is_empty()) {
+        if !(self.start_end_vec[i].0 > j
+            || self.start_end_vec[i].1 <= j
+            || self.matrix[i].is_empty())
+        {
             let real_position = j - self.start_end_vec[i].0;
             self.matrix[i][real_position]
         }
@@ -506,7 +509,6 @@ impl<F: MatchFunc> Poa<F> {
         let mut max_score_overall = 0; // score, row, column
         while let Some(node) = topo.next(&self.graph) {
             let mut max_score_last_row = i32::MIN; // score, column
-            // reference base and index
             let r = self.graph.raw_nodes()[node.index()].weight; // reference base at previous index
             let i = node.index() + 1; // 0 index is for initialization so we start at 1
             traceback.last = node;
@@ -526,9 +528,8 @@ impl<F: MatchFunc> Poa<F> {
             // query base and its index in the DAG (traceback matrix rows)
             for (query_index, query_base) in query.iter().enumerate() {
                 let j = query_index + 1; // 0 index is initialized so we start at 1
-                // match and deletion scores for the first reference base
                 let max_cell = if prevs.is_empty() {
-                        traceback.get(0, j - 1) + self.scoring.match_fn.score(r, *query_base)
+                    traceback.get(0, j - 1) + self.scoring.match_fn.score(r, *query_base)
                 } else {
                     // get x clip min
                     let x_clip_min = traceback.get(0, j) + self.scoring.xclip_prefix;
@@ -537,12 +538,16 @@ impl<F: MatchFunc> Poa<F> {
                         let i_p: usize = prev_node.index() + 1; // index of previous node
                         max_cell = max(
                             max_cell,
-                            max(traceback.get(i_p, j - 1) + self.scoring.match_fn.score(r, *query_base), traceback.get(i_p, j) + self.scoring.gap_open)
+                            max(
+                                traceback.get(i_p, j - 1)
+                                        + self.scoring.match_fn.score(r, *query_base),
+                                traceback.get(i_p, j) + self.scoring.gap_open,
+                            ),
                         );
                     }
                     max_cell
                 };
-                let score = max(max_cell, traceback.get(i, j - 1)+ self.scoring.gap_open);
+                let score = max(max_cell, traceback.get(i, j - 1) + self.scoring.gap_open);
                 if score > max_score_last_row {
                     max_score_last_row = score;
                     traceback.best_in_last_row = j;
@@ -573,11 +578,7 @@ impl<F: MatchFunc> Poa<F> {
         let mut traceback = Traceback::with_capacity(m, n);
         traceback.initialize_scores(self.scoring.gap_open, self.scoring.yclip_prefix);
 
-        traceback.set(
-            0,
-            0,
-            0,
-        );
+        traceback.set(0,0,0);
 
         // construct the score matrix (O(n^2) space)
         // but this sucks, we want linear time!!!
@@ -621,16 +622,17 @@ impl<F: MatchFunc> Poa<F> {
                         let i_p: usize = prev_node.index() + 1; // index of previous node
                         max_cell = max(
                             max_cell,
-                            max(traceback.get(i_p, j - 1) + self.scoring.match_fn.score(r, *query_base), traceback.get(i_p, j) + self.scoring.gap_open
-                            )
+                            max(
+                                traceback.get(i_p, j - 1)
+                                        + self.scoring.match_fn.score(r, *query_base),
+                                traceback.get(i_p, j) + self.scoring.gap_open,
+                            ),
                         );
                     }
                     max_cell
                 };
 
-                let score = max(
-                    max_cell, traceback.get(i, j - 1)+ self.scoring.gap_open
-                );
+                let score = max(max_cell, traceback.get(i, j - 1) + self.scoring.gap_open);
                 if score > max_score_for_row {
                     max_scoring_j = j;
                     max_score_for_row = score;
@@ -641,7 +643,7 @@ impl<F: MatchFunc> Poa<F> {
         traceback
     }
     // Recalculate the alignment using the traceback
-    // We need this in poa because we have to use the scoring 
+    // We need this in poa because we have to use the scoring
     pub fn recalculate_alignment(&self, traceback: &Traceback) -> Alignment {
         // Get the alignment by backtracking and recalculating stuff
         let mut ops: Vec<AlignmentOperation> = vec![];
@@ -653,19 +655,34 @@ impl<F: MatchFunc> Poa<F> {
         let mut curr_node = traceback.last.index() + 1;
         let mut curr_query = traceback.cols;
         
-        let xy_score = traceback.get(traceback.best_overall.0, traceback.best_overall.1) + self.scoring.xclip_suffix + self.scoring.yclip_suffix;
-        let y_score = traceback.get(last_node, traceback.best_in_last_row) + self.scoring.yclip_suffix;
-        let x_score = traceback.get(traceback.best_in_last_col, last_query) + self.scoring.xclip_suffix;
+        let xy_score = traceback.get(traceback.best_overall.0, traceback.best_overall.1)
+            + self.scoring.xclip_suffix
+            + self.scoring.yclip_suffix;
+        let y_score =
+            traceback.get(last_node, traceback.best_in_last_row) + self.scoring.yclip_suffix;
+        let x_score =
+            traceback.get(traceback.best_in_last_col, last_query) + self.scoring.xclip_suffix;
         // x and y suffix make sure not in last row and column
-        if (xy_score >= final_score) && (xy_score >= x_score) && (xy_score >= y_score) && (traceback.best_overall.1 != last_query) && (traceback.best_overall.0 != last_node) {
+        if (xy_score >= final_score)
+            && (xy_score >= x_score)
+            && (xy_score >= y_score)
+            && (traceback.best_overall.1 != last_query)
+            && (traceback.best_overall.0 != last_node)
+        {
             ops.push(AlignmentOperation::Xclip(traceback.best_overall.0));
             ops.push(AlignmentOperation::Yclip(traceback.best_overall.1, last_query));
             curr_node = traceback.best_overall.0;
             curr_query = traceback.best_overall.1;
         }
         // y suffix
-        else if (y_score >= final_score) && (y_score >= x_score) && (traceback.best_in_last_row != last_query) {
-            ops.push(AlignmentOperation::Yclip(traceback.best_in_last_row, last_query));
+        else if (y_score >= final_score)
+            && (y_score >= x_score)
+            && (traceback.best_in_last_row != last_query)
+        {
+            ops.push(AlignmentOperation::Yclip(
+            traceback.best_in_last_row,
+            last_query,
+            ));
             curr_query = traceback.best_in_last_row;
         }
         // x suffix
@@ -679,7 +696,10 @@ impl<F: MatchFunc> Poa<F> {
             let mut next_jump = curr_query;
             let mut next_node = 1;
             // check left if gap open difference with left
-            let prevs: Vec<NodeIndex<usize>> = self.graph.neighbors_directed(NodeIndex::new(curr_node - 1), Incoming).collect();
+            let prevs: Vec<NodeIndex<usize>> = self
+                .graph
+                .neighbors_directed(NodeIndex::new(curr_node - 1), Incoming)
+                .collect();
             let mut jump_up_score = MIN_SCORE;
             let mut jump_diagonal_score = MIN_SCORE;
             let jump_left_score = traceback.get(curr_node, curr_query - 1) + self.scoring.gap_open;
@@ -687,47 +707,61 @@ impl<F: MatchFunc> Poa<F> {
                 current_alignment_operation = AlignmentOperation::Ins(Some(curr_node - 1));
                 next_node = curr_node;
                 next_jump = curr_query - 1;
-            }
-            else {
+            } else {
                 for prev in &prevs {
                     let prev_node = prev.index() + 1;
                     let diagonal_score = traceback.get(prev_node, curr_query - 1);
                     let top_score = traceback.get(prev_node, curr_query);
                     // Top
                     if current_cell_score == top_score + self.scoring.gap_open {
-                        jump_up_score = traceback.get(prev_node, curr_query) + self.scoring.gap_open;
+                        jump_up_score =
+                            traceback.get(prev_node, curr_query) + self.scoring.gap_open;
                         current_alignment_operation = AlignmentOperation::Del(None);
                         next_jump = curr_query;
                         next_node = prev_node;
                     }
                     // Diagonal mismatch
-                    else if current_cell_score == diagonal_score + self.scoring.match_fn.score(0, 1) {
-                        jump_diagonal_score = traceback.get(prev_node, curr_query - 1) + self.scoring.match_fn.score(0, 1);
-                        current_alignment_operation = AlignmentOperation::Match(Some((prev_node - 1, curr_node - 1)));
+                    else if current_cell_score
+                        == diagonal_score + self.scoring.match_fn.score(0, 1)
+                    {
+                        jump_diagonal_score = traceback.get(prev_node, curr_query - 1)
+                            + self.scoring.match_fn.score(0, 1);
+                        current_alignment_operation =
+                            AlignmentOperation::Match(Some((prev_node - 1, curr_node - 1)));
                         next_node = prev_node;
                         next_jump = curr_query - 1;
                     }
                     // Diagonal match
-                    else if current_cell_score == diagonal_score + self.scoring.match_fn.score(0, 0) {
-                        jump_diagonal_score = traceback.get(prev_node, curr_query - 1) + self.scoring.match_fn.score(0, 0);
-                        current_alignment_operation = AlignmentOperation::Match(Some((prev_node - 1, curr_node - 1)));
+                    else if current_cell_score
+                        == diagonal_score + self.scoring.match_fn.score(0, 0)
+                    {
+                        jump_diagonal_score = traceback.get(prev_node, curr_query - 1)
+                            + self.scoring.match_fn.score(0, 0);
+                        current_alignment_operation =
+                            AlignmentOperation::Match(Some((prev_node - 1, curr_node - 1)));
                         next_node = prev_node;
                         next_jump = curr_query - 1;
                     }
                 }
                 // Last node to avoid Match(None) which should never occur
                 if prevs.len() == 0 {
-                    // match 
-                    if current_cell_score == traceback.get(0, curr_query - 1) + self.scoring.match_fn.score(0, 0) {
+                    // match
+                    if current_cell_score ==
+                        traceback.get(0, curr_query - 1) + self.scoring.match_fn.score(0, 0)
+                    {
                         current_alignment_operation = AlignmentOperation::Match(None);
-                        jump_diagonal_score = traceback.get(0, curr_query - 1) + self.scoring.match_fn.score(0, 0);
+                        jump_diagonal_score =
+                            traceback.get(0, curr_query - 1) + self.scoring.match_fn.score(0, 0);
                         next_node = 1;
                         next_jump = curr_query - 1;
                     }
                     // mismatch
-                    if current_cell_score == traceback.get(0, curr_query - 1) + self.scoring.match_fn.score(0, 1) {
+                    if current_cell_score ==
+                        traceback.get(0, curr_query - 1) + self.scoring.match_fn.score(0, 1)
+                    {
                         current_alignment_operation = AlignmentOperation::Match(None);
-                        jump_diagonal_score = traceback.get(0, curr_query - 1) + self.scoring.match_fn.score(0, 1);
+                        jump_diagonal_score =
+                            traceback.get(0, curr_query - 1) + self.scoring.match_fn.score(0, 1);
                         next_node = 1;
                         next_jump = curr_query - 1;
                     }
@@ -758,19 +792,16 @@ impl<F: MatchFunc> Poa<F> {
                             if self.scoring.yclip_prefix > MIN_SCORE {
                                 ops.push(AlignmentOperation::Yclip(0, curr_query));
                                 break;
-                            }
-                            else {
+                            } else {
                                 ops.push(AlignmentOperation::Ins(None));
                             }
                         }
                     }
-                }
-                else {
+                } else {
                     //if at start of query but prev nodes available
                     if self.scoring.xclip_prefix > MIN_SCORE {
                         ops.push(AlignmentOperation::Xclip(0));
-                    }
-                    else {
+                    } else {
                         ops.push(AlignmentOperation::Del(None));
                     }
                 }
@@ -780,7 +811,7 @@ impl<F: MatchFunc> Poa<F> {
         ops.reverse();
         Alignment {
             score: final_score as i32,
-            operations: ops
+            operations: ops,
         }
     }
     /// Experimental: return sequence of traversed edges
