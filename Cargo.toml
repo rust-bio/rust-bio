@@ -51,7 +51,7 @@ enum-map = ">=0.6.4, <3"
 triple_accel = ">=0.3, <0.5"
 thiserror = "1"
 anyhow = "1"
-rand = ">=0.7.3, < 0.9"
+rand = ">=0.7.3, < 0.10"
 editdistancek = ">=1.0.1, <2"
 
 [dependencies.vec_map]
@@ -66,4 +66,4 @@ features = ["stable_graph"]
 [dev-dependencies]
 proptest = "1"
 tempfile = "3.1.0"
-rand = "0.8.3"
+rand = "0.9.0"
