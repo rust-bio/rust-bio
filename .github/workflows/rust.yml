@@ -81,7 +81,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --doc
+          args: --all --no-fail-fast
 
   Doctests:
     needs: Formatting
