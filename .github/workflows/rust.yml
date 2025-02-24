@@ -61,6 +61,7 @@ jobs:
           - build: stable
             os: ubuntu-latest
             rust: stable
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -81,6 +82,31 @@ jobs:
         with:
           command: test
           args: --all --no-fail-fast
+
+  Doctests:
+    needs: Formatting
+    runs-on: ubuntu-latest
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --doc
 
   MSRV:
     needs: Formatting
