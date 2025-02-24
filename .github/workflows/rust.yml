@@ -61,26 +61,31 @@ jobs:
           - build: stable
             os: ubuntu-latest
             rust: stable
+
+  Doctests:
+    needs: Formatting
+    runs-on: ubuntu-latest
+      
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ matrix.rust }}
+          toolchain: stable
           override: true
 
-      - name: Install ${{ matrix.rust }} toolchain
+      - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ matrix.rust }}
+          toolchain: stable
           override: true
 
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all --no-fail-fast
+          args: --doc
 
   MSRV:
     needs: Formatting
