@@ -3,6 +3,21 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [2.1.0](https://github.com/rust-bio/rust-bio/compare/v2.0.3...v2.1.0) (2025-02-24)
+
+
+### Features
+
+* Implementing From and TryInto for Phase ([#618](https://github.com/rust-bio/rust-bio/issues/618)) ([12dd1bd](https://github.com/rust-bio/rust-bio/commit/12dd1bd92e7d8a34aff43cbbffdc811e1e978dbf))
+
+
+### Dependencies
+
+* update itertools requirement from &gt;=0.8, &lt;0.14 to >=0.8, <0.15 ([#614](https://github.com/rust-bio/rust-bio/issues/614)) ([58d11cd](https://github.com/rust-bio/rust-bio/commit/58d11cd04a040699b6acebbb77d0a9bfb6cb381f))
+* update petgraph requirement from &gt;=0.4, &lt;0.7 to >=0.4, <0.8 ([#615](https://github.com/rust-bio/rust-bio/issues/615)) ([a8fff8d](https://github.com/rust-bio/rust-bio/commit/a8fff8d1083017b974d2bfa48d3e68135e4bf608))
+* update rand requirement from &gt;=0.7.3, &lt; 0.9 to >=0.7.3, < 0.10 ([#617](https://github.com/rust-bio/rust-bio/issues/617)) ([1ec607f](https://github.com/rust-bio/rust-bio/commit/1ec607f60ce10012f273535b8e97bb578e765d4f))
+* update statrs requirement from &gt;= 0.11, &lt; 0.18 to >= 0.11, < 0.19 ([#610](https://github.com/rust-bio/rust-bio/issues/610)) ([5d90a0d](https://github.com/rust-bio/rust-bio/commit/5d90a0d701f8a07c19762442a7a87f3a8152b456))
+
 ## [2.0.3](https://github.com/rust-bio/rust-bio/compare/v2.0.2...v2.0.3) (2024-09-11)
 
 
