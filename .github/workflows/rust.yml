@@ -62,6 +62,27 @@ jobs:
             os: ubuntu-latest
             rust: stable
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          override: true
+
+      - name: Install ${{ matrix.rust }} toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          override: true
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --doc
+
   Doctests:
     needs: Formatting
     runs-on: ubuntu-latest
