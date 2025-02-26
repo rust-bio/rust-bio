@@ -368,7 +368,7 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
             match_len += 1;
         }
 
-        for &a in pattern[i + 1..].iter() {
+        for &a in &pattern[i + 1..] {
             // forward extend interval
             let forward_interval = self.forward_ext(&interval, a);
 
@@ -519,7 +519,7 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
         // then c(T) = A, c(G) = C, c(C) = G, N, c(A) = T, ...
         // Hence, we calculate lower revcomp bounds by iterating over
         // symbols and updating from previous one.
-        for &b in b"$TGCNAtgcna".iter() {
+        for &b in b"$TGCNAtgcna" {
             l += s;
             o = if interval.lower == 0 {
                 0
@@ -557,6 +557,9 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
     /// I.e., let T be the original text and R be its reverse complement.
     /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
     /// T1$R1$T2$R2$T3$R3$.
+    ///
+    /// # Safety
+    ///
     /// It is unsafe to construct an FMD index from an FM index that is not built on the DNA alphabet.
     pub unsafe fn from_fmindex_unchecked(
         fmindex: FMIndex<DBWT, DLess, DOcc>,
@@ -723,8 +726,8 @@ mod tests {
             let pattern = b"ATTGGGG";
             let intervals = fmdindex.all_smems(pattern, 0);
             assert_eq!(intervals.len(), 2);
-            let solutions = vec![[0, 14, 0, 3], [4, 9, 3, 4]];
-            for (i, interval) in intervals.iter().enumerate() {
+            let solutions = [[0, 14, 0, 3], [4, 9, 3, 4]];
+            for (interval, &solution) in intervals.iter().zip(solutions.iter()) {
                 let forward_positions = interval.0.forward().occ(&sa);
                 let revcomp_positions = interval.0.revcomp().occ(&sa);
                 let pattern_position = interval.1;
@@ -736,7 +739,7 @@ mod tests {
                         pattern_position,
                         smem_len
                     ],
-                    solutions[i]
+                    solution
                 );
             }
         }

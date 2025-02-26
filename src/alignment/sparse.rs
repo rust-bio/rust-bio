@@ -77,7 +77,10 @@ pub fn lcskpp(matches: &[(u32, u32)], k: usize) -> SparseAlignmentResult {
 
     // incoming matches must be sorted to let us find the predecessor kmers by binary search.
     for i in 1..matches.len() {
-        assert!(matches[i - 1] < matches[i]);
+        assert!(
+            matches[i - 1] < matches[i],
+            "incoming matches must be sorted."
+        );
     }
 
     let mut events: Vec<(u32, u32, u32)> = Vec::new();
@@ -198,16 +201,21 @@ pub fn sdpkpp(
     }
 
     let k = k as u32;
-    if gap_open > 0 || gap_extend > 0 {
-        panic!("gap parameters cannot be positive")
-    }
+    assert!(
+        gap_open <= 0 && gap_extend <= 0,
+        "gap parameters cannot be positive"
+    );
     let _gap_open = (-gap_open) as u32;
     let _gap_extend = (-gap_extend) as u32;
 
     // incoming matches must be sorted to let us find the predecessor kmers by binary search.
     for i in 1..matches.len() {
-        assert!(matches[i - 1] < matches[i]);
+        assert!(
+            matches[i - 1] < matches[i],
+            "incoming matches must be sorted"
+        );
     }
+    // TODO: use .is_sorted when it's stabilised https://doc.rust-lang.org/std/iter/trait.Iterator.html
 
     let mut events: Vec<(u32, u32, u32)> = Vec::new();
     let mut n = 0;
@@ -343,9 +351,7 @@ pub fn hash_kmers(seq: &[u8], k: usize) -> HashMapFx<&[u8], Vec<u32>> {
     let slc = seq;
     let mut set: HashMapFx<&[u8], Vec<u32>> = HashMapFx::default();
     for i in 0..(slc.len() + 1).saturating_sub(k) {
-        set.entry(&slc[i..i + k])
-            .or_insert_with(Vec::new)
-            .push(i as u32);
+        set.entry(&slc[i..i + k]).or_default().push(i as u32);
     }
     set
 }
@@ -402,9 +408,11 @@ pub fn expand_kmer_matches(
     sorted_matches: &[(u32, u32)],
     allowed_mismatches: usize,
 ) -> Vec<(u32, u32)> {
-    // incoming matches must be sorted.
     for i in 1..sorted_matches.len() {
-        assert!(sorted_matches[i - 1] < sorted_matches[i]);
+        assert!(
+            sorted_matches[i - 1] < sorted_matches[i],
+            "incoming matches must be sorted"
+        );
     }
 
     let mut last_match_along_diagonal: HashMapFx<i32, (i32, i32)> = HashMapFx::default();
@@ -639,7 +647,7 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
     #[test]
     fn test_sdpkpp_tandem_repeat() {
         let k = 8;
-        let matches = super::find_kmer_matches(&QUERY_REPEAT, &TARGET_REPEAT, k);
+        let matches = super::find_kmer_matches(QUERY_REPEAT, TARGET_REPEAT, k);
         let res = super::sdpkpp(&matches, k, 1, -1, -1);
 
         // For debugging:
@@ -715,10 +723,7 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
         assert_eq!(
             expanded_matches,
-            (0..5)
-                .into_iter()
-                .map(|x| (x, x))
-                .collect::<Vec<(u32, u32)>>()
+            (0..5).map(|x| (x, x)).collect::<Vec<(u32, u32)>>()
         );
 
         let x = b"TTTTTTGGGCAAAAAA";
@@ -729,10 +734,7 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
         assert_eq!(
             expanded_matches,
-            (0..11)
-                .into_iter()
-                .map(|x| (x, x))
-                .collect::<Vec<(u32, u32)>>()
+            (0..11).map(|x| (x, x)).collect::<Vec<(u32, u32)>>()
         );
 
         let x = b"TTTTTTCCGCAAAAAA";
@@ -773,10 +775,7 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
         assert_eq!(
             expanded_matches,
-            (0..5)
-                .into_iter()
-                .map(|x| (x, x))
-                .collect::<Vec<(u32, u32)>>()
+            (0..5).map(|x| (x, x)).collect::<Vec<(u32, u32)>>()
         );
     }
 }

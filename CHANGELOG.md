@@ -3,6 +3,93 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [2.1.0](https://github.com/rust-bio/rust-bio/compare/v2.0.3...v2.1.0) (2025-02-24)
+
+
+### Features
+
+* Implementing From and TryInto for Phase ([#618](https://github.com/rust-bio/rust-bio/issues/618)) ([12dd1bd](https://github.com/rust-bio/rust-bio/commit/12dd1bd92e7d8a34aff43cbbffdc811e1e978dbf))
+
+
+### Dependencies
+
+* update itertools requirement from &gt;=0.8, &lt;0.14 to >=0.8, <0.15 ([#614](https://github.com/rust-bio/rust-bio/issues/614)) ([58d11cd](https://github.com/rust-bio/rust-bio/commit/58d11cd04a040699b6acebbb77d0a9bfb6cb381f))
+* update petgraph requirement from &gt;=0.4, &lt;0.7 to >=0.4, <0.8 ([#615](https://github.com/rust-bio/rust-bio/issues/615)) ([a8fff8d](https://github.com/rust-bio/rust-bio/commit/a8fff8d1083017b974d2bfa48d3e68135e4bf608))
+* update rand requirement from &gt;=0.7.3, &lt; 0.9 to >=0.7.3, < 0.10 ([#617](https://github.com/rust-bio/rust-bio/issues/617)) ([1ec607f](https://github.com/rust-bio/rust-bio/commit/1ec607f60ce10012f273535b8e97bb578e765d4f))
+* update statrs requirement from &gt;= 0.11, &lt; 0.18 to >= 0.11, < 0.19 ([#610](https://github.com/rust-bio/rust-bio/issues/610)) ([5d90a0d](https://github.com/rust-bio/rust-bio/commit/5d90a0d701f8a07c19762442a7a87f3a8152b456))
+
+## [2.0.3](https://github.com/rust-bio/rust-bio/compare/v2.0.2...v2.0.3) (2024-09-11)
+
+
+### Dependencies
+
+* update ndarray requirement from &gt;=0.15, &lt;0.16 to >=0.15, <0.17 ([#599](https://github.com/rust-bio/rust-bio/issues/599)) ([6f02382](https://github.com/rust-bio/rust-bio/commit/6f02382d67b7809f468b99101bd09409240edf4c))
+
+## [2.0.2](https://github.com/rust-bio/rust-bio/compare/v2.0.1...v2.0.2) (2024-09-11)
+
+
+### Bug Fixes
+
+* POA reverse edge fix ([#575](https://github.com/rust-bio/rust-bio/issues/575)) ([a212946](https://github.com/rust-bio/rust-bio/commit/a2129464ddb3c1d1fda5b6f842174c5dff4953d2))
+
+## [2.0.1](https://github.com/rust-bio/rust-bio/compare/v2.0.0...v2.0.1) (2024-07-22)
+
+
+### Bug Fixes
+
+* Add missing method to access phase of gff record ([#597](https://github.com/rust-bio/rust-bio/issues/597)) ([72910e8](https://github.com/rust-bio/rust-bio/commit/72910e8d537ac3f3de663aa1f22d9aae790b71eb))
+
+
+### Dependencies
+
+* update bit-set requirement from 0.5 to 0.8 ([#596](https://github.com/rust-bio/rust-bio/issues/596)) ([29a85fb](https://github.com/rust-bio/rust-bio/commit/29a85fb0110d02470cfab1766aad78dc471af2ab))
+* update statrs requirement from &gt;= 0.11, &lt; 0.17 to >= 0.11, < 0.18 ([#595](https://github.com/rust-bio/rust-bio/issues/595)) ([9c352c0](https://github.com/rust-bio/rust-bio/commit/9c352c071061269224c3d8797b129ade7833fa03))
+* update strum requirement from &gt;= 0.16, &lt; 0.26 to >= 0.16, < 0.27 ([#588](https://github.com/rust-bio/rust-bio/issues/588)) ([d53c9d1](https://github.com/rust-bio/rust-bio/commit/d53c9d1a930f5a39d2be8bf795768a9418de140d))
+
+## [2.0.0](https://github.com/rust-bio/rust-bio/compare/v1.6.0...v2.0.0) (2024-07-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* Refactor misleadingly named method io::gff::Record::frame to phase and improve typing ([#593](https://github.com/rust-bio/rust-bio/issues/593))
+
+### refactor
+
+* Refactor misleadingly named method io::gff::Record::frame to phase and improve typing ([#593](https://github.com/rust-bio/rust-bio/issues/593)) ([216d925](https://github.com/rust-bio/rust-bio/commit/216d925e323631d6c49a668460d1ca790347d4e7))
+
+
+### Bug Fixes
+
+* Fix clippy warnings ([#584](https://github.com/rust-bio/rust-bio/issues/584)) ([68791f3](https://github.com/rust-bio/rust-bio/commit/68791f3b10573b15ce066648c7c397e1700137ba))
+
+
+### Dependencies
+
+* update itertools requirement from &gt;=0.8, &lt;0.12 to >=0.8, <0.13 ([#562](https://github.com/rust-bio/rust-bio/issues/562)) ([a79e5c9](https://github.com/rust-bio/rust-bio/commit/a79e5c959d0e1234f41d1aaf19b5e6cc8d967615))
+* update itertools requirement from &gt;=0.8, &lt;0.13 to >=0.8, <0.14 ([#590](https://github.com/rust-bio/rust-bio/issues/590)) ([973ac0c](https://github.com/rust-bio/rust-bio/commit/973ac0c08c9f2f910cb7d28a50142bf2d3416729))
+* update multimap requirement from &gt;=0.6, &lt;0.10 to >=0.6, <0.11 ([#587](https://github.com/rust-bio/rust-bio/issues/587)) ([fe8f10c](https://github.com/rust-bio/rust-bio/commit/fe8f10c6da6f6802f15b959cb0c746b07e279da8))
+* update ordered-float requirement from 3.1 to 4.2 ([#565](https://github.com/rust-bio/rust-bio/issues/565)) ([3b87ecd](https://github.com/rust-bio/rust-bio/commit/3b87ecdc8395df4ac4814cdd64a7b3952fc3eb82))
+* update strum_macros requirement from &gt;= 0.16, &lt; 0.26 to >= 0.16, < 0.27 ([#586](https://github.com/rust-bio/rust-bio/issues/586)) ([9912528](https://github.com/rust-bio/rust-bio/commit/99125281548cb07fe884b5c9cc79f6a8fa1197ae))
+
+## [1.6.0](https://www.github.com/rust-bio/rust-bio/compare/v1.5.0...v1.6.0) (2024-02-07)
+
+
+### Features
+
+* POA semi-global, local, and custom alignment ([#569](https://www.github.com/rust-bio/rust-bio/issues/569)) ([440cb1c](https://www.github.com/rust-bio/rust-bio/commit/440cb1cef04d76b779e24bc298dca206bde16d05))
+
+## [1.5.0](https://www.github.com/rust-bio/rust-bio/compare/v1.4.0...v1.5.0) (2023-12-09)
+
+
+### Features
+
+* Add pretty output for poa ([#563](https://www.github.com/rust-bio/rust-bio/issues/563)) ([8b8eea6](https://www.github.com/rust-bio/rust-bio/commit/8b8eea659ceab06242bd437a3cfa1035e01c15fb))
+
+
+### Bug Fixes
+
+* minimum ndarray version is 0.15 ([#558](https://www.github.com/rust-bio/rust-bio/issues/558)) ([2e3aff0](https://www.github.com/rust-bio/rust-bio/commit/2e3aff0b58a4b3b3d758b50174e387fa03cffbb1))
+
 ## [1.4.0](https://www.github.com/rust-bio/rust-bio/compare/v1.3.1...v1.4.0) (2023-09-12)
 
 

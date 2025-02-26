@@ -228,7 +228,7 @@ where
             && (peq[last_block + 1].peq[a as usize] & T::one() == T::one() || carry < 0)
         {
             last_block += 1;
-            self.add_state(-carry as i8);
+            self.add_state(-carry);
             advance_block(&mut self.states[last_block], &peq[last_block], a, carry);
         } else {
             while last_block > 0 && self.states[last_block].dist >= max_dist + w {

@@ -245,9 +245,6 @@ extern crate serde_derive;
 #[macro_use]
 extern crate strum_macros;
 
-#[macro_use]
-extern crate getset;
-
 #[cfg(feature = "phylogeny")]
 #[macro_use]
 extern crate pest_derive;
