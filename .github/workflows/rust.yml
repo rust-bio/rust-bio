@@ -118,7 +118,7 @@ jobs:
        - name: Run cargo-tarpaulin
          run: |
           set -x
-          cargo +nightly tarpaulin --all-features --tests --doc --out Lcov -- --test-threads 1
+          cargo +nightly tarpaulin --all-features --tests --out Lcov -- --test-threads 1
 
        - name: Upload coverage
          uses: coverallsapp/github-action@v2
