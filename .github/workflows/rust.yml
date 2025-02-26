@@ -118,7 +118,6 @@ jobs:
        - name: Run cargo-tarpaulin
          run: |
           set -x
-          cargo install cargo-tarpaulin
           cargo +nightly tarpaulin --all-features --tests --doc --out Lcov -- --test-threads 1
 
        - name: Upload coverage
