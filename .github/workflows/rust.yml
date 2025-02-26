@@ -11,13 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          override: true
           components: rustfmt
 
       - name: Check format
@@ -27,19 +26,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          override: true
           components: clippy
 
       - name: Lint with clippy
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: RUSTFLAGS="-Dwarnings" cargo clippy --all-features --all-targets -- -Dclippy::all -Dunused_imports
 
   Testing:
     needs: Formatting
@@ -64,49 +60,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-          override: true
+        uses: actions/checkout@v4
 
       - name: Install ${{ matrix.rust }} toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.rust }}
-          override: true
 
       - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all --no-fail-fast
-
-  Doctests:
-    needs: Formatting
-    runs-on: ubuntu-latest
-      
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --doc
+        run: |
+          cargo test --workspace --no-fail-fast --doc
 
   MSRV:
     needs: Formatting
@@ -115,13 +78,12 @@ jobs:
       MSRV_VERSION: 1.65.0
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install MSRV toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.MSRV_VERSION }}
-          override: true
 
       - name: check if README matches MSRV defined here
         run: grep $MSRV_VERSION README.md
@@ -130,7 +92,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all --no-fail-fast
+          args: --all --no-fail-fast --doc
 
   # TODO re-enable coverage estimation once we have removed the simd-dependency which is incompatible
   # with nightly. We need to wait for the stdlib simd implementation to stabilize, see
@@ -140,12 +102,12 @@ jobs:
   #   runs-on: ubuntu-latest
   #   steps:
   #     - name: Checkout repository
-  #       uses: actions/checkout@v2
+  #       uses: actions/checkout@v4
   #       with:
   #         submodules: recursive
 
   #     - name: Install nightly toolchain
-  #       uses: actions-rs/toolchain@v1
+  #       uses: dtolnay/rust-toolchain@stable
   #       with:
   #         toolchain: nightly
   #         override: true
