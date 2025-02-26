@@ -101,6 +101,9 @@ jobs:
   Coverage:
      needs: Formatting
      runs-on: ubuntu-latest
+     container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
      steps:
        - name: Checkout repository
          uses: actions/checkout@v4
@@ -110,10 +113,9 @@ jobs:
        - name: Install nightly toolchain
          uses: dtolnay/rust-toolchain@stable
          with:
-           toolchain: nightly
-           override: true
+           toolchain: stable
 
-       - name: Runun cargo-tarpaulin
+       - name: Run cargo-tarpaulin
          run: |
           set -x
           cargo install cargo-tarpaulin
