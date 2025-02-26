@@ -113,13 +113,13 @@ jobs:
        - name: Install nightly toolchain
          uses: dtolnay/rust-toolchain@stable
          with:
-           toolchain: stable
+           toolchain: nightly
 
        - name: Run cargo-tarpaulin
          run: |
           set -x
           cargo install cargo-tarpaulin
-          cargo tarpaulin --all-features --tests --doc --out Lcov -- --test-threads 1
+          cargo +nightly tarpaulin --all-features --tests --doc --out Lcov -- --test-threads 1
 
        - name: Upload coverage
          uses: coverallsapp/github-action@v2
