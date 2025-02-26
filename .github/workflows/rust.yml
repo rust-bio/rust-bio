@@ -8,7 +8,7 @@ on:
 
 jobs:
   Formatting:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -69,7 +69,7 @@ jobs:
 
       - name: Run tests
         run: |
-          cargo test --workspace --no-fail-fast --doc
+          cargo test --no-fail-fast
 
   MSRV:
     needs: Formatting
@@ -92,7 +92,8 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all --no-fail-fast --doc
+          run:
+            cargo test --no-fail-fast
 
   # TODO re-enable coverage estimation once we have removed the simd-dependency which is incompatible
   # with nightly. We need to wait for the stdlib simd implementation to stabilize, see
