@@ -68,7 +68,7 @@
 //! let y = b"AAAAACGTACGTACGTGTGCATCATCATGTGCGTATCATAGATAGATGTAGATGATCCACAGTAAAA";
 //! let mut aligner = Aligner::with_capacity_and_scoring(x.len(), y.len(), scoring, k, w);
 //! let alignment = aligner.custom(x, y);
-//! println!("{}", alignment.pretty(x, y));
+//! println!("{}", alignment.pretty(x, y, 80));
 //! assert_eq!(alignment.score, 49);
 //! let mut correct_ops = Vec::new();
 //! correct_ops.push(Yclip(4));
@@ -108,6 +108,7 @@ const DEFAULT_MATCH_SCORE: i32 = 2;
 /// in the band is less than MAX_CELLS (currently set to 10 million), otherwise it returns an
 /// empty alignment
 #[allow(non_snake_case)]
+#[derive(Default, Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub struct Aligner<F: MatchFunc> {
     S: [Vec<i32>; 2],
     I: [Vec<i32>; 2],
@@ -305,7 +306,7 @@ impl<F: MatchFunc> Aligner<F> {
         y: TextSlice<'_>,
         matches: &[(u32, u32)],
     ) -> Alignment {
-        self.band = Band::create_with_matches(x, y, self.k, self.w, &self.scoring, &matches);
+        self.band = Band::create_with_matches(x, y, self.k, self.w, &self.scoring, matches);
         self.compute_alignment(x, y)
     }
 
@@ -1029,13 +1030,13 @@ trait MatchPair {
 impl MatchPair for (u32, u32) {
     fn continues(&self, p: Option<(u32, u32)>) -> bool {
         match p {
-            Some(_p) => (self.0 == _p.0 + 1 && self.1 == _p.1 + 1),
+            Some(_p) => self.0 == _p.0 + 1 && self.1 == _p.1 + 1,
             None => false,
         }
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Default, Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 struct Band {
     rows: usize,
     cols: usize,
@@ -1261,7 +1262,7 @@ impl Band {
                     // Band to lower right corner
                     let rows = self.rows as u32;
                     let cols = self.cols as u32;
-                    self.add_gap((r as u32, c as u32), (rows as u32, cols as u32), w);
+                    self.add_gap((r as u32, c as u32), (rows, cols), w);
                 }
             }
         }
@@ -1316,7 +1317,7 @@ impl Band {
             scoring.gap_open,
             scoring.gap_extend,
         );
-        Band::create_from_match_path(x, y, k, w, scoring, &res.path, &matches)
+        Band::create_from_match_path(x, y, k, w, scoring, &res.path, matches)
     }
 
     fn create_from_match_path<F: MatchFunc>(
@@ -1794,7 +1795,7 @@ mod banded {
         let mut aligner = banded::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score, 10, 10);
         let alignment = aligner.global(x, y);
 
-        println!("aln:\n{}", alignment.pretty(x, y));
+        println!("aln:\n{}", alignment.pretty(x, y, 80));
         assert_eq!(
             alignment.operations,
             [Match, Match, Match, Ins, Ins, Ins, Match, Match, Match]
@@ -1809,7 +1810,7 @@ mod banded {
         let mut aligner = banded::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score, 10, 10);
         let alignment = aligner.local(x, y);
 
-        println!("aln:\n{}", alignment.pretty(x, y));
+        println!("aln:\n{}", alignment.pretty(x, y, 80));
         assert_eq!(alignment.x_aln_len(), 0);
         assert_eq!(alignment.y_aln_len(), 0);
     }
@@ -1822,7 +1823,7 @@ mod banded {
         let mut aligner = banded::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score, 10, 10);
         let alignment = aligner.global(x, y);
 
-        println!("aln:\n{}", alignment.pretty(x, y));
+        println!("aln:\n{}", alignment.pretty(x, y, 80));
 
         let mut correct = Vec::new();
         correct.extend(repeat(Match).take(11));
@@ -1866,7 +1867,7 @@ mod banded {
         let mut aligner = banded::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score, 10, 10);
         let alignment = aligner.global(x, y);
 
-        println!("\naln:\n{}", alignment.pretty(x, y));
+        println!("\naln:\n{}", alignment.pretty(x, y, 80));
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(
@@ -1968,7 +1969,7 @@ mod banded {
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
         let mut aligner = banded::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score, 10, 10);
         let alignment = aligner.global(x, y);
-        println!("\naln:\n{}", alignment.pretty(x, y));
+        println!("\naln:\n{}", alignment.pretty(x, y, 80));
 
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
@@ -1992,7 +1993,7 @@ mod banded {
         let mut aligner = banded::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score, 10, 10);
         let alignment = aligner.global(x, y);
 
-        println!("\naln:\n{}", alignment.pretty(x, y));
+        println!("\naln:\n{}", alignment.pretty(x, y, 80));
 
         println!("score:{}", alignment.score);
         assert_eq!(alignment.score, -9);
@@ -2014,7 +2015,7 @@ mod banded {
         let score = |a: u8, b: u8| if a == b { 1i32 } else { -1i32 };
         let mut aligner = banded::Aligner::with_capacity(x.len(), y.len(), -5, -1, &score, 10, 10);
         let alignment = aligner.global(x, y);
-        println!("\naln:\n{}", alignment.pretty(x, y));
+        println!("\naln:\n{}", alignment.pretty(x, y, 80));
 
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
@@ -2168,7 +2169,7 @@ mod banded {
         let mut aligner = banded::Aligner::with_scoring(scoring, 10, 10);
         let alignment = aligner.custom(x, y);
 
-        println!("{}", alignment.pretty(x, y));
+        println!("{}", alignment.pretty(x, y, 80));
         assert_eq!(alignment.score, 7);
     }
 

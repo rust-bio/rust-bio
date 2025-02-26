@@ -2,7 +2,9 @@ use crate::pattern_matching::myers::{BitVec, DistType};
 use num_traits::ToPrimitive;
 
 /// The current algorithm state.
-#[derive(Clone, Default, Debug)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub(crate) struct State<T, D>
 where
     T: BitVec,
@@ -221,6 +223,7 @@ impl<T: BitVec> $Myers {
 }
 
 /// Iterator over pairs of end positions and distance of matches.
+#[derive(Clone, Debug)]
 pub struct Matches<'a, T, C, I>
 where
     T: BitVec,
@@ -274,6 +277,7 @@ where
 
 /// Iterator over tuples of starting position, end position and distance of matches. In addition,
 /// methods for obtaining the hit alignment path are provided.
+#[derive(Debug)]
 pub struct FullMatches<'a, T, C, I>
 where
     T: BitVec,
@@ -468,6 +472,7 @@ where
 
 /// Iterator over tuples of end position and distance of matches. In addition,
 /// methods for obtaining the hit alignment path are provided.
+#[derive(Debug)]
 pub struct LazyMatches<'a, T, C, I>
 where
     T: BitVec,

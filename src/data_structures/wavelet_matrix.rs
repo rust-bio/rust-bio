@@ -33,7 +33,7 @@ const DNA2INT: [u8; 128] = [
     0, 0, 0, 0, 0, 0, 0, 0,
 ]; // 120
 
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct WaveletMatrix {
     width: usize,  // levels[0].len()
     height: usize, // zeros.len() == levels.len()
@@ -42,7 +42,7 @@ pub struct WaveletMatrix {
 }
 
 fn build_partlevel(
-    vals: &Vec<u8>,
+    vals: &[u8],
     shift: u8,
     next_zeros: &mut Vec<u8>,
     next_ones: &mut Vec<u8>,
@@ -69,7 +69,7 @@ impl WaveletMatrix {
         let width = text.len();
         let height: usize = 3; // hardcoded for alphabet size <= 8 (ACGTN$)
 
-        let mut curr_zeros: Vec<u8> = text.to_vec().clone();
+        let mut curr_zeros: Vec<u8> = text.to_vec();
         let mut curr_ones: Vec<u8> = Vec::new();
 
         let mut zeros: Vec<u64> = Vec::new();
@@ -120,22 +120,21 @@ impl WaveletMatrix {
     fn prank(&self, level: usize, p: u64, val: u8) -> u64 {
         if p == 0 {
             0
+        } else if val == 0 {
+            self.levels[level].rank_0(p - 1).unwrap()
         } else {
-            if val == 0 {
-                self.levels[level].rank_0(p - 1).unwrap()
-            } else {
-                self.levels[level].rank_1(p - 1).unwrap()
-            }
+            self.levels[level].rank_1(p - 1).unwrap()
         }
     }
 
     /// Compute the number of occurrences of symbol val in the original text up to position p (inclusive).
     /// Complexity O(1).
     pub fn rank(&self, val: u8, p: u64) -> u64 {
-        if self.check_overflow(p) {
-            panic!("Invalid p (it must be in range 0..wm_size-1");
-        }
-        let height = self.height as usize;
+        assert!(
+            !self.check_overflow(p),
+            "Invalid p (it must be in range 0..wm_size-1"
+        );
+        let height = self.height;
         let mut spos = 0;
         let mut epos = p + 1;
         for level in 0..height {
@@ -172,7 +171,7 @@ mod tests {
                 true, false, true, true, false, true, false, true, false, true, false, true,
             ],
         ];
-        let zeros = vec![6, 7, 5];
+        let zeros = [6, 7, 5];
 
         assert_eq!(wm.height, zeros.len());
         assert_eq!(wm.width, levels[0].len());
@@ -199,7 +198,7 @@ mod tests {
                 false, true, false, true, false, true, false, true, false, true, false, true,
             ],
         ];
-        let zeros = vec![8, 8, 6];
+        let zeros = [8, 8, 6];
 
         assert_eq!(wm.height, zeros.len());
         assert_eq!(wm.width, levels[0].len());
@@ -267,7 +266,7 @@ mod tests {
             vec![0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
         ];
 
-        let alphabet = vec![b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7'];
+        let alphabet = [b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7'];
         for (i, c) in alphabet.iter().enumerate() {
             for p in 0..text.len() {
                 assert_eq!(wm.rank(*c, p as u64), ranks[i][p]);
@@ -289,7 +288,7 @@ mod tests {
             vec![0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2],
         ];
 
-        let alphabet = vec![b'A', b'C', b'G', b'T', b'N', b'$'];
+        let alphabet = [b'A', b'C', b'G', b'T', b'N', b'$'];
         for (i, c) in alphabet.iter().enumerate() {
             for p in 0..text.len() {
                 assert_eq!(wm.rank(*c, p as u64), ranks[i][p]);

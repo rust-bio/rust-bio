@@ -21,6 +21,11 @@ pub fn alphabet() -> Alphabet {
     Alphabet::new(&b"ARNDCEQGHILKMFPSTWYVarndceqghilkmfpstwyv"[..])
 }
 
+/// Returns the IUPAC amino acid alphabet.
+pub fn iupac_alphabet() -> Alphabet {
+    Alphabet::new(b"ABCDEFGHIKLMNPQRSTVWXYZabcdefghiklmnpqrstvwxyz")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -43,5 +48,10 @@ mod tests {
     #[test]
     fn number_is_no_word() {
         assert!(!alphabet().is_word(b"42"));
+    }
+
+    #[test]
+    fn iupac_contains_iupac_chars() {
+        assert!(iupac_alphabet().is_word(b"XMN"));
     }
 }

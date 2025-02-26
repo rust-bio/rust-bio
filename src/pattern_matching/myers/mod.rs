@@ -122,7 +122,7 @@
 //! let mut matches = myers.find_all(text, 3);
 //! while matches.next_alignment(&mut aln) {
 //!     //println!("Hit fond in range: {}..{} (distance: {})", aln.ystart, aln.yend, aln.score);
-//!     //println!("{}", aln.pretty(pattern, text));
+//!     //println!("{}", aln.pretty(pattern, text, 80));
 //! }
 //! # }
 //! ```
@@ -192,7 +192,7 @@
 //!     "Best alignment at {}..{} (distance: {})",
 //!     aln.ystart, aln.yend, aln.score
 //! );
-//! println!("{}", aln.pretty(pattern, text));
+//! println!("{}", aln.pretty(pattern, text, 80));
 //! # }
 //! ```
 //!
@@ -255,13 +255,13 @@ mod tests {
     #[should_panic(expected = "Pattern too long")]
     fn test_pattern_too_long() {
         let pattern: Vec<_> = repeat(b'T').take(65).collect();
-        super::Myers::<u8>::new(&pattern);
+        super::Myers::<u8>::new(pattern);
     }
 
     #[test]
     #[should_panic(expected = "Pattern too long")]
     fn test_pattern_too_long_builder() {
         let pattern: Vec<_> = repeat(b'T').take(65).collect();
-        super::MyersBuilder::new().build_64(&pattern);
+        super::MyersBuilder::new().build_64(pattern);
     }
 }

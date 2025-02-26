@@ -6,9 +6,11 @@
 //! Handling log-probabilities. Log probabilities are an important tool to deal with probabilities
 //! in a numerically stable way, in particular when having probabilities close to zero.
 
+pub mod adaptive_integration;
 pub mod cdf;
 pub mod errors;
 
+use std::convert::TryFrom;
 use std::f64;
 use std::iter;
 use std::mem;
@@ -17,7 +19,7 @@ use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use itertools::Itertools;
 use itertools_num::linspace;
 use num_traits::{Float, Zero};
-use ordered_float::NotNan;
+use ordered_float::{FloatIsNan, NotNan};
 
 use crate::utils::FastExp;
 
@@ -65,14 +67,14 @@ custom_derive! {
         NewtypeSub(*),
         NewtypeMul(*),
         NewtypeDiv(*),
-        PartialEq,
-        PartialOrd,
+        Default,
         Copy,
         Clone,
+        PartialEq,
+        PartialOrd,
         Debug,
-        Default
     )]
-    #[derive(Serialize, Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct Prob(pub f64);
 }
 
@@ -117,13 +119,13 @@ custom_derive! {
         NewtypeDeref,
         NewtypeAdd(*),
         NewtypeSub(*),
-        PartialEq,
-        PartialOrd,
         Copy,
         Clone,
-        Debug
+        PartialEq,
+        PartialOrd,
+        Debug,
     )]
-    #[derive(Serialize, Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct LogProb(pub f64);
 }
 
@@ -149,13 +151,13 @@ custom_derive! {
         NewtypeDeref,
         NewtypeAdd(*),
         NewtypeSub(*),
-        PartialEq,
-        PartialOrd,
         Copy,
         Clone,
-        Debug
+        PartialEq,
+        PartialOrd,
+        Debug,
     )]
-    #[derive(Serialize, Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct PHREDProb(pub f64);
 }
 
@@ -343,6 +345,27 @@ impl LogProb {
         LogProb(*Self::ln_sum_exp(&probs) + width.ln() - ((n - 1) as f64).ln() - 3.0f64.ln())
     }
 
+    /// Integrate numerically stable over given log-space density and grid points. Uses the trapezoidal rule.
+    pub fn ln_trapezoidal_integrate_grid_exp<T, D>(mut density: D, grid: &[T]) -> LogProb
+    where
+        T: Copy + Add<Output = T> + Sub<Output = T> + Div<Output = T> + Mul<Output = T> + Float,
+        D: FnMut(usize, T) -> LogProb,
+        f64: From<T>,
+    {
+        let probs = grid
+            .iter()
+            .enumerate()
+            .dropping(1)
+            .map(|(i, v)| {
+                LogProb(
+                    *(density(i - 1, grid[i - 1]).ln_add_exp(density(i, *v))) - 2.0f64.ln()
+                        + f64::from(*v - grid[i - 1]).ln(),
+                )
+            })
+            .collect_vec();
+        LogProb::ln_sum_exp(&probs)
+    }
+
     fn scan_ln_add_exp(s: &mut LogProb, p: LogProb) -> Option<LogProb> {
         *s = s.ln_add_exp(p);
         Some(*s)
@@ -355,7 +378,7 @@ impl<'a> iter::Sum<&'a LogProb> for LogProb {
     }
 }
 
-impl<'a> iter::Sum<LogProb> for LogProb {
+impl iter::Sum<LogProb> for LogProb {
     fn sum<I: Iterator<Item = LogProb>>(iter: I) -> Self {
         iter.fold(LogProb(0.0), |a, b| a + b)
     }
@@ -379,9 +402,10 @@ impl From<NotNan<f64>> for LogProb {
     }
 }
 
-impl From<LogProb> for NotNan<f64> {
-    fn from(p: LogProb) -> NotNan<f64> {
-        NotNan::from(*p)
+impl TryFrom<LogProb> for NotNan<f64> {
+    type Error = FloatIsNan;
+    fn try_from(p: LogProb) -> Result<Self, Self::Error> {
+        NotNan::new(*p)
     }
 }
 
@@ -520,6 +544,14 @@ mod tests {
     fn test_trapezoidal_integrate() {
         let density = |_, _| LogProb(0.1f64.ln());
         let prob = LogProb::ln_trapezoidal_integrate_exp(density, 0.0, 10.0, 5);
+        assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon = 0.0000001);
+    }
+
+    #[test]
+    fn test_trapezoidal_integrate_grid() {
+        let grid: Vec<_> = linspace(0.0, 10.0, 5).collect();
+        let density = |_, _| LogProb(0.1f64.ln());
+        let prob = LogProb::ln_trapezoidal_integrate_grid_exp(density, &grid);
         assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon = 0.0000001);
     }
 

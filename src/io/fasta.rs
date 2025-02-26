@@ -11,7 +11,7 @@
 //!
 //! In this example, we parse a fasta file from stdin and compute some statistics
 //!
-//! ```
+//! ```no_run
 //! use bio::io::fasta;
 //! use std::io;
 //!
@@ -34,7 +34,7 @@
 //!
 //! We can also use a `while` loop to iterate over records.
 //! This is slightly faster than the `for` loop.
-//! ```
+//! ```no_run
 //! use bio::io::fasta;
 //! use std::io;
 //! let mut records = fasta::Reader::new(io::stdin()).records();
@@ -79,7 +79,7 @@
 //!
 //! In this example we filter reads from stdin on sequence length and write them to stdout
 //!
-//! ```
+//! ```no_run
 //! use bio::io::fasta;
 //! use bio::io::fasta::FastaRead;
 //! use std::io;
@@ -100,6 +100,34 @@
 //!             .expect("Error writing record.");
 //!     }
 //! }
+//! ```
+//!
+//! ## Index
+//!
+//! Random access to FASTA files is facilitated by [`Index`] and [`IndexedReader`]. The FASTA files
+//! must already be indexed with [`samtools faidx`](https://www.htslib.org/doc/faidx.html).
+//!
+//! In this example, we read in the first 10 bases of the sequence named "chr1".
+//!
+//! ```rust
+//! use bio::io::fasta::IndexedReader;
+//! // create dummy files
+//! const FASTA_FILE: &[u8] = b">chr1\nGTAGGCTGAAAA\nCCCC";
+//! const FAI_FILE: &[u8] = b"chr1\t16\t6\t12\t13";
+//!
+//! let seq_name = "chr1";
+//! let start: u64 = 0; // start is 0-based, inclusive
+//! let stop: u64 = 10; // stop is 0-based, exclusive
+//!                     // load the index
+//! let mut faidx = IndexedReader::new(std::io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
+//! // move the pointer in the index to the desired sequence and interval
+//! faidx
+//!     .fetch(seq_name, start, stop)
+//!     .expect("Couldn't fetch interval");
+//! // read the subsequence defined by the interval into a vector
+//! let mut seq = Vec::new();
+//! faidx.read(&mut seq).expect("Couldn't read the interval");
+//! assert_eq!(seq, b"GTAGGCTGAA");
 //! ```
 
 use std::cmp::min;
@@ -123,22 +151,35 @@ pub trait FastaRead {
 }
 
 /// A FASTA reader.
-#[derive(Debug)]
-pub struct Reader<R: io::Read> {
-    reader: io::BufReader<R>,
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+pub struct Reader<B> {
+    reader: B,
     line: String,
 }
 
-impl Reader<fs::File> {
+impl Reader<io::BufReader<fs::File>> {
     /// Read FASTA from given file path.
     pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
         fs::File::open(&path)
             .map(Reader::new)
             .with_context(|| format!("Failed to read fasta from {:#?}", path))
     }
+
+    /// Read FASTA from give file path and a capacity
+    pub fn from_file_with_capacity<P: AsRef<Path> + std::fmt::Debug>(
+        capacity: usize,
+        path: P,
+    ) -> anyhow::Result<Self> {
+        fs::File::open(&path)
+            .map(|file| Reader::with_capacity(capacity, file))
+            .with_context(|| format!("Failed to read fasta from {:#?}", path))
+    }
 }
 
-impl<R: io::Read> Reader<R> {
+impl<R> Reader<io::BufReader<R>>
+where
+    R: io::Read,
+{
     /// Create a new Fasta reader given an instance of `io::Read`.
     ///
     /// # Example
@@ -155,6 +196,52 @@ impl<R: io::Read> Reader<R> {
     pub fn new(reader: R) -> Self {
         Reader {
             reader: io::BufReader::new(reader),
+            line: String::new(),
+        }
+    }
+
+    /// Create a new Fasta reader given a capacity and an instance of `io::Read`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use std::io;
+    /// # use bio::io::fasta::Reader;
+    /// # fn main() {
+    /// # const fasta_file: &'static [u8] = b">id desc
+    /// # AAAA
+    /// # ";
+    /// let reader = Reader::with_capacity(16384, fasta_file);
+    /// # }
+    /// ```
+    pub fn with_capacity(capacity: usize, reader: R) -> Self {
+        Reader {
+            reader: io::BufReader::with_capacity(capacity, reader),
+            line: String::new(),
+        }
+    }
+}
+
+impl<B> Reader<B>
+where
+    B: io::BufRead,
+{
+    /// Create a new Fasta reader with an object that implements `io::BufRead`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use std::io;
+    /// # use bio::io::fasta::Reader;
+    /// # fn main() {
+    /// # const fasta_file: &'static [u8] = b">id desc
+    /// # AAAA
+    /// # ";
+    /// let buffer = io::BufReader::with_capacity(16384, fasta_file);
+    /// let reader = Reader::from_bufread(buffer);
+    /// # }
+    /// ```
+    pub fn from_bufread(bufreader: B) -> Self {
+        Reader {
+            reader: bufreader,
             line: String::new(),
         }
     }
@@ -179,7 +266,7 @@ impl<R: io::Read> Reader<R> {
     /// }
     /// # }
     /// ```
-    pub fn records(self) -> Records<R> {
+    pub fn records(self) -> Records<B> {
         Records {
             reader: self,
             error_has_occured: false,
@@ -187,9 +274,9 @@ impl<R: io::Read> Reader<R> {
     }
 }
 
-impl<R> FastaRead for Reader<R>
+impl<B> FastaRead for Reader<B>
 where
-    R: io::Read,
+    B: io::BufRead,
 {
     /// Read the next FASTA record into the given `Record`.
     /// An empty record indicates that no more records can be read.
@@ -258,7 +345,7 @@ where
 }
 
 /// A FASTA index as created by SAMtools (.fai).
-#[derive(Debug, Clone)]
+#[derive(Default, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Index {
     inner: Vec<IndexRecord>,
     name_to_rid: collections::HashMap<String, usize>,
@@ -284,7 +371,7 @@ impl Index {
 
     /// Open a FASTA index from a given file path.
     pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> anyhow::Result<Self> {
-        fs::File::open(&path)
+        fs::File::open(path)
             .map_err(csv::Error::from)
             .and_then(Self::new)
             .with_context(|| format!("Failed to read fasta index from {:#?}", path))
@@ -327,7 +414,7 @@ impl IndexedReader<fs::File> {
     /// present for FASTA ref.fasta.
     pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> anyhow::Result<Self> {
         let index = Index::with_fasta_file(path)?;
-        fs::File::open(&path)
+        fs::File::open(path)
             .map(|f| Self::with_index(f, index))
             .map_err(csv::Error::from)
             .with_context(|| format!("Failed to read fasta from {:#?}", path))
@@ -361,7 +448,34 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 
     /// Fetch an interval from the sequence with the given name for reading.
-    /// (stop position is exclusive).
+    ///
+    /// `start` and `stop` are 0-based and `stop` is exclusive - i.e. `[start, stop)`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use bio::io::fasta::IndexedReader;
+    /// // create dummy files
+    /// const FASTA_FILE: &[u8] = b">chr1\nGTAGGCTGAAAA\nCCCC";
+    /// const FAI_FILE: &[u8] = b"chr1\t16\t6\t12\t13";
+    ///
+    /// let seq_name = "chr1";
+    /// let start: u64 = 0; // start is 0-based, inclusive
+    /// let stop: u64 = 10; // stop is 0-based, exclusive
+    ///                     // load the index
+    /// let mut faidx = IndexedReader::new(std::io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
+    /// // move the pointer in the index to the desired sequence and interval
+    /// faidx
+    ///     .fetch(seq_name, start, stop)
+    ///     .expect("Couldn't fetch interval");
+    /// // read the subsequence defined by the interval into a vector
+    /// let mut seq = Vec::new();
+    /// faidx.read(&mut seq).expect("Couldn't read the interval");
+    /// assert_eq!(seq, b"GTAGGCTGAA");
+    /// ```
+    ///
+    /// # Errors
+    /// If the `seq_name` does not exist within the index.
     pub fn fetch(&mut self, seq_name: &str, start: u64, stop: u64) -> io::Result<()> {
         let idx = self.idx(seq_name)?;
         self.start = Some(start);
@@ -371,7 +485,34 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     }
 
     /// Fetch an interval from the sequence with the given record index for reading.
-    /// (stop position is exclusive).
+    ///
+    /// `start` and `stop` are 0-based and `stop` is exclusive - i.e. `[start, stop)`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use bio::io::fasta::IndexedReader;
+    /// // create dummy files
+    /// const FASTA_FILE: &[u8] = b">chr1\nGTAGGCTGAAAA\nCCCC";
+    /// const FAI_FILE: &[u8] = b"chr1\t16\t6\t12\t13";
+    ///
+    /// let rid: usize = 0;
+    /// let start: u64 = 0; // start is 0-based, inclusive
+    /// let stop: u64 = 10; // stop is 0-based, exclusive
+    ///                     // load the index
+    /// let mut faidx = IndexedReader::new(std::io::Cursor::new(FASTA_FILE), FAI_FILE).unwrap();
+    /// // move the pointer in the index to the desired sequence and interval
+    /// faidx
+    ///     .fetch_by_rid(rid, start, stop)
+    ///     .expect("Couldn't fetch interval");
+    /// // read the subsequence defined by the interval into a vector
+    /// let mut seq = Vec::new();
+    /// faidx.read(&mut seq).expect("Couldn't read the interval");
+    /// assert_eq!(seq, b"GTAGGCTGAA");
+    /// ```
+    ///
+    /// # Errors
+    /// If `rid` does not exist within the index.
     pub fn fetch_by_rid(&mut self, rid: usize, start: u64, stop: u64) -> io::Result<()> {
         let idx = self.idx_by_rid(rid)?;
         self.start = Some(start);
@@ -571,7 +712,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
 }
 
 /// Record of a FASTA index.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 struct IndexRecord {
     name: String,
     len: u64,
@@ -581,12 +722,13 @@ struct IndexRecord {
 }
 
 /// A sequence record returned by the FASTA index.
-#[derive(Debug, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Sequence {
     pub name: String,
     pub len: u64,
 }
 
+#[derive(Debug)]
 pub struct IndexedReaderIterator<'a, R: io::Read + io::Seek> {
     reader: &'a mut IndexedReader<R>,
     record: IndexRecord,
@@ -660,6 +802,11 @@ impl Writer<fs::File> {
     pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         fs::File::create(path).map(Writer::new)
     }
+
+    /// Write to the given file path and a buffer capacity
+    pub fn to_file_with_capacity<P: AsRef<Path>>(capacity: usize, path: P) -> io::Result<Self> {
+        fs::File::create(path).map(|file| Writer::with_capacity(capacity, file))
+    }
 }
 
 impl<W: io::Write> Writer<W> {
@@ -668,6 +815,18 @@ impl<W: io::Write> Writer<W> {
         Writer {
             writer: io::BufWriter::new(writer),
         }
+    }
+
+    /// Create a new Fasta writer with a capacity of write buffer
+    pub fn with_capacity(capacity: usize, writer: W) -> Self {
+        Writer {
+            writer: io::BufWriter::with_capacity(capacity, writer),
+        }
+    }
+
+    /// Create a new Fasta writer with a given BufWriter
+    pub fn from_bufwriter(bufwriter: io::BufWriter<W>) -> Self {
+        Writer { writer: bufwriter }
     }
 
     /// Directly write a [`fasta::Record`](struct.Record.html).
@@ -725,7 +884,7 @@ impl<W: io::Write> Writer<W> {
 }
 
 /// A FASTA record.
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Record {
     id: String,
     desc: Option<String>,
@@ -756,10 +915,7 @@ impl Record {
     /// assert_eq!(">read1 sampleid=foobar\nACGT\n", record.to_string())
     /// ```
     pub fn with_attrs(id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> Self {
-        let desc = match desc {
-            Some(desc) => Some(desc.to_owned()),
-            _ => None,
-        };
+        let desc = desc.map(|desc| desc.to_owned());
         Record {
             id: id.to_owned(),
             desc,
@@ -792,7 +948,7 @@ impl Record {
     /// Return descriptions if present.
     pub fn desc(&self) -> Option<&str> {
         match self.desc.as_ref() {
-            Some(desc) => Some(&desc),
+            Some(desc) => Some(desc),
             None => None,
         }
     }
@@ -854,12 +1010,19 @@ impl fmt::Display for Record {
 }
 
 /// An iterator over the records of a Fasta file.
-pub struct Records<R: io::Read> {
-    reader: Reader<R>,
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+pub struct Records<B>
+where
+    B: io::BufRead,
+{
+    reader: Reader<B>,
     error_has_occured: bool,
 }
 
-impl<R: io::Read> Iterator for Records<R> {
+impl<B> Iterator for Records<B>
+where
+    B: io::BufRead,
+{
     type Item = io::Result<Record>;
 
     fn next(&mut self) -> Option<io::Result<Record>> {
@@ -968,6 +1131,26 @@ ATTGTTGTTTTA
             b"ACCGTAGGCTGACCGTAGGCTGAACGTAGGCTGAAAGTAGGCTGAAAACCCC",
             b"ATTGTTGTTTTAATTGTTGTTTTAATTGTTGTTTTAGGGG",
         ];
+
+        for (i, r) in reader.records().enumerate() {
+            let record = r.expect("Error reading record");
+            assert_eq!(record.check(), Ok(()));
+            assert_eq!(record.id(), ids[i]);
+            assert_eq!(record.desc(), descs[i]);
+            assert_eq!(record.seq(), seqs[i]);
+        }
+
+        let reader = Reader::with_capacity(100, FASTA_FILE);
+
+        for (i, r) in reader.records().enumerate() {
+            let record = r.expect("Error reading record");
+            assert_eq!(record.check(), Ok(()));
+            assert_eq!(record.id(), ids[i]);
+            assert_eq!(record.desc(), descs[i]);
+            assert_eq!(record.seq(), seqs[i]);
+        }
+
+        let reader = Reader::from_bufread(io::BufReader::new(FASTA_FILE));
 
         for (i, r) in reader.records().enumerate() {
             let record = r.expect("Error reading record");
@@ -1113,26 +1296,26 @@ ATTGTTGTTTTA
 
     #[test]
     fn test_indexed_reader() {
-        _test_indexed_reader(&FASTA_FILE, &FAI_FILE, _read_buffer);
+        _test_indexed_reader(FASTA_FILE, FAI_FILE, _read_buffer);
         _test_indexed_reader_truncated(_read_buffer);
         _test_indexed_reader_extreme_whitespace(_read_buffer);
     }
 
     #[test]
     fn test_indexed_reader_crlf() {
-        _test_indexed_reader(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_buffer);
+        _test_indexed_reader(FASTA_FILE_CRLF, FAI_FILE_CRLF, _read_buffer);
     }
 
     #[test]
     fn test_indexed_reader_iter() {
-        _test_indexed_reader(&FASTA_FILE, &FAI_FILE, _read_iter);
+        _test_indexed_reader(FASTA_FILE, FAI_FILE, _read_iter);
         _test_indexed_reader_truncated(_read_iter);
         _test_indexed_reader_extreme_whitespace(_read_iter);
     }
 
     #[test]
     fn test_indexed_reader_iter_crlf() {
-        _test_indexed_reader(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_iter);
+        _test_indexed_reader(FASTA_FILE_CRLF, FAI_FILE_CRLF, _read_iter);
     }
 
     fn _test_indexed_reader<'a, F>(fasta: &'a [u8], fai: &'a [u8], read: F)
@@ -1233,22 +1416,22 @@ ATTGTTGTTTTA
 
     #[test]
     fn test_indexed_reader_all() {
-        _test_indexed_reader_all(&FASTA_FILE, &FAI_FILE, _read_buffer_all);
+        _test_indexed_reader_all(FASTA_FILE, FAI_FILE, _read_buffer_all);
     }
 
     #[test]
     fn test_indexed_reader_crlf_all() {
-        _test_indexed_reader_all(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_buffer_all);
+        _test_indexed_reader_all(FASTA_FILE_CRLF, FAI_FILE_CRLF, _read_buffer_all);
     }
 
     #[test]
     fn test_indexed_reader_iter_all() {
-        _test_indexed_reader_all(&FASTA_FILE, &FAI_FILE, _read_iter_all);
+        _test_indexed_reader_all(FASTA_FILE, FAI_FILE, _read_iter_all);
     }
 
     #[test]
     fn test_indexed_reader_iter_crlf_all() {
-        _test_indexed_reader_all(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_iter_all);
+        _test_indexed_reader_all(FASTA_FILE_CRLF, FAI_FILE_CRLF, _read_iter_all);
     }
 
     fn _test_indexed_reader_all<'a, F>(fasta: &'a [u8], fai: &'a [u8], read: F)
@@ -1293,22 +1476,22 @@ ATTGTTGTTTTA
 
     #[test]
     fn test_indexed_reader_by_rid_all() {
-        _test_indexed_reader_by_rid_all(&FASTA_FILE, &FAI_FILE, _read_buffer_by_rid_all);
+        _test_indexed_reader_by_rid_all(FASTA_FILE, FAI_FILE, _read_buffer_by_rid_all);
     }
 
     #[test]
     fn test_indexed_reader_crlf_by_rid_all() {
-        _test_indexed_reader_by_rid_all(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_buffer_by_rid_all);
+        _test_indexed_reader_by_rid_all(FASTA_FILE_CRLF, FAI_FILE_CRLF, _read_buffer_by_rid_all);
     }
 
     #[test]
     fn test_indexed_reader_iter_by_rid_all() {
-        _test_indexed_reader_by_rid_all(&FASTA_FILE, &FAI_FILE, _read_iter_by_rid_all);
+        _test_indexed_reader_by_rid_all(FASTA_FILE, FAI_FILE, _read_iter_by_rid_all);
     }
 
     #[test]
     fn test_indexed_reader_iter_crlf_by_rid_all() {
-        _test_indexed_reader_by_rid_all(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_iter_by_rid_all);
+        _test_indexed_reader_by_rid_all(FASTA_FILE_CRLF, FAI_FILE_CRLF, _read_iter_by_rid_all);
     }
 
     fn _test_indexed_reader_by_rid_all<'a, F>(fasta: &'a [u8], fai: &'a [u8], read: F)
@@ -1491,6 +1674,18 @@ ATTGTTGTTTTA
         writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
         writer.flush().unwrap();
         assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
+
+        let mut writer = Writer::with_capacity(100, Vec::new());
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
+        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
+        writer.flush().unwrap();
+        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
+
+        let mut writer = Writer::from_bufwriter(std::io::BufWriter::with_capacity(100, Vec::new()));
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
+        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
+        writer.flush().unwrap();
+        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE);
     }
 
     #[test]
@@ -1572,7 +1767,8 @@ ATTGTTGTTTTA
         let file = tempfile::NamedTempFile::new().expect("Could not create temp file");
         let path = file.path();
 
-        assert!(Writer::to_file(path).is_ok())
+        assert!(Writer::to_file(path).is_ok());
+        assert!(Writer::to_file_with_capacity(100, path).is_ok());
     }
 
     #[test]

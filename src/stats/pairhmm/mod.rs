@@ -97,7 +97,7 @@
 //! let prob_expected = LogProb::from(Prob(PROB_NO_SUBSTITUION.powi(3) * PROB_SUBSTITUTION / 3.));
 //! assert_relative_eq!(*prob_related, *prob_expected, epsilon = 1e-5);
 //! ```
-pub use homopolypairhmm::{HomopolyPairHMM, HopParameters};
+pub use homopolypairhmm::{BaseSpecificHopParameters, HomopolyPairHMM, HopParameters};
 pub use pairhmm::PairHMM;
 
 use crate::stats::LogProb;
@@ -176,7 +176,7 @@ pub trait StartEndGapParameters {
     fn free_end_gap_x(&self) -> bool;
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 pub enum XYEmission {
     Match(LogProb),
     Mismatch(LogProb),

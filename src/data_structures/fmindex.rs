@@ -63,7 +63,9 @@ use crate::data_structures::suffix_array::SuffixArray;
 use std::mem::swap;
 
 /// A suffix array interval.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct Interval {
     pub lower: usize,
     pub upper: usize,
@@ -77,6 +79,22 @@ impl Interval {
     }
 }
 
+/// This enum represents the potential result states
+/// from a backward_search in the fm index.  The
+/// potential variants of the enum are:
+/// Complete(Interval) — the query matched completely. The interval is the
+/// range of suffix array indices matching the query string.
+/// Partial(Intarval, usize) - some suffix of the query matched, but not the whole query.
+/// The interval returned is the range of suffix array indices for the maximal
+/// matching suffix, and the `usize` is the length of the maximal matching suffix.
+/// Absent - None suffix of the pattern matched in the text.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+pub enum BackwardSearchResult {
+    Complete(Interval),
+    Partial(Interval, usize),
+    Absent,
+}
+
 pub trait FMIndexable {
     /// Get occurrence count of symbol a in BWT[..r+1].
     fn occ(&self, r: usize, a: u8) -> usize;
@@ -84,8 +102,12 @@ pub trait FMIndexable {
     fn less(&self, a: u8) -> usize;
     fn bwt(&self) -> &BWT;
 
-    /// Perform backward search, yielding suffix array
-    /// interval denoting exact occurrences of the given pattern of length m in the text.
+    /// Perform backward search, yielding `BackwardSearchResult` enum that
+    /// contains the suffix array interval denoting exact occurrences of the given pattern
+    /// of length m in the text if it exists, or the suffix array interval denoting the
+    /// exact occurrences of a maximal matching suffix of the given pattern if it does
+    /// not exist.  If none of the pattern can be matched, the `BackwardSearchResult` is
+    /// `Absent`.
     /// Complexity: O(m).
     ///
     /// # Arguments
@@ -97,7 +119,7 @@ pub trait FMIndexable {
     /// ```
     /// use bio::alphabets::dna;
     /// use bio::data_structures::bwt::{bwt, less, Occ};
-    /// use bio::data_structures::fmindex::{FMIndex, FMIndexable};
+    /// use bio::data_structures::fmindex::{BackwardSearchResult, FMIndex, FMIndexable};
     /// use bio::data_structures::suffix_array::suffix_array;
     ///
     /// let text = b"GCCTTAACATTATTACGCCTA$";
@@ -109,39 +131,81 @@ pub trait FMIndexable {
     /// let fm = FMIndex::new(&bwt, &less, &occ);
     ///
     /// let pattern = b"TTA";
-    /// let sai = fm.backward_search(pattern.iter());
+    /// let bsr = fm.backward_search(pattern.iter());
     ///
-    /// let positions = sai.occ(&sa);
+    /// let positions = match bsr {
+    ///     BackwardSearchResult::Complete(sai) => sai.occ(&sa),
+    ///     BackwardSearchResult::Partial(sai, _l) => sai.occ(&sa),
+    ///     BackwardSearchResult::Absent => Vec::<usize>::new(),
+    /// };
     ///
     /// assert_eq!(positions, [3, 12, 9]);
     /// ```
     fn backward_search<'b, P: Iterator<Item = &'b u8> + DoubleEndedIterator>(
         &self,
         pattern: P,
-    ) -> Interval {
+    ) -> BackwardSearchResult {
         let (mut l, mut r) = (0, self.bwt().len() - 1);
+        // to keep track of the last "valid" search interval if
+        // there is any valid suffix match.
+        let (mut pl, mut pr) = (l, r);
+
+        // the length of the suffix we have been able to match
+        // successfully
+        let mut matched_len = 0;
+        // track if we exit early or not due to an empty
+        // search interval.
+        let mut complete_match = true;
+
         for &a in pattern.rev() {
             let less = self.less(a);
+            pl = l;
+            pr = r;
             l = less + if l > 0 { self.occ(l - 1, a) } else { 0 };
             r = less + self.occ(r, a) - 1;
 
             // The symbol was not found if we end up with an empty interval.
-            // Terminate the LF-mapping process.
-            if l == r {
+            // Terminate the LF-mapping process. In this case, also mark that
+            // we do not have a complete match.
+            if l > r {
+                complete_match = false;
                 break;
             }
+            matched_len += 1;
         }
 
-        Interval {
-            lower: l,
-            upper: r + 1,
+        // if we matched at least 1 character
+        if matched_len > 0 {
+            // if we matched the full pattern length we
+            // have a complete match
+            if complete_match {
+                BackwardSearchResult::Complete(Interval {
+                    lower: l,
+                    upper: r + 1,
+                })
+            } else {
+                // if we matched less than the full pattern length, we have
+                // a partial suffix match
+                BackwardSearchResult::Partial(
+                    Interval {
+                        lower: pl,
+                        upper: pr + 1,
+                    },
+                    matched_len,
+                )
+            }
+        } else {
+            // if we matched nothing we have an absent result
+            BackwardSearchResult::Absent
         }
     }
 }
 
 /// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
 /// intervals matching a given pattern.
-#[derive(Serialize, Deserialize)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct FMIndex<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> {
     bwt: DBWT,
     less: DLess,
@@ -177,7 +241,9 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMIndex<DBWT, DL
 }
 
 /// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct BiInterval {
     lower: usize,
     lower_rev: usize,
@@ -211,7 +277,9 @@ impl BiInterval {
 
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
-#[derive(Serialize, Deserialize)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct FMDIndex<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> {
     fmindex: FMIndex<DBWT, DLess, DOcc>,
 }
@@ -382,13 +450,21 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
     /// let intervals = fmdindex.all_smems(pattern, 0);
     /// assert_eq!(intervals.len(), 2);
     ///
-    /// let solutions = vec![[0,14,0,3], [4,9,3,4]];
+    /// let solutions = vec![[0, 14, 0, 3], [4, 9, 3, 4]];
     /// for (i, interval) in intervals.iter().enumerate() {
     ///     let forward_positions = interval.0.forward().occ(&sa);
     ///     let revcomp_positions = interval.0.revcomp().occ(&sa);
     ///     let pattern_position = interval.1;
     ///     let smem_len = interval.2;
-    ///     assert_eq!([forward_positions[0], revcomp_positions[0], pattern_position, smem_len], solutions[i]);
+    ///     assert_eq!(
+    ///         [
+    ///             forward_positions[0],
+    ///             revcomp_positions[0],
+    ///             pattern_position,
+    ///             smem_len
+    ///         ],
+    ///         solutions[i]
+    ///     );
     /// }
     /// ```
     pub fn all_smems(&self, pattern: &[u8], l: usize) -> Vec<(BiInterval, usize, usize)> {
@@ -472,6 +548,24 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
 
         self.backward_ext(&interval.swapped(), comp_a).swapped()
     }
+
+    /// Construct a new instance of the FMD index (see Heng Li (2012) Bioinformatics)
+    /// without checking whether the text is over the DNA alphabet with N.
+    /// This expects a BWT that was created from a text over the DNA alphabet with N
+    /// (`alphabets::dna::n_alphabet()`) consisting of the
+    /// concatenation with its reverse complement, separated by the sentinel symbol `$`.
+    /// I.e., let T be the original text and R be its reverse complement.
+    /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
+    /// T1$R1$T2$R2$T3$R3$.
+    ///
+    /// # Safety
+    ///
+    /// It is unsafe to construct an FMD index from an FM index that is not built on the DNA alphabet.
+    pub unsafe fn from_fmindex_unchecked(
+        fmindex: FMIndex<DBWT, DLess, DOcc>,
+    ) -> FMDIndex<DBWT, DLess, DOcc> {
+        FMDIndex { fmindex }
+    }
 }
 
 #[cfg(test)]
@@ -494,14 +588,18 @@ mod tests {
         let pattern = b"TTA";
         let sai = fm.backward_search(pattern.iter());
 
-        let positions = sai.occ(&sa);
+        let positions = match sai {
+            BackwardSearchResult::Complete(saint) => saint.occ(&sa),
+            BackwardSearchResult::Partial(saint, _l) => saint.occ(&sa),
+            BackwardSearchResult::Absent => Vec::<usize>::new(),
+        };
 
         assert_eq!(positions, [3, 12, 9]);
     }
 
     #[test]
     fn test_fmindex_not_found() {
-        let text = b"GCCTTAACATTATTACGCCTA$";
+        let text = b"TCCTTAACATTATTACTCCTA$";
         let alphabet = dna::n_alphabet();
         let sa = suffix_array(text);
         let bwt = bwt(text, &sa);
@@ -509,12 +607,65 @@ mod tests {
         let occ = Occ::new(&bwt, 3, &alphabet);
         let fm = FMIndex::new(&bwt, &less, &occ);
 
-        let pattern = b"TTT";
+        let pattern = b"TTG";
         let sai = fm.backward_search(pattern.iter());
 
-        let positions = sai.occ(&sa);
+        let positions = match sai {
+            BackwardSearchResult::Complete(saint) => saint.occ(&sa),
+            BackwardSearchResult::Partial(saint, _l) => saint.occ(&sa),
+            BackwardSearchResult::Absent => Vec::<usize>::new(),
+        };
 
         assert_eq!(positions, []);
+    }
+
+    #[test]
+    fn test_fmindex_backward_search_optimization() {
+        let text = b"GATTACA$";
+        let pattern = &text[..text.len() - 1];
+        let alphabet = dna::n_alphabet();
+        let sa = suffix_array(text);
+        let bwt = bwt(text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+        let fm = FMIndex::new(&bwt, &less, &occ);
+
+        let sai = fm.backward_search(pattern.iter());
+
+        let positions = match sai {
+            BackwardSearchResult::Complete(saint) => saint.occ(&sa),
+            BackwardSearchResult::Partial(saint, _l) => saint.occ(&sa),
+            BackwardSearchResult::Absent => Vec::<usize>::new(),
+        };
+
+        assert_eq!(positions, [0]);
+    }
+
+    #[test]
+    fn test_fmindex_backward_search_partial_match() {
+        let text = b"GATTACA$";
+        let pattern = b"GTACA";
+        let alphabet = dna::n_alphabet();
+        let sa = suffix_array(text);
+        let bwt = bwt(text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+        let fm = FMIndex::new(&bwt, &less, &occ);
+
+        let sai = fm.backward_search(pattern.iter());
+
+        let mut partial_match_len = 0;
+        let positions = match sai {
+            BackwardSearchResult::Complete(saint) => saint.occ(&sa),
+            BackwardSearchResult::Partial(saint, l) => {
+                partial_match_len = l;
+                saint.occ(&sa)
+            }
+            BackwardSearchResult::Absent => Vec::<usize>::new(),
+        };
+
+        assert_eq!(partial_match_len, 4);
+        assert_eq!(positions, [3]);
     }
 
     #[test]
@@ -575,8 +726,8 @@ mod tests {
             let pattern = b"ATTGGGG";
             let intervals = fmdindex.all_smems(pattern, 0);
             assert_eq!(intervals.len(), 2);
-            let solutions = vec![[0, 14, 0, 3], [4, 9, 3, 4]];
-            for (i, interval) in intervals.iter().enumerate() {
+            let solutions = [[0, 14, 0, 3], [4, 9, 3, 4]];
+            for (interval, &solution) in intervals.iter().zip(solutions.iter()) {
                 let forward_positions = interval.0.forward().occ(&sa);
                 let revcomp_positions = interval.0.revcomp().occ(&sa);
                 let pattern_position = interval.1;
@@ -588,7 +739,7 @@ mod tests {
                         pattern_position,
                         smem_len
                     ],
-                    solutions[i]
+                    solution
                 );
             }
         }

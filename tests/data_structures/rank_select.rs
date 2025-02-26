@@ -27,10 +27,7 @@ struct Select<T: Hash + Eq + Clone> {
 
 impl<T: Hash + Eq + Clone> Select<T> {
     fn push(&mut self, val: T) {
-        self.select
-            .entry(val)
-            .or_insert_with(Vec::new)
-            .push(self.len);
+        self.select.entry(val).or_default().push(self.len);
         self.len += 1;
     }
 
@@ -42,7 +39,7 @@ impl<T: Hash + Eq + Clone> Select<T> {
                 }
             }
         }
-        return None;
+        None
     }
 }
 

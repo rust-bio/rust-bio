@@ -35,15 +35,7 @@ pub mod evidence {
 
 custom_derive! {
     /// A newtype for Bayes factors.
-    #[derive(
-        NewtypeFrom,
-        NewtypeDeref,
-        PartialEq,
-        PartialOrd,
-        Copy,
-        Clone,
-        Debug,
-    )]
+    #[derive(NewtypeFrom, NewtypeDeref, NewtypeAdd(*), NewtypeSub(*), Default, Copy, Clone, PartialEq, PartialOrd, Debug)]
     pub struct BayesFactor(pub f64);
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "bio"
-version = "0.33.1-alpha.0"
+version = "2.1.0"
 authors = ["Johannes Köster <johannes.koester@tu-dortmund.de>"]
 description = "A bioinformatics library for Rust. This library provides implementations of many algorithms and data structures that are useful for bioinformatics, but also in other fields."
 homepage = "https://rust-bio.github.io"
@@ -8,8 +8,8 @@ repository = "https://github.com/rust-bio/rust-bio"
 documentation = "https://docs.rs/bio"
 readme = "README.md"
 license = "MIT"
-build = "build.rs"
 edition = "2018"
+include = ["src/**/*", "LICENSE.md", "README.md", "CHANGELOG.md", "build.rs"]
 
 [package.metadata.release]
 pre-release-commit-message = "release version {{version}}"
@@ -26,43 +26,44 @@ bytecount = "0.6"
 csv = "1.1"
 num-traits = "0.2"
 num-integer = "0.1"
-itertools = ">= 0.8, <= 0.9"
+itertools = ">=0.8, <0.15"
 itertools-num = "0.1"
 bv = { version = "0.11", features = ["serde"] }
-bit-set = "0.5"
-ndarray= ">=0.13, <=0.14"
+bit-set = "0.8"
+ndarray= ">=0.15, <0.17"
 lazy_static = "1.4"
 serde = "1.0"
 serde_derive = "1.0"
-approx = "0.3"
+approx = ">=0.3, <0.6"
 custom_derive = "0.1"
 newtype_derive = "0.1"
-ordered-float = "1.0"
-regex = "1.3"
-multimap = ">=0.6, <=0.8"
+ordered-float = "5.0"
+regex = { version = "1.3", default-features = false, features = ["std", "perf"] }
+multimap = ">=0.6, <0.11"
 fxhash = "0.2"
-statrs = ">= 0.11, <= 0.13"
-bio-types = ">=0.11.0"
+statrs = ">= 0.11, < 0.19"
+bio-types = ">=1.0.0"
 pest = { version = "2", optional = true }
 pest_derive = { version = "2", optional = true }
-fnv = "1.0"
-strum = ">= 0.16, <= 0.20"
-strum_macros = ">= 0.16, <= 0.20"
-getset = "0.0.9"
-enum-map = "0.6"
-triple_accel = "0.3"
-thiserror = "1"
+strum = ">= 0.16, < 0.27"
+strum_macros = ">= 0.16, < 0.27"
+enum-map = ">=0.6.4, <3"
+triple_accel = ">=0.3, <0.5"
+thiserror = "2"
 anyhow = "1"
+rand = ">=0.7.3, < 0.10"
+editdistancek = ">=1.0.1, <2"
 
 [dependencies.vec_map]
 version = "0.8"
 features = ["eders"]
 
 [dependencies.petgraph]
-version = ">=0.4, <=0.5"
+version = ">=0.4, <0.8"
 features = ["stable_graph"]
 
 
 [dev-dependencies]
-proptest = "0.10"
+proptest = "1"
 tempfile = "3.1.0"
+rand = "0.9.0"

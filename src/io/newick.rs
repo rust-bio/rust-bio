@@ -14,7 +14,7 @@
 //!  use bio::io::newick;
 //!
 //!  let tree = newick::from_string("(A:0.1,B:0.2,(C:0.3,D:0.4)E:0.5)F;").unwrap();
-//!  for taxon in tree.raw_nodes() {
+//!  for taxon in tree.g.raw_nodes() {
 //!      println!("{}", taxon.weight);
 //!  }
 //!  ```
@@ -52,6 +52,9 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// file
 #[derive(Parser)]
 #[grammar = "io/newick.pest"]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct NewickParser;
 
 /// A hidden, temporary datatype used to collect the parser result
