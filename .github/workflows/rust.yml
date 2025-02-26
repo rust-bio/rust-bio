@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   Formatting:
@@ -19,10 +19,10 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt
-      
+
       - name: Check format
         run: cargo fmt -- --check
-     
+
   Linting:
     runs-on: ubuntu-latest
     steps:
@@ -35,7 +35,7 @@ jobs:
           toolchain: stable
           override: true
           components: clippy
-      
+
       - name: Lint with clippy
         uses: actions-rs/clippy-check@v1
         with:
@@ -85,6 +85,8 @@ jobs:
   MSRV:
     needs: Formatting
     runs-on: ubuntu-latest
+    env:
+      MSRV_VERSION: 1.65.0
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -92,11 +94,11 @@ jobs:
       - name: Install MSRV toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.51.0
+          toolchain: ${{ env.MSRV_VERSION }}
           override: true
 
       - name: check if README matches MSRV defined here
-        run: grep '1.51.0' README.md
+        run: grep $MSRV_VERSION README.md
 
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -104,31 +106,33 @@ jobs:
           command: test
           args: --all --no-fail-fast
 
-  Coverage:
-    needs: Formatting
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+  # TODO re-enable coverage estimation once we have removed the simd-dependency which is incompatible
+  # with nightly. We need to wait for the stdlib simd implementation to stabilize, see
+  # https://github.com/rust-lang/rust/issues/86656
+  # Coverage:
+  #   needs: Formatting
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v2
+  #       with:
+  #         submodules: recursive
 
-      - name: Install nightly toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
+  #     - name: Install nightly toolchain
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: nightly
+  #         override: true
 
-      - name: Install cargo-tarpaulin
-        uses: actions-rs/install@v0.1
-        with:
-          crate: cargo-tarpaulin
-          version: latest
-          use-tool-cache: true
+  #     - name: Install and run cargo-tarpaulin
+  #       uses: actions-rs/tarpaulin@v0.1
+  #       with:
+  #         # TODO: update to latest tarpaulin once artefact download is fixed: https://github.com/actions-rs/tarpaulin/pull/23
+  #         version: "0.22.0"
+  #         args: "--workspace --all-features --run-types Tests,Doctests --out Lcov --timeout 300"
 
-      - name: Coverage with tarpaulin
-        run: cargo tarpaulin --all --all-features --timeout 600 --out Lcov -- --test-threads 1
-
-      - name: Upload coverage
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: ./lcov.info
+  #     - name: Upload coverage
+  #       uses: coverallsapp/github-action@v1
+  #       with:
+  #         github-token: ${{ secrets.GITHUB_TOKEN }}
+  #         path-to-lcov: ./lcov.info

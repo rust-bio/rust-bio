@@ -36,7 +36,7 @@ use std::hash::BuildHasherDefault;
 pub type HashMapFx<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
 
 /// Result of a sparse alignment
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct SparseAlignmentResult {
     /// LCSk++ path, represented as vector of indices into the input matches vector.
     pub path: Vec<usize>,
@@ -343,9 +343,7 @@ pub fn hash_kmers(seq: &[u8], k: usize) -> HashMapFx<&[u8], Vec<u32>> {
     let slc = seq;
     let mut set: HashMapFx<&[u8], Vec<u32>> = HashMapFx::default();
     for i in 0..(slc.len() + 1).saturating_sub(k) {
-        set.entry(&slc[i..i + k])
-            .or_insert_with(Vec::new)
-            .push(i as u32);
+        set.entry(&slc[i..i + k]).or_default().push(i as u32);
     }
     set
 }
@@ -639,7 +637,7 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
     #[test]
     fn test_sdpkpp_tandem_repeat() {
         let k = 8;
-        let matches = super::find_kmer_matches(&QUERY_REPEAT, &TARGET_REPEAT, k);
+        let matches = super::find_kmer_matches(QUERY_REPEAT, TARGET_REPEAT, k);
         let res = super::sdpkpp(&matches, k, 1, -1, -1);
 
         // For debugging:
@@ -715,10 +713,7 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
         assert_eq!(
             expanded_matches,
-            (0..5)
-                .into_iter()
-                .map(|x| (x, x))
-                .collect::<Vec<(u32, u32)>>()
+            (0..5).map(|x| (x, x)).collect::<Vec<(u32, u32)>>()
         );
 
         let x = b"TTTTTTGGGCAAAAAA";
@@ -729,10 +724,7 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
         assert_eq!(
             expanded_matches,
-            (0..11)
-                .into_iter()
-                .map(|x| (x, x))
-                .collect::<Vec<(u32, u32)>>()
+            (0..11).map(|x| (x, x)).collect::<Vec<(u32, u32)>>()
         );
 
         let x = b"TTTTTTCCGCAAAAAA";
@@ -773,10 +765,7 @@ CGGGAGGAGACCTGGGCAGCGGCGGACTCATTGCAGGTCGCTCTGCGGTGAGGACGCCACAGGCAC";
         let expanded_matches = super::expand_kmer_matches(x, y, 6, &matches, 1);
         assert_eq!(
             expanded_matches,
-            (0..5)
-                .into_iter()
-                .map(|x| (x, x))
-                .collect::<Vec<(u32, u32)>>()
+            (0..5).map(|x| (x, x)).collect::<Vec<(u32, u32)>>()
         );
     }
 }

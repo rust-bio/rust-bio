@@ -15,7 +15,7 @@
 //! * Ukkonens algorithm: approximate pattern matching with dynamic programming.
 //! * Myers algorithm: linear-time approximate pattern matching with edit distance for small patterns
 //!
-//! Another fast pattern matching algorithm is available in the twoway crate: https://crates.io/crates/twoway
+//! Another library that provides heavily optimized routines for string search primitives is memchr: https://crates.io/crates/memchr
 
 pub mod bndm;
 pub mod bom;

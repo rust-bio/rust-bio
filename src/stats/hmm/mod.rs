@@ -101,19 +101,41 @@ use std::collections::BTreeMap;
 
 custom_derive! {
     /// A newtype for HMM states.
+    // #[derive(
+    //     NewtypeFrom,
+    //     NewtypeDeref,
+    //     Default,
+    //     Copy,
+    //     Clone,
+    //     Eq,
+    //     PartialEq,
+    //     Ord,
+    //     PartialOrd,
+    //     Hash,
+    //     Debug,
+    // )]
+    // #[derive(Serialize, Deserialize)]
     #[derive(
         NewtypeFrom,
         NewtypeDeref,
-        PartialEq,
+        Default,
         Copy,
         Clone,
-        Debug
+        Eq,
+        PartialEq,
+        Ord,
+        PartialOrd,
+        Hash,
+        Debug,
     )]
-    // #[derive(Serialize, Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct State(pub usize);
 }
 
 /// Iterate over the states of a `Model`.
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct StateIter {
     nxt: usize,
     max: usize,
@@ -144,7 +166,9 @@ impl Iterator for StateIter {
 }
 
 /// Transition between two states in a `Model`.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct StateTransition {
     /// Source of the transition.
     pub src: State,
@@ -160,6 +184,9 @@ impl StateTransition {
 }
 
 /// Iterate over all state transitions of a `Model`.
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct StateTransitionIter {
     nxt_a: usize,
     nxt_b: usize,
@@ -696,7 +723,7 @@ pub mod discrete_emission {
     /// The state transition matrix with dimensions `NxN` is `A`, the observation probability
     /// distribution is the matrix `B` with dimensions `NxM` and the initial state distribution `pi`
     /// has length `N`.
-    #[derive(Debug, PartialEq)]
+    #[derive(Default, Clone, PartialEq, Debug)]
     pub struct Model {
         /// The state transition matrix (size `NxN`), `A` in Rabiner's tutorial.
         transition: Array2<LogProb>,
@@ -820,7 +847,7 @@ pub mod discrete_emission_opt_end {
     /// has length `N`. We also included a silent end state `ε` with vector length `N` that do not emit symbols for
     /// modelling the end of sequences. It's optional to supply the end probabilities at the creation of the model.
     /// If this happens, we'll create a dummy end state to simulate as if the end state has not been included.
-    #[derive(Debug, PartialEq)]
+    #[derive(Default, Clone, PartialEq, Debug)]
     pub struct Model {
         /// The state transition matrix (size `NxN`), `A` in Rabiner's tutorial.
         transition: RefCell<Array2<LogProb>>,
@@ -882,16 +909,7 @@ pub mod discrete_emission_opt_end {
                 .map(|_x| Prob(1.0))
                 .collect::<Array1<Prob>>();
 
-            let has_end_state;
-
-            match end {
-                Some(_p) => {
-                    has_end_state = true;
-                }
-                None => {
-                    has_end_state = false;
-                }
-            }
+            let has_end_state = end.is_some();
 
             let end_un = end.unwrap_or(&end_possible);
 
@@ -916,16 +934,7 @@ pub mod discrete_emission_opt_end {
             let end_possible = (0..initial_dim).map(|_x| 1.0).collect::<Array1<f64>>();
             let end_un = end.unwrap_or(&end_possible);
 
-            let has_end_state;
-
-            match end {
-                Some(_p) => {
-                    has_end_state = true;
-                }
-                None => {
-                    has_end_state = false;
-                }
-            }
+            let has_end_state = end.is_some();
 
             Self::new(
                 RefCell::new(transition.map(|x| LogProb::from(Prob(*x)))),
@@ -1111,6 +1120,7 @@ pub mod univariate_continuous_emission {
     /// Implementation of a `hmm::Model` with emission values from univariate continuous distributions.
     ///
     /// Log-scale probabilities are used for numeric stability.
+    #[derive(Default, Clone, PartialEq, Debug)]
     pub struct Model<Dist: Continuous<f64, f64>> {
         /// The state transition matrix (size `NxN`), `A` in Rabiner's tutorial.
         transition: Array2<LogProb>,
@@ -1249,7 +1259,7 @@ mod tests {
         let (path, log_prob) = viterbi(&hmm, &[2, 2, 1, 0, 1, 3, 2, 0, 0]);
         let prob = Prob::from(log_prob);
 
-        let expected = vec![0, 0, 0, 1, 1, 1, 1, 1, 1]
+        let expected = [0, 0, 0, 1, 1, 1, 1, 1, 1]
             .iter()
             .map(|i| State(*i))
             .collect::<Vec<State>>();
@@ -1299,12 +1309,12 @@ mod tests {
         for len in 1..10 {
             let mut seq: Vec<usize> = vec![0; len];
             while seq.iter().sum::<usize>() != len {
-                for i in 0..len {
-                    if seq[i] == 0 {
-                        seq[i] = 1;
+                for elem in seq.iter_mut() {
+                    if *elem == 0 {
+                        *elem = 1;
                         break;
                     } else {
-                        seq[i] = 0;
+                        *elem = 0;
                     }
                 }
                 let prob_fwd = *Prob::from(forward(&hmm, &seq).1);
@@ -1328,7 +1338,7 @@ mod tests {
         let (path, log_prob) = viterbi(&hmm, &[-0.1, 0.1, -0.2, 0.5, 0.8, 1.1, 1.2, 1.5, 0.5, 0.2]);
         let prob = Prob::from(log_prob);
 
-        let expected = vec![0, 0, 0, 0, 0, 1, 1, 1, 0, 0]
+        let expected = [0, 0, 0, 0, 0, 1, 1, 1, 0, 0]
             .iter()
             .map(|i| State(*i))
             .collect::<Vec<State>>();
@@ -1383,8 +1393,8 @@ mod tests {
 
         let seqs = vec![vec![0.1, 0.5, 1.0, 1.5, 1.8, 2.1]];
         for seq in &seqs {
-            let prob_fwd = *Prob::from(forward(&hmm, &seq).1);
-            let prob_bck = *Prob::from(backward(&hmm, &seq).1);
+            let prob_fwd = *Prob::from(forward(&hmm, seq).1);
+            let prob_bck = *Prob::from(backward(&hmm, seq).1);
             assert_relative_eq!(prob_fwd, prob_bck, epsilon = 0.00001);
         }
     }
@@ -1472,19 +1482,19 @@ mod tests {
             .collect::<Vec<Prob>>();
 
         // Compare with the example given in Jason Eisner's spreadsheet (http://www.cs.jhu.edu/~jason/papers/#eisner-2002-tnlp)
-        let pi_hat_vec_ori = vec![0.0597, 0.9403]
+        let pi_hat_vec_ori = [0.0597, 0.9403]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
-        let transitions_hat_vec_ori = vec![0.8797, 0.1049, 0.0921, 0.8658]
+        let transitions_hat_vec_ori = [0.8797, 0.1049, 0.0921, 0.8658]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
-        let observations_hat_vec_ori = vec![0.6765, 0.2188, 0.1047, 0.0584, 0.4251, 0.5165]
+        let observations_hat_vec_ori = [0.6765, 0.2188, 0.1047, 0.0584, 0.4251, 0.5165]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
-        let end_hat_vec_ori = vec![0.0153, 0.0423]
+        let end_hat_vec_ori = [0.0153, 0.0423]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
@@ -1549,19 +1559,19 @@ mod tests {
             .collect::<Vec<Prob>>();
 
         // Example based on Jason Eisner spreadsheet (http://www.cs.jhu.edu/~jason/papers/#eisner-2002-tnlp)
-        let pi_hat_vec_ori = vec![0.0, 1.0]
+        let pi_hat_vec_ori = [0.0, 1.0]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
-        let transitions_hat_vec_ori = vec![0.9337, 0.0663, 0.0718, 0.865]
+        let transitions_hat_vec_ori = [0.9337, 0.0663, 0.0718, 0.865]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
-        let observations_hat_vec_ori = vec![0.6407, 0.1481, 0.2112, 1.5e-4, 0.5341, 0.4657]
+        let observations_hat_vec_ori = [0.6407, 0.1481, 0.2112, 1.5e-4, 0.5341, 0.4657]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();
-        let end_hat_vec_ori = vec![0.0, 0.0632]
+        let end_hat_vec_ori = [0.0, 0.0632]
             .iter()
             .map(|x| Prob::from(*x))
             .collect::<Vec<Prob>>();

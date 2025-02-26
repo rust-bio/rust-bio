@@ -24,7 +24,7 @@
 //! * a convenient alphabet implementation,
 //! * pairwise alignment,
 //! * suffix arrays,
-//! * the [Burrows-Wheeler-transform (BWT)]()
+//! * the [Burrows-Wheeler-transform (BWT)](https://www.semanticscholar.org/paper/A-Block-sorting-Lossless-Data-Compression-Algorithm-Burrows-Wheeler/af56e6d4901dcd0f589bf969e604663d40f1be5d)
 //! * the [Full-text index in Minute space index (FM-index)](https://doi.org/10.1109/SFCS.2000.892127),
 //! * FMD-Index for finding supermaximal exact matches,
 //! * a q-gram index,
@@ -82,20 +82,20 @@
 //!
 //! ```toml
 //! [dependencies]
-//! bio = "*"
+//! bio = "1"
 //! ```
 //!
-//! and import the crate from your source code:
+//! Now Rust-Bio modules can be used directly in your source code, for example:
 //!
 //! ```rust
-//! extern crate bio;
+//! use bio::io::fastq;
 //! ```
 //!
 //! ## Example: FM-index and FASTQ
 //!
 //! An example of using `rust-bio`:
 //!
-//! ```rust
+//! ```no_run
 //! // Import some modules
 //! use bio::alphabets;
 //! use bio::data_structures::bwt::{bwt, less, Occ};
@@ -245,9 +245,6 @@ extern crate serde_derive;
 #[macro_use]
 extern crate strum_macros;
 
-#[macro_use]
-extern crate getset;
-
 #[cfg(feature = "phylogeny")]
 #[macro_use]
 extern crate pest_derive;
@@ -261,3 +258,4 @@ pub mod scores;
 pub mod seq_analysis;
 pub mod stats;
 pub mod utils;
+pub use bio_types;

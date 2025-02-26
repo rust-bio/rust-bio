@@ -30,6 +30,7 @@ use crate::utils::TextSlice;
 type Lps = Vec<usize>;
 
 /// KMP algorithm.
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize)]
 pub struct KMP<'a> {
     m: usize,
     lps: Lps,
@@ -88,6 +89,7 @@ fn lps(pattern: &[u8]) -> Lps {
 }
 
 /// Iterator over start positions of matches.
+#[derive(Clone, Debug)]
 pub struct Matches<'a, C, T>
 where
     C: Borrow<u8>,

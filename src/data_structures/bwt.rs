@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The [Burrows-Wheeler-Transform](https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.37.6774) and related data structures.
+//! The [Burrows-Wheeler-Transform](https://www.semanticscholar.org/paper/A-Block-sorting-Lossless-Data-Compression-Algorithm-Burrows-Wheeler/af56e6d4901dcd0f589bf969e604663d40f1be5d) and related data structures.
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
@@ -73,7 +73,7 @@ pub fn invert_bwt(bwt: &BWTSlice) -> Vec<u8> {
 }
 
 /// An occurrence array implementation.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Occ {
     occ: Vec<Vec<usize>>,
     k: u32,
@@ -171,14 +171,14 @@ impl Occ {
                 // If r is closer to the high checkpoint, count backwards from there.
                 let hi_idx = hi_checkpoint * self.k as usize;
                 if (hi_idx - r) < (self.k as usize / 2) {
-                    return hi_occ - bytecount::count(&bwt[r + 1..=hi_idx], a) as usize;
+                    return hi_occ - bytecount::count(&bwt[r + 1..=hi_idx], a);
                 }
             }
         }
 
         // Otherwise the default case is to count from the low checkpoint.
         let lo_idx = lo_checkpoint * self.k as usize;
-        bytecount::count(&bwt[lo_idx + 1..=r], a) as usize + lo_occ
+        bytecount::count(&bwt[lo_idx + 1..=r], a) + lo_occ
     }
 }
 
@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn test_occ() {
         let bwt = vec![1u8, 3u8, 3u8, 1u8, 2u8, 0u8];
-        let alphabet = Alphabet::new(&[0u8, 1u8, 2u8, 3u8]);
+        let alphabet = Alphabet::new([0u8, 1u8, 2u8, 3u8]);
         let occ = Occ::new(&bwt, 3, &alphabet);
         assert_eq!(occ.occ, [[0, 0], [1, 2], [0, 0], [0, 2]]);
         assert_eq!(occ.get(&bwt, 4, 2u8), 1);
@@ -262,7 +262,7 @@ mod tests {
         let occ = Occ::new(&bwt, 3, &alphabet);
         let wm = WaveletMatrix::new(&bwt);
 
-        for c in vec![b'A', b'C', b'G', b'T', b'$'] {
+        for c in [b'A', b'C', b'G', b'T', b'$'] {
             for p in 0..text.len() {
                 assert_eq!(occ.get(&bwt, p, c) as u64, wm.rank(c, p as u64));
             }

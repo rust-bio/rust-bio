@@ -10,12 +10,12 @@ jobs:
     if: github.repository_owner == 'rust-bio'
     runs-on: ubuntu-latest
     steps:
-
-      - uses: GoogleCloudPlatform/release-please-action@v2
+      - uses: google-github-actions/release-please-action@v3
         id: release
         with:
           release-type: rust
           package-name: bio
+          changelog-types: '[{"type":"feat","section":"Features","hidden":false},{"type":"fix","section":"Bug Fixes","hidden":false},{"type":"chore","section":"Miscellaneous","hidden":false},{"type":"deps","section":"Dependencies","hidden":false}]'
 
       - uses: actions/checkout@v2
         if: ${{ steps.release.outputs.release_created }}
@@ -30,11 +30,11 @@ jobs:
       - name: Install system dependencies
         if: ${{ steps.release.outputs.release_created }}
         run: |
-            sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
+          sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
 
       - uses: Swatinem/rust-cache@v1.3.0
         if: ${{ steps.release.outputs.release_created }}
-      
+
       - name: Publish crate
         if: ${{ steps.release.outputs.release_created }}
         uses: actions-rs/cargo@v1

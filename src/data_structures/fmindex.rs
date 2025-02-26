@@ -63,7 +63,9 @@ use crate::data_structures::suffix_array::SuffixArray;
 use std::mem::swap;
 
 /// A suffix array interval.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct Interval {
     pub lower: usize,
     pub upper: usize,
@@ -86,7 +88,7 @@ impl Interval {
 /// The interval returned is the range of suffix array indices for the maximal
 /// matching suffix, and the `usize` is the length of the maximal matching suffix.
 /// Absent - None suffix of the pattern matched in the text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum BackwardSearchResult {
     Complete(Interval),
     Partial(Interval, usize),
@@ -177,31 +179,33 @@ pub trait FMIndexable {
             // if we matched the full pattern length we
             // have a complete match
             if complete_match {
-                return BackwardSearchResult::Complete(Interval {
+                BackwardSearchResult::Complete(Interval {
                     lower: l,
                     upper: r + 1,
-                });
+                })
             } else {
                 // if we matched less than the full pattern length, we have
                 // a partial suffix match
-                return BackwardSearchResult::Partial(
+                BackwardSearchResult::Partial(
                     Interval {
                         lower: pl,
                         upper: pr + 1,
                     },
                     matched_len,
-                );
+                )
             }
         } else {
             // if we matched nothing we have an absent result
-            return BackwardSearchResult::Absent;
+            BackwardSearchResult::Absent
         }
     }
 }
 
 /// The Fast Index in Minute space (FM-Index, Ferragina and Manzini, 2000) for finding suffix array
 /// intervals matching a given pattern.
-#[derive(Serialize, Deserialize)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct FMIndex<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> {
     bwt: DBWT,
     less: DLess,
@@ -237,7 +241,9 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMIndex<DBWT, DL
 }
 
 /// A bi-interval on suffix array of the forward and reverse strand of a DNA text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct BiInterval {
     lower: usize,
     lower_rev: usize,
@@ -271,7 +277,9 @@ impl BiInterval {
 
 /// The FMD-Index for linear time search of supermaximal exact matches on forward and reverse
 /// strand of DNA texts (Li, 2012).
-#[derive(Serialize, Deserialize)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct FMDIndex<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> {
     fmindex: FMIndex<DBWT, DLess, DOcc>,
 }
@@ -549,6 +557,9 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
     /// I.e., let T be the original text and R be its reverse complement.
     /// Then, the expected text is T$R$. Further, multiple concatenated texts are allowed, e.g.
     /// T1$R1$T2$R2$T3$R3$.
+    ///
+    /// # Safety
+    ///
     /// It is unsafe to construct an FMD index from an FM index that is not built on the DNA alphabet.
     pub unsafe fn from_fmindex_unchecked(
         fmindex: FMIndex<DBWT, DLess, DOcc>,
@@ -715,8 +726,8 @@ mod tests {
             let pattern = b"ATTGGGG";
             let intervals = fmdindex.all_smems(pattern, 0);
             assert_eq!(intervals.len(), 2);
-            let solutions = vec![[0, 14, 0, 3], [4, 9, 3, 4]];
-            for (i, interval) in intervals.iter().enumerate() {
+            let solutions = [[0, 14, 0, 3], [4, 9, 3, 4]];
+            for (interval, &solution) in intervals.iter().zip(solutions.iter()) {
                 let forward_positions = interval.0.forward().occ(&sa);
                 let revcomp_positions = interval.0.revcomp().occ(&sa);
                 let pattern_position = interval.1;
@@ -728,7 +739,7 @@ mod tests {
                         pattern_position,
                         smem_len
                     ],
-                    solutions[i]
+                    solution
                 );
             }
         }

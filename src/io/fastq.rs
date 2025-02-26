@@ -11,7 +11,7 @@
 //!
 //! In this example, we parse a fastq file from stdin and compute some statistics
 //!
-//! ```
+//! ```no_run
 //! use bio::io::fastq;
 //! use std::io;
 //! let mut reader = fastq::Reader::new(io::stdin());
@@ -31,7 +31,7 @@
 //! ```
 //!
 //! We can also use a `while` loop to iterate over records
-//! ```
+//! ```no_run
 //! use bio::io::fastq;
 //! use std::io;
 //! let mut records = fastq::Reader::new(io::stdin()).records();
@@ -78,7 +78,7 @@
 //!
 //! In this example we filter reads from stdin on mean quality (Phred + 33) and write them to stdout
 //!
-//! ```
+//! ```no_run
 //! use bio::io::fastq;
 //! use bio::io::fastq::FastqRead;
 //! use std::io;
@@ -136,7 +136,7 @@ pub trait FastqRead {
 }
 
 /// A FastQ reader.
-#[derive(Debug)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Reader<B> {
     reader: B,
     line_buffer: String,
@@ -295,7 +295,7 @@ where
 }
 
 /// A FastQ record.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Record {
     id: String,
     desc: Option<String>,
@@ -487,7 +487,7 @@ impl SequenceRead for Record {
 }
 
 /// An iterator over the records of a FastQ file.
-#[derive(Debug)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Records<R: io::Read> {
     reader: Reader<R>,
 }

@@ -39,7 +39,7 @@ use std::iter::FromIterator;
 
 /// A `find` query on the interval tree does not directly return references to the intervals in the
 /// tree but wraps the fields `interval` and `data` in an `Entry`.
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 struct InternalEntry<N: Ord + Clone + Copy, D> {
     data: D,
     interval: Interval<N>,
@@ -48,7 +48,7 @@ struct InternalEntry<N: Ord + Clone + Copy, D> {
 
 /// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
 /// wraps the fields `interval` and `data` in an `Entry`.
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Serialize)]
 pub struct Entry<'a, N: Ord + Clone, D> {
     data: &'a D,
     interval: &'a Interval<N>,
@@ -76,6 +76,7 @@ impl<N: Ord + Clone + Copy, D> Default for ArrayBackedIntervalTree<N, D> {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub struct ArrayBackedIntervalTree<N: Ord + Clone + Copy, D> {
     entries: Vec<InternalEntry<N, D>>,
     max_level: usize,
@@ -198,7 +199,7 @@ impl<N: Ord + Clone + Copy, D: Clone> ArrayBackedIntervalTree<N, D> {
 
         let interval = interval.into();
         let (start, end) = (interval.start, interval.end);
-        let n = self.entries.len() as usize;
+        let n = self.entries.len();
         let a = &self.entries;
         results.clear();
         let mut stack = [StackCell::empty(); 64];

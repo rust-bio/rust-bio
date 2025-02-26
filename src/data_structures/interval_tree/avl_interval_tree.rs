@@ -30,8 +30,9 @@ use crate::utils::Interval;
 use std::cmp;
 use std::iter::FromIterator;
 use std::mem;
+
 /// An interval tree for storing intervals with data
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub struct IntervalTree<N: Ord + Clone, D> {
     root: Option<Node<N, D>>,
 }
@@ -44,7 +45,7 @@ impl<N: Ord + Clone, D> Default for IntervalTree<N, D> {
 
 /// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
 /// wraps the fields `interval` and `data` in an `Entry`.
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Serialize)]
 pub struct Entry<'a, N: Ord + Clone, D> {
     data: &'a D,
     interval: &'a Interval<N>,
@@ -64,6 +65,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Entry<'a, N, D> {
 
 /// An `IntervalTreeIterator` is returned by `Intervaltree::find` and iterates over the entries
 /// overlapping the query
+#[derive(Default, Clone, Eq, PartialEq, Hash, Debug, Serialize)]
 pub struct IntervalTreeIterator<'a, N: Ord + Clone, D> {
     nodes: Vec<&'a Node<N, D>>,
     interval: Interval<N>,
@@ -108,7 +110,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D>
 /// A `find_mut` query on the interval tree does not directly return references to the nodes in the tree, but
 /// wraps the fields `interval` and `data` in an `EntryMut`. Only the data part can be mutably accessed
 /// using the `data` method
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Eq, PartialEq, Hash, Debug, Serialize)]
 pub struct EntryMut<'a, N: Ord + Clone, D> {
     data: &'a mut D,
     interval: &'a Interval<N>,
@@ -128,6 +130,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> EntryMut<'a, N, D> {
 
 /// An `IntervalTreeIteratorMut` is returned by `Intervaltree::find_mut` and iterates over the entries
 /// overlapping the query allowing mutable access to the data `D`, not the `Interval`.
+#[derive(Default, Eq, PartialEq, Hash, Debug, Serialize)]
 pub struct IntervalTreeIteratorMut<'a, N: Ord + Clone, D> {
     nodes: Vec<&'a mut Node<N, D>>,
     interval: Interval<N>,
@@ -229,7 +232,7 @@ impl<N: Clone + Ord, D, R: Into<Interval<N>>> FromIterator<(R, D)> for IntervalT
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 struct Node<N: Ord + Clone, D> {
     // actual interval data
     interval: Interval<N>,
@@ -482,7 +485,7 @@ mod tests {
     ) {
         let mut actual_entries: Vec<Entry<'_, i64, String>> = tree.find(&target).collect();
         println!("{:?}", actual_entries);
-        actual_entries.sort_by(|x1, x2| x1.data.cmp(&x2.data));
+        actual_entries.sort_by(|x1, x2| x1.data.cmp(x2.data));
         let expected_entries = make_entry_tuples(expected_results);
         assert_eq!(actual_entries.len(), expected_entries.len());
         for (actual, expected) in actual_entries.iter().zip(expected_entries.iter()) {
@@ -495,7 +498,10 @@ mod tests {
         assert_intersections(tree, target, vec![]);
     }
 
+    // Clippy has a warning against `vec!` macros with a single range as argument.
+    // Since we do actually want that here, we disable the warning.
     #[test]
+    #[allow(clippy::single_range_in_vec_init)]
     fn test_insertion_and_intersection() {
         let mut tree: IntervalTree<i64, String> = IntervalTree::new();
         assert_eq!(tree.find(1..2).count(), 0);

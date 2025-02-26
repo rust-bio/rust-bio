@@ -11,7 +11,7 @@
 //!
 //! # Example
 //!
-//! ```
+//! ```no_run
 //! // import functions (at top of script)
 //! use bio::io::gff;
 //! use std::io;
@@ -28,20 +28,21 @@ use anyhow::Context;
 use itertools::Itertools;
 use multimap::MultiMap;
 use regex::Regex;
-use std::convert::AsRef;
+use std::convert::{AsRef, TryInto};
 use std::fs;
 use std::io;
 use std::path::Path;
 use std::str::FromStr;
 
 use bio_types::strand::Strand;
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// `GffType`
 ///
 /// We have three format in the GFF family.
 /// The change is in the last field of GFF.
 /// For each type we have key value separator and field separator
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum GffType {
     /// Attribute format is: key1=value; key2=value1,value2
     GFF3,
@@ -148,9 +149,128 @@ type GffRecordInner = (
     u64,
     String,
     String,
-    String,
+    Phase,
     String,
 );
+
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
+pub struct Phase(Option<u8>);
+
+impl Phase {
+    fn validate<T: Into<u8>>(p: T) -> Option<u8> {
+        let p = p.into();
+        if p < 3 {
+            Some(p)
+        } else {
+            None
+        }
+    }
+}
+
+impl From<u8> for Phase {
+    /// Create a new Phase from a u8.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::io::gff::Phase;
+    ///
+    /// let p = Phase::from(0);
+    /// let p = Phase::from(3); // This will create Phase(None)
+    /// ```
+    fn from(p: u8) -> Self {
+        Phase(Self::validate(p))
+    }
+}
+
+impl From<Option<u8>> for Phase {
+    /// Create a new Phase from an Option<u8>.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::io::gff::Phase;
+    ///
+    /// let p = Phase::from(Some(0));
+    /// let p = Phase::from(None);
+    /// let p = Phase::from(Some(3)); // This will create Phase(None)
+    /// ```
+    fn from(p: Option<u8>) -> Self {
+        Phase(p.and_then(Self::validate))
+    }
+}
+
+impl TryInto<u8> for Phase {
+    type Error = ();
+
+    /// Try to convert a Phase into a u8.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::io::gff::Phase;
+    /// use std::convert::TryInto;
+    ///
+    /// let p = Phase::from(0);
+    /// let u: u8 = p.try_into().unwrap();
+    /// assert_eq!(u, 0);
+    /// ```
+    fn try_into(self) -> Result<u8, Self::Error> {
+        match self.0 {
+            Some(p) => Ok(p),
+            None => Err(()),
+        }
+    }
+}
+
+impl TryInto<Option<u8>> for Phase {
+    type Error = ();
+
+    /// Try to convert a Phase into an Option<u8>.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::io::gff::Phase;
+    /// use std::convert::TryInto;
+    ///
+    /// let p = Phase::from(Some(0));
+    /// let u: Option<u8> = p.try_into().unwrap();
+    /// assert_eq!(u, Some(0));
+    ///
+    /// let p = Phase::from(None);
+    /// let u: Option<u8> = p.try_into().unwrap();
+    /// assert_eq!(u, None);
+    /// ```
+    fn try_into(self) -> Result<Option<u8>, Self::Error> {
+        Ok(self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for Phase {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "." => Ok(Phase(None)),
+            _ => {
+                let p = u8::from_str(&s)
+                    .map_err(|_| serde::de::Error::custom("Phase must be \".\", 0, 1, or 2"))?;
+                Ok(Phase(Self::validate(p)))
+            }
+        }
+    }
+}
+
+impl Serialize for Phase {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self.0 {
+            Some(p) => serializer.serialize_u8(p),
+            None => serializer.serialize_str("."),
+        }
+    }
+}
 
 /// An iterator over the records of a GFF file.
 pub struct Records<'a, R: io::Read> {
@@ -173,7 +293,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                     end,
                     score,
                     strand,
-                    frame,
+                    phase,
                     raw_attributes,
                 )| {
                     let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
@@ -191,7 +311,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                         end,
                         score,
                         strand,
-                        frame,
+                        phase,
                         attributes,
                     }
                 },
@@ -251,14 +371,14 @@ impl<W: io::Write> Writer<W> {
             record.end,
             &record.score,
             &record.strand,
-            &record.frame,
+            &record.phase,
             attributes,
         ))
     }
 }
 
 /// A GFF record
-#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+#[derive(Default, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Record {
     seqname: String,
     source: String,
@@ -267,7 +387,7 @@ pub struct Record {
     end: u64,
     score: String,
     strand: String,
-    frame: String,
+    phase: Phase,
     attributes: MultiMap<String, String>,
 }
 
@@ -282,7 +402,7 @@ impl Record {
             end: 0,
             score: ".".to_owned(),
             strand: ".".to_owned(),
-            frame: "".to_owned(),
+            phase: Phase(None),
             attributes: MultiMap::<String, String>::new(),
         }
     }
@@ -329,9 +449,9 @@ impl Record {
         }
     }
 
-    /// Frame of the feature.
-    pub fn frame(&self) -> &str {
-        &self.frame
+    /// Phase of the feature. The phase is one of the integers 0, 1, or 2, indicating the number of bases that should be removed from the beginning of this feature to reach the first base of the next codon. `None` if not applicable (`"."` in GFF file).
+    pub fn phase(&self) -> &Phase {
+        &self.phase
     }
 
     /// Attribute of feature
@@ -374,9 +494,9 @@ impl Record {
         &mut self.strand
     }
 
-    /// Get mutable reference on frame of feature.
-    pub fn frame_mut(&mut self) -> &mut String {
-        &mut self.frame
+    /// Get mutable reference on phase of feature.
+    pub fn phase_mut(&mut self) -> &mut Phase {
+        &mut self.phase
     }
 
     /// Get mutable reference on attributes of feature.
@@ -441,7 +561,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let ends = [1, 176];
         let scores = [None, Some(50)];
         let strand = [None, Some(Strand::Forward)];
-        let frame = [".", "."];
+        let phase = [Phase(None), Phase(None)];
         let mut attributes = [MultiMap::new(), MultiMap::new()];
         attributes[0].insert("ID".to_owned(), "test".to_owned());
         attributes[0].insert("Note".to_owned(), "Removed".to_owned());
@@ -462,7 +582,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
             assert_eq!(*record.end(), ends[i]);
             assert_eq!(record.score(), scores[i]);
             assert_eq!(record.strand(), strand[i]);
-            assert_eq!(record.frame(), frame[i]);
+            assert_eq!(*record.phase(), phase[i]);
             assert_eq!(record.attributes(), &attributes[i]);
         }
 
@@ -476,7 +596,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
             assert_eq!(*record.end(), ends[i]);
             assert_eq!(record.score(), scores[i]);
             assert_eq!(record.strand(), strand[i]);
-            assert_eq!(record.frame(), frame[i]);
+            assert_eq!(*record.phase(), phase[i]);
             assert_eq!(record.attributes(), &attributes[i]);
         }
     }
@@ -519,7 +639,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let ends = [1, 176];
         let scores = [None, Some(50)];
         let strand = [None, Some(Strand::Forward)];
-        let frame = [".", "."];
+        let phase = [Phase(None), Phase(None)];
         let mut attributes = [MultiMap::new(), MultiMap::new()];
         attributes[0].insert("ID".to_owned(), "test".to_owned());
         attributes[0].insert("Note".to_owned(), "Removed".to_owned());
@@ -536,7 +656,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
             assert_eq!(*record.end(), ends[i]);
             assert_eq!(record.score(), scores[i]);
             assert_eq!(record.strand(), strand[i]);
-            assert_eq!(record.frame(), frame[i]);
+            assert_eq!(*record.phase(), phase[i]);
             assert_eq!(record.attributes(), &attributes[i]);
         }
     }
@@ -550,7 +670,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let ends = [14409, 14409];
         let scores = [None, None];
         let strand = [Some(Strand::Forward), Some(Strand::Forward)];
-        let frame = [".", "."];
+        let phase = [Phase(None), Phase(None)];
         let mut attributes = [MultiMap::new(), MultiMap::new()];
         attributes[0].insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
         attributes[0].insert(
@@ -574,7 +694,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
             assert_eq!(*record.end(), ends[i]);
             assert_eq!(record.score(), scores[i]);
             assert_eq!(record.strand(), strand[i]);
-            assert_eq!(record.frame(), frame[i]);
+            assert_eq!(*record.phase(), phase[i]);
             assert_eq!(record.attributes(), &attributes[i]);
         }
     }
@@ -634,5 +754,25 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
             GffType::from_str("xtf9"),
             Err("String 'xtf9' is not a valid GFFType (GFF/GTF format version).".to_string())
         )
+    }
+
+    #[test]
+    fn test_from_u8_creates_phase_with_value() {
+        let phase = Phase::from(1);
+        assert_eq!(phase, Phase(Some(1)));
+    }
+
+    #[test]
+    fn test_try_into_u8_returns_value_for_phase_with_value() {
+        let phase = Phase(Some(2));
+        let result: Result<u8, ()> = phase.try_into();
+        assert_eq!(result, Ok(2));
+    }
+
+    #[test]
+    fn test_try_into_u8_returns_error_for_phase_with_none() {
+        let phase = Phase(None);
+        let result: Result<u8, ()> = phase.try_into();
+        assert_eq!(result, Err(()));
     }
 }
