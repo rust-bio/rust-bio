@@ -36,6 +36,7 @@ pub fn interpolate(a: f64, b: f64, fraction: f64) -> f64 {
 /// Input values are sampled with a given precision and results are stored in a vector.
 /// During lookup, infimum and supremum of a given value are calculated and the result is
 /// interpolated.
+#[derive(Default, Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct InterpolationTable<F: Fn(f64) -> f64> {
     inner: Vec<f64>,
     func: F,

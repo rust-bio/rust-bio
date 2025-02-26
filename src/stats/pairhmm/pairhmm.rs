@@ -16,9 +16,7 @@ use std::cmp;
 use std::mem;
 use std::usize;
 
-pub use crate::stats::pairhmm::{
-    EmissionParameters, GapParameters, StartEndGapParameters, XYEmission,
-};
+pub use crate::stats::pairhmm::{EmissionParameters, GapParameters, StartEndGapParameters};
 use crate::stats::LogProb;
 
 /// Fast approximation of sum over the three given proabilities. If the largest is sufficiently
@@ -44,7 +42,7 @@ fn ln_sum3_exp_approx(mut p0: LogProb, mut p1: LogProb, mut p2: LogProb) -> LogP
 /// A pair Hidden Markov Model for comparing sequences x and y as described by
 /// Durbin, R., Eddy, S., Krogh, A., & Mitchison, G. (1998). Biological Sequence Analysis.
 /// Current Topics in Genome Analysis 2008. http://doi.org/10.1017/CBO9780511790492.
-#[derive(Debug, Clone)]
+#[derive(Default, Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct PairHMM {
     fm: [Vec<LogProb>; 2],
     fx: [Vec<LogProb>; 2],
@@ -54,7 +52,7 @@ pub struct PairHMM {
     gap_params: GapParamCache,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 struct GapParamCache {
     prob_no_gap: LogProb,
     prob_no_gap_x_extend: LogProb,
@@ -284,7 +282,7 @@ impl PairHMM {
 
 #[cfg(test)]
 mod tests {
-    use crate::stats::{LogProb, Prob};
+    use crate::stats::{pairhmm::XYEmission, LogProb, Prob};
 
     use super::*;
 
@@ -383,7 +381,7 @@ mod tests {
     const EMIT_MATCH: LogProb = LogProb(-0.0021022080918701985);
     const EMIT_GAP_X: LogProb = LogProb(-0.0021022080918701985);
     const EMIT_GAP_Y: LogProb = LogProb(-0.0021022080918701985);
-    const T_MATCH: LogProb = LogProb(-7.900031205113962e-06);
+    const T_MATCH: LogProb = LogProb(-7.900_031_205_113_962e-6);
     const T_GAP_X: LogProb = LogProb(-12.785891140783116);
     const T_GAP_Y: LogProb = LogProb(-12.186270018233994);
 

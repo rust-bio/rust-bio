@@ -13,9 +13,9 @@
 //! let mut reader = bed::Reader::new(&example[..]);
 //! let mut writer = bed::Writer::new(vec![]);
 //! for record in reader.records() {
-//!     let rec = record.ok().expect("Error reading record.");
+//!     let rec = record.expect("Error reading record.");
 //!     println!("{}", rec.chrom());
-//!     writer.write(&rec).ok().expect("Error writing record.");
+//!     writer.write(&rec).expect("Error writing record.");
 //! }
 //! ```
 
@@ -27,6 +27,7 @@ use std::marker::Copy;
 use std::ops::Deref;
 use std::path::Path;
 
+use anyhow::Context;
 use bio_types::annot;
 use bio_types::annot::loc::Loc;
 use bio_types::strand;
@@ -39,8 +40,10 @@ pub struct Reader<R: io::Read> {
 
 impl Reader<fs::File> {
     /// Read from a given file path.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::open(path).map(Reader::new)
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
+        fs::File::open(&path)
+            .map(Reader::new)
+            .with_context(|| format!("Failed to read bed from {:#?}", path))
     }
 }
 
@@ -51,6 +54,7 @@ impl<R: io::Read> Reader<R> {
             inner: csv::ReaderBuilder::new()
                 .delimiter(b'\t')
                 .has_headers(false)
+                .comment(Some(b'#'))
                 .from_reader(reader),
         }
     }
@@ -105,17 +109,17 @@ impl<W: io::Write> Writer<W> {
     pub fn write(&mut self, record: &Record) -> csv::Result<()> {
         if record.aux.is_empty() {
             self.inner
-                .serialize(&(&record.chrom, record.start, record.end))
+                .serialize((&record.chrom, record.start, record.end))
         } else {
             self.inner
-                .serialize(&(&record.chrom, record.start, record.end, &record.aux))
+                .serialize((&record.chrom, record.start, record.end, &record.aux))
         }
     }
 }
 
 /// A BED record as defined by BEDtools
 /// (http://bedtools.readthedocs.org/en/latest/content/general-usage.html)
-#[derive(Debug, Serialize, Default, Deserialize, Clone)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Record {
     chrom: String,
     start: u64,
@@ -329,7 +333,7 @@ where
 ///     let mut writer = bed::Writer::new(&mut buf);
 ///     let mut tad3_bed = bed::Record::from(tad3);
 ///     tad3_bed.set_name("YLR316C");
-///     writer.write(&tad3_bed).ok().unwrap();
+///     writer.write(&tad3_bed).unwrap();
 /// }
 /// assert_eq!(
 ///     "chrXII\t765265\t766358\tYLR316C\t0\t-\t765265\t766358\t0\t3\t808,52,109,\t0,864,984,\n",
@@ -383,13 +387,19 @@ where
 mod tests {
     use super::*;
 
-    use bio_types::annot::spliced::Spliced;
-    use bio_types::strand::ReqStrand;
+    use bio_types::annot::{contig::Contig, pos::Pos, spliced::Spliced};
+    use bio_types::strand::{ReqStrand, Strand};
 
-    const BED_FILE: &'static [u8] = b"1\t5\t5000\tname1\tup
+    const BED_FILE: &[u8] = b"1\t5\t5000\tname1\tup
 2\t3\t5005\tname2\tup
 ";
-    const BED_FILE_COMPACT: &'static [u8] = b"1\t5\t5000\n2\t3\t5005\n";
+    const BED_FILE_COMMENT: &[u8] = b"\
+# this line should be ignored
+1\t5\t5000\tname1\tup
+# and this one as well
+2\t3\t5005\tname2\tup
+";
+    const BED_FILE_COMPACT: &[u8] = b"1\t5\t5000\n2\t3\t5005\n";
 
     #[test]
     fn test_reader() {
@@ -401,7 +411,26 @@ mod tests {
 
         let mut reader = Reader::new(BED_FILE);
         for (i, r) in reader.records().enumerate() {
-            let record = r.ok().expect("Error reading record");
+            let record = r.expect("Error reading record");
+            assert_eq!(record.chrom(), chroms[i]);
+            assert_eq!(record.start(), starts[i]);
+            assert_eq!(record.end(), ends[i]);
+            assert_eq!(record.name().expect("Error reading name"), names[i]);
+            assert_eq!(record.score().expect("Error reading score"), scores[i]);
+        }
+    }
+
+    #[test]
+    fn test_reader_with_comment() {
+        let chroms = ["1", "2"];
+        let starts = [5, 3];
+        let ends = [5000, 5005];
+        let names = ["name1", "name2"];
+        let scores = ["up", "up"];
+
+        let mut reader = Reader::new(BED_FILE_COMMENT);
+        for (i, r) in reader.records().enumerate() {
+            let record = r.expect("Error reading record");
             assert_eq!(record.chrom(), chroms[i]);
             assert_eq!(record.start(), starts[i]);
             assert_eq!(record.end(), ends[i]);
@@ -426,6 +455,17 @@ mod tests {
     }
 
     #[test]
+    fn test_reader_from_file_path_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.bed");
+        let error = Reader::from_file(path)
+            .unwrap_err()
+            .downcast::<String>()
+            .unwrap();
+
+        assert_eq!(&error, "Failed to read bed from \"/I/dont/exist.bed\"")
+    }
+
+    #[test]
     fn test_writer() {
         let mut reader = Reader::new(BED_FILE);
         let mut writer = Writer::new(vec![]);
@@ -443,8 +483,8 @@ mod tests {
         let tma20 = Spliced::with_lengths_starts(
             "chrV".to_owned(),
             166236,
-            &vec![535, 11],
-            &vec![0, 638],
+            &[535, 11],
+            &[0, 638],
             ReqStrand::Reverse,
         )
         .unwrap();
@@ -453,7 +493,7 @@ mod tests {
             let mut writer = Writer::new(&mut buf);
             let mut tma20_bed = Record::from(tma20);
             tma20_bed.set_name("YER007C-A");
-            writer.write(&tma20_bed).ok().unwrap();
+            writer.write(&tma20_bed).unwrap();
         }
         assert_eq!(
             "chrV\t166236\t166885\tYER007C-A\t0\t-\t166236\t166885\t0\t2\t535,11,\t0,638,\n",
@@ -464,8 +504,8 @@ mod tests {
         let rpl7b = Spliced::with_lengths_starts(
             "chrXVI".to_owned(),
             173151,
-            &vec![11, 94, 630],
-            &vec![0, 420, 921],
+            &[11, 94, 630],
+            &[0, 420, 921],
             ReqStrand::Forward,
         )
         .unwrap();
@@ -474,7 +514,7 @@ mod tests {
             let mut writer = Writer::new(&mut buf);
             let mut rpl7b_bed = Record::from(rpl7b);
             rpl7b_bed.set_name("YPL198W");
-            writer.write(&rpl7b_bed).ok().unwrap();
+            writer.write(&rpl7b_bed).unwrap();
         }
         assert_eq!(
             "chrXVI\t173151\t174702\tYPL198W\t0\t+\t173151\t174702\t0\t3\t11,94,630,\t0,420,921,\n",
@@ -485,8 +525,8 @@ mod tests {
         let tad3 = Spliced::with_lengths_starts(
             "chrXII".to_owned(),
             765265,
-            &vec![808, 52, 109],
-            &vec![0, 864, 984],
+            &[808, 52, 109],
+            &[0, 864, 984],
             ReqStrand::Reverse,
         )
         .unwrap();
@@ -495,9 +535,42 @@ mod tests {
             let mut writer = Writer::new(&mut buf);
             let mut tad3_bed = Record::from(tad3);
             tad3_bed.set_name("YLR316C");
-            writer.write(&tad3_bed).ok().unwrap();
+            writer.write(&tad3_bed).unwrap();
         }
         assert_eq!("chrXII\t765265\t766358\tYLR316C\t0\t-\t765265\t766358\t0\t3\t808,52,109,\t0,864,984,\n",
                    String::from_utf8(buf).unwrap().as_str());
+    }
+
+    #[test]
+    fn test_bed_from_contig() {
+        let contig = Contig::new(
+            "chrXI".to_owned(),
+            334412,
+            334916 - 334412,
+            ReqStrand::Reverse,
+        );
+
+        let record = Record::from(contig);
+
+        assert_eq!(record.chrom(), String::from("chrXI"));
+        assert_eq!(record.start(), 334412);
+        assert_eq!(record.end(), 334412 + (334916 - 334412));
+        assert_eq!(record.name(), Some(""));
+        assert_eq!(record.score(), Some("0"));
+        assert_eq!(record.strand(), Some(Strand::Reverse));
+    }
+
+    #[test]
+    fn test_bed_from_pos() {
+        let pos = Pos::new("chrXI".to_owned(), 334412, ReqStrand::Reverse);
+
+        let record = Record::from(pos);
+
+        assert_eq!(record.chrom(), String::from("chrXI"));
+        assert_eq!(record.start(), 334412);
+        assert_eq!(record.end(), 334412 + 1);
+        assert_eq!(record.name(), Some(""));
+        assert_eq!(record.score(), Some("0"));
+        assert_eq!(record.strand(), Some(Strand::Reverse));
     }
 }

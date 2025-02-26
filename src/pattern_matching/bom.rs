@@ -26,6 +26,7 @@ use std::iter::repeat;
 use vec_map::VecMap;
 
 /// Backward oracle matching algorithm.
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct BOM {
     m: usize,
     table: Vec<VecMap<usize>>,
@@ -88,10 +89,7 @@ impl BOM {
         if q >= self.table.len() {
             None
         } else {
-            match self.table[q].get(a as usize) {
-                Some(&q) => Some(q),
-                None => None,
-            }
+            self.table[q].get(a as usize).copied()
         }
     }
 
@@ -106,6 +104,7 @@ impl BOM {
 }
 
 /// Iterator over start positions of matches.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize)]
 pub struct Matches<'a> {
     bom: &'a BOM,
     text: TextSlice<'a>,
@@ -173,5 +172,13 @@ mod tests {
         let pattern = b"qnnnannan";
         let bom = BOM::new(pattern);
         assert_eq!(bom.find_all(text).collect_vec(), [8]);
+    }
+
+    #[test]
+    fn test_find_all_at_start() {
+        let text = b"dhjalkjwqnnnannanaflkjdklfj";
+        let pattern = b"dhjalk";
+        let bom = BOM::new(pattern);
+        assert_eq!(bom.find_all(text).collect_vec(), [0]);
     }
 }

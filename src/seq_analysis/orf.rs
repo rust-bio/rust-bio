@@ -40,6 +40,7 @@ use std::iter;
 // codons because a VecDeque<u8> is used to represent a sliding codon
 // (see: State.codon) window which unfortunately, cannot be compared
 // to [u8; 3].
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Finder {
     start_codons: Vec<VecDeque<u8>>,
     stop_codons: Vec<VecDeque<u8>>,
@@ -57,11 +58,11 @@ impl Finder {
         Finder {
             start_codons: start_codons
                 .iter()
-                .map(|x| x.iter().map(|&x| x as u8).collect::<VecDeque<u8>>())
+                .map(|x| x.iter().copied().collect::<VecDeque<u8>>())
                 .collect(),
             stop_codons: stop_codons
                 .iter()
-                .map(|x| x.iter().map(|&x| x as u8).collect::<VecDeque<u8>>())
+                .map(|x| x.iter().copied().collect::<VecDeque<u8>>())
                 .collect(),
             min_len,
         }
@@ -84,7 +85,9 @@ impl Finder {
 /// An ORF representation with start and end position of said ORF,
 /// as well as offset of the reading frame (1,2,3) and strand location
 // (current: +, reverse complementary: -).
-#[derive(Debug, PartialEq)]
+#[derive(
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
+)]
 pub struct Orf {
     pub start: usize,
     pub end: usize,
@@ -92,22 +95,26 @@ pub struct Orf {
 }
 
 /// The current algorithm state.
+#[derive(Clone, Debug)]
 struct State {
-    start_pos: [Option<usize>; 3],
+    start_pos: [Vec<usize>; 3],
     codon: VecDeque<u8>,
+    found: VecDeque<Orf>,
 }
 
 impl State {
     /// Create new state.
     pub fn new() -> Self {
         State {
-            start_pos: [None, None, None],
+            start_pos: [Vec::new(), Vec::new(), Vec::new()],
             codon: VecDeque::new(),
+            found: VecDeque::new(),
         }
     }
 }
 
 /// Iterator over offset, start position, end position and sequence of matched ORFs.
+#[derive(Clone, Debug)]
 pub struct Matches<'a, C, T>
 where
     C: Borrow<u8>,
@@ -126,8 +133,12 @@ where
     type Item = Orf;
 
     fn next(&mut self) -> Option<Orf> {
-        let mut result: Option<Orf> = None;
         let mut offset: usize;
+
+        // return any orfs already found
+        if !self.state.found.is_empty() {
+            return self.state.found.pop_front();
+        }
 
         for (index, nuc) in self.seq.by_ref() {
             // update the codon
@@ -137,28 +148,34 @@ where
             self.state.codon.push_back(*nuc.borrow());
             offset = (index + 1) % 3;
 
+            // check if entering orf
+            if self.finder.start_codons.contains(&self.state.codon) {
+                self.state.start_pos[offset].push(index);
+            }
             // inside orf
-            if self.state.start_pos[offset].is_some() {
+            if !self.state.start_pos[offset].is_empty() {
                 // check if leaving orf
                 if self.finder.stop_codons.contains(&self.state.codon) {
-                    // check if length is sufficient
-                    if index + 1 - self.state.start_pos[offset].unwrap() > self.finder.min_len {
-                        // build results
-                        result = Some(Orf {
-                            start: self.state.start_pos[offset].unwrap() - 2,
-                            end: index + 1,
-                            offset: offset as i8,
-                        });
+                    for start_pos in &self.state.start_pos[offset] {
+                        // check if length is sufficient
+                        if index + 1 - start_pos > self.finder.min_len {
+                            // build results
+                            self.state.found.push_back(Orf {
+                                start: start_pos - 2,
+                                end: index + 1,
+                                offset: offset as i8,
+                            });
+                        // if the first orf is too short, so are the others
+                        } else {
+                            break;
+                        }
                     }
                     // reinitialize
-                    self.state.start_pos[offset] = None;
+                    self.state.start_pos[offset] = Vec::new();
                 }
-            // check if entering orf
-            } else if self.finder.start_codons.contains(&self.state.codon) {
-                self.state.start_pos[offset] = Some(index);
             }
-            if result.is_some() {
-                return result;
+            if !self.state.found.is_empty() {
+                return self.state.found.pop_front();
             }
         }
         None
@@ -180,7 +197,7 @@ mod tests {
     fn test_no_orf() {
         let finder = basic_finder();
         let sequence = b"ACGGCTAGAAAAGGCTAGAAAA";
-        assert!(finder.find_all(sequence).collect::<Vec<Orf>>().is_empty());
+        assert!(finder.find_all(sequence).next().is_none());
     }
 
     #[test]
@@ -221,6 +238,30 @@ mod tests {
                 start: 14,
                 end: 26,
                 offset: 2,
+            },
+        ];
+        assert_eq!(expected, finder.find_all(sequence).collect::<Vec<Orf>>());
+    }
+
+    #[test]
+    fn test_three_nested_and_offset_orfs() {
+        let finder = basic_finder();
+        let sequence = b"ATGGGGATGGGGGGATGGAAAAATAAGTAG";
+        let expected = vec![
+            Orf {
+                start: 14,
+                end: 26,
+                offset: 2,
+            },
+            Orf {
+                start: 0,
+                end: 30,
+                offset: 0,
+            },
+            Orf {
+                start: 6,
+                end: 30,
+                offset: 0,
             },
         ];
         assert_eq!(expected, finder.find_all(sequence).collect::<Vec<Orf>>());

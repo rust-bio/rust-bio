@@ -3,15 +3,15 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! GFF3 format reading and writing.
+//! [GFF3] format reading and writing. [GFF2] is currently not supported.
 //!
-//! GFF2 definition : http://gmod.org/wiki/GFF2#The_GFF2_File_Format (not yet support)
-//! GTF2 definition : http://mblab.wustl.edu/GTF2.html (not yet support)
-//! GFF3 definition : http://gmod.org/wiki/GFF3#GFF3_Format
+//! [GFF2]: http://gmod.org/wiki/GFF2 (not supported)
+//! [GTF2]: http://mblab.wustl.edu/GTF2.html (not supported)
+//! [GFF3]: http://gmod.org/wiki/GFF3#GFF3_Format
 //!
 //! # Example
 //!
-//! ```
+//! ```no_run
 //! // import functions (at top of script)
 //! use bio::io::gff;
 //! use std::io;
@@ -24,22 +24,25 @@
 //! }
 //! ```
 
+use anyhow::Context;
 use itertools::Itertools;
 use multimap::MultiMap;
 use regex::Regex;
-use std::convert::AsRef;
+use std::convert::{AsRef, TryInto};
 use std::fs;
 use std::io;
 use std::path::Path;
+use std::str::FromStr;
 
 use bio_types::strand::Strand;
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// `GffType`
 ///
 /// We have three format in the GFF family.
 /// The change is in the last field of GFF.
 /// For each type we have key value separator and field separator
-#[derive(Debug, Clone, Copy)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum GffType {
     /// Attribute format is: key1=value; key2=value1,value2
     GFF3,
@@ -51,6 +54,27 @@ pub enum GffType {
     /// second field separates multiple key value pairs, and
     /// third field separates multiple values for the same key
     Any(u8, u8, u8),
+}
+
+impl FromStr for GffType {
+    type Err = String;
+
+    /// Create a GffType from a string.
+    ///
+    /// # Arguments
+    ///
+    /// * `src_str` - The source string to convert to the GffType.
+    fn from_str(src_str: &str) -> Result<Self, Self::Err> {
+        match src_str {
+            "gff3" => Ok(GffType::GFF3),
+            "gff2" => Ok(GffType::GFF2),
+            "gtf2" => Ok(GffType::GTF2),
+            _ => Err(format!(
+                "String '{}' is not a valid GFFType (GFF/GTF format version).",
+                src_str
+            )),
+        }
+    }
 }
 
 impl GffType {
@@ -77,8 +101,13 @@ pub struct Reader<R: io::Read> {
 
 impl Reader<fs::File> {
     /// Read GFF from given file path in given format.
-    pub fn from_file<P: AsRef<Path>>(path: P, fileformat: GffType) -> io::Result<Self> {
-        fs::File::open(path).map(|f| Reader::new(f, fileformat))
+    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(
+        path: P,
+        fileformat: GffType,
+    ) -> anyhow::Result<Self> {
+        fs::File::open(&path)
+            .map(|f| Reader::new(f, fileformat))
+            .with_context(|| format!("Failed to read GFF from {:#?}", path))
     }
 }
 
@@ -120,9 +149,128 @@ type GffRecordInner = (
     u64,
     String,
     String,
-    String,
+    Phase,
     String,
 );
+
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
+pub struct Phase(Option<u8>);
+
+impl Phase {
+    fn validate<T: Into<u8>>(p: T) -> Option<u8> {
+        let p = p.into();
+        if p < 3 {
+            Some(p)
+        } else {
+            None
+        }
+    }
+}
+
+impl From<u8> for Phase {
+    /// Create a new Phase from a u8.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::io::gff::Phase;
+    ///
+    /// let p = Phase::from(0);
+    /// let p = Phase::from(3); // This will create Phase(None)
+    /// ```
+    fn from(p: u8) -> Self {
+        Phase(Self::validate(p))
+    }
+}
+
+impl From<Option<u8>> for Phase {
+    /// Create a new Phase from an Option<u8>.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::io::gff::Phase;
+    ///
+    /// let p = Phase::from(Some(0));
+    /// let p = Phase::from(None);
+    /// let p = Phase::from(Some(3)); // This will create Phase(None)
+    /// ```
+    fn from(p: Option<u8>) -> Self {
+        Phase(p.and_then(Self::validate))
+    }
+}
+
+impl TryInto<u8> for Phase {
+    type Error = ();
+
+    /// Try to convert a Phase into a u8.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::io::gff::Phase;
+    /// use std::convert::TryInto;
+    ///
+    /// let p = Phase::from(0);
+    /// let u: u8 = p.try_into().unwrap();
+    /// assert_eq!(u, 0);
+    /// ```
+    fn try_into(self) -> Result<u8, Self::Error> {
+        match self.0 {
+            Some(p) => Ok(p),
+            None => Err(()),
+        }
+    }
+}
+
+impl TryInto<Option<u8>> for Phase {
+    type Error = ();
+
+    /// Try to convert a Phase into an Option<u8>.
+    ///
+    /// # Example
+    /// ```
+    /// use bio::io::gff::Phase;
+    /// use std::convert::TryInto;
+    ///
+    /// let p = Phase::from(Some(0));
+    /// let u: Option<u8> = p.try_into().unwrap();
+    /// assert_eq!(u, Some(0));
+    ///
+    /// let p = Phase::from(None);
+    /// let u: Option<u8> = p.try_into().unwrap();
+    /// assert_eq!(u, None);
+    /// ```
+    fn try_into(self) -> Result<Option<u8>, Self::Error> {
+        Ok(self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for Phase {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "." => Ok(Phase(None)),
+            _ => {
+                let p = u8::from_str(&s)
+                    .map_err(|_| serde::de::Error::custom("Phase must be \".\", 0, 1, or 2"))?;
+                Ok(Phase(Self::validate(p)))
+            }
+        }
+    }
+}
+
+impl Serialize for Phase {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self.0 {
+            Some(p) => serializer.serialize_u8(p),
+            None => serializer.serialize_str("."),
+        }
+    }
+}
 
 /// An iterator over the records of a GFF file.
 pub struct Records<'a, R: io::Read> {
@@ -145,7 +293,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                     end,
                     score,
                     strand,
-                    frame,
+                    phase,
                     raw_attributes,
                 )| {
                     let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
@@ -163,7 +311,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                         end,
                         score,
                         strand,
-                        frame,
+                        phase,
                         attributes,
                     }
                 },
@@ -223,14 +371,14 @@ impl<W: io::Write> Writer<W> {
             record.end,
             &record.score,
             &record.strand,
-            &record.frame,
+            &record.phase,
             attributes,
         ))
     }
 }
 
 /// A GFF record
-#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+#[derive(Default, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Record {
     seqname: String,
     source: String,
@@ -239,7 +387,7 @@ pub struct Record {
     end: u64,
     score: String,
     strand: String,
-    frame: String,
+    phase: Phase,
     attributes: MultiMap<String, String>,
 }
 
@@ -254,7 +402,7 @@ impl Record {
             end: 0,
             score: ".".to_owned(),
             strand: ".".to_owned(),
-            frame: "".to_owned(),
+            phase: Phase(None),
             attributes: MultiMap::<String, String>::new(),
         }
     }
@@ -301,9 +449,9 @@ impl Record {
         }
     }
 
-    /// Frame of the feature.
-    pub fn frame(&self) -> &str {
-        &self.frame
+    /// Phase of the feature. The phase is one of the integers 0, 1, or 2, indicating the number of bases that should be removed from the beginning of this feature to reach the first base of the next codon. `None` if not applicable (`"."` in GFF file).
+    pub fn phase(&self) -> &Phase {
+        &self.phase
     }
 
     /// Attribute of feature
@@ -346,9 +494,9 @@ impl Record {
         &mut self.strand
     }
 
-    /// Get mutable reference on frame of feature.
-    pub fn frame_mut(&mut self) -> &mut String {
-        &mut self.frame
+    /// Get mutable reference on phase of feature.
+    pub fn phase_mut(&mut self) -> &mut Phase {
+        &mut self.phase
     }
 
     /// Get mutable reference on attributes of feature.
@@ -363,35 +511,35 @@ mod tests {
     use bio_types::strand::Strand;
     use multimap::MultiMap;
 
-    const GFF_FILE: &'static [u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t\
+    const GFF_FILE: &[u8] = b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t\
 Note=Removed,Obsolete;ID=test
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV;\
 ID=PRO_0000148105";
-    const GFF_FILE_WITH_COMMENT: &'static [u8] = b"#comment
+    const GFF_FILE_WITH_COMMENT: &[u8] = b"#comment
 P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\t\
 Note=Removed,Obsolete;ID=test
 #comment
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote=ATP-dependent protease subunit HslV;\
 ID=PRO_0000148105";
     //required because MultiMap iter on element randomly
-    const GFF_FILE_ONE_ATTRIB: &'static [u8] =
+    const GFF_FILE_ONE_ATTRIB: &[u8] =
         b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote=Removed
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID=PRO_0000148105
 ";
 
-    const GTF_FILE: &'static [u8] =
+    const GTF_FILE: &[u8] =
         b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed;ID test
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tNote ATP-dependent;ID PRO_0000148105
 ";
 
     // Another variant of GTF file, modified from a published GENCODE GTF file.
-    const GTF_FILE_2: &'static [u8] = b"chr1\tHAVANA\tgene\t11869\t14409\t.\t+\t.\t\
+    const GTF_FILE_2: &[u8] = b"chr1\tHAVANA\tgene\t11869\t14409\t.\t+\t.\t\
 gene_id \"ENSG00000223972.5\"; gene_type \"transcribed_unprocessed_pseudogene\";
 chr1\tHAVANA\ttranscript\t11869\t14409\t.\t+\t.\tgene_id \"ENSG00000223972.5\";\
 transcript_id \"ENST00000456328.2\"; gene_type \"transcribed_unprocessed_pseudogene\"";
 
     // GTF file with duplicate attribute keys, taken from a published GENCODE GTF file.
-    const GTF_FILE_DUP_ATTR_KEYS: &'static [u8] = b"chr1\tENSEMBL\ttranscript\t182393\t\
+    const GTF_FILE_DUP_ATTR_KEYS: &[u8] = b"chr1\tENSEMBL\ttranscript\t182393\t\
 184158\t.\t+\t.\tgene_id \"ENSG00000279928.1\"; transcript_id \"ENST00000624431.1\";\
 gene_type \"protein_coding\"; gene_status \"KNOWN\"; gene_name \"FO538757.2\";\
 transcript_type \"protein_coding\"; transcript_status \"KNOWN\";\
@@ -399,7 +547,7 @@ transcript_name \"FO538757.2-201\"; level 3; protein_id \"ENSP00000485457.1\";\
 transcript_support_level \"1\"; tag \"basic\"; tag \"appris_principal_1\";";
 
     //required because MultiMap iter on element randomly
-    const GTF_FILE_ONE_ATTRIB: &'static [u8] =
+    const GTF_FILE_ONE_ATTRIB: &[u8] =
         b"P0A7B8\tUniProtKB\tInitiator methionine\t1\t1\t.\t.\t.\tNote Removed
 P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 ";
@@ -413,7 +561,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let ends = [1, 176];
         let scores = [None, Some(50)];
         let strand = [None, Some(Strand::Forward)];
-        let frame = [".", "."];
+        let phase = [Phase(None), Phase(None)];
         let mut attributes = [MultiMap::new(), MultiMap::new()];
         attributes[0].insert("ID".to_owned(), "test".to_owned());
         attributes[0].insert("Note".to_owned(), "Removed".to_owned());
@@ -434,7 +582,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
             assert_eq!(*record.end(), ends[i]);
             assert_eq!(record.score(), scores[i]);
             assert_eq!(record.strand(), strand[i]);
-            assert_eq!(record.frame(), frame[i]);
+            assert_eq!(*record.phase(), phase[i]);
             assert_eq!(record.attributes(), &attributes[i]);
         }
 
@@ -448,9 +596,38 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
             assert_eq!(*record.end(), ends[i]);
             assert_eq!(record.score(), scores[i]);
             assert_eq!(record.strand(), strand[i]);
-            assert_eq!(record.frame(), frame[i]);
+            assert_eq!(*record.phase(), phase[i]);
             assert_eq!(record.attributes(), &attributes[i]);
         }
+    }
+
+    #[test]
+    fn test_reader_from_file_path_doesnt_exist_returns_err() {
+        let path = Path::new("/I/dont/exist.gff");
+        let error = Reader::from_file(path, GffType::GFF3)
+            .unwrap_err()
+            .downcast::<String>()
+            .unwrap();
+
+        assert_eq!(&error, "Failed to read GFF from \"/I/dont/exist.gff\"")
+    }
+
+    #[test]
+    fn test_gff_type_from_str() {
+        let gff3 = GffType::from_str("gff3").expect("Error parsing");
+        assert_eq!(gff3, GffType::GFF3);
+
+        let gff2 = GffType::from_str("gff2").expect("Error parsing");
+        assert_eq!(gff2, GffType::GFF2);
+
+        let gtf2 = GffType::from_str("gtf2").expect("Error parsing");
+        assert_eq!(gtf2, GffType::GTF2);
+
+        let unk = GffType::from_str("unknown").unwrap_err();
+        assert_eq!(
+            unk,
+            "String 'unknown' is not a valid GFFType (GFF/GTF format version)."
+        )
     }
 
     #[test]
@@ -462,7 +639,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let ends = [1, 176];
         let scores = [None, Some(50)];
         let strand = [None, Some(Strand::Forward)];
-        let frame = [".", "."];
+        let phase = [Phase(None), Phase(None)];
         let mut attributes = [MultiMap::new(), MultiMap::new()];
         attributes[0].insert("ID".to_owned(), "test".to_owned());
         attributes[0].insert("Note".to_owned(), "Removed".to_owned());
@@ -479,7 +656,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
             assert_eq!(*record.end(), ends[i]);
             assert_eq!(record.score(), scores[i]);
             assert_eq!(record.strand(), strand[i]);
-            assert_eq!(record.frame(), frame[i]);
+            assert_eq!(*record.phase(), phase[i]);
             assert_eq!(record.attributes(), &attributes[i]);
         }
     }
@@ -493,7 +670,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let ends = [14409, 14409];
         let scores = [None, None];
         let strand = [Some(Strand::Forward), Some(Strand::Forward)];
-        let frame = [".", "."];
+        let phase = [Phase(None), Phase(None)];
         let mut attributes = [MultiMap::new(), MultiMap::new()];
         attributes[0].insert("gene_id".to_owned(), "ENSG00000223972.5".to_owned());
         attributes[0].insert(
@@ -517,7 +694,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
             assert_eq!(*record.end(), ends[i]);
             assert_eq!(record.score(), scores[i]);
             assert_eq!(record.strand(), strand[i]);
-            assert_eq!(record.frame(), frame[i]);
+            assert_eq!(*record.phase(), phase[i]);
             assert_eq!(record.attributes(), &attributes[i]);
         }
     }
@@ -541,8 +718,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut writer = Writer::new(vec![], GffType::GFF3);
         for r in reader.records() {
             writer
-                .write(&r.ok().expect("Error reading record"))
-                .ok()
+                .write(&r.expect("Error reading record"))
                 .expect("Error writing record");
         }
         assert_eq!(writer.inner.into_inner().unwrap(), GFF_FILE_ONE_ATTRIB)
@@ -554,8 +730,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut writer = Writer::new(vec![], GffType::GTF2);
         for r in reader.records() {
             writer
-                .write(&r.ok().expect("Error reading record"))
-                .ok()
+                .write(&r.expect("Error reading record"))
                 .expect("Error writing record");
         }
         assert_eq!(writer.inner.into_inner().unwrap(), GTF_FILE_ONE_ATTRIB)
@@ -567,10 +742,37 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let mut writer = Writer::new(vec![], GffType::GFF3);
         for r in reader.records() {
             writer
-                .write(&r.ok().expect("Error reading record"))
-                .ok()
+                .write(&r.expect("Error reading record"))
                 .expect("Error writing record");
         }
         assert_eq!(writer.inner.into_inner().unwrap(), GFF_FILE_ONE_ATTRIB)
+    }
+
+    #[test]
+    fn test_unknown_gff_type() {
+        assert_eq!(
+            GffType::from_str("xtf9"),
+            Err("String 'xtf9' is not a valid GFFType (GFF/GTF format version).".to_string())
+        )
+    }
+
+    #[test]
+    fn test_from_u8_creates_phase_with_value() {
+        let phase = Phase::from(1);
+        assert_eq!(phase, Phase(Some(1)));
+    }
+
+    #[test]
+    fn test_try_into_u8_returns_value_for_phase_with_value() {
+        let phase = Phase(Some(2));
+        let result: Result<u8, ()> = phase.try_into();
+        assert_eq!(result, Ok(2));
+    }
+
+    #[test]
+    fn test_try_into_u8_returns_error_for_phase_with_none() {
+        let phase = Phase(None);
+        let result: Result<u8, ()> = phase.try_into();
+        assert_eq!(result, Err(()));
     }
 }

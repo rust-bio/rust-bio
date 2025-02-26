@@ -22,6 +22,7 @@ use std::borrow::Borrow;
 use std::iter::Enumerate;
 
 /// `ShiftAnd` algorithm.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct ShiftAnd {
     m: usize,
     masks: [u64; 256],
@@ -78,6 +79,7 @@ where
 }
 
 /// Iterator over start positions of matches.
+#[derive(Clone, Debug)]
 pub struct Matches<'a, C, T>
 where
     C: Borrow<u8>,
@@ -99,7 +101,7 @@ where
         for (i, c) in self.text.by_ref() {
             self.active = ((self.active << 1) | 1) & self.shiftand.masks[*c.borrow() as usize];
             if self.active & self.shiftand.accept > 0 {
-                return Some(i - self.shiftand.m + 1);
+                return Some(i + 1 - self.shiftand.m);
             }
         }
 
@@ -118,5 +120,21 @@ mod tests {
         let pattern = b"qnnnannan";
         let shiftand = ShiftAnd::new(pattern);
         assert_eq!(shiftand.find_all(text).collect_vec(), [8]);
+    }
+
+    #[test]
+    fn test_issue_416() {
+        let text_pos_0 = b"CCTTTTTTTTTTTTTTT";
+        let pattern = b"CC";
+        let shiftand = ShiftAnd::new(pattern);
+        assert_eq!(shiftand.find_all(text_pos_0).collect_vec(), [0]);
+    }
+
+    #[test]
+    fn test_multiple_finds() {
+        let text = b"CCTCCTCC";
+        let pattern = b"CC";
+        let shiftand = ShiftAnd::new(pattern);
+        assert_eq!(shiftand.find_all(text).collect_vec(), [0, 3, 6]);
     }
 }

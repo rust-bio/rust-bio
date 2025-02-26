@@ -32,7 +32,6 @@
 //! assert_eq!(i2.interval().end, 34);
 //! assert_eq!(i2.data(), &0u32);
 //! ```
-//!
 
 use crate::utils::Interval;
 use std::cmp::min;
@@ -40,7 +39,7 @@ use std::iter::FromIterator;
 
 /// A `find` query on the interval tree does not directly return references to the intervals in the
 /// tree but wraps the fields `interval` and `data` in an `Entry`.
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 struct InternalEntry<N: Ord + Clone + Copy, D> {
     data: D,
     interval: Interval<N>,
@@ -49,7 +48,7 @@ struct InternalEntry<N: Ord + Clone + Copy, D> {
 
 /// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
 /// wraps the fields `interval` and `data` in an `Entry`.
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Serialize)]
 pub struct Entry<'a, N: Ord + Clone, D> {
     data: &'a D,
     interval: &'a Interval<N>,
@@ -77,6 +76,7 @@ impl<N: Ord + Clone + Copy, D> Default for ArrayBackedIntervalTree<N, D> {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub struct ArrayBackedIntervalTree<N: Ord + Clone + Copy, D> {
     entries: Vec<InternalEntry<N, D>>,
     max_level: usize,
@@ -137,7 +137,7 @@ impl<N: Ord + Clone + Copy, D: Clone> ArrayBackedIntervalTree<N, D> {
             last_value = a[i].max;
         });
         let mut k = 1;
-        while (1 << k) < n {
+        while (1 << k) <= n {
             // process internal nodes in the bottom-up order
             let x = 1 << (k - 1);
             let i0 = (x << 1) - 1; // i0 is the first node
@@ -199,7 +199,7 @@ impl<N: Ord + Clone + Copy, D: Clone> ArrayBackedIntervalTree<N, D> {
 
         let interval = interval.into();
         let (start, end) = (interval.start, interval.end);
-        let n = self.entries.len() as usize;
+        let n = self.entries.len();
         let a = &self.entries;
         results.clear();
         let mut stack = [StackCell::empty(); 64];
@@ -284,8 +284,9 @@ impl StackCell {
 
 #[cfg(test)]
 mod tests {
+    use proptest::prelude::*;
+
     use super::*;
-    use crate::data_structures::interval_tree::ArrayBackedIntervalTree;
 
     #[test]
     fn test_example() {
@@ -306,5 +307,69 @@ mod tests {
         };
         let expected = vec![e1, e2];
         assert_eq!(overlap, expected);
+    }
+
+    /// Regression test: catch a scenario where the `max` value of an entry
+    /// wasn't extended to take into account all of the leaf nodes it contained
+    /// when indexing
+    #[test]
+    fn test_disjoint_two_element_search() {
+        let mut tree = ArrayBackedIntervalTree::new();
+        tree.insert(12..34, 0);
+        tree.insert(40..56, 1);
+        tree.index();
+        let overlap = tree.find(40..41);
+
+        let e1 = Entry {
+            interval: &(40..56).into(),
+            data: &1,
+        };
+        let expected = vec![e1];
+        assert_eq!(overlap, expected);
+    }
+
+    proptest! {
+        /// Given a query interval in the format `(start, len)` and a sequence
+        /// of intervals `(start, len)` to index, assert that
+        /// `ArrayBackedIntervalTree::find` returns all the intervals which
+        /// overlap the query.
+        #[test]
+        fn find_arbitrary(
+            query in (0u32..1001, 0u32..1001),
+            intervals in prop::collection::vec((0u32..1000, 0u32..1000), 0..1000)
+        ) {
+            let tree = ArrayBackedIntervalTree::from_iter(
+                intervals
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, (start, len))| (start..start + len, i)),
+            );
+
+            let (start, len) = query;
+            let end = start + len;
+
+            let expected: Vec<_> = tree
+                .entries
+                .iter()
+                .filter_map(|internal| {
+                    if internal.interval.start < end && start < internal.interval.end {
+                        Some(Entry {
+                            interval: &internal.interval,
+                            data: &internal.data,
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            prop_assert_eq!(
+                tree.find(start..end),
+                expected,
+                "{:?} in {:?}",
+                start..end,
+                tree.entries
+            );
+        }
     }
 }

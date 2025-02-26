@@ -97,7 +97,7 @@
 //! let prob_expected = LogProb::from(Prob(PROB_NO_SUBSTITUION.powi(3) * PROB_SUBSTITUTION / 3.));
 //! assert_relative_eq!(*prob_related, *prob_expected, epsilon = 1e-5);
 //! ```
-pub use homopolypairhmm::{HomopolyPairHMM, HopParameters};
+pub use homopolypairhmm::{BaseSpecificHopParameters, HomopolyPairHMM, HopParameters};
 pub use pairhmm::PairHMM;
 
 use crate::stats::LogProb;
@@ -109,15 +109,15 @@ mod pairhmm;
 
 /// Trait for parametrization of `PairHMM` emission behavior.
 pub trait EmissionParameters {
-    /// Emission probability for (x[i], y[j]).
+    /// Emission probability for `(x[i], y[j])`.
     /// Returns a tuple with probability and a boolean indicating whether emissions match
     /// (e.g., are the same DNA alphabet letter).
     fn prob_emit_xy(&self, i: usize, j: usize) -> XYEmission;
 
-    /// Emission probability for (x[i], -).
+    /// Emission probability for `(x[i], -)`.
     fn prob_emit_x(&self, i: usize) -> LogProb;
 
-    /// Emission probability for (-, y[j]).
+    /// Emission probability for `(-, y[j])`.
     fn prob_emit_y(&self, j: usize) -> LogProb;
 
     fn len_x(&self) -> usize;
@@ -156,7 +156,7 @@ pub trait GapParameters {
 /// * global: methods return `false` and `LogProb::ln_zero()`.
 /// * semiglobal: methods return `true` and `LogProb::ln_one()`.
 pub trait StartEndGapParameters {
-    /// Probability to start at x[i]. This can be left unchanged if you use `free_start_gap_x` and
+    /// Probability to start at `x[i]`. This can be left unchanged if you use `free_start_gap_x` and
     /// `free_end_gap_x`.
     #[inline]
     #[allow(unused_variables)]
@@ -176,7 +176,7 @@ pub trait StartEndGapParameters {
     fn free_end_gap_x(&self) -> bool;
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 pub enum XYEmission {
     Match(LogProb),
     Mismatch(LogProb),

@@ -1,0 +1,18 @@
+WHITESPACE = _{ " " | "\t" | NEWLINE }
+
+Tree = _{ SOI ~ (SubTree ~ Length? | Branch ) ~ ";" ~ EOI }
+SubTree = { Leaf | Internal }
+Leaf = { name }
+Internal = { "(" ~ BranchSet ~ ")" ~ name? }
+BranchSet = { Branch? ~ ("," ~ Branch?)* }
+Length = _{ ":" ~ float }
+Branch = { SubTree? ~ Length? }
+
+safe = _{ !( ":" | "," | ";" | "(" | ")" | "[" | "]" | WHITESPACE ) ~ ANY }
+name = { safe+ }
+float = @{
+    "-"?
+    ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)
+    ~ ("." ~ ASCII_DIGIT*)?
+    ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
+}

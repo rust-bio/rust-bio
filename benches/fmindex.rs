@@ -4,7 +4,7 @@ extern crate test;
 
 use bio::alphabets;
 use bio::data_structures::bwt::{bwt, less, Occ};
-use bio::data_structures::fmindex::{FMIndex, FMIndexable};
+use bio::data_structures::fmindex::{BackwardSearchResult, FMIndex, FMIndexable};
 use bio::data_structures::suffix_array::suffix_array;
 use test::Bencher;
 
@@ -26,14 +26,18 @@ fn search_index_seeds(b: &mut Bencher) {
 
         let mut loc_temp = Vec::new();
         for (offset, seed) in seeds {
-            let interval = fmindex.backward_search(seed.iter());
-
-            loc_temp.extend((interval.lower..interval.upper).map(|i| (sa[i], offset)));
+            match fmindex.backward_search(seed.iter()) {
+                BackwardSearchResult::Complete(interval)
+                | BackwardSearchResult::Partial(interval, _) => {
+                    loc_temp.extend((interval.lower..interval.upper).map(|i| (sa[i], offset)))
+                }
+                _ => panic!("no search result"),
+            };
         }
     });
 }
 
-static STR_1: &'static [u8] = b"ATCTAACTATTCCCTGTGCCTTATGGGGGCCTGCGCTATCTGCCTGT\
+static STR_1: &[u8] = b"ATCTAACTATTCCCTGTGCCTTATGGGGGCCTGCGCTATCTGCCTGT\
 CGAACCATAGGACTCGCGCCAGCGCGCAGGCTTGGATCGAGGTGAAATCTCCGGGGCCTAAGACCACGAGCGTCTGGCG\
 TCTTGGCTAACCCCCCTACATGCTGTTATAGACAATCAGTGGAAACCCGGTGCCAGGGGGTGGAGTGACCTTAAGTCAG\
 GGACGATATTAATCGGAAGGAGTATTCAACGCAATGAAGCCGCAGGGTTGGCGTGGGAATGGTGCTTCTGTCCAAGCAG\

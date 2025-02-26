@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The [Burrows-Wheeler-Transform](https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.37.6774) and related data structures.
+//! The [Burrows-Wheeler-Transform](https://www.semanticscholar.org/paper/A-Block-sorting-Lossless-Data-Compression-Algorithm-Burrows-Wheeler/af56e6d4901dcd0f589bf969e604663d40f1be5d) and related data structures.
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
@@ -73,7 +73,7 @@ pub fn invert_bwt(bwt: &BWTSlice) -> Vec<u8> {
 }
 
 /// An occurrence array implementation.
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Occ {
     occ: Vec<Vec<usize>>,
     k: u32,
@@ -83,8 +83,8 @@ impl Occ {
     /// Calculate occ array with sampling from BWT of length n.
     /// Time complexity: O(n).
     /// Space complexity: O(n / k * A) with A being the alphabet size.
-    /// Alphabet size is determined on the fly from the BWT.
-    /// For large texts, it is therefore advisable to transform
+    /// The specified alphabet must match the alphabet of the text and its BWT.
+    /// For large texts, it is advisable to transform
     /// the text before calculating the BWT (see alphabets::rank_transform).
     ///
     /// # Arguments
@@ -97,12 +97,27 @@ impl Occ {
             .max_symbol()
             .expect("Expecting non-empty alphabet.") as usize
             + 1;
-        let mut occ = Vec::with_capacity(n / k as usize);
-        let mut curr_occ: Vec<usize> = repeat(0).take(m).collect();
+        let mut alpha = alphabet.symbols.iter().collect::<Vec<usize>>();
+        // include sentinel '$'
+        if (b'$' as usize) < m && !alphabet.is_word(b"$") {
+            alpha.push(b'$' as usize);
+        }
+        let mut occ: Vec<Vec<usize>> = vec![Vec::new(); m];
+        let mut curr_occ = vec![0usize; m];
+
+        // characters not in the alphabet won't take up much space
+        for &a in &alpha {
+            occ[a].reserve(n / k as usize);
+        }
+
         for (i, &c) in bwt.iter().enumerate() {
             curr_occ[c as usize] += 1;
+
             if i % k as usize == 0 {
-                occ.push(curr_occ.clone());
+                // only visit characters in the alphabet
+                for &a in &alpha {
+                    occ[a].push(curr_occ[a]);
+                }
             }
         }
 
@@ -122,7 +137,7 @@ impl Occ {
         //     .iter()
         //     .filter(|&&c| c == a)
         //     .count();
-        // self.occ[i][a as usize] + count
+        // self.occ[a as usize][i] + count
         // ```
         //
         // But there are a couple of reasons to do this manually:
@@ -140,15 +155,13 @@ impl Occ {
         // self.k is our sampling rate, so find the checkpoints either side of r.
         let lo_checkpoint = r / self.k as usize;
         // Get the occurences at the low checkpoint
-        let lo_occ = self.occ[lo_checkpoint][a as usize];
+        let lo_occ = self.occ[a as usize][lo_checkpoint];
 
         // If the sampling rate is infrequent it is worth checking if there is a closer
         // hi checkpoint.
         if self.k > 64 {
             let hi_checkpoint = lo_checkpoint + 1;
-            if let Some(hi_occs) = self.occ.get(hi_checkpoint) {
-                let hi_occ = hi_occs[a as usize];
-
+            if let Some(&hi_occ) = self.occ[a as usize].get(hi_checkpoint) {
                 // Its possible that there are no occurences between the low and high
                 // checkpoint in which case we bail early.
                 if lo_occ == hi_occ {
@@ -158,15 +171,14 @@ impl Occ {
                 // If r is closer to the high checkpoint, count backwards from there.
                 let hi_idx = hi_checkpoint * self.k as usize;
                 if (hi_idx - r) < (self.k as usize / 2) {
-                    let hi_occ = hi_occs[a as usize];
-                    return hi_occ - bytecount::count(&bwt[r + 1..=hi_idx], a) as usize;
+                    return hi_occ - bytecount::count(&bwt[r + 1..=hi_idx], a);
                 }
             }
         }
 
         // Otherwise the default case is to count from the low checkpoint.
         let lo_idx = lo_checkpoint * self.k as usize;
-        bytecount::count(&bwt[lo_idx + 1..=r], a) as usize + lo_occ
+        bytecount::count(&bwt[lo_idx + 1..=r], a) + lo_occ
     }
 }
 
@@ -203,8 +215,10 @@ pub fn bwtfind(bwt: &BWTSlice, alphabet: &Alphabet) -> BWTFind {
 #[cfg(test)]
 mod tests {
     use super::{bwt, bwtfind, invert_bwt, Occ};
+    use crate::alphabets::dna;
     use crate::alphabets::Alphabet;
     use crate::data_structures::suffix_array::suffix_array;
+    use crate::data_structures::wavelet_matrix::WaveletMatrix;
 
     #[test]
     fn test_bwtfind() {
@@ -228,10 +242,30 @@ mod tests {
     #[test]
     fn test_occ() {
         let bwt = vec![1u8, 3u8, 3u8, 1u8, 2u8, 0u8];
-        let alphabet = Alphabet::new(&[0u8, 1u8, 2u8, 3u8]);
+        let alphabet = Alphabet::new([0u8, 1u8, 2u8, 3u8]);
         let occ = Occ::new(&bwt, 3, &alphabet);
-        assert_eq!(occ.occ, [[0, 1, 0, 0], [0, 2, 0, 2]]);
+        assert_eq!(occ.occ, [[0, 0], [1, 2], [0, 0], [0, 2]]);
         assert_eq!(occ.get(&bwt, 4, 2u8), 1);
         assert_eq!(occ.get(&bwt, 4, 3u8), 2);
+    }
+
+    #[test]
+    fn test_occwm() {
+        let text = b"GCCTTAACATTATTACGCCTA$";
+        let alphabet = {
+            let mut a = dna::n_alphabet();
+            a.insert(b'$');
+            a
+        };
+        let sa = suffix_array(text);
+        let bwt = bwt(text, &sa);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+        let wm = WaveletMatrix::new(&bwt);
+
+        for c in [b'A', b'C', b'G', b'T', b'$'] {
+            for p in 0..text.len() {
+                assert_eq!(occ.get(&bwt, p, c) as u64, wm.rank(c, p as u64));
+            }
+        }
     }
 }

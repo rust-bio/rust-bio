@@ -31,7 +31,7 @@ use bv::BitVec;
 use bv::Bits;
 
 /// A rank/select data structure.
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct RankSelect {
     n: usize,
     bits: BitVec<u8>,
@@ -171,9 +171,7 @@ impl RankSelect {
         let mut superblock = match superblocks.binary_search(&SuperblockRank::First(j)) {
             Ok(i) | Err(i) => i, // superblock with same rank exists
         };
-        if superblock > 0 {
-            superblock -= 1;
-        }
+        superblock = superblock.saturating_sub(1);
         let mut rank = *superblocks[superblock];
 
         let first_block = superblock * self.s / 8;
@@ -204,7 +202,7 @@ impl RankSelect {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub enum SuperblockRank {
     First(u64),
     Some(u64),
@@ -317,9 +315,9 @@ mod tests {
         assert_eq!(rs.rank_0(5).unwrap(), 5);
         assert_eq!(rs.select_0(0), None);
         assert_eq!(rs.select_0(1).unwrap(), 0);
-        assert_eq!(rs.get(5), true);
-        assert_eq!(rs.get(1), false);
-        assert_eq!(rs.get(32), true);
+        assert!(rs.get(5));
+        assert!(!rs.get(1));
+        assert!(rs.get(32));
     }
 
     #[test]

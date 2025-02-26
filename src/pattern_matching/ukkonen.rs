@@ -38,6 +38,7 @@ pub fn unit_cost(a: u8, b: u8) -> u32 {
 
 /// Ukkonens algorithm.
 #[allow(non_snake_case)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct Ukkonen<F>
 where
     F: Fn(u8, u8) -> u32,
@@ -88,6 +89,7 @@ where
 }
 
 /// Iterator over pairs of end positions and distance of matches.
+#[derive(Debug)]
 pub struct Matches<'a, F, C, T>
 where
     F: Fn(u8, u8) -> u32,
