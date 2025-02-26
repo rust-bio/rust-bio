@@ -371,7 +371,7 @@ impl Index {
 
     /// Open a FASTA index from a given file path.
     pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> anyhow::Result<Self> {
-        fs::File::open(&path)
+        fs::File::open(path)
             .map_err(csv::Error::from)
             .and_then(Self::new)
             .with_context(|| format!("Failed to read fasta index from {:#?}", path))
@@ -414,7 +414,7 @@ impl IndexedReader<fs::File> {
     /// present for FASTA ref.fasta.
     pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> anyhow::Result<Self> {
         let index = Index::with_fasta_file(path)?;
-        fs::File::open(&path)
+        fs::File::open(path)
             .map(|f| Self::with_index(f, index))
             .map_err(csv::Error::from)
             .with_context(|| format!("Failed to read fasta from {:#?}", path))
@@ -1365,26 +1365,26 @@ TTTA
 
     #[test]
     fn test_indexed_reader() {
-        _test_indexed_reader(&FASTA_FILE, &FAI_FILE, _read_buffer);
+        _test_indexed_reader(FASTA_FILE, FAI_FILE, _read_buffer);
         _test_indexed_reader_truncated(_read_buffer);
         _test_indexed_reader_extreme_whitespace(_read_buffer);
     }
 
     #[test]
     fn test_indexed_reader_crlf() {
-        _test_indexed_reader(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_buffer);
+        _test_indexed_reader(FASTA_FILE_CRLF, FAI_FILE_CRLF, _read_buffer);
     }
 
     #[test]
     fn test_indexed_reader_iter() {
-        _test_indexed_reader(&FASTA_FILE, &FAI_FILE, _read_iter);
+        _test_indexed_reader(FASTA_FILE, FAI_FILE, _read_iter);
         _test_indexed_reader_truncated(_read_iter);
         _test_indexed_reader_extreme_whitespace(_read_iter);
     }
 
     #[test]
     fn test_indexed_reader_iter_crlf() {
-        _test_indexed_reader(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_iter);
+        _test_indexed_reader(FASTA_FILE_CRLF, FAI_FILE_CRLF, _read_iter);
     }
 
     fn _test_indexed_reader<'a, F>(fasta: &'a [u8], fai: &'a [u8], read: F)
@@ -1485,22 +1485,22 @@ TTTA
 
     #[test]
     fn test_indexed_reader_all() {
-        _test_indexed_reader_all(&FASTA_FILE, &FAI_FILE, _read_buffer_all);
+        _test_indexed_reader_all(FASTA_FILE, FAI_FILE, _read_buffer_all);
     }
 
     #[test]
     fn test_indexed_reader_crlf_all() {
-        _test_indexed_reader_all(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_buffer_all);
+        _test_indexed_reader_all(FASTA_FILE_CRLF, FAI_FILE_CRLF, _read_buffer_all);
     }
 
     #[test]
     fn test_indexed_reader_iter_all() {
-        _test_indexed_reader_all(&FASTA_FILE, &FAI_FILE, _read_iter_all);
+        _test_indexed_reader_all(FASTA_FILE, FAI_FILE, _read_iter_all);
     }
 
     #[test]
     fn test_indexed_reader_iter_crlf_all() {
-        _test_indexed_reader_all(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_iter_all);
+        _test_indexed_reader_all(FASTA_FILE_CRLF, FAI_FILE_CRLF, _read_iter_all);
     }
 
     fn _test_indexed_reader_all<'a, F>(fasta: &'a [u8], fai: &'a [u8], read: F)
@@ -1545,22 +1545,22 @@ TTTA
 
     #[test]
     fn test_indexed_reader_by_rid_all() {
-        _test_indexed_reader_by_rid_all(&FASTA_FILE, &FAI_FILE, _read_buffer_by_rid_all);
+        _test_indexed_reader_by_rid_all(FASTA_FILE, FAI_FILE, _read_buffer_by_rid_all);
     }
 
     #[test]
     fn test_indexed_reader_crlf_by_rid_all() {
-        _test_indexed_reader_by_rid_all(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_buffer_by_rid_all);
+        _test_indexed_reader_by_rid_all(FASTA_FILE_CRLF, FAI_FILE_CRLF, _read_buffer_by_rid_all);
     }
 
     #[test]
     fn test_indexed_reader_iter_by_rid_all() {
-        _test_indexed_reader_by_rid_all(&FASTA_FILE, &FAI_FILE, _read_iter_by_rid_all);
+        _test_indexed_reader_by_rid_all(FASTA_FILE, FAI_FILE, _read_iter_by_rid_all);
     }
 
     #[test]
     fn test_indexed_reader_iter_crlf_by_rid_all() {
-        _test_indexed_reader_by_rid_all(&FASTA_FILE_CRLF, &FAI_FILE_CRLF, _read_iter_by_rid_all);
+        _test_indexed_reader_by_rid_all(FASTA_FILE_CRLF, FAI_FILE_CRLF, _read_iter_by_rid_all);
     }
 
     fn _test_indexed_reader_by_rid_all<'a, F>(fasta: &'a [u8], fai: &'a [u8], read: F)
