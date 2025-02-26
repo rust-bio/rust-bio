@@ -54,19 +54,7 @@ pub trait Posterior {
 /// [here](https://github.com/varlociraptor/varlociraptor/blob/694e994547e8f523e5b0013fdf951b694f3870fa/src/model/modes/generic.rs#L200)
 /// for an example.
 #[derive(
-    Default,
-    Getters,
-    MutGetters,
-    Copy,
-    Clone,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Hash,
-    Debug,
-    Serialize,
-    Deserialize,
+    Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
 )]
 pub struct Model<L, Pr, Po, Payload = ()>
 where
@@ -75,14 +63,8 @@ where
     Po: Posterior,
     Payload: Default,
 {
-    #[get = "pub"]
-    #[get_mut = "pub"]
     likelihood: L,
-    #[get = "pub"]
-    #[get_mut = "pub"]
     prior: Pr,
-    #[get = "pub"]
-    #[get_mut = "pub"]
     posterior: Po,
     payload: PhantomData<Payload>,
 }
@@ -104,6 +86,30 @@ where
             posterior,
             payload: PhantomData,
         }
+    }
+
+    pub fn likelihood(&self) -> &L {
+        &self.likelihood
+    }
+
+    pub fn likelihood_mut(&mut self) -> &mut L {
+        &mut self.likelihood
+    }
+
+    pub fn prior(&self) -> &Pr {
+        &self.prior
+    }
+
+    pub fn prior_mut(&mut self) -> &mut Pr {
+        &mut self.prior
+    }
+
+    pub fn posterior(&self) -> &Po {
+        &self.posterior
+    }
+
+    pub fn posterior_mut(&mut self) -> &mut Po {
+        &mut self.posterior
     }
 
     /// Calculate joint probability, i.e. `Pr(event) * Pr(data | event)`.
