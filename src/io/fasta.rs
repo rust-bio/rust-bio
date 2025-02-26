@@ -864,15 +864,11 @@ impl<W: io::Write> Writer<W> {
     /// assert!(fs::remove_file(path).is_ok());
     /// assert_eq!(actual, expected)
     /// ```
-
     pub fn write_record(&mut self, record: &Record) -> io::Result<()> {
         self.write(record.id(), record.desc(), record.seq())
     }
 
-    /// Directly write a [`fasta::Record`](struct.Record.html) width a fixed line length.
-    ///
-    /// # Errors
-    /// If there is an issue writing to the `Writer`.
+    /// Set line wrapping behavior.
     ///
     /// # Examples
     /// ```rust
@@ -901,7 +897,6 @@ impl<W: io::Write> Writer<W> {
     /// assert!(fs::remove_file(path).is_ok());
     /// assert_eq!(actual, expected)
     /// ```
-
     pub fn set_linewrap(&mut self, linewrap: Option<usize>) {
         self.linewrap = linewrap
     }
