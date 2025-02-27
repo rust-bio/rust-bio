@@ -855,7 +855,7 @@ impl<F: MatchFunc> Poa<F> {
         let mut prev: NodeIndex<usize> = NodeIndex::new(head.index());
         let mut i: usize = 0;
         let mut edge_not_connected: bool = false;
-        for op in aln.operations.iter() {
+        for op in &aln.operations {
             match op {
                 AlignmentOperation::Match(None) => {
                     let node: NodeIndex<usize> = NodeIndex::new(head.index());

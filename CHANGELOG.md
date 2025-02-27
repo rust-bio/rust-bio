@@ -3,6 +3,37 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [2.2.0](https://github.com/rust-bio/rust-bio/compare/v2.1.0...v2.2.0) (2025-02-26)
+
+
+### Features
+
+* FASTA/FASTQ unification ([#433](https://github.com/rust-bio/rust-bio/issues/433)) ([734d6d1](https://github.com/rust-bio/rust-bio/commit/734d6d10356a9ad222d8c29d58b8519e3d9e745d))
+* position-specific scoring matrix: support inputs with ambiguous monomers in from_seqs ([#616](https://github.com/rust-bio/rust-bio/issues/616)) ([050b154](https://github.com/rust-bio/rust-bio/commit/050b15478fe54b46be8cbfc11000dfdf18d50867))
+* Reverse qgrams iterator ([#521](https://github.com/rust-bio/rust-bio/issues/521)) ([46382ba](https://github.com/rust-bio/rust-bio/commit/46382ba08f78b78b7e5aacb25cf9d3132e8e108e))
+* Write fasta with fix line width ([#490](https://github.com/rust-bio/rust-bio/issues/490)) ([2e66911](https://github.com/rust-bio/rust-bio/commit/2e6691182111b3f696176aed6b97fd2edb99a4dd))
+
+
+### Dependencies
+
+* update ordered-float requirement from 4.2 to 5.0 ([#623](https://github.com/rust-bio/rust-bio/issues/623)) ([8e188f5](https://github.com/rust-bio/rust-bio/commit/8e188f58c71f6c6cc38bee536b445d5a84ca1ddb))
+* update thiserror requirement from 1 to 2 ([#608](https://github.com/rust-bio/rust-bio/issues/608)) ([68fd94f](https://github.com/rust-bio/rust-bio/commit/68fd94f947ac9ce73a690e18a507f54ffffcb2fe))
+
+## [2.1.0](https://github.com/rust-bio/rust-bio/compare/v2.0.3...v2.1.0) (2025-02-24)
+
+
+### Features
+
+* Implementing From and TryInto for Phase ([#618](https://github.com/rust-bio/rust-bio/issues/618)) ([12dd1bd](https://github.com/rust-bio/rust-bio/commit/12dd1bd92e7d8a34aff43cbbffdc811e1e978dbf))
+
+
+### Dependencies
+
+* update itertools requirement from &gt;=0.8, &lt;0.14 to >=0.8, <0.15 ([#614](https://github.com/rust-bio/rust-bio/issues/614)) ([58d11cd](https://github.com/rust-bio/rust-bio/commit/58d11cd04a040699b6acebbb77d0a9bfb6cb381f))
+* update petgraph requirement from &gt;=0.4, &lt;0.7 to >=0.4, <0.8 ([#615](https://github.com/rust-bio/rust-bio/issues/615)) ([a8fff8d](https://github.com/rust-bio/rust-bio/commit/a8fff8d1083017b974d2bfa48d3e68135e4bf608))
+* update rand requirement from &gt;=0.7.3, &lt; 0.9 to >=0.7.3, < 0.10 ([#617](https://github.com/rust-bio/rust-bio/issues/617)) ([1ec607f](https://github.com/rust-bio/rust-bio/commit/1ec607f60ce10012f273535b8e97bb578e765d4f))
+* update statrs requirement from &gt;= 0.11, &lt; 0.18 to >= 0.11, < 0.19 ([#610](https://github.com/rust-bio/rust-bio/issues/610)) ([5d90a0d](https://github.com/rust-bio/rust-bio/commit/5d90a0d701f8a07c19762442a7a87f3a8152b456))
+
 ## [2.0.3](https://github.com/rust-bio/rust-bio/compare/v2.0.2...v2.0.3) (2024-09-11)
 
 
