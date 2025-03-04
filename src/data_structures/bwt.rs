@@ -7,6 +7,7 @@
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
+use std::convert::TryInto;
 use std::iter::repeat;
 
 use crate::alphabets::Alphabet;
@@ -17,6 +18,11 @@ pub type BWT = Vec<u8>;
 pub type BWTSlice = [u8];
 pub type Less = Vec<usize>;
 pub type BWTFind = Vec<usize>;
+
+// usize::MAX should be a safe separator for the Occ byte vector as all values stored within it are
+// u8's that have been converted to usize
+/// Separate inner vectors from Occ.occ in byte vector
+const OCC_SEP: usize = usize::MAX;
 
 /// Calculate Burrows-Wheeler-Transform of the given text of length n.
 /// Complexity: O(n).
@@ -180,6 +186,74 @@ impl Occ {
         let lo_idx = lo_checkpoint * self.k as usize;
         bytecount::count(&bwt[lo_idx + 1..=r], a) + lo_occ
     }
+
+    /// Convert Occ to byte vector (helpful for writing to a file)
+    pub fn to_bytes(&self) -> Vec<u8> {
+        // Calculate the vector capacity ahead of time to reduce allocations
+        // Start with capacity of 4 for self.k (u32)
+        let mut capacity: usize = 4;
+
+        for v in &self.occ {
+            // NOTE: Assumes usize is 8 bytes long
+            // +1 accounts for separator between vectors. Using a separator allows for lengths to
+            // differ in each inner vector of self.occ
+            capacity += 8 * (v.len() + 1);
+        }
+
+        // Add elements from self.occ to byte vector
+        let mut bytes: Vec<u8> = Vec::with_capacity(capacity);
+        for outer in &self.occ {
+            for inner in outer {
+                bytes.extend(inner.to_le_bytes());
+            }
+
+            bytes.extend(OCC_SEP.to_le_bytes());
+        }
+
+        // Add self.k to byte vector
+        bytes.extend(self.k.to_le_bytes());
+
+        bytes
+    }
+
+    /// Create Occ from a byte vector (helpful when reading Occ object previously written to a
+    /// file)
+    pub fn from_bytes(bytes: &Vec<u8>) -> Self {
+        // NOTE: Assumes usize is 8 bytes
+        const WIDTH: usize = 8;
+
+        let mut idx: usize = 0;
+        let mut occ: Vec<Vec<usize>> = Vec::new();
+        let mut inner: Vec<usize> = Vec::new();
+        while idx + WIDTH < bytes.len() {
+            let element = usize::from_le_bytes(
+                bytes[idx..idx + WIDTH]
+                    .try_into()
+                    .expect("could not convert slice to usize"),
+            );
+
+            // Hit the end of an inner vector
+            if element == OCC_SEP {
+                occ.push(inner.clone());
+
+                // Clearing keeps the capacity set, so we can minimize future allocations after the
+                // first occurrence of the separator
+                inner.clear();
+            } else {
+                inner.push(element);
+            }
+
+            idx += WIDTH;
+        }
+
+        let k = u32::from_le_bytes(
+            bytes[idx..idx + 4]
+                .try_into()
+                .expect("could not convert slice to u32"),
+        );
+
+        Occ { occ, k }
+    }
 }
 
 /// Calculate the less array for a given BWT. Complexity O(n).
@@ -247,6 +321,41 @@ mod tests {
         assert_eq!(occ.occ, [[0, 0], [1, 2], [0, 0], [0, 2]]);
         assert_eq!(occ.get(&bwt, 4, 2u8), 1);
         assert_eq!(occ.get(&bwt, 4, 3u8), 2);
+    }
+
+    #[test]
+    fn test_occ_tobytes() {
+        let bwt = vec![1u8, 3u8, 3u8, 1u8, 2u8, 0u8];
+        let alphabet = Alphabet::new([0u8, 1u8, 2u8, 3u8]);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+        let bytes = occ.to_bytes();
+        assert_eq!(
+            bytes,
+            [
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255,
+                255, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255,
+                255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255,
+                255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255,
+                255, 255, 255, 255, 3, 0, 0, 0
+            ]
+        );
+    }
+
+    #[test]
+    fn test_occ_frombytes() {
+        let bwt = vec![1u8, 3u8, 3u8, 1u8, 2u8, 0u8];
+        let alphabet = Alphabet::new([0u8, 1u8, 2u8, 3u8]);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+        let bytes: Vec<u8> = vec![
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+            1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+            0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+            3, 0, 0, 0,
+        ];
+        let result = Occ::from_bytes(&bytes);
+        assert_eq!(occ.occ, result.occ);
+        assert_eq!(occ.k, result.k);
     }
 
     #[test]
