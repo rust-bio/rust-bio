@@ -98,30 +98,30 @@ jobs:
   # TODO re-enable coverage estimation once we have removed the simd-dependency which is incompatible
   # with nightly. We need to wait for the stdlib simd implementation to stabilize, see
   # https://github.com/rust-lang/rust/issues/86656
-  Coverage:
-     needs: Formatting
-     runs-on: ubuntu-latest
-     container:
-      image: xd009642/tarpaulin:develop-nightly
-      options: --security-opt seccomp=unconfined
-     steps:
-       - name: Checkout repository
-         uses: actions/checkout@v4
-         with:
-           submodules: recursive
+  # Coverage:
+  #   needs: Formatting
+  #   runs-on: ubuntu-latest
+  #   container:
+  #    image: xd009642/tarpaulin:develop-nightly
+  #    options: --security-opt seccomp=unconfined
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
 
-       - name: Install nightly toolchain
-         uses: dtolnay/rust-toolchain@stable
-         with:
-           toolchain: nightly
+  #     - name: Install nightly toolchain
+  #       uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         toolchain: nightly
 
-       - name: Run cargo-tarpaulin
-         run: |
-          set -x
-          cargo +nightly tarpaulin --all-features --tests --out Lcov -- --test-threads 1
+  #     - name: Run cargo-tarpaulin
+  #       run: |
+  #        set -x
+  #        cargo +nightly tarpaulin --all-features --tests --out Lcov -- --test-threads 1
 
-       - name: Upload coverage
-         uses: coverallsapp/github-action@v2
-         with:
-           github-token: ${{ secrets.GITHUB_TOKEN }}
-           path-to-lcov: ./lcov.info
+  #     - name: Upload coverage
+  #       uses: coverallsapp/github-action@v2
+  #       with:
+  #         github-token: ${{ secrets.GITHUB_TOKEN }}
+  #         path-to-lcov: ./lcov.info
