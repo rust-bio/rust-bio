@@ -644,9 +644,9 @@ impl<F: MatchFunc> Poa<F> {
     }
     /// Computes the alignment using the provided traceback structure.
     /// This function requires the original graph used to generate the traceback score matrix.
-    /// 
+    ///
     /// time complexity: `O(N * L)`, where `N` is the number of sequences and `L` is the length of each sequence.
-    /// 
+    ///
     /// # Arguments
     /// * `traceback` - the traceback struct
     pub fn recalculate_alignment(&self, traceback: &Traceback) -> Alignment {
