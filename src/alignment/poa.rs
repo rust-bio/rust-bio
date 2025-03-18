@@ -642,8 +642,13 @@ impl<F: MatchFunc> Poa<F> {
         }
         traceback
     }
-    // Recalculate the alignment using the traceback
-    // We need this in poa because we have to use the scoring
+    /// Computes the alignment using the provided traceback structure.
+    /// This function requires the original graph used to generate the traceback score matrix.
+    /// 
+    /// time complexity: `O(N * L)`, where `N` is the number of sequences and `L` is the length of each sequence.
+    /// 
+    /// # Arguments
+    /// * `traceback` - the traceback struct
     pub fn recalculate_alignment(&self, traceback: &Traceback) -> Alignment {
         // Get the alignment by backtracking and recalculating stuff
         let mut ops: Vec<AlignmentOperation> = vec![];
