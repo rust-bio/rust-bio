@@ -2,16 +2,21 @@
 #[macro_use]
 extern crate libfuzzer_sys;
 extern crate bio;
-use std::cmp::{min, max};
+use bio::alignment::pairwise::{self, banded, MatchFunc, MatchParams, Scoring};
 use bio::alignment::{Alignment, AlignmentMode, AlignmentOperation};
-use bio::alignment::pairwise::{self, banded, Scoring, MatchParams,  MatchFunc};
 use bio::utils::TextSlice;
+use std::cmp::{max, min};
 
-fn validate_alignment_score(al: &Alignment, x: TextSlice, y: TextSlice, scoring: &Scoring<MatchParams>) -> bool {
+fn validate_alignment_score(
+    al: &Alignment,
+    x: TextSlice,
+    y: TextSlice,
+    scoring: &Scoring<MatchParams>,
+) -> bool {
     use AlignmentOperation::*;
     let path = al.path();
     let mut score = 0;
-    if al.mode==AlignmentMode::Custom {
+    if al.mode == AlignmentMode::Custom {
         if al.xstart > 0 {
             score += scoring.xclip_prefix;
         }
@@ -28,14 +33,26 @@ fn validate_alignment_score(al: &Alignment, x: TextSlice, y: TextSlice, scoring:
     let mut last_op = None;
     for (i, j, op) in path {
         score += match op {
-            Match | Subst => scoring.match_fn.score(x[i-1], y[j-1]),
-            Del => if last_op==Some(Del) { scoring.gap_extend } else { scoring.gap_open + scoring.gap_extend },
-            Ins => if last_op==Some(Ins) { scoring.gap_extend } else { scoring.gap_open + scoring.gap_extend },
+            Match | Subst => scoring.match_fn.score(x[i - 1], y[j - 1]),
+            Del => {
+                if last_op == Some(Del) {
+                    scoring.gap_extend
+                } else {
+                    scoring.gap_open + scoring.gap_extend
+                }
+            }
+            Ins => {
+                if last_op == Some(Ins) {
+                    scoring.gap_extend
+                } else {
+                    scoring.gap_open + scoring.gap_extend
+                }
+            }
             _ => 0,
         };
         last_op = Some(op);
     }
-    al.score==score
+    al.score == score
 }
 
 fuzz_target!(|data: &[u8]| {
@@ -56,7 +73,8 @@ fuzz_target!(|data: &[u8]| {
     let (yclip_suffix_byte, data) = data.split_first().unwrap();
 
     let alphabets = b"ACGT";
-    let v: Vec<_> = data.iter()
+    let v: Vec<_> = data
+        .iter()
         .map(|i| alphabets[(*i as usize) % alphabets.len()])
         .collect();
 
@@ -70,19 +88,24 @@ fuzz_target!(|data: &[u8]| {
     let gap_extend = -((*gap_extend_byte as i32) % 10);
 
     let (x, y) = v.split_at(split_pos);
-    println!("x: {}, y: {}, k: {}, w: {}, scoring ({}, {}, {}, {})",
-             String::from_utf8(x.to_vec()).unwrap(),
-             String::from_utf8(y.to_vec()).unwrap(),
-             kmer_len,
-             window_size,
-             gap_open,
-             gap_extend,
-             match_score,
-             mismatch_score);
+    println!(
+        "x: {}, y: {}, k: {}, w: {}, scoring ({}, {}, {}, {})",
+        String::from_utf8(x.to_vec()).unwrap(),
+        String::from_utf8(y.to_vec()).unwrap(),
+        kmer_len,
+        window_size,
+        gap_open,
+        gap_extend,
+        match_score,
+        mismatch_score
+    );
     let base_score = Scoring::from_scores(gap_open, gap_extend, match_score, mismatch_score);
 
     {
-        println!("Clip scores ({}, {}, {}, {})", xclip_prefix_byte, xclip_suffix_byte, yclip_prefix_byte, yclip_suffix_byte);
+        println!(
+            "Clip scores ({}, {}, {}, {})",
+            xclip_prefix_byte, xclip_suffix_byte, yclip_prefix_byte, yclip_suffix_byte
+        );
         let scoring = Scoring {
             xclip_prefix: -(*xclip_prefix_byte as i32),
             xclip_suffix: -(*xclip_suffix_byte as i32),
@@ -105,7 +128,6 @@ fuzz_target!(|data: &[u8]| {
         let band_all_alignment = b_aligner.custom_with_matches(x, y, &Vec::new());
         assert_eq!(band_all_alignment.score, f_alignment.score);
     }
-
 
     {
         let scoring = Scoring {
@@ -248,5 +270,4 @@ fuzz_target!(|data: &[u8]| {
         assert_eq!(alignment.yend, alignment.ylen);
         assert!(validate_alignment_score(&alignment, x, y, &base_score));
     }
-
 });
