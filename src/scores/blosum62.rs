@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn test_blosum62() {
-        let score1 = blosum30(b'H', b'H');
+        let score1 = blosum62(b'H', b'H');
         assert_eq!(score1, 8);
         let score2 = blosum62(b'O', b'*');
         assert_eq!(score2, -4);
