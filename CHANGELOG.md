@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [2.3.0](https://github.com/rust-bio/rust-bio/compare/v2.2.0...v2.3.0) (2025-04-07)
+
+
+### Features
+
+* Add BLOSUM30 and BLOSUM45 substitution matrices ([#630](https://github.com/rust-bio/rust-bio/issues/630)) ([6188ea7](https://github.com/rust-bio/rust-bio/commit/6188ea7c061b1a590f35758669c132a63553c85d))
+
 ## [2.2.0](https://github.com/rust-bio/rust-bio/compare/v2.1.0...v2.2.0) (2025-02-26)
 
 
