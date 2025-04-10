@@ -848,11 +848,11 @@ mod tests {
     }
 
     fn rand_seqs(num_seqs: usize, seq_len: usize) -> Vec<u8> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let alpha = [b'A', b'T', b'C', b'G', b'N'];
         let seqs = (0..num_seqs)
             .map(|_| {
-                let len = rng.gen_range((seq_len / 2)..=seq_len);
+                let len = rng.random_range((seq_len / 2)..=seq_len);
                 (0..len)
                     .map(|_| *alpha.choose(&mut rng).unwrap())
                     .collect::<Vec<u8>>()
