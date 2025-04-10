@@ -3,7 +3,7 @@
 extern crate test;
 
 use bio::io::{fasta, fastx};
-use rand::distributions::Alphanumeric;
+use rand::distr::Alphanumeric;
 use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
@@ -32,7 +32,7 @@ fn gen_random_fasta() -> io::Result<Vec<u8>> {
 
             let seq: Vec<u8> = (0..SEQ_LEN)
                 .map(|_| {
-                    let idx = rng.gen_range(0..BASES.len());
+                    let idx = rng.random_range(0..BASES.len());
                     BASES[idx]
                 })
                 .collect();
