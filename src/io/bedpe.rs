@@ -26,127 +26,52 @@ use std::marker::Copy;
 use std::ops::Deref;
 use std::path::Path;
 
-use anyhow::Context;
 use bio_types::annot;
 use bio_types::annot::loc::Loc;
 use bio_types::strand;
 
+use super::core_record;
+use super::core_record::IsRecord;
+
 /// A BEDPE reader.
 #[derive(Debug)]
-pub struct Reader<R: io::Read> {
-    inner: csv::Reader<R>,
+pub struct Reader<R: io::Read>(core_record::Reader<R>);
+
+impl<R: io::Read> Reader<R> {
+    /// Read from a given reader.
+    pub fn new(reader: R) -> Self {
+        Self(core_record::Reader::new(reader))
+    }
+
+    /// Iterate over all records.
+    pub fn records(&mut self) -> core_record::Records<'_, R, Record> {
+        self.0.records()
+    }
 }
 
 impl Reader<fs::File> {
     /// Read from a given file path.
     pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
-        fs::File::open(&path)
-            .map(Reader::new)
-            .with_context(|| format!("Failed to read bedpe from {:#?}", path))
+        core_record::Reader::from_file(path).map(Self)
     }
 }
 
-impl<R: io::Read> Reader<R> {
-    /// Read from a given reader.
-    pub fn new(reader: R) -> Self {
-        Reader {
-            inner: csv::ReaderBuilder::new()
-                .delimiter(b'\t')
-                .has_headers(false)
-                .comment(Some(b'#'))
-                .from_reader(reader),
-        }
-    }
-
-    /// Iterate over all records.
-    pub fn records(&mut self) -> Records<'_, R> {
-        Records {
-            inner: self.inner.deserialize(),
-        }
-    }
-}
-
-/// An iterator over the records of a BEDPE file.
-pub struct Records<'a, R: io::Read> {
-    inner: csv::DeserializeRecordsIter<'a, R, Record>,
-}
-
-impl<'a, R: io::Read> Iterator for Records<'a, R> {
-    type Item = csv::Result<Record>;
-
-    fn next(&mut self) -> Option<csv::Result<Record>> {
-        self.inner.next()
-    }
-}
-
-/// A BEDPE writer.
-#[derive(Debug)]
-pub struct Writer<W: io::Write> {
-    inner: csv::Writer<W>,
-}
-
-impl Writer<fs::File> {
-    /// Write to a given file path.
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::create(path).map(Writer::new)
-    }
-}
-
-impl<W: io::Write> Writer<W> {
-    /// Write to a given writer.
-    pub fn new(writer: W) -> Self {
-        Writer {
-            inner: csv::WriterBuilder::new()
-                .delimiter(b'\t')
-                .flexible(true)
-                .from_writer(writer),
-        }
-    }
-
-    /// Write a given BEDPE record.
-    pub fn write(&mut self, record: &Record) -> csv::Result<()> {
-        if record.aux.is_empty() {
-            self.inner.serialize((
-                &record.chrom1,
-                record.start1,
-                record.end1,
-                &record.chrom2,
-                record.start2,
-                record.end2,
-            ))
-        } else {
-            self.inner.serialize((
-                &record.chrom1,
-                record.start1,
-                record.end1,
-                &record.chrom2,
-                record.start2,
-                record.end2,
-                &record.aux,
-            ))
-        }
-    }
-}
-
-/// A BEDPE record as defined by BEDtools
-/// (http://bedtools.readthedocs.org/en/latest/content/general-usage.html)
-#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
-pub struct Record {
-    chrom1: String,
-    start1: u64,
-    end1: u64,
-    chrom2: String,
-    start2: u64,
-    end2: u64,
+// Bedpe record
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+struct Record {
+    pub chrom1: String,
+    pub start1: u64,
+    pub end1: u64,
+    pub chrom2: String,
+    pub start2: u64,
+    pub end2: u64,
     #[serde(default)]
-    aux: Vec<String>,
+    pub aux: Vec<String>,
 }
 
-impl Record {
-    /// Create a new BEDPE record.
-    pub fn new() -> Self {
-        Record {
+impl Default for Record {
+    fn default() -> Self {
+        Self {
             chrom1: "".to_owned(),
             start1: 0,
             end1: 0,
@@ -156,35 +81,25 @@ impl Record {
             aux: vec![],
         }
     }
+}
 
-    /// Chromosome of first end of the feature.
-    pub fn chrom1(&self) -> &str {
-        &self.chrom1
+impl IsRecord for Record {}
+impl IsRecord for &Record {}
+
+impl Record {
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    /// Start position of first end of the feature (0-based).
-    pub fn start1(&self) -> u64 {
-        self.start1
-    }
-
-    /// End position of first end of the feature (0-based, not included).
-    pub fn end1(&self) -> u64 {
-        self.end1
-    }
-
-    /// Chromosome of second end of the feature.
-    pub fn chrom2(&self) -> &str {
-        &self.chrom2
-    }
-
-    /// Start position of second end of the feature (0-based).
-    pub fn start2(&self) -> u64 {
-        self.start2
-    }
-
-    /// End position of second end of the feature (0-based, not included).
-    pub fn end2(&self) -> u64 {
-        self.end2
+    /// Access auxilliary fields after the end field by index
+    /// (counting first field (chromosome) as 0).
+    pub fn aux(&self, i: usize) -> Option<&str> {
+        let j = i - 6;
+        if j < self.aux.len() {
+            Some(&self.aux[j])
+        } else {
+            None
+        }
     }
 
     /// Name of the feature.
@@ -215,45 +130,34 @@ impl Record {
         }
     }
 
-    /// Access auxilliary fields after the strand field by index
-    /// (counting first field (chromosome) as 0).
-    pub fn aux(&self, i: usize) -> Option<&str> {
-        let j = i - 6;
-        if j < self.aux.len() {
-            Some(&self.aux[j])
-        } else {
-            None
-        }
-    }
-
     /// Set chromosome of first end of the feature.
     pub fn set_chrom1(&mut self, chrom: &str) {
-        self.chrom1 = chrom.to_owned();
+        self.chrom1 = chrom.to_owned()
     }
 
     /// Set start of first end of the feature.
     pub fn set_start1(&mut self, start: u64) {
-        self.start1 = start;
+        self.start1 = start
     }
 
     /// Set end of first end of the feature.
     pub fn set_end1(&mut self, end: u64) {
-        self.end1 = end;
+        self.end1 = end
     }
 
     /// Set chromosome of second end of the feature.
     pub fn set_chrom2(&mut self, chrom: &str) {
-        self.chrom2 = chrom.to_owned();
+        self.chrom2 = chrom.to_owned()
     }
 
     /// Set start of second end of the feature.
     pub fn set_start2(&mut self, start: u64) {
-        self.start2 = start;
+        self.start2 = start
     }
 
     /// Set end of second end of the feature.
     pub fn set_end2(&mut self, end: u64) {
-        self.end2 = end;
+        self.end2 = end
     }
 
     /// Set name.
@@ -274,6 +178,25 @@ impl Record {
             self.aux.push(score.to_owned());
         } else {
             self.aux[1] = score.to_owned();
+        }
+    }
+
+    /// Set auxilliary field after the end field by index and return the previous value if present.
+    /// If the index is bigger than the current aux vector, fill all not set fields with empty
+    /// strings.
+    /// (counting first field (chromosome) as 0).
+    pub fn set_aux<S: Into<String>>(&mut self, i: usize, field: S) -> Option<String> {
+        let j = i - 6;
+        if j < self.aux.len() {
+            let previous_value = self.aux[j].clone();
+            self.aux[j] = field.into();
+            Some(previous_value)
+        } else {
+            for _ in self.aux.len()..j {
+                self.aux.push("".to_owned());
+            }
+            self.aux.push(field.into());
+            None
         }
     }
 
@@ -311,6 +234,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::io::core_record::Writer;
 
     use bio_types::annot::pos::Pos;
     use bio_types::strand::{ReqStrand, Strand};
@@ -338,9 +262,9 @@ mod tests {
         let mut reader = Reader::new(BEDPE_FILE);
         for (i, r) in reader.records().enumerate() {
             let record = r.expect("Error reading record");
-            assert_eq!((record.chrom1(), record.chrom2()), chroms[i]);
-            assert_eq!((record.start1(), record.start2()), starts[i]);
-            assert_eq!((record.end1(), record.end2()), ends[i]);
+            assert_eq!((record.chrom1.as_str(), record.chrom2.as_str()), chroms[i]);
+            assert_eq!((record.start1, record.start2), starts[i]);
+            assert_eq!((record.end1, record.end2), ends[i]);
             assert_eq!(record.name().expect("Error reading name"), names[i]);
             assert_eq!(record.score().expect("Error reading score"), scores[i]);
         }
@@ -357,9 +281,9 @@ mod tests {
         let mut reader = Reader::new(BEDPE_FILE_COMMENT);
         for (i, r) in reader.records().enumerate() {
             let record = r.expect("Error reading record");
-            assert_eq!((record.chrom1(), record.chrom2()), chroms[i]);
-            assert_eq!((record.start1(), record.start2()), starts[i]);
-            assert_eq!((record.end1(), record.end2()), ends[i]);
+            assert_eq!((record.chrom1.as_str(), record.chrom2.as_str()), chroms[i]);
+            assert_eq!((record.start1, record.start2), starts[i]);
+            assert_eq!((record.end1, record.end2), ends[i]);
             assert_eq!(record.name().expect("Error reading name"), names[i]);
             assert_eq!(record.score().expect("Error reading score"), scores[i]);
         }
@@ -374,9 +298,9 @@ mod tests {
         let mut reader = Reader::new(BEDPE_FILE_COMPACT);
         for (i, r) in reader.records().enumerate() {
             let record = r.unwrap();
-            assert_eq!((record.chrom1(), record.chrom2()), chroms[i]);
-            assert_eq!((record.start1(), record.start2()), starts[i]);
-            assert_eq!((record.end1(), record.end2()), ends[i]);
+            assert_eq!((record.chrom1.as_str(), record.chrom2.as_str()), chroms[i]);
+            assert_eq!((record.start1, record.start2), starts[i]);
+            assert_eq!((record.end1, record.end2), ends[i]);
         }
     }
 
@@ -388,19 +312,22 @@ mod tests {
             .downcast::<String>()
             .unwrap();
 
-        assert_eq!(&error, "Failed to read bedpe from \"/I/dont/exist.bedpe\"")
+        assert_eq!(&error, "Failed to read from \"/I/dont/exist.bedpe\"")
     }
 
     #[test]
     fn test_writer() {
         let mut reader = Reader::new(BEDPE_FILE);
-        let mut writer = Writer::new(vec![]);
-        for r in reader.records() {
-            writer
-                .write(&r.expect("Error reading record"))
-                .expect("Error writing record");
+        let mut output: Vec<u8> = vec![];
+        {
+            let mut writer = Writer::new(&mut output);
+            for r in reader.records() {
+                writer
+                    .write(&r.expect("Error reading record"))
+                    .expect("Error writing record");
+            }
         }
-        assert_eq!(writer.inner.into_inner().unwrap(), BEDPE_FILE);
+        assert_eq!(&output[..], BEDPE_FILE);
     }
 
     #[test]
@@ -410,12 +337,12 @@ mod tests {
 
         let record = Record::from((pos1, pos2));
 
-        assert_eq!(record.chrom1(), String::from("chrXI"));
-        assert_eq!(record.chrom2(), String::from("chrXI"));
-        assert_eq!(record.start1(), 334412);
-        assert_eq!(record.end1(), 334412 + 1);
-        assert_eq!(record.start2(), 300000);
-        assert_eq!(record.end2(), 300000 + 1);
+        assert_eq!(record.chrom1, String::from("chrXI"));
+        assert_eq!(record.chrom2, String::from("chrXI"));
+        assert_eq!(record.start1, 334412);
+        assert_eq!(record.end1, 334412 + 1);
+        assert_eq!(record.start2, 300000);
+        assert_eq!(record.end2, 300000 + 1);
         assert_eq!(record.name(), Some(""));
         assert_eq!(record.score(), Some("0"));
         assert_eq!(record.strand1(), Some(Strand::Forward));
