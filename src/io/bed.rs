@@ -9,6 +9,7 @@
 //!
 //! ```
 //! use bio::io::bed;
+//!
 //! let example = b"1\t5\t5000\tname1\t0.5";
 //! let mut reader = bed::Reader::new(&example[..]);
 //! let mut writer = bed::Writer::new(vec![]);
@@ -19,47 +20,71 @@
 //! }
 //! ```
 
-use std::convert::AsRef;
 use std::fmt::Write;
-use std::fs;
-use std::io;
 use std::marker::Copy;
-use std::ops::Deref;
-use std::path::Path;
+use std::ops::{Deref, DerefMut};
 
 use bio_types::annot;
 use bio_types::annot::loc::Loc;
 use bio_types::strand;
 
-use crate::io::core_record;
+use crate::io::core;
 
-#[derive(Debug)]
-pub struct Reader<R: io::Read>(core_record::Reader<R>);
+/// BED writer.
+pub type Writer<W> = core::Writer<W>;
 
-impl<R: io::Read> Reader<R> {
-    fn new(source: R) -> Self {
-        Self(core_record::Reader::new(source))
-    }
+/// A BED reader.
+pub type Reader<R> = core::Reader<R, Record>;
 
-    fn records(&mut self) -> core_record::Records<'_, R, Record> {
-        self.0.records()
+/// A BED record as defined by BEDtools
+/// (http://bedtools.readthedocs.org/en/latest/content/general-usage.html)
+#[derive(Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct Record(core::Record);
+
+/// Inherits default methods from core::Record and makes them usable from Record
+///
+/// ```
+/// use bio::io::bed::Reader;
+///
+/// let src = b"1\t2\t3\tname1";
+/// let mut reader = Reader::new(&src[..]);
+/// for record in reader.records() {
+///     let rec = record.expect("Unable to read BED record");
+///     assert_eq!(rec.chrom(), "1");
+///     assert_eq!(rec.name(), Some("name1"));
+/// }
+/// ```
+impl Deref for Record {
+    type Target = core::Record;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
-impl Reader<fs::File> {
-    /// Read from a given file path.
-    fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
-        core_record::Reader::from_file(path).map(Self)
+impl DerefMut for Record {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
-type Record = core_record::Record;
-
+/// Add new methods specific for a BED Record
 impl Record {
+    /// Create a new Record
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Name of the feature.
+    pub fn name(&self) -> Option<&str> {
+        self.aux(3)
+    }
+
     /// Score of the feature.
     pub fn score(&self) -> Option<&str> {
         self.aux(4)
     }
+
     /// Strand of the feature.
     pub fn strand(&self) -> Option<strand::Strand> {
         match self.aux(5) {
@@ -68,25 +93,20 @@ impl Record {
             _ => None,
         }
     }
+
     /// Set name.
     pub fn set_name(&mut self, name: &str) {
-        if self.aux.is_empty() {
-            self.aux.push(name.to_owned());
-        } else {
-            self.aux[0] = name.to_owned();
-        }
+        self.set_aux(3, name)
     }
 
     /// Set score.
     pub fn set_score(&mut self, score: &str) {
-        if self.aux.is_empty() {
-            self.aux.push("".to_owned());
-            self.aux.push(score.to_owned());
-        } else if self.aux.len() < 2 {
-            self.aux.push(score.to_owned());
-        } else {
-            self.aux[1] = score.to_owned();
-        }
+        self.set_aux(4, score)
+    }
+
+    /// Set strand.
+    pub fn set_strand(&mut self, strand: &str) {
+        self.set_aux(5, strand);
     }
 }
 
@@ -109,9 +129,9 @@ impl<'a> From<&'a Record> for annot::contig::Contig<String, strand::Strand> {
     /// ```
     fn from(rec: &Record) -> Self {
         annot::contig::Contig::new(
-            rec.chrom.to_string(),
-            rec.start as isize,
-            (rec.end - rec.start) as usize,
+            rec.chrom().to_string(),
+            rec.start() as isize,
+            (rec.end() - rec.start()) as usize,
             rec.strand().unwrap_or(strand::Strand::Unknown),
         )
     }
@@ -250,7 +270,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::io::core_record::Writer;
     use std::path::Path;
 
     use bio_types::annot::{contig::Contig, pos::Pos, spliced::Spliced};
@@ -336,7 +355,7 @@ mod tests {
         let mut reader = Reader::new(BED_FILE);
         let mut output: Vec<u8> = vec![];
         {
-            let mut writer = core_record::Writer::new(&mut output);
+            let mut writer = Writer::new(&mut output);
             for r in reader.records() {
                 writer
                     .write(&r.expect("Error reading record"))
