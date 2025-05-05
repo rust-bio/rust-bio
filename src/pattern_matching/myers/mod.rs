@@ -41,15 +41,13 @@
 //! # }
 //! ```
 //!
-//! Starting with stable Rust 1.26, it is also possible to use `u128` as bitvector
-//! (`Myers::<u128>`), which enables longer patterns, but is somewhat slower.
-//!
 //! # Long patterns
 //!
-//! With the default implementation, query (pattern) length is limited by the size of the
-//! bit-vector; 64 symbols for `Myers::<u64>`. Patterns longer than 128 symbols (when using
-//! `u128` as bit-vector) can only be handled by using the block-based Myers implementation,
-//! which lives in the [`long`](long/index.html) submodule. An example:
+//! It is also possible to to construct `Myers::<u128>`, which handles patterns with
+//! up to 128 symbols using the standard algorithm.
+//! 
+//! Longer patterns are possible with the block-based implementation,
+//! which lives in the [`long`] submodule. An example:
 //!
 //! ```
 //! # extern crate bio;
@@ -76,7 +74,8 @@
 //! assert_eq!(occ_64, occ_long_8);
 //! # }
 //! ```
-//! Note that `u8` just used for demonstration, using `u64` is still the best in most cases.
+//! > *Note:* `u8` is used for demonstration, but `long::Myers::<u64>` is still
+//! > the best in most cases.
 //!
 //! # Obtaining the starting position of a match
 //!

@@ -300,7 +300,6 @@ fn myers_end_long_8(b: &mut Bencher) {
     });
 }
 
-#[cfg(has_u128)]
 #[bench]
 fn myers_end_128(b: &mut Bencher) {
     let myers = Myers::<u128>::new(PATTERN);
@@ -313,7 +312,6 @@ fn myers_end_128(b: &mut Bencher) {
     });
 }
 
-#[cfg(has_u128)]
 #[bench]
 fn myers_end_long_128(b: &mut Bencher) {
     let myers = long::Myers::<u128>::new(PATTERN);
@@ -339,7 +337,6 @@ fn myers_pos_64(b: &mut Bencher) {
     });
 }
 
-#[cfg(has_u128)]
 #[bench]
 fn myers_pos_128(b: &mut Bencher) {
     let mut myers = Myers::<u128>::new(PATTERN);
@@ -409,7 +406,6 @@ fn myers_path_long_8(b: &mut Bencher) {
     });
 }
 
-#[cfg(has_u128)]
 #[bench]
 fn myers_path_long_128(b: &mut Bencher) {
     let mut myers = long::Myers::<u128>::new(PATTERN);

@@ -131,7 +131,6 @@ impl MyersBuilder {
 
     /// Creates a Myers instance given a pattern, using `u128` as bit vector type.
     /// Pattern length is restricted to at most 128 symbols.
-    #[cfg(has_u128)]
     pub fn build_128<C, P>(&self, pattern: P) -> Myers<u128>
     where
         C: Borrow<u8>,
@@ -179,7 +178,6 @@ impl MyersBuilder {
 
     /// Creates a `long::Myers` instance given a pattern, using `u128` as bit vector type.
     /// Pattern length is not restricted regardless of the type of the bit vector.
-    #[cfg(has_u128)]
     pub fn build_long_128<C, P>(&self, pattern: P) -> MyersLong<u128>
     where
         C: Borrow<u8>,

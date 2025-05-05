@@ -72,7 +72,6 @@ impl_bitvec!(u8, u8);
 impl_bitvec!(u16, u8);
 impl_bitvec!(u32, u8);
 impl_bitvec!(u64, u8);
-#[cfg(has_u128)]
 impl_bitvec!(u128, u8);
 
 use crate::alignment::{Alignment, AlignmentMode};
