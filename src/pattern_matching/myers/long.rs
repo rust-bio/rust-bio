@@ -14,7 +14,6 @@ use std::iter;
 use std::marker::PhantomData;
 use std::mem::replace;
 use std::slice;
-use std::u64;
 
 use itertools::Itertools;
 use num_traits::ToPrimitive;
@@ -69,7 +68,7 @@ impl<T: BitVec> Myers<T> {
         let pattern = pattern.into_iter();
         let m = pattern.len();
         assert!(m > 0, "Pattern is empty");
-        assert!(m <= usize::max_value() / 2, "Pattern too long");
+        assert!(m <= usize::MAX / 2, "Pattern too long");
 
         // build peq
         let mut peq = vec![];
@@ -304,7 +303,7 @@ where
             // we initialize the block below the last computed block with meaningful
             // defaults.
             states[pos + source.len()] = State {
-                dist: usize::max_value(),
+                dist: usize::MAX,
                 pv: T::zero(),
                 mv: T::zero(),
             };
@@ -387,18 +386,8 @@ impl<'a, T: BitVec + 'a> TracebackHandler<'a, T, usize> for LongTracebackHandler
     }
 
     #[inline]
-    fn block_mut(&mut self) -> &mut State<T, usize> {
-        &mut self.block
-    }
-
-    #[inline]
     fn left_block(&self) -> &State<T, usize> {
         &self.left_block
-    }
-
-    #[inline]
-    fn left_block_mut(&mut self) -> &mut State<T, usize> {
-        &mut self.left_block
     }
 
     #[inline]
@@ -494,8 +483,6 @@ impl_myers!(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     impl_tests!(super, u8, usize, build_64);
 
     #[test]
@@ -505,7 +492,7 @@ mod tests {
 
         let myers: Myers<u64> = Myers::new(pattern.iter().cloned());
 
-        let hits: Vec<_> = myers.find_all_end(text, usize::max_value() - 64).collect();
+        let hits: Vec<_> = myers.find_all_end(text, usize::MAX - 64).collect();
         dbg!(hits);
     }
 }

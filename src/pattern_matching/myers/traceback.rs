@@ -70,14 +70,8 @@ where
     /// Returns a reference to the current (right) block.
     fn block(&self) -> &State<T, D>;
 
-    /// Returns a mutable reference to the current (right) block.
-    fn block_mut(&mut self) -> &mut State<T, D>;
-
     /// Returns a reference to the left block.
     fn left_block(&self) -> &State<T, D>;
-
-    /// Returns a mutable reference to the left block.
-    fn left_block_mut(&mut self) -> &mut State<T, D>;
 
     /// Bit vector representing the position in the traceback. Only the bit
     /// at the current position should be on.
@@ -92,14 +86,15 @@ where
 
     /// Move up cursor by one position in traceback matrix.
     ///
+    /// *Note concerning the block based Myers algorithm:*
+    /// The the active bit in bit vector returned by `pos_bitvec()`
+    /// is expected to jump back to the maximum (lowest) position
+    /// when reaching the uppermost position (like `rotate_right()` does).
+    /// 
     /// # Arguments
     ///
     /// * adjust_dist: If true, the distance score of the block is adjusted
     ///   based on the current cursor position before moving it up.
-    ///  *Note concerning the block based Myers algorithm:*
-    ///  The the active bit in bit vector returned by `pos_bitvec()`
-    ///  is expected to jump back to the maximum (lowest) position
-    ///  when reaching the uppermost position (like `rotate_right()` does).
     fn move_up(&mut self, adjust_dist: bool);
 
     /// Move up left cursor by one position in traceback matrix.
@@ -146,6 +141,7 @@ where
     fn finished(&self) -> bool;
 
     /// For debugging only
+    #[allow(dead_code)]
     fn print_state(&self) {
         println!(
             "--- TB dist ({:?} <-> {:?})",

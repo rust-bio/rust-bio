@@ -45,7 +45,7 @@
 //!
 //! It is also possible to to construct `Myers::<u128>`, which handles patterns with
 //! up to 128 symbols using the standard algorithm.
-//! 
+//!
 //! Longer patterns are possible with the block-based implementation,
 //! which lives in the [`long`] submodule. An example:
 //!
