@@ -144,7 +144,7 @@ impl<'a, T: BitVec + 'a> StatesHandler<'a, T, T::DistType> for ShortStatesHandle
 
     #[inline]
     fn set_max_state(&self, pos: usize, states: &mut [State<T, T::DistType>]) {
-        states[pos] = State::max();
+        states[pos] = State::init_max_dist();
     }
 
     #[inline]
@@ -158,13 +158,18 @@ impl<'a, T: BitVec + 'a> StatesHandler<'a, T, T::DistType> for ShortStatesHandle
     }
 
     #[inline]
+    fn dist_at(&self, pos: usize, states: &[State<T, T::DistType>]) -> Option<T::DistType> {
+        states.get(pos).map(|s| s.dist)
+    }
+
+    #[inline]
     fn init_traceback(
         &self,
         m: T::DistType,
         pos: usize,
         states: &'a [State<T, T::DistType>],
-    ) -> Self::TracebackHandler {
-        ShortTracebackHandler::new(m, pos, states)
+    ) -> Option<Self::TracebackHandler> {
+        Some(ShortTracebackHandler::new(m, pos, states))
     }
 }
 

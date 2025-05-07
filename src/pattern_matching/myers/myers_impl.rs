@@ -31,20 +31,27 @@ where
         }
     }
 
+    /// Initialize with the maximum distance
     #[inline]
-    pub fn max() -> Self {
+    pub fn init_max_dist() -> Self {
         Self::init(D::max_value())
     }
 
+    /// Returns the known edit distance: this is meant to pair with
+    /// `long::States::known_dist()` and should not be `None`, as there
+    /// is only one "block" with the simple algorithm, and the edit distance
+    /// is thus always known after `Myers::step()`.
     #[inline]
     pub fn known_dist(&self) -> Option<D> {
         Some(self.dist)
     }
 
+    // (only used for debugging)
     pub fn is_new(&self) -> bool {
         self.dist == D::zero() && self.pv == T::zero() && self.mv == T::zero()
     }
 
+    // (only used for debugging)
     pub fn is_max(&self) -> bool {
         self.pv >= (T::max_value() >> 1) && self.mv == T::zero()
     }
@@ -118,9 +125,9 @@ macro_rules! impl_myers {
 // Indented at top level for readability.
 
 use super::Myers;
+use crate::alignment::{Alignment, AlignmentOperation};
 use crate::pattern_matching::myers::traceback::Traceback;
 use crate::pattern_matching::myers::{update_aln, BitVec};
-use crate::alignment::{Alignment, AlignmentOperation};
 #[allow(unused_imports)] // Bounded is required for <$DistType>::max_value()
 use num_traits::{Bounded, ToPrimitive};
 use std::borrow::Borrow;
@@ -140,7 +147,7 @@ impl<T: BitVec> $Myers {
         traceback.add_state(&state, &mut self.states_store);
     }
 
-    /// Calculate the global distance of the pattern to the given text.
+    /// Calculate the distance of the pattern to the given text.
     pub fn distance<C, I>(&self, text: I) -> $DistType
     where
         C: Borrow<u8>,
@@ -393,7 +400,7 @@ where
         if self.unsuccessfully_finished {
             return None;
         }
-        let (len, _) = self.traceback.traceback(None, &self.myers.states_store);
+        let (len, _) = self.traceback.traceback(None, &self.myers.states_store).unwrap();
         Some(self.pos + 1 - len.to_usize().unwrap())
     }
 
@@ -422,7 +429,8 @@ where
         ops.clear();
         let (len, _) = self
             .traceback
-            .traceback(Some(ops), &self.myers.states_store);
+            .traceback(Some(ops), &self.myers.states_store)
+            .unwrap();
         Some(self.pos + 1 - len.to_usize().unwrap())
     }
 
@@ -438,7 +446,8 @@ where
             aln.operations.clear();
             let (len, _) = self
                 .traceback
-                .traceback(Some(&mut aln.operations), &self.myers.states_store);
+                .traceback(Some(&mut aln.operations), &self.myers.states_store)
+                .unwrap();
             aln.operations.reverse();
             update_aln(
                 self.pos,
@@ -543,9 +552,17 @@ where
         }
     }
 
-    /// Takes the end position of a hit (as returned by the `LazyMatches` iterator) and returns a
-    /// tuple of the corresponding starting position and the hit distance. If the end position is
-    /// greater than the end position of the previously returned hit, `None` is returned.
+    /// Returns the edit distance of a match given its end position, or `None`
+    /// if the alignment is not known (see [`alignment_at`](Self::alignment_at)).
+    #[inline]
+    pub fn dist_at(&self, end_pos: usize) -> Option<$DistType> {
+        self.traceback.dist_at(end_pos, &self.myers.states_store)
+    }
+
+    /// Returns a tuple of (start position, edit distance) for a match given its
+    /// end position. This involves caluculating the alignment path.
+    /// The function returns `None` if the alignment is not known
+    /// (see [`alignment_at`](Self::alignment_at)).
     #[inline]
     pub fn hit_at(&self, end_pos: usize) -> Option<(usize, $DistType)> {
         self.traceback
@@ -553,9 +570,9 @@ where
             .map(|(len, dist)| (end_pos + 1 - len.to_usize().unwrap(), dist))
     }
 
-    /// Takes the end position of a hit and returns a tuple of the corresponding starting position
-    /// and the hit distance. The alignment path is added to `ops`.
-    /// As in `hit_at`, the end position has to be searched already, otherwise `None` is returned.
+    /// Calculates the alignment path for a match given its end position.
+    /// Returns a tuple of (start position, edit distance) or `None` if the
+    /// alignment is not known (see [`alignment_at`](Self::alignment_at)).
     #[inline]
     pub fn path_at(
         &self,
@@ -568,8 +585,8 @@ where
         })
     }
 
-    /// Like `LazyMatches::path_at()`, but the operations will be in reverse order. This
-    /// is slightly faster, as the traceback algorithm adds them in reverse order,
+    /// Like [`path_at`](Self::path_at), but the operations will be in reverse order.
+    /// This is slightly faster, as the traceback algorithm adds them in reverse order,
     /// and `path_at()` needs to reverse them.
     #[inline]
     pub fn path_at_reverse(
@@ -582,15 +599,22 @@ where
             .map(|(len, dist)| (end_pos + 1 - len.to_usize().unwrap(), dist))
     }
 
-    /// Takes the end position of a hit and returns a tuple of the corresponding starting position
-    /// and the hit distance. The alignment `aln` is updated with the position, alignment path
-    /// and distance (stored in `Alignment::score`).
-    /// If the end position has not yet been searched, nothing is done and `false` is returned.
-    /// This function will succeed even if the edit distance at the given position is greater
-    /// than the maximum distance specified when calling `Myers::find_all_lazy`. However, this
-    /// is only true for the implementation with restricted pattern lengths (in module
-    /// `bio::pattern_matching::myers`). The block-based implementation (in the `long`
-    /// submodule) avoids computing blocks with values > max_dist.
+    /// Calculates the alignment for a match given its end position, which can
+    /// be obtained with `myers.find_all_lazy(text, max_dist)`.
+    /// The supplied [`Alignment`](crate::alignment::Alignment) is updated with the
+    /// position, alignment path and edit distance (stored in the `score` field).
+    ///
+    /// Returns `true` if successful or `false` if the alignment is not known
+    /// because the given position has not yet been searched ([`LazyMatches`]
+    /// iterator not exhausted).
+    ///
+    /// # Note on more distant matches
+    ///
+    /// In the simple case with short patterns, this function succeeds for *all*
+    /// end positions, even if hits are not within `max_dist`. In contrast, the
+    /// the block-based search ([`long`](crate::pattern_matching::myers::long)
+    /// submodule) is only guaranteed to know the alignment for matches <= `max_dist`
+    /// and may return `false` otherwise.
     #[inline]
     pub fn alignment_at(&self, end_pos: usize, aln: &mut Alignment) -> bool {
         aln.operations.clear();

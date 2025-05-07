@@ -246,7 +246,7 @@ pub use self::simple::*;
 #[cfg(test)]
 mod tests {
     // from common_tests.rs
-    impl_tests!(super, u64, u8, build_64);
+    impl_common_tests!(false, super, u64, u8, build_64);
 
     use std::iter::repeat;
 

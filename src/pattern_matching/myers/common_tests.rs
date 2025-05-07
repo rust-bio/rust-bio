@@ -1,5 +1,5 @@
-macro_rules! impl_tests {
-    ($mod_:ident, $bitvec:ty, $dist_type:ty, $builder_method:ident) => {
+macro_rules! impl_common_tests {
+    ($is_long:expr, $mod_:ident, $bitvec:ty, $dist_type:ty, $builder_method:ident) => {
         use crate::alignment::AlignmentOperation::*;
         use crate::alignment::{Alignment, AlignmentMode};
         use crate::pattern_matching::myers::MyersBuilder;
@@ -147,40 +147,102 @@ macro_rules! impl_tests {
                 assert_eq!(end, lazy_end);
                 assert_eq!(dist, lazy_dist);
                 assert_eq!(lazy_matches.hit_at(end), Some((start, dist)));
+                assert_eq!(lazy_matches.dist_at(end), Some(dist));
                 // For positions above, information is not (yet) available
-                assert_eq!(lazy_matches.hit_at(end + 1), None);
+                assert!(lazy_matches.hit_at(end + 1).is_none());
+                assert!(lazy_matches.dist_at(end + 1).is_none());
             }
         }
 
         #[test]
-        fn test_path_at() {
+        fn test_lazy() {
             let text = "CAGACATCTT".to_string();
             let patt = "---AGA----".replace('-', "");
 
             let mut myers = Myers::<$bitvec>::new(patt.as_bytes());
             let mut matches = myers.find_all_lazy(text.as_bytes(), 1);
 
-            let expected = &[Match, Match, Ins];
+            let exp_path = &[Match, Match, Ins];
             let mut path = vec![];
+
+            // nothing searched yet
+            assert!(matches.hit_at(2).is_none());
+            assert!(matches.dist_at(2).is_none());
+            assert!(matches.path_at(2, &mut path).is_none());
+            assert!(path.is_empty());
 
             // search first hit
             assert_eq!(matches.next(), Some((2, 1)));
 
             // retrieve first hit at 0-based end position (2)
             assert_eq!(matches.hit_at(2), Some((1, 1)));
+            assert_eq!(matches.dist_at(2), Some(1));
             assert_eq!(matches.path_at(2, &mut path), Some((1, 1)));
-            assert_eq!(&path, expected);
+            assert_eq!(&path, exp_path);
 
             // hit out of range
             path.clear();
+            assert!(matches.hit_at(3).is_none());
+            assert!(matches.dist_at(3).is_none());
             assert!(matches.path_at(3, &mut path).is_none());
             assert!(path.is_empty());
 
             // now search the next hit
             assert_eq!(matches.next(), Some((3, 0)));
             // position 3 is now searched -> path can be retrieved
+            assert_eq!(matches.hit_at(3), Some((1, 0)));
+            assert_eq!(matches.dist_at(3), Some(0));
             assert_eq!(matches.path_at(3, &mut path), Some((1, 0)));
             assert_eq!(&path, &[Match, Match, Match])
+        }
+
+        #[test]
+        fn test_lazy_longer() {
+            // the pattern of length 17 spans three u8 blocks in tests of `myers::long`
+            let text = "ACCGTGGATGAGCGCCATAG".to_string();
+            let patt = "--CGTGGACCAGCGCCATA-".replace('-', "");
+            let mut myers = Myers::<$bitvec>::new(patt.as_bytes());
+
+            // search another text first to test proper initialization of
+            // `State`s in the second search
+            let _ = myers
+                .find_all_end(b"GTGGACCAGCGCCATAGTGGACCAGCGCCATAGTGGACCAGCGCCATA", 10)
+                .count();
+
+            // second search
+            let mut matches = myers.find_all_lazy(text.as_bytes(), 2);
+
+            let exp_path = &[
+                Match, Match, Match, Match, Match, Match, Subst, Subst, Match, Match, Match, Match,
+                Match, Match, Match, Match, Match,
+            ];
+            let mut path = vec![];
+
+            // nothing searched yet
+            assert!(matches.hit_at(0).is_none());
+            assert!(matches.dist_at(0).is_none());
+            assert!(matches.path_at(0, &mut path).is_none());
+            assert!(path.is_empty());
+
+            // search first hit
+            assert_eq!(matches.next(), Some((18, 2)));
+            assert!(matches.next().is_none());
+
+            // still nothing at position 0 in case of block-based implementation
+            // (as the hits ending at pos. 0 are > max_dist and not all u8 blocks
+            // were calculated)
+            if $is_long {
+                assert!(matches.hit_at(0).is_none());
+                assert!(matches.dist_at(0).is_none());
+                assert!(matches.path_at(0, &mut path).is_none());
+                assert!(path.is_empty());
+            }
+
+            // retrieve first hit at 0-based end position
+            assert_eq!(matches.hit_at(18), Some((2, 2)));
+            assert_eq!(matches.dist_at(18), Some(2));
+            assert_eq!(matches.path_at(18, &mut path), Some((2, 2)));
+            assert_eq!(&path, exp_path);
         }
 
         #[test]

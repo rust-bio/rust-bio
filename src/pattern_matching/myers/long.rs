@@ -237,8 +237,7 @@ where
         }
     }
 
-    /// Returns the last distance score of the traceback column if known
-    /// (only if all blocks were computed).
+    /// Returns the edit distance if known (i.e., all blocks were computed),
     #[inline]
     fn known_dist(&self) -> Option<usize> {
         self.states.get(self.max_block).map(|s| s.dist)
@@ -281,7 +280,7 @@ where
     fn set_max_state(&self, pos: usize, states: &mut [State<T, usize>]) {
         let pos = pos * self.n_blocks;
         for s in states.iter_mut().skip(pos).take(self.n_blocks) {
-            *s = State::max();
+            *s = State::init_max_dist();
         }
     }
 
@@ -307,7 +306,23 @@ where
                 pv: T::zero(),
                 mv: T::zero(),
             };
+            // Furthermore, in case arbitrary matches are requested with the
+            // `LazyMatches::..._at()` methods, we need to know if all blocks
+            // have been computed in the given column. For this, we set the
+            // distance of the last block to `usize::MAX`.
+            states[pos + self.n_blocks - 1].dist = usize::MAX;
         }
+    }
+
+    #[inline]
+    fn dist_at(&self, pos: usize, states: &[State<T, usize>]) -> Option<usize> {
+        states.get(self.n_blocks * (pos + 1) - 1).and_then(|s| {
+            if s.dist == usize::MAX {
+                None
+            } else {
+                Some(s.dist)
+            }
+        })
     }
 
     #[inline]
@@ -316,7 +331,7 @@ where
         m: usize,
         pos: usize,
         states: &'a [State<T, usize>],
-    ) -> Self::TracebackHandler {
+    ) -> Option<Self::TracebackHandler> {
         LongTracebackHandler::new(self.n_blocks, m, pos, states)
     }
 }
@@ -339,7 +354,7 @@ pub(super) struct LongTracebackHandler<'a, T: BitVec> {
 
 impl<'a, T: BitVec> LongTracebackHandler<'a, T> {
     #[inline]
-    fn new(n_blocks: usize, m: usize, pos: usize, states: &'a [State<T, usize>]) -> Self {
+    fn new(n_blocks: usize, m: usize, pos: usize, states: &'a [State<T, usize>]) -> Option<Self> {
         let mut last_m = m.to_usize().unwrap() % word_size::<T>();
         if last_m == 0 {
             last_m = word_size::<T>();
@@ -355,6 +370,11 @@ impl<'a, T: BitVec> LongTracebackHandler<'a, T> {
         let col = states_iter.next().unwrap();
         let left_col = states_iter.next().unwrap();
 
+        // If the last block was not computed, we cannot obtain an alignment
+        if col.last().unwrap().dist == usize::MAX {
+            return None;
+        }
+
         // This bit mask is supplied to State::adjust_by_mask() in order to adjust the distance
         // of the left block. It is adjusted with every `move_up_left`
         let left_mask = if last_m != 1 {
@@ -363,7 +383,7 @@ impl<'a, T: BitVec> LongTracebackHandler<'a, T> {
             T::from_usize(0b10).unwrap()
         };
 
-        LongTracebackHandler {
+        Some(LongTracebackHandler {
             block_pos: n_blocks - 1,
             left_block_pos: n_blocks - 1,
             block: *col.last().unwrap(),
@@ -375,7 +395,7 @@ impl<'a, T: BitVec> LongTracebackHandler<'a, T> {
             left_mask,
             left_max_mask: mask0,
             _a: PhantomData,
-        }
+        })
     }
 }
 
@@ -483,7 +503,7 @@ impl_myers!(
 
 #[cfg(test)]
 mod tests {
-    impl_tests!(super, u8, usize, build_64);
+    impl_common_tests!(true, super, u8, usize, build_64);
 
     #[test]
     fn test_myers_long_overflow() {

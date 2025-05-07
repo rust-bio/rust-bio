@@ -27,17 +27,27 @@ where
     fn init(&mut self, n: usize, m: D) -> usize;
 
     /// Fill the column at `pos` with states initialized with the maximum distance
-    /// (`State::max()`).
+    /// (`State::init_max_dist()`). The leftmost column of the traceback matrix needs this.
     fn set_max_state(&self, pos: usize, states: &mut [State<T, D>]);
 
     /// This method copies over all blocks (or the one block) from a tracback column
     /// into the mutable `states` slice at the given column position.
     fn add_state(&self, source: &Self::TracebackColumn, pos: usize, states: &mut [State<T, D>]);
 
+    /// Returns the edit distance at the given position, or `None` if `pos` is
+    /// out of bounds.
+    fn dist_at(&self, pos: usize, states: &[State<T, D>]) -> Option<D>;
+
     /// Initiates a `TracebackHandler` object to assist with a traceback, 'starting'
     /// at the given end position.
-    fn init_traceback(&self, m: D, pos: usize, states: &'a [State<T, D>])
-        -> Self::TracebackHandler;
+    /// Should return `None` if the alignment cannot be obtained
+    /// (can happen with block-based algorithm if not all blocks were computed)
+    fn init_traceback(
+        &self,
+        m: D,
+        pos: usize,
+        states: &'a [State<T, D>],
+    ) -> Option<Self::TracebackHandler>;
 }
 
 /// Objects implementing this trait should store states and have methods
@@ -90,7 +100,7 @@ where
     /// The the active bit in bit vector returned by `pos_bitvec()`
     /// is expected to jump back to the maximum (lowest) position
     /// when reaching the uppermost position (like `rotate_right()` does).
-    /// 
+    ///
     /// # Arguments
     ///
     /// * adjust_dist: If true, the distance score of the block is adjusted
@@ -186,6 +196,9 @@ where
     D: DistType,
     H: StatesHandler<'a, T, D>,
 {
+    /// Creates a new `Traceback` instance.
+    /// The `states` vector is potentially reused, so all `State` instances
+    /// inside it must be initialized to new values.
     #[inline]
     pub fn new(
         states: &mut Vec<State<T, D>>,
@@ -217,7 +230,6 @@ where
             states.truncate(n_states);
             states.shrink_to_fit();
         }
-        // important if using unsafe in add_state(), and also for correct functioning of traceback
         debug_assert!(states.len() == n_states);
 
         // first column is used to ensure a correct path if the text (target)
@@ -237,6 +249,16 @@ where
         self.handler.add_state(column, self.pos, states);
     }
 
+    /// Returns distance for the given end position, or `None` if not stored
+    #[inline]
+    pub fn dist_at(&self, pos: usize, states: &'a [State<T, D>]) -> Option<D> {
+        let pos = pos + 2; // in order to be comparable since self.pos starts at 2, not 0
+        if pos <= self.pos {
+            return self.handler.dist_at(pos, states).map(|d| d as D);
+        }
+        None
+    }
+
     /// Returns the length of the current match, optionally adding the
     /// alignment path to `ops`
     #[inline]
@@ -244,7 +266,7 @@ where
         &self,
         ops: Option<&mut Vec<AlignmentOperation>>,
         states: &'a [State<T, D>],
-    ) -> (D, D) {
+    ) -> Option<(D, D)> {
         self._traceback_at(self.pos, ops, states)
     }
 
@@ -260,12 +282,12 @@ where
     ) -> Option<(D, D)> {
         let pos = pos + 2; // in order to be comparable since self.pos starts at 2, not 0
         if pos <= self.pos {
-            return Some(self._traceback_at(pos, ops, states));
+            return self._traceback_at(pos, ops, states);
         }
         None
     }
 
-    /// returns a tuple of alignment length and hit distance, optionally adding the alignment path
+    /// Returns a tuple of alignment length and hit distance, optionally adding the alignment path
     /// to `ops`
     #[inline]
     fn _traceback_at(
@@ -273,11 +295,11 @@ where
         pos: usize,
         mut ops: Option<&mut Vec<AlignmentOperation>>,
         state_slice: &'a [State<T, D>],
-    ) -> (D, D) {
+    ) -> Option<(D, D)> {
         use self::AlignmentOperation::*;
 
         // Generic object that holds the necessary data and methods
-        let mut h = self.handler.init_traceback(self.m, pos, state_slice);
+        let mut h = self.handler.init_traceback(self.m, pos, state_slice)?;
 
         // self.print_tb_matrix(pos, state_slice);
 
@@ -341,13 +363,16 @@ where
             }
         }
 
-        (h_offset, dist)
+        Some((h_offset, dist))
     }
 
     // Useful for debugging
     #[allow(dead_code)]
     fn print_tb_matrix(&self, pos: usize, state_slice: &'a [State<T, D>]) {
-        let mut h = self.handler.init_traceback(self.m, pos, state_slice);
+        let mut h = self
+            .handler
+            .init_traceback(self.m, pos, state_slice)
+            .unwrap();
         let m = self.m.to_usize().unwrap();
         let mut out = vec![];
         for _ in 0..state_slice.len() {
