@@ -222,6 +222,8 @@ where
 
         let w = word_size::<T>();
         let last_dist = self.states[last_block].dist;
+        // note: this will fail if edit distances are > isize::MAX,
+        // but in practice such long patterns will never occur
         if (last_dist as isize - carry as isize) as usize <= max_dist
             && last_block < self.max_block
             && (peq[last_block + 1].peq[a as usize] & T::one() == T::one() || carry < 0)
@@ -230,6 +232,7 @@ where
             self.add_state(-carry);
             advance_block(&mut self.states[last_block], &peq[last_block], a, carry);
         } else {
+            // note: max_dist should be <= usize::MAX - w; this is ensured beforehand
             while last_block > 0 && self.states[last_block].dist >= max_dist + w {
                 last_block -= 1;
             }
@@ -496,6 +499,8 @@ impl<'a, T: BitVec + 'a> TracebackHandler<'a, T, usize> for LongTracebackHandler
 
 impl_myers!(
     usize,
+    // maximum allowed value for max_dist (see States::step)
+    usize::MAX - crate::pattern_matching::myers::word_size::<T>(),
     Myers<T>,
     crate::pattern_matching::myers::long::States<T>,
     crate::pattern_matching::myers::long::LongStatesHandler<'a>
@@ -512,7 +517,7 @@ mod tests {
 
         let myers: Myers<u64> = Myers::new(pattern.iter().cloned());
 
-        let hits: Vec<_> = myers.find_all_end(text, usize::MAX - 64).collect();
+        let hits: Vec<_> = myers.find_all_end(text, usize::MAX).collect();
         dbg!(hits);
     }
 }

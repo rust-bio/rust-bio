@@ -28,6 +28,17 @@ macro_rules! impl_common_tests {
         }
 
         #[test]
+        fn test_distance_long() {
+            // the pattern of length 17 spans three u8 blocks in tests of `myers::long`
+            let text = "ACCGTGGATGAGCGCCATAG".to_string();
+            let patt = "--CGTGGACCAGCGCCATA-".replace('-', "");
+
+            let myers = Myers::<$bitvec>::new(patt.as_bytes());
+            assert_eq!(myers.distance(text.as_bytes()), 2);
+            assert_eq!(myers.find_best_end(text.as_bytes()), (18, 2));
+        }
+
+        #[test]
         fn test_full_position() {
             let text = "CAGACATCTT".to_string();
             let patt = "-AGA------".replace('-', "");
@@ -205,9 +216,7 @@ macro_rules! impl_common_tests {
 
             // search another text first to test proper initialization of
             // `State`s in the second search
-            let _ = myers
-                .find_all_end(b"GTGGACCAGCGCCATAGTGGACCAGCGCCATAGTGGACCAGCGCCATA", 10)
-                .count();
+            let _ = myers.distance(b"GTGGACCAGCGCCATAGTGGACCAGCGCCATAGTGGACCAGCGCCATA");
 
             // second search
             let mut matches = myers.find_all_lazy(text.as_bytes(), 2);

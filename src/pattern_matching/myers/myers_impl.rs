@@ -118,7 +118,7 @@ where
 // rustfmt::skip prevents automatic indentation.
 // This is not optimal, as no checks are done at all..
 macro_rules! impl_myers {
-    ($DistType:ty, $Myers:ty, $State:ty, $TbHandler:ty) => {
+    ($DistType:ty, $max_dist:expr, $Myers:ty, $State:ty, $TbHandler:ty) => {
         mod myers_impl {
 // Macro implementing common methods in Myers object. Wrapped in a module
 // and then re-exported from there to avoid mixing of namespaces.
@@ -153,7 +153,7 @@ impl<T: BitVec> $Myers {
         C: Borrow<u8>,
         I: IntoIterator<Item = C>,
     {
-        let max_dist = <$DistType>::max_value();
+        let max_dist = $max_dist;
         let mut dist = max_dist;
         let m = self.m;
         let mut state = self.initial_state(m, max_dist);
@@ -179,7 +179,7 @@ impl<T: BitVec> $Myers {
         C: Borrow<u8>,
         I: IntoIterator<Item = C>,
     {
-        Matches::new(self, text.into_iter(), max_dist)
+        Matches::new(self, text.into_iter(), max_dist.min($max_dist))
     }
 
     /// Find the best match of the pattern in the given text.
@@ -189,7 +189,7 @@ impl<T: BitVec> $Myers {
         C: Borrow<u8>,
         I: IntoIterator<Item = C>,
     {
-        self.find_all_end(text, <$DistType>::max_value())
+        self.find_all_end(text, $max_dist)
             .min_by_key(|&(_, dist)| dist)
             .unwrap()
     }
@@ -209,7 +209,7 @@ impl<T: BitVec> $Myers {
         I: IntoIterator<Item = C>,
         I::IntoIter: ExactSizeIterator,
     {
-        FullMatches::new(self, text.into_iter(), max_dist)
+        FullMatches::new(self, text.into_iter(), max_dist.min($max_dist))
     }
 
     /// As `find_all_end`, this function returns an iterator over tuples of `(end, distance)`.
@@ -225,7 +225,7 @@ impl<T: BitVec> $Myers {
         I: IntoIterator<Item = C>,
         I::IntoIter: ExactSizeIterator,
     {
-        LazyMatches::new(self, text.into_iter(), max_dist)
+        LazyMatches::new(self, text.into_iter(), max_dist.min($max_dist))
     }
 }
 

@@ -276,6 +276,7 @@ where
 
 impl_myers!(
     T::DistType,
+    T::DistType::max_value(),
     Myers<T>,
     crate::pattern_matching::myers::State<T, T::DistType>,
     crate::pattern_matching::myers::simple::ShortStatesHandler<'a>
