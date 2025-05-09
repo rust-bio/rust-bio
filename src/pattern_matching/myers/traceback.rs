@@ -222,15 +222,7 @@ where
         };
 
         // extend or truncate states vector
-        let curr_len = states.len();
-        if n_states > curr_len {
-            states.reserve(n_states);
-            states.extend((0..n_states - curr_len).map(|_| State::default()));
-        } else {
-            states.truncate(n_states);
-            states.shrink_to_fit();
-        }
-        debug_assert!(states.len() == n_states);
+        states.resize_with(n_states, Default::default);
 
         // first column is used to ensure a correct path if the text (target)
         // is shorter than the pattern (query)
