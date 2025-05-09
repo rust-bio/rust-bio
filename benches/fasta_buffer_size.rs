@@ -17,7 +17,7 @@ fn random_seq<RNG>(length: usize, rng: &mut RNG) -> Vec<u8>
 where
     RNG: rand::Rng,
 {
-    (0..length).map(|_| NUCS[rng.gen_range(0..=3)]).collect()
+    (0..length).map(|_| NUCS[rng.random_range(0..=3)]).collect()
 }
 
 fn write_sequence(file: &mut std::fs::File, seed: u64) {
