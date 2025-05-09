@@ -298,10 +298,7 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
 /// use bio::data_structures::suffix_array::suffix_array_int;
 /// let text: Vec<usize> = vec![3, 2, 2, 4, 4, 1, 2, 1, 0];
 /// let sa = suffix_array_int(&text);
-/// assert_eq!(
-///     sa,
-///     vec![8, 7, 5, 6, 1, 2, 0, 4, 3]
-/// );
+/// assert_eq!(sa, vec![8, 7, 5, 6, 1, 2, 0, 4, 3]);
 /// ```
 pub fn suffix_array_int<T>(text: &[T]) -> RawSuffixArray
 where
@@ -454,7 +451,7 @@ fn transform_text<T: Integer + Unsigned + NumCast + Copy + Debug>(
 
     let mut transformed: Vec<T> = Vec::with_capacity(text.len());
     let mut s = sentinel_count;
-    for &a in text.iter() {
+    for &a in text {
         if a == sentinel {
             s -= 1;
             transformed.push(cast(s).unwrap());
@@ -495,7 +492,7 @@ impl Sais {
         self.bucket_sizes.clear();
         self.bucket_start.clear();
 
-        for &c in text.iter() {
+        for &c in text {
             if !self.bucket_sizes.contains_key(cast(c).unwrap()) {
                 self.bucket_sizes.insert(cast(c).unwrap(), 0);
             }
@@ -512,7 +509,7 @@ impl Sais {
     /// Initialize pointers to the last element of the buckets.
     fn init_bucket_end<T: Integer + Unsigned + NumCast + Copy>(&mut self, text: &[T]) {
         self.bucket_end.clear();
-        for &r in self.bucket_start[1..].iter() {
+        for &r in &self.bucket_start[1..] {
             self.bucket_end.push(r - 1);
         }
         self.bucket_end.push(text.len() - 1);
@@ -851,11 +848,11 @@ mod tests {
     }
 
     fn rand_seqs(num_seqs: usize, seq_len: usize) -> Vec<u8> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let alpha = [b'A', b'T', b'C', b'G', b'N'];
         let seqs = (0..num_seqs)
             .map(|_| {
-                let len = rng.gen_range((seq_len / 2)..=seq_len);
+                let len = rng.random_range((seq_len / 2)..=seq_len);
                 (0..len)
                     .map(|_| *alpha.choose(&mut rng).unwrap())
                     .collect::<Vec<u8>>()
@@ -889,7 +886,7 @@ mod tests {
                 .map(|case| (case.as_ref(), "rand test case")),
         );
 
-        for &(text, test_name) in test_cases.iter() {
+        for &(text, test_name) in &test_cases {
             let pos = suffix_array(text);
             for i in 0..(pos.len() - 2) {
                 // Check that every element in the suffix array is lexically <= the next elem
