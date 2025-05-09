@@ -3,12 +3,16 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::blosum30::blosum30;
+pub use self::blosum45::blosum45;
 pub use self::blosum62::blosum62;
 pub use self::pam120::pam120;
 pub use self::pam200::pam200;
 pub use self::pam250::pam250;
 pub use self::pam40::pam40;
 
+pub mod blosum30;
+pub mod blosum45;
 pub mod blosum62;
 pub mod pam120;
 pub mod pam200;
