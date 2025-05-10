@@ -1,11 +1,11 @@
 #![no_main]
-#[macro_use] extern crate libfuzzer_sys;
+#[macro_use]
+extern crate libfuzzer_sys;
 
-use std::cmp::{min, max};
-use bio::pattern_matching::myers::{MyersBuilder, Myers, long};
 use bio::alignment::Alignment;
 use bio::alignment::AlignmentOperation::*;
-
+use bio::pattern_matching::myers::{long, Myers, MyersBuilder};
+use std::cmp::{max, min};
 
 fuzz_target!(|data: &[u8]| {
     if data.len() < 3 {
@@ -37,7 +37,8 @@ fuzz_target!(|data: &[u8]| {
 
     // No traceback, just searching
     let end_dist: Vec<_> = myers.find_all_end(text, max_dist).collect();
-    let end_dist_long: Vec<_> = myers_long.find_all_end(text, max_dist as usize)
+    let end_dist_long: Vec<_> = myers_long
+        .find_all_end(text, max_dist as usize)
         .map(|(end, dist)| (end, dist as u8))
         .collect();
     assert_eq!(end_dist, end_dist_long);
@@ -140,13 +141,11 @@ fuzz_target!(|data: &[u8]| {
     }
 });
 
-
 // Validates an Alignment based on the sequences that were used to construct it.
 // - calculates the score using edit distance (mismatches / gap penalties = 1) and
 //   then compares it to the stored score
 // - checks if matches and substitutions are really correct given the actual sequences
 fn validate_alignment(aln: &Alignment, x: &[u8], y: &[u8]) {
-
     let y = &y[aln.ystart..aln.yend];
 
     let mut ix = 0;
@@ -155,7 +154,10 @@ fn validate_alignment(aln: &Alignment, x: &[u8], y: &[u8]) {
     for op in &aln.operations {
         match *op {
             Match => {
-                assert!(x[ix] == y[iy], "Match operation, but characters are not equal");
+                assert!(
+                    x[ix] == y[iy],
+                    "Match operation, but characters are not equal"
+                );
                 ix += 1;
                 iy += 1;
             }
@@ -173,7 +175,7 @@ fn validate_alignment(aln: &Alignment, x: &[u8], y: &[u8]) {
                 calc_dist += 1;
                 ix += 1;
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
