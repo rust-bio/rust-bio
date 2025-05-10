@@ -27,7 +27,8 @@ use super::BitVec;
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 struct Peq<T: BitVec> {
     peq: [T; 256],
-    bound: T,
+    // a bit mask with bits set for all positions covered by the pattern
+    bit_mask: T,
 }
 
 /// Myers algorithm.
@@ -71,13 +72,13 @@ impl<T: BitVec> Myers<T> {
         assert!(m <= usize::MAX / 2, "Pattern too long");
 
         // build peq
-        let mut peq = vec![];
+        let mut peq = Vec::with_capacity(ceil_div(m, w));
         for chunk in pattern.chunks(w).into_iter() {
             let mut peq_block = [T::zero(); 256];
-            let mut i = 0;
+            let mut chunk_len = 0;
             for symbol in chunk {
                 let symbol = *symbol.borrow();
-                let mask = T::one() << i;
+                let mask = T::one() << chunk_len;
                 // equivalent
                 peq_block[symbol as usize] |= mask;
                 // ambiguities
@@ -86,7 +87,7 @@ impl<T: BitVec> Myers<T> {
                         peq_block[eq as usize] |= mask;
                     }
                 }
-                i += 1;
+                chunk_len += 1;
             }
             // wildcards
             if let Some(wildcards) = opt_wildcards {
@@ -97,14 +98,14 @@ impl<T: BitVec> Myers<T> {
 
             peq.push(Peq {
                 peq: peq_block,
-                bound: T::one() << (i - 1),
+                bit_mask: T::one() << (chunk_len - 1),
             });
         }
 
         Myers {
             peq,
             m,
-            states_store: vec![],
+            states_store: Vec::new(),
         }
     }
 
@@ -141,9 +142,9 @@ fn advance_block<T: BitVec>(state: &mut State<T, usize>, p: &Peq<T>, a: u8, hin:
     //     0
     // };
 
-    // apparently faster than uncommented code above
-    let mut hout = ((ph & p.bound) != T::zero()) as i8;
-    hout -= ((mh & p.bound) != T::zero()) as i8;
+    // apparently faster than commented code above
+    let mut hout = ((ph & p.bit_mask) != T::zero()) as i8;
+    hout -= ((mh & p.bit_mask) != T::zero()) as i8;
     state.dist = state.dist.wrapping_add(hout as usize);
 
     ph <<= 1;
@@ -165,10 +166,14 @@ fn advance_block<T: BitVec>(state: &mut State<T, usize>, p: &Peq<T>, a: u8, hin:
     hout
 }
 
+/// Multi-block state
 #[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub(super) struct States<T: BitVec> {
     states: Vec<State<T, usize>>,
-    max_block: usize,
+    // index of the last block (max_block_i + 1 blocks are needed to cover the full pattern)
+    max_block_i: usize,
+    // length of the remaining pattern chunk in the last block
+    // (see `add_block()`)
     last_m: usize,
 }
 
@@ -178,34 +183,40 @@ where
 {
     fn new(m: usize, max_dist: usize) -> Self {
         let w = word_size::<T>();
+        let nblock = ceil_div(m, w);
         let mut s = States {
-            states: vec![],
-            max_block: ceil_div(m, w) - 1,
+            states: Vec::with_capacity(nblock),
+            max_block_i: nblock - 1,
             last_m: m % w,
         };
+        // y = ceil(k/w) in Myers' paper, Fig. 9 where k = max_dist
         let min_blocks = max(1, ceil_div(min(max_dist, m), w));
         for _ in 0..min_blocks {
-            s.add_state(0);
+            s.add_block(0);
         }
         s
     }
 
+    /// Adds a new block to the Ukkonen band
+    /// `carry` (`vin` in Myers' paper) can be -1, 0, or 1
     #[inline]
-    fn add_state(&mut self, offset: i8) {
+    fn add_block(&mut self, carry: i8) {
         let prev_dist = self.states.last().map(|s| s.dist).unwrap_or(0);
-        // delta: number of bits of the new state covered by the pattern
-        // For the last block, we add m % w, not all bits are necessarily used.
-        // This strategy differs from the solution by Myers (p. 407, note 4).
-        // We wanted to avoid having to pad pattern and sequence.
-        let delta = if self.states.len() == self.max_block && self.last_m > 0 {
+        // delta: number of bits in pv/mv covered by the pattern
+        let delta = if self.states.len() == self.max_block_i && self.last_m > 0 {
+            // For the last ('bottom') block, we add the length of the remaining pattern
+            // chunk = m % w (stored in self.last_m) and ignore the remaining bits.
+            // This strategy differs from the solution by Myers (p. 407, note 4 / p. 410, Fig. 9),
+            // where the computation starts with distance score = w * b [where b = N blocks],
+            // and both the pattern and sequence need to be padded with wild-card symbols.
             self.last_m
         } else {
             word_size::<T>()
         };
         self.states.push(State::init(
-            (prev_dist)
+            prev_dist
                 .wrapping_add(delta)
-                .wrapping_add(offset as usize)
+                .wrapping_add(carry as usize)
                 .to_usize()
                 .unwrap(),
         ));
@@ -214,36 +225,39 @@ where
     #[inline]
     fn step(&mut self, a: u8, peq: &[Peq<T>], max_dist: usize) {
         let mut carry = 0;
-        let mut last_block = self.states.len() - 1;
+        let mut y = self.states.len() - 1;
 
+        // compute blocks
         for (state, block_peq) in self.states.iter_mut().zip(peq) {
             carry = advance_block(state, block_peq, a, carry);
         }
 
+        // adjust Ukkonen band if necessary
         let w = word_size::<T>();
-        let last_dist = self.states[last_block].dist;
+        let last_dist = self.states[y].dist;
         // note: this will fail if edit distances are > isize::MAX,
         // but in practice such long patterns will never occur
         if (last_dist as isize - carry as isize) as usize <= max_dist
-            && last_block < self.max_block
-            && (peq[last_block + 1].peq[a as usize] & T::one() == T::one() || carry < 0)
+            && y < self.max_block_i
+            && (peq[y + 1].peq[a as usize] & T::one() == T::one() || carry < 0)
         {
-            last_block += 1;
-            self.add_state(-carry);
-            advance_block(&mut self.states[last_block], &peq[last_block], a, carry);
+            y += 1;
+            self.add_block(-carry);
+            // compute the new block as well
+            advance_block(&mut self.states[y], &peq[y], a, carry);
         } else {
             // note: max_dist should be <= usize::MAX - w; this is ensured beforehand
-            while last_block > 0 && self.states[last_block].dist >= max_dist + w {
-                last_block -= 1;
+            while y > 0 && self.states[y].dist >= max_dist + w {
+                y -= 1;
             }
-            self.states.truncate(last_block + 1);
+            self.states.truncate(y + 1);
         }
     }
 
     /// Returns the edit distance if known (i.e., all blocks were computed),
     #[inline]
     fn known_dist(&self) -> Option<usize> {
-        self.states.get(self.max_block).map(|s| s.dist)
+        self.states.get(self.max_block_i).map(|s| s.dist)
     }
 }
 
@@ -280,6 +294,11 @@ where
     }
 
     #[inline]
+    fn n_blocks(&self) -> usize {
+        self.n_blocks
+    }
+
+    #[inline]
     fn set_max_state(&self, pos: usize, states: &mut [State<T, usize>]) {
         let pos = pos * self.n_blocks;
         for s in states.iter_mut().skip(pos).take(self.n_blocks) {
@@ -299,11 +318,11 @@ where
         states[pos..pos + source.len()].clone_from_slice(source);
 
         if source.len() < self.n_blocks {
-            // When following the traceback path, it can happen that the block to the
+            // While following the traceback path, it can happen that the block to the
             // left was not computed because it is outside of the band.
-            // In order to prevent the algorithm from going left in this case,
-            // we initialize the block below the last computed block with meaningful
-            // defaults.
+            // Here we initialize the block below the last computed block with meaningful
+            // defaults that act as a "barrier" preventing the algorithm from moving
+            // left to this block.
             states[pos + source.len()] = State {
                 dist: usize::MAX,
                 pv: T::zero(),
@@ -342,28 +361,44 @@ where
 type RevColIter<'a, T> = iter::Rev<slice::Chunks<'a, State<T, usize>>>;
 
 pub(super) struct LongTracebackHandler<'a, T: BitVec> {
+    // reverse iterator used to set `col` and `left_col`
     states_iter: iter::Chain<RevColIter<'a, T>, iter::Cycle<RevColIter<'a, T>>>,
-    block_pos: usize,
-    left_block_pos: usize,
+    // slice of blocks representing the current DP matrix column
     col: &'a [State<T, usize>],
+    // slice of blocks representing the DP matrix column to the left
     left_col: &'a [State<T, usize>],
+    // current block
     block: State<T, usize>,
+    // current left block
     left_block: State<T, usize>,
-    left_max_mask: T,
-    pos_bitvec: T,
-    left_mask: T,
+    // index of `block` in `col`
+    block_idx: usize,
+    // index of `left_block` in `left_col`
+    left_block_idx: usize,
+    // mask with one active bit indicating the position of the last letter
+    max_mask: T,
+    // mask with one active bit indicating the current position (row) in the current block
+    pos_mask: T,
+    // Bit mask that "covers" the range of rows *below* the left cell
+    // in the current block. This is used used to initialize blocks
+    // (adjust the distance score) with `State::adjust_up_by(left_adj_mask)`.
+    left_adj_mask: T,
     _a: PhantomData<&'a ()>,
 }
 
 impl<'a, T: BitVec> LongTracebackHandler<'a, T> {
     #[inline]
     fn new(n_blocks: usize, m: usize, pos: usize, states: &'a [State<T, usize>]) -> Option<Self> {
+        // length of the pattern chunk in the lowermost block
         let mut last_m = m.to_usize().unwrap() % word_size::<T>();
         if last_m == 0 {
             last_m = word_size::<T>();
         }
+        // mask with single bit indicating index of last letter in the block
         let mask0 = T::one() << (last_m - 1);
 
+        // reverse iterator over DP matrix columns
+        // chain + cycle is needed in `FullMatches` (see comment in simple.rs)
         let pos = n_blocks * (pos + 1);
         let mut states_iter = states[..pos]
             .chunks(n_blocks)
@@ -378,106 +413,121 @@ impl<'a, T: BitVec> LongTracebackHandler<'a, T> {
             return None;
         }
 
-        // This bit mask is supplied to State::adjust_by_mask() in order to adjust the distance
-        // of the left block. It is adjusted with every `move_up_left`
-        let left_mask = if last_m != 1 {
-            T::zero()
+        // initial data for left block
+        let (left_block_idx, left_adj_mask, max_mask) = if last_m == 1 && n_blocks > 1 {
+            (n_blocks - 2, T::zero(), T::one() << (word_size::<T>() - 1))
         } else {
-            T::from_usize(0b10).unwrap()
+            (n_blocks - 1, mask0, mask0)
         };
 
+        // the left cell has to be  in diagonal position (move one up)
+        let mut left_block = left_col[left_block_idx];
+        left_block.adjust_up_by(left_adj_mask);
+
         Some(LongTracebackHandler {
-            block_pos: n_blocks - 1,
-            left_block_pos: n_blocks - 1,
-            block: *col.last().unwrap(),
-            left_block: *left_col.last().unwrap(),
+            block: col[n_blocks - 1],
+            left_block,
             col,
             left_col,
+            block_idx: n_blocks - 1,
+            left_block_idx,
             states_iter,
-            pos_bitvec: mask0,
-            left_mask,
-            left_max_mask: mask0,
+            pos_mask: mask0,
+            left_adj_mask,
+            max_mask,
             _a: PhantomData,
         })
+    }
+
+    /// Adjust 'left_adj_mask' to cover one more cell above.
+    /// This may involve switching to the block on top
+    /// *before* the mask would cover the whole block.
+    /// Actually, only the masks and block index are adjusted,
+    /// not the `State` itself.
+    #[inline]
+    fn adjust_left_up(&mut self) -> bool {
+        let at_boundary = self.left_adj_mask & T::from_usize(0b10).unwrap() != T::zero()
+            && self.left_block_idx > 0;
+        if !at_boundary {
+            self.left_adj_mask = (self.left_adj_mask >> 1) | self.max_mask;
+        } else {
+            self.max_mask = T::one() << (word_size::<T>() - 1);
+            self.left_adj_mask = T::zero();
+            self.left_block_idx -= 1;
+        }
+        // println!("left {:064b}\nmax  {:064b}", self.left_adj_mask, self.left_max_mask);
+        at_boundary
     }
 }
 
 impl<'a, T: BitVec + 'a> TracebackHandler<'a, T, usize> for LongTracebackHandler<'a, T> {
     #[inline]
-    fn block(&self) -> &State<T, usize> {
-        &self.block
+    fn dist(&self) -> usize {
+        self.block.dist
     }
 
     #[inline]
-    fn left_block(&self) -> &State<T, usize> {
-        &self.left_block
+    fn left_dist(&self) -> usize {
+        self.left_block.dist
     }
 
     #[inline]
-    fn pos_bitvec(&self) -> T {
-        self.pos_bitvec
+    fn try_move_up(&mut self) -> bool {
+        if self.block.pv & self.pos_mask != T::zero() {
+            self.move_up();
+            return true;
+        }
+        false
     }
 
     #[inline]
-    fn move_up(&mut self, adjust_dist: bool) {
+    fn move_up(&mut self) {
+        // (1) move up in current column
         // If the block boundary has not been reached yet, we can shift to the
         // upper position. Otherwise, we move to a new block (if there is one!)
-        if self.pos_bitvec != T::one() || self.block_pos == 0 {
-            if adjust_dist {
-                self.block.adjust_dist(self.pos_bitvec);
-            }
-            self.pos_bitvec >>= 1;
+        if self.pos_mask != T::one() || self.block_idx == 0 {
+            self.block.adjust_one_up(self.pos_mask);
+            self.pos_mask >>= 1;
         } else {
             // move to upper block
-            self.pos_bitvec = T::one() << (word_size::<T>() - 1);
-            self.block_pos -= 1;
-            if adjust_dist {
-                self.block = self.col[self.block_pos];
-            }
+            self.pos_mask = T::one() << (word_size::<T>() - 1);
+            self.block_idx -= 1;
+            self.block = self.col[self.block_idx];
         }
-    }
-
-    #[inline]
-    fn move_up_left(&mut self, adjust_dist: bool) {
-        // If the block boundary has not been reached yet, we can extend the range mask by
-        // activating a new bit.
-        // However, we switch to a new block (if there is one!) before the mask would cover
-        // the whole block.
-        if self.left_mask & T::from_usize(0b10).unwrap() == T::zero() || self.left_block_pos == 0 {
-            self.left_mask = (self.left_mask >> 1) | self.left_max_mask;
-            if adjust_dist {
-                self.left_block.adjust_dist(self.pos_bitvec);
-            }
+        // (2) move up in left column
+        let at_boundary = self.adjust_left_up();
+        if !at_boundary {
+            self.left_block.adjust_one_up(self.pos_mask);
         } else {
-            self.left_max_mask = T::one() << (word_size::<T>() - 1);
-            self.left_mask = T::zero();
-            self.left_block_pos -= 1;
-            if adjust_dist {
-                self.left_block = self.left_col[self.left_block_pos];
-            }
+            self.left_block = self.left_col[self.left_block_idx];
         }
     }
 
     #[inline]
-    fn move_to_left(&mut self) {
-        self.col = self.left_col;
-        self.left_col = self.states_iter.next().unwrap();
-        self.block = replace(&mut self.left_block, self.left_col[self.left_block_pos]);
-        self.left_block.adjust_by_mask(self.left_mask);
+    fn prepare_diagonal(&mut self) {
+        self.adjust_left_up();
+        if self.pos_mask != T::one() || self.block_idx == 0 {
+            // not at block boundary
+            self.pos_mask >>= 1;
+        } else {
+            // at boundary: move to upper block
+            self.pos_mask = T::one() << (word_size::<T>() - 1);
+            self.block_idx -= 1;
+        }
     }
 
-    #[inline]
-    fn move_left_down_if_better(&mut self) -> bool {
-        if self.left_mask != T::zero() {
+    fn try_prepare_left(&mut self) -> bool {
+        if self.left_adj_mask != T::zero() {
             // simple case: not at block boundary
-            if self.left_block.mv & self.pos_bitvec != T::zero() {
+            if self.left_block.mv & self.pos_mask != T::zero() {
                 self.left_block.dist -= 1;
                 return true;
             }
-        } else if let Some(b) = self.left_col.get(self.left_block_pos + 1) {
-            // more complicated: at lower block boundary, and there is a lower block
+        } else if let Some(b) = self.left_col.get(self.left_block_idx + 1) {
+            // more complicated: at lower block boundary, and there is another block below in the band;
             if b.mv & T::one() == T::one() {
-                let d = self.left_block().dist - 1;
+                // move one block down again
+                let d = self.left_block.dist - 1;
                 self.left_block = *b;
                 self.left_block.dist = d;
                 return true;
@@ -487,13 +537,33 @@ impl<'a, T: BitVec + 'a> TracebackHandler<'a, T, usize> for LongTracebackHandler
     }
 
     #[inline]
-    fn column_slice(&self) -> &[State<T, usize>] {
-        self.col
+    fn finish_move_left(&mut self) {
+        self.col = self.left_col;
+        self.left_col = self.states_iter.next().unwrap();
+        self.block = replace(&mut self.left_block, self.left_col[self.left_block_idx]);
+        self.left_block.adjust_up_by(self.left_adj_mask);
     }
 
     #[inline]
-    fn finished(&self) -> bool {
-        self.pos_bitvec == T::zero() && self.block_pos == 0
+    fn done(&self) -> bool {
+        self.pos_mask == T::zero() && self.block_idx == 0
+    }
+
+    fn print_state(&self) {
+        eprintln!(
+            "--- TB dist ({:?} <-> {:?})",
+            self.left_block.dist, self.block.dist
+        );
+        eprintln!(
+            " lm {:0width$b}\nleft block={} {}\n  m {:0width$b}\ncurrent block={} {}\n",
+            self.left_adj_mask,
+            self.left_block_idx,
+            self.left_block,
+            self.pos_mask,
+            self.block_idx,
+            self.block,
+            width = word_size::<T>()
+        );
     }
 }
 

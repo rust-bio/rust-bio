@@ -1,4 +1,6 @@
-use crate::pattern_matching::myers::{BitVec, DistType};
+use std::fmt;
+
+use crate::pattern_matching::myers::{word_size, BitVec, DistType};
 use num_traits::ToPrimitive;
 
 /// The current algorithm state.
@@ -46,30 +48,53 @@ where
         Some(self.dist)
     }
 
-    // (only used for debugging)
+    // unmodified State::default() (only used for debugging)
     pub fn is_new(&self) -> bool {
         self.dist == D::zero() && self.pv == T::zero() && self.mv == T::zero()
     }
 
-    // (only used for debugging)
+    // unmodified State::init_max_dist() (only used for debugging)
     pub fn is_max(&self) -> bool {
         self.pv >= (T::max_value() >> 1) && self.mv == T::zero()
     }
 
-    // Adjust the distance of the block ('moving the cursor up in the traceback matrix')
-    // given a range bit mask that specifies which positions should be crossed.
+    /// Adjust the distance score of the current cell C(j) by n positions
+    /// up to cell C(j - n) ('move up' in the DP matrix column).
+    /// The provided `range_mask` must have bits activated at the positions j-1 to j-n,
+    /// (without the current position j).
+    /// See also `adjust_one_up` for 'moving up' only by one position.
+    ///
+    /// This function is called in the traceback phase when moving to the left
+    /// in the DP matrix.
     #[inline]
-    pub fn adjust_by_mask(&mut self, mask: T) {
-        let p = (self.pv & mask).count_ones();
-        let m = (self.mv & mask).count_ones();
+    pub fn adjust_up_by(&mut self, range_mask: T) {
+        let p = (self.pv & range_mask).count_ones();
+        let m = (self.mv & range_mask).count_ones();
         let mut dist = self.dist.to_u64().unwrap();
         dist = dist.wrapping_add(m.to_u64().unwrap());
         dist = dist.wrapping_sub(p.to_u64().unwrap());
         self.dist = D::from_u64(dist).unwrap();
     }
 
+    /// This method may be used for performance comparison instead of adjust_up_by(),
+    /// but requires a single bit to be set in `pos_mask` (as in `adjust_one_up`,
+    /// not a whole range).
     #[inline]
-    pub fn adjust_dist(&mut self, pos_mask: T) {
+    #[allow(dead_code)]
+    pub fn _adjust_up_by(&mut self, mut pos_mask: T, n: usize) {
+        for _ in 0..n {
+            self.adjust_one_up(pos_mask);
+            pos_mask <<= 1;
+        }
+    }
+
+    /// Modify the distance score of the current cell C(j) to C(j-1)
+    /// by applying the vertical delta (= move one position up in the DP matrix).
+    /// Expects a mask with a single activated bit at position j - 1.
+    /// It is the caller's responsibility to track the current position in the
+    /// DP matrix.
+    #[inline]
+    pub fn adjust_one_up(&mut self, pos_mask: T) {
         //debug_assert!(!self.is_max());
         if self.pv & pos_mask != T::zero() {
             self.dist -= D::one();
@@ -81,36 +106,22 @@ where
         // let diff = ((self.mv & pos_mask) != T::zero()) as isize - ((self.pv & pos_mask) != T::zero()) as isize;
         // self.dist = D::from_usize(self.dist.to_usize().unwrap().wrapping_add(diff as usize)).unwrap();
     }
+}
 
-    /// This method may be used for performance comparison instead of adjust_by_mask()
-    #[inline]
-    #[allow(dead_code)]
-    pub fn adjust_many(&mut self, pos_mask: T, n: usize) {
-        let mut pos_mask = pos_mask;
-        for _ in 0..n {
-            self.adjust_dist(pos_mask);
-            pos_mask <<= 1;
-        }
-    }
-
-    /// Writes a distance matrix column to the vector 'out'
-    /// (excluding the uppermost state distance).
-    /// This is done in a reverse order (lowest / highest value first).
-    /// Used for debugging.
-    pub fn write_dist_column(&self, m: usize, out: &mut Vec<D>) {
-        let mut pos_mask = T::one() << (m - 1);
-        let mut dist = self.dist;
-        for _ in 0..m {
-            out.push(dist);
-            if dist != D::max_value() {
-                if self.pv & pos_mask != T::zero() {
-                    dist -= D::one();
-                } else if self.mv & pos_mask != T::zero() {
-                    dist += D::one();
-                }
-            }
-            pos_mask >>= 1;
-        }
+impl<T, D> fmt::Display for State<T, D>
+where
+    T: BitVec,
+    D: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "State {{\n  + {:0width$b}  (dist = {:?})\n  - {:0width$b}\n}}",
+            self.pv,
+            self.dist,
+            self.mv,
+            width = word_size::<T>() // TODO: T::BITS
+        )
     }
 }
 
@@ -400,7 +411,10 @@ where
         if self.unsuccessfully_finished {
             return None;
         }
-        let (len, _) = self.traceback.traceback(None, &self.myers.states_store).unwrap();
+        let (len, _) = self
+            .traceback
+            .traceback(None, &self.myers.states_store)
+            .unwrap();
         Some(self.pos + 1 - len.to_usize().unwrap())
     }
 
