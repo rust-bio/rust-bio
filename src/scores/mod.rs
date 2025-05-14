@@ -18,3 +18,18 @@ pub mod pam120;
 pub mod pam200;
 pub mod pam250;
 pub mod pam40;
+
+#[inline]
+fn lookup(a: u8) -> usize {
+    if a == b'Y' {
+        23
+    } else if a == b'Z' {
+        24
+    } else if a == b'X' {
+        25
+    } else if a == b'*' {
+        26
+    } else {
+        (a - 65) as usize
+    }
+}
