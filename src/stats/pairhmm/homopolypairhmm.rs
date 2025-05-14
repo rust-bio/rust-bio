@@ -810,20 +810,24 @@ mod tests {
         }
     }
 
-    lazy_static! {
-        static ref SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
-            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
-        static ref EXTEND_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
-            HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &NO_HOP_PARAMS);
-        static ref NO_GAPS_WITH_HOPS_PHMM: HomopolyPairHMM =
-            HomopolyPairHMM::new(&NO_GAP_PARAMS, &TestHopParams);
-    }
+    // We don't need this here because all the refereces are only used in tests.
+    // lazy_static! {
+    //     static ref SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+    //         HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
+    //     static ref EXTEND_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+    //         HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &NO_HOP_PARAMS);
+    //     static ref NO_GAPS_WITH_HOPS_PHMM: HomopolyPairHMM =
+    //         HomopolyPairHMM::new(&NO_GAP_PARAMS, &TestHopParams);
+    // }
 
     #[test]
     fn impossible_global_alignment() {
         let x = b"AAA".to_vec();
         let y = b"A".to_vec();
         let emission_params = TestEmissionParams { x, y };
+
+        let SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Global, None);
@@ -832,6 +836,9 @@ mod tests {
 
     #[test]
     fn test_hompolymer_run_in_y() {
+        let NO_GAPS_WITH_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&NO_GAP_PARAMS, &TestHopParams);
+
         let pair_hmm = &NO_GAPS_WITH_HOPS_PHMM;
         for i in 1..5 {
             let x = b"ACGT".to_vec();
@@ -860,6 +867,9 @@ mod tests {
 
     #[test]
     fn test_hompolymer_run_in_x() {
+        let NO_GAPS_WITH_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&NO_GAP_PARAMS, &TestHopParams);
+
         let pair_hmm = &NO_GAPS_WITH_HOPS_PHMM;
         for i in 1..5 {
             let x = format!("AC{}GT", repeat("C").take(i).join(""))
@@ -895,6 +905,9 @@ mod tests {
 
         let emission_params = TestEmissionParams { x, y };
 
+        let SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
+
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Global, None);
 
@@ -923,6 +936,9 @@ mod tests {
         let y = b"AGAGAG".to_vec();
 
         let emission_params = TestEmissionParams { x, y };
+
+        let SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Global, None);
@@ -957,6 +973,9 @@ mod tests {
         let y = b"AGCTCGATCGATCGATC".to_vec();
         let emission_params = TestEmissionParams { x, y };
 
+        let SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
+
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Global, None);
         let n = 17.;
@@ -973,6 +992,9 @@ mod tests {
         let x = b"AGCTCGATCGATCGATC".to_vec();
         let y = b"AGCTCGATCTGATCGATCT".to_vec();
         let emission_params = TestEmissionParams { x, y };
+
+        let SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Global, None);
@@ -1001,6 +1023,9 @@ mod tests {
         let y = b"ACAGTCA".to_vec();
         let emission_params = TestEmissionParams { x, y };
 
+        let SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
+
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Global, None);
 
@@ -1027,6 +1052,9 @@ mod tests {
         let x = b"AGCTCGATCTGATCGATCT".to_vec();
         let y = b"AGCTCGATCGATCGATC".to_vec();
         let emission_params = TestEmissionParams { x, y };
+
+        let SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Global, None);
@@ -1056,6 +1084,9 @@ mod tests {
         let y = b"AGCTTCTGATCGATCT".to_vec();
         let emission_params = TestEmissionParams { x, y };
 
+        let EXTEND_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &NO_HOP_PARAMS);
+
         let pair_hmm = &EXTEND_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Global, None);
         let n_matches = 16.;
@@ -1078,6 +1109,9 @@ mod tests {
         let x = b"AGCTCGAGCGATCGATC".to_vec();
         let y = b"TGCTCGATCGATCGATC".to_vec();
         let emission_params = TestEmissionParams { x, y };
+
+        let SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
 
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Global, None);
@@ -1106,6 +1140,9 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
 
         let emission_params = TestEmissionParams { x, y };
 
+        let SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
+
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Semiglobal, None);
 
@@ -1118,6 +1155,9 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         let x = b"AGAGAGC".to_vec();
         let y = b"ATACGTACGTC".to_vec();
         let emission_params = TestEmissionParams { x, y };
+
+        let SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
+            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
 
         let pair_hhmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p1 = pair_hhmm.prob_related(&emission_params, &Global, None);
