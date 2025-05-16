@@ -27,8 +27,16 @@ use super::BitVec;
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 struct Peq<T: BitVec> {
     peq: [T; 256],
-    // a bit mask with bits set for all positions covered by the pattern
-    bit_mask: T,
+    /// Mask with the highest bit in the pattern set to 1;
+    /// used to compute the carry (hout) in advance_block(), which indicates
+    /// the change in edit distance betwee the characters at the boundaries
+    /// of the consecutive blocks.
+    /// Equivalent to 10^(m-1) in Myers' paper, Fig. 6.
+    /// In this block-based implementation however, we don't just replace
+    /// `m` with the fixed word size `w`, but we adapt to the the actual
+    /// length of the pattern chunk covering a block (see `States::add_block()`)
+    /// to ensure correct behavior without the wildcard padding trick.
+    high_mask: T,
 }
 
 /// Myers algorithm.
@@ -98,7 +106,7 @@ impl<T: BitVec> Myers<T> {
 
             peq.push(Peq {
                 peq: peq_block,
-                bit_mask: T::one() << (chunk_len - 1),
+                high_mask: T::one() << (chunk_len - 1),
             });
         }
 
@@ -132,10 +140,10 @@ fn advance_block<T: BitVec>(state: &mut State<T, usize>, p: &Peq<T>, a: u8, hin:
     let mut ph = state.mv | !(xh | state.pv);
     let mut mh = state.pv & xh;
 
-    // let hout = if ph & p.bound > T::zero() {
+    // let hout = if ph & p.high_mask > T::zero() {
     //     state.dist += 1;
     //     1
-    // } else if mh & p.bound > T::zero() {
+    // } else if mh & p.high_mask > T::zero() {
     //     state.dist -= 1;
     //     -1
     // } else {
@@ -143,8 +151,8 @@ fn advance_block<T: BitVec>(state: &mut State<T, usize>, p: &Peq<T>, a: u8, hin:
     // };
 
     // apparently faster than commented code above
-    let mut hout = ((ph & p.bit_mask) != T::zero()) as i8;
-    hout -= ((mh & p.bit_mask) != T::zero()) as i8;
+    let mut hout = ((ph & p.high_mask) != T::zero()) as i8;
+    hout -= ((mh & p.high_mask) != T::zero()) as i8;
     state.dist = state.dist.wrapping_add(hout as usize);
 
     ph <<= 1;
@@ -204,8 +212,8 @@ where
         let prev_dist = self.states.last().map(|s| s.dist).unwrap_or(0);
         // delta: number of bits in pv/mv covered by the pattern
         let delta = if self.states.len() == self.max_block_i && self.last_m > 0 {
-            // For the last ('bottom') block, we add the length of the remaining pattern
-            // chunk = m % w (stored in self.last_m) and ignore the remaining bits.
+            // For the last ('bottom') block, we add the number of used bits in the last
+            // block = m % w (stored in self.last_m) and ignore the remaining bits.
             // This strategy differs from the solution by Myers (p. 407, note 4 / p. 410, Fig. 9),
             // where the computation starts with distance score = w * b [where b = N blocks],
             // and both the pattern and sequence need to be padded with wild-card symbols.
@@ -236,7 +244,7 @@ where
         let w = word_size::<T>();
         let last_dist = self.states[y].dist;
         // note: this will fail if edit distances are > isize::MAX,
-        // but in practice such long patterns will never occur
+        // but in practice such long patterns should not occur
         if (last_dist as isize - carry as isize) as usize <= max_dist
             && y < self.max_block_i
             && (peq[y + 1].peq[a as usize] & T::one() == T::one() || carry < 0)
