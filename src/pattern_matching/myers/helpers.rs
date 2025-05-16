@@ -3,16 +3,17 @@ use std::ops::*;
 
 use num_traits::{AsPrimitive, FromPrimitive, PrimInt, ToPrimitive, WrappingAdd};
 
-/// Trait for types that should be used to store the distance score when using the simple
+/// Trait for types used to store the edit distance when using the simple
 /// Myers algorithm (not the block-based one, which always uses `usize`).
 ///
 /// For all currently implemented BitVec types, the maximum possible distance
 /// can be stored in `u8`. Custom implementations using bigger integers can
-/// adjust `DistType` to hold bigger numbers. Note that due to how the traceback
-/// algorithm currently works, `DistType` should be able to represent numbers larger
-/// than the bit-width of the `BitVec` type. For instance, a hypothetical `BitVec` type
-/// of `u256` should use `u16` as distance, since `u8` cannot store numbers larger
-/// than 255.
+/// adjust `DistType` to hold bigger numbers.
+///
+/// *Note*: For the traceback algorithm to work, the maximum possible edit distance
+/// (which is the number of bits of the `BitVec` type) should be *smaller* than
+/// `<DistType>::MAX`. A hypothetical `BitVec` type of `u256` should have
+/// `DistType = u16`, since `u8` cannot represent numbers > 255.
 pub trait DistType: Copy
         + Debug
         + Default
@@ -47,8 +48,8 @@ pub trait BitVec: Copy
     + Shl<usize>
     + ShlAssign<usize>
     + ShrAssign<usize>
-    // These num_traits traits are required; in addition there are Bounded, Zero and One,
-    // which are all required by PrimInt and thus included
+    // These num_traits traits are required; `Bounded`, `Zero` and `One` are
+    // implicitly included with `PrimInt`
     + PrimInt
     + WrappingAdd
     + ToPrimitive
@@ -72,7 +73,6 @@ impl_bitvec!(u8, u8);
 impl_bitvec!(u16, u8);
 impl_bitvec!(u32, u8);
 impl_bitvec!(u64, u8);
-#[cfg(has_u128)]
 impl_bitvec!(u128, u8);
 
 use crate::alignment::{Alignment, AlignmentMode};
