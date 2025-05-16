@@ -281,7 +281,6 @@ where
 {
     type Item = (usize, $DistType);
 
-    #[inline]
     fn next(&mut self) -> Option<(usize, $DistType)> {
         for (i, a) in self.text.by_ref() {
             self.myers.step(&mut self.state, *a.borrow(), self.max_dist);
