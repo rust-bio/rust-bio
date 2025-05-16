@@ -147,6 +147,7 @@ use std::iter;
 
 impl<T: BitVec> $Myers {
     // Combining these two steps into one function seems beneficial for performance
+    #[inline]
     fn step_trace<'a>(
         &mut self,
         mut state: &mut $State,
@@ -280,6 +281,7 @@ where
 {
     type Item = (usize, $DistType);
 
+    #[inline]
     fn next(&mut self) -> Option<(usize, $DistType)> {
         for (i, a) in self.text.by_ref() {
             self.myers.step(&mut self.state, *a.borrow(), self.max_dist);
@@ -519,6 +521,7 @@ where
 {
     type Item = (usize, $DistType);
 
+    #[inline]
     fn next(&mut self) -> Option<(usize, $DistType)> {
         for (i, a) in self.text.by_ref() {
             self.myers.step_trace(
