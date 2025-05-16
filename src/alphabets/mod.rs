@@ -25,7 +25,6 @@ pub mod rna;
 
 pub type SymbolRanks = VecMap<u8>;
 
-
 /// Representation of an alphabet.
 #[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct Alphabet {
