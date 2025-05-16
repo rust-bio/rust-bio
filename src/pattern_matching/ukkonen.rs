@@ -67,7 +67,7 @@ where
         pattern: TextSlice<'a>,
         text: T,
         k: usize,
-    ) -> Matches<'_, F, C, T::IntoIter>
+    ) -> Matches<'a, F, C, T::IntoIter>
     where
         C: Borrow<u8>,
         T: IntoIterator<Item = C>,
