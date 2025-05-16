@@ -48,8 +48,8 @@ pub trait BitVec: Copy
     + Shl<usize>
     + ShlAssign<usize>
     + ShrAssign<usize>
-    // These num_traits traits are required; in addition there are Bounded, Zero and One,
-    // which are all required by PrimInt and thus included
+    // These num_traits traits are required; `Bounded`, `Zero` and `One` are
+    // implicitly included with `PrimInt`
     + PrimInt
     + WrappingAdd
     + ToPrimitive

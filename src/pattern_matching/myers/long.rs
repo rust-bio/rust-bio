@@ -1,12 +1,15 @@
-//! Block-based version of the algorithm, which does not restrict pattern length.
+//! Myers bit-parallel approximate pattern matching with unlimited pattern length.
 //!
-//! This module implements the block-based version of the Myers pattern matching algorithm.
-//! It can be used for searching patterns of any length and obtaining semiglobal alignments
-//! of the hits. Apart from that, the `Myers` object in this module provides exactly the same
-//! API as the 'simple' version `bio::pattern_matching::myers::Myers`.
-//! For short patterns, the 'simple' version is still to be preferred, as the block-based
-//! algorithm is slower.
-
+//! This module implements the block-based version of the Myers algorithm
+//! and offers methods for computing the semi-global alignment.
+//! The API is exactly the same as for the 'simple' algorithm in
+//! [`bio::pattern_matching::myers`](crate::pattern_matching::myers).
+//! For patterns of up to 64 symbols, the 'simple' version is to be preferred,
+//! as it is faster.
+//! Whether the 'simple' algorithm with `u128` bit vectors outperforms the block-based
+//! implementation with `u64` bit vectors may depend on the use case.
+//!
+//! Time complexity: O(n * k)
 use std::borrow::Borrow;
 use std::cmp::{max, min};
 use std::collections::HashMap;
@@ -198,6 +201,7 @@ where
             last_m: m % w,
         };
         // y = ceil(k/w) in Myers' paper, Fig. 9 where k = max_dist
+        // (but distances cannot exceed m)
         let min_blocks = max(1, ceil_div(min(max_dist, m), w));
         for _ in 0..min_blocks {
             s.add_block(0);

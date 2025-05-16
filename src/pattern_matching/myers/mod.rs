@@ -1,30 +1,38 @@
-// Copyright 2014-2016 Johannes Köster.
+// Copyright 2014-2025 Johannes Köster and Markus Schlegel.
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
 //! Myers bit-parallel approximate pattern matching algorithm.
-//! Finds all matches up to a given edit distance. The pattern has to fit into a bitvector,
-//! and is thus limited to 64 or (since stable Rust version 1.26) to 128 symbols.
-//! Complexity: O(n)
+//! Finds all matches up to a given edit distance k. Also supports ambiguous matching,
+//! and methods for obtaining the alignment path are provided.
+//! The simple and fast implementation (this module) supports patterns of up to
+//! 64 or 128 symbols (depending on the bit vector type used),
+//! whereas the implementation in the [`long`] submodule works with patterns of
+//! arbitrary length.
 //!
-//! Traceback allows obtaining the starting position and the alignment path of the hit.
-//! Its implementation is somehow similar to the one by Edlib (Šošić and Šikić 2017),
-//! although there can be small differences when there is more than one possible alignment
-//! path with then same edit distance at a position: Edlib prefers to make insertions
-//! and deletions to the pattern (query) over substitutions
-//! (Insertion > Deletion > Substitution) while our implementation prefers substitutions
-//! (Substitution > Insertion > Deletion).
+//! Time complexity: O(n)
 //!
-//! *Myers, G. (1999). A fast bit-vector algorithm for approximate string matching based on dynamic
-//!  programming. Journal of the ACM (JACM) 46, 395–415.*
+//! Unlimited pattern matching (`long`): O(n * k)
 //!
-//! *Šošić, M., and Šikić, M. (2017). Edlib: a C/C ++ library for fast, exact sequence alignment
-//! using edit distance. Bioinformatics 33, 1394–1395.*
+//! While the search only yields the end position and edit distance of matches,
+//! additional methods are provided for obtaining the start and the alignment path
+//! (edit operations) of a hit, in O(m + k) worst-case time.
+//! The implementation is very  similar to Edlib's (Šošić and Šikić, 2017),
+//! although minor differences may occur when there are multiple possible
+//! alignments with the same edit distance.
+//! Edlib prioritizes InDels over substitutions (insertion > deletion > substitution),
+//! whereas our implementation prioritizes substitutions (substitution > insertion > deletion).
+//!
+//! Myers, G. (1999). *A fast bit-vector algorithm for approximate string matching based on dynamic
+//!  programming*. Journal of the ACM (JACM) 46, 395–415. <https://doi.org/10.1145/316542.316550>
+//!
+//! Šošić, M., and Šikić, M. (2017). *Edlib: a C/C ++ library for fast, exact sequence alignment
+//! using edit distance.* Bioinformatics 33, 1394–1395. <https://doi.org/10.1093/bioinformatics/btw753>
 //!
 //! # Example
 //!
-//! Iterating over matches in pairs of `(end, distance)` using `u64` as bitvector type:
+//! Iterating over matches in pairs of `(end, distance)` using `u64` as bit vector type:
 //!
 //! ```
 //! # extern crate bio;
@@ -46,8 +54,8 @@
 //! It is also possible to to construct `Myers::<u128>`, which handles patterns with
 //! up to 128 symbols using the standard algorithm.
 //!
-//! Longer patterns are possible with the block-based implementation,
-//! which lives in the [`long`] submodule. An example:
+//! In addition, the [`long`] submodule handles unlimited patterns by splitting
+//! them into separate blocks. An example:
 //!
 //! ```
 //! # extern crate bio;
@@ -60,11 +68,11 @@
 //! let myers_64 = Myers::<u64>::new(pattern);
 //! let occ_64: Vec<_> = myers_64.find_all_end(text, 2).collect();
 //!
-//! // the pattern of length 9 is too long to fit into a single `u8` bit-vector
+//! // the pattern of length 9 is too long to fit into a single `u8` bit vector
 //! // (panics!)
 //! // let myers_8 = Myers::<u8>::new(pattern);
 //!
-//! // However, we can use the block-based implementation with `u8` bit-vectors
+//! // However, we can use `long::Myers` with `u8` blocks
 //! let myers_long_8 = long::Myers::<u8>::new(pattern);
 //! let occ_long_8: Vec<_> = myers_long_8
 //!     .find_all_end(text, 2)
@@ -74,16 +82,19 @@
 //! assert_eq!(occ_64, occ_long_8);
 //! # }
 //! ```
-//! > *Note:* `u8` is used for demonstration, but `long::Myers::<u64>` is still
-//! > the best in most cases.
 //!
-//! # Obtaining the starting position of a match
+//! <div class="warning">
+//!
+//! `u8` is used for demonstration, but `long::Myers::<u64>` is still
+//! the best in most cases.
+//!
+//! </div>
+//!
+//! # Obtaining the start position of a match
 //!
 //! The `Myers::find_all` method provides an iterator over tuples of `(start, end, distance)`.
-//! Calculating the starting position requires finding the alignment path, therefore this is
-//! slower than `Myers::find_all_end`. Note that the end positions differ from above by one.
-//! This is intentional, as the iterator returns a range rather an index, and ranges in Rust
-//! do not include the end position by default.
+//! As calculating the start position requires finding the alignment path, this is
+//! slower than `Myers::find_all_end`.
 //!
 //! ```
 //! # extern crate bio;
@@ -99,6 +110,14 @@
 //! assert_eq!(occ, [(3, 12, 2), (3, 13, 2)]);
 //! # }
 //! ```
+//!
+//! <div class="warning">
+//!
+//! The end positions here are greater by one than in `Myers::find_all_end`.
+//! This is intentional, since the iterator returns a range rather than an index, and in
+//! Rust, ranges do not include the end position.
+//!
+//! </div>
 //!
 //! # Obtaining alignments
 //!
@@ -120,30 +139,33 @@
 //!
 //! let mut matches = myers.find_all(text, 3);
 //! while matches.next_alignment(&mut aln) {
-//!     //println!("Hit fond in range: {}..{} (distance: {})", aln.ystart, aln.yend, aln.score);
-//!     //println!("{}", aln.pretty(pattern, text, 80));
+//!     println!(
+//!         "Hit found in range: {}..{} (distance: {})",
+//!         aln.ystart, aln.yend, aln.score
+//!     );
+//!     println!("{}", aln.pretty(pattern, text, 80));
 //! }
 //! # }
 //! ```
 //! **Output:**
 //!
 //! <pre>
-//! Hit fond in range: 3..10 (distance: 3)
+//! Hit found in range: 3..10 (distance: 3)
 //!    TCCTAGGGC
 //!    ||||+|\|+
 //! TCCTCCT-GAG-GGATTAGCAC
 //!
-//! Hit fond in range: 3..11 (distance: 3)
+//! Hit found in range: 3..11 (distance: 3)
 //!    TCCTAGGGC
 //!    ||||+|\|\
 //! TCCTCCT-GAGGGATTAGCAC
 //!
-//! Hit fond in range: 3..12 (distance: 2)
+//! Hit found in range: 3..12 (distance: 2)
 //!    TCCT-AGGGC
 //!    ||||x||||+
 //! TCCTCCTGAGGG-ATTAGCAC
 //!
-//! Hit fond in range: 3..13 (distance: 2)
+//! Hit found in range: 3..13 (distance: 2)
 //!    TCCT-AGGGC
 //!    ||||x||||\
 //! TCCTCCTGAGGGATTAGCAC
@@ -160,13 +182,13 @@
 //! # Finding the best hit
 //!
 //! In many cases, only the match with the smallest edit distance is actually of interest.
-//! Calculating an alignment for every hit is therefore not necessary.
+//! Therefore, calculating an alignment for every hit is not necessary.
 //! [`LazyMatches`](struct.LazyMatches.html) returned by `Myers::find_all_lazy()`
-//! provide an iterator over tuples of `(end, distance)` like `Myers::find_all_end()`, but
-//! additionally keep the data necessary for calculating the alignment path later at any desired
-//! position. Storing the data itself has a slight performance impact and requires more memory
-//! compared to `Myers::find_all_end()` [O(n) as opposed to O(m + k)]. Still the following code
-//! is faster than using `FullMatches`:
+//! provide an iterator over tuples of `(end, distance)` as `Myers::find_all_end()` does.
+//! However, the information needed to calculate the alignment path later on
+//! is also stored. This has a slight performance impact and requires O(n) memory,
+//! as opposed to O(m + k) for `Myers::find_all()`.
+//! Still, the following code is faster than using `Myers::find_all()`:
 //!
 //! ```
 //! # extern crate bio;
@@ -209,8 +231,8 @@
 //!
 //! # Dealing with ambiguities
 //!
-//! Matching multiple or all symbols at once can be achieved using `MyersBuilder`. This example
-//! allows `N` in the search pattern to match all four DNA bases in the text:
+//! Matching of multiple or all symbols at once can be configured through `MyersBuilder`.
+//! In the following example, `N` matches `A`, `C`, `G` or `T`:
 //!
 //! ```
 //! # extern crate bio;
@@ -225,7 +247,7 @@
 //! # }
 //! ```
 //!
-//! For more examples see the documentation of [`MyersBuilder`](struct.MyersBuilder.html).
+//! See the documentation of [`MyersBuilder`](struct.MyersBuilder.html) for more examples.
 
 #[macro_use]
 mod myers_impl;
