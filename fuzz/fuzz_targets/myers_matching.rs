@@ -119,6 +119,8 @@ fuzz_target!(|data: &[u8]| {
                     // compare distances
                     let (end_long, dist_long) = matches_long.next().unwrap();
                     assert_eq!((end, dist), (end_long, dist_long as u8));
+                    assert_eq!(matches.dist_at(end), Some(dist));
+                    assert_eq!(matches_long.dist_at(end), Some(dist_long));
 
                     // compare alignments
                     assert!(matches.alignment_at(end, &mut aln));
@@ -137,6 +139,8 @@ fuzz_target!(|data: &[u8]| {
 
                     // larger positions were not yet searched
                     assert!(!matches.alignment_at(end + 1, &mut aln));
+                    assert!(matches.dist_at(end + 1).is_none());
+                    assert!(matches_long.dist_at(end + 1).is_none());
                 }
                 assert!(end_dist_iter.next().is_none());
             }
