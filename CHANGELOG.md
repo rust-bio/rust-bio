@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [2.3.0](https://github.com/rust-bio/rust-bio/compare/v2.2.0...v2.3.0) (2025-05-09)
+
+
+### Features
+
+* Add BLOSUM30 and BLOSUM45 substitution matrices ([#630](https://github.com/rust-bio/rust-bio/issues/630)) ([6188ea7](https://github.com/rust-bio/rust-bio/commit/6188ea7c061b1a590f35758669c132a63553c85d))
+* POA, without saving traceback ([#620](https://github.com/rust-bio/rust-bio/issues/620)) ([ac8fd53](https://github.com/rust-bio/rust-bio/commit/ac8fd5324d2d2f700c23c8b7a3a54fd140f8ccf4))
+
+
+### Dependencies
+
+* update petgraph requirement from &gt;=0.4, &lt;0.8 to >=0.4, <0.9 ([#632](https://github.com/rust-bio/rust-bio/issues/632)) ([a22f946](https://github.com/rust-bio/rust-bio/commit/a22f94640d2763d3b7e516739d04880fec90be0d))
+
 ## [2.2.0](https://github.com/rust-bio/rust-bio/compare/v2.1.0...v2.2.0) (2025-02-26)
 
 
