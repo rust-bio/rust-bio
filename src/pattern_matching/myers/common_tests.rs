@@ -279,12 +279,19 @@ macro_rules! impl_common_tests {
 
         #[test]
         fn test_ambig() {
-            let text = b"TGABCNTR";
-            let patt = b"TGRRCGTR";
-            //                x  x
-            // Matching is asymmetric here (A matches R and G matches N, but the reverse is not true)
+            let patt = b"TRRRCGTR";
+            //           |||/|/||
+            let text = b"TGATCRTR";
+            // Matching is asymmetric here (R in pattern matches A and G in the text,
+            // but R in the text is only matched by R)
 
             let myers = MyersBuilder::new().ambig(b'R', b"AG").build_64(patt);
+            assert_eq!(myers.distance(text), 2);
+
+            let myers = MyersBuilder::new()
+                .ambig(b'R', b"A")
+                .ambig(b'R', b"G")
+                .build_64(patt);
             assert_eq!(myers.distance(text), 2);
         }
 
