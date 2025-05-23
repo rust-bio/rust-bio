@@ -234,9 +234,6 @@ extern crate approx;
 extern crate custom_derive;
 
 #[macro_use]
-extern crate lazy_static;
-
-#[macro_use]
 extern crate newtype_derive;
 
 #[macro_use]
