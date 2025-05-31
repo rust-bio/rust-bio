@@ -254,9 +254,8 @@ where
         // Loop for finding the traceback path
         while !h.done() {
             let op;
-            // This loop is used to allow skipping `advance_left()` using break (kind of similar
-            // to 'goto'). This was done to avoid having to inline advance_left() three times,
-            // which would use more space.
+            // This loop is used to allow skipping `finish_move_left()` using break
+            // Like this, we avoid having to inline finish_move_left() three times.
             #[allow(clippy::never_loop)]
             loop {
                 // h.print_state();
