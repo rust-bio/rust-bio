@@ -45,7 +45,7 @@ bio-types = ">=1.0.0"
 pest = { version = "2", optional = true }
 pest_derive = { version = "2", optional = true }
 strum = ">= 0.16, < 0.27"
-strum_macros = ">= 0.16, < 0.27"
+strum_macros = ">= 0.16, < 0.28"
 enum-map = ">=0.6.4, <3"
 triple_accel = ">=0.3, <0.5"
 thiserror = "2"
