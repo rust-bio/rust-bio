@@ -613,11 +613,11 @@ fn min3<T: Ord>(a: T, b: T, c: T) -> T {
 
 #[cfg(test)]
 mod tests {
-    use std::iter::repeat;
-
     use crate::stats::pairhmm::homopolypairhmm::tests::AlignmentMode::{Global, Semiglobal};
     use crate::stats::pairhmm::PairHMM;
     use crate::stats::{LogProb, Prob};
+    use std::iter::repeat;
+    use std::sync::LazyLock;
 
     use super::*;
 
@@ -810,14 +810,16 @@ mod tests {
         }
     }
 
-    lazy_static! {
-        static ref SINGLE_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
-            HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS);
-        static ref EXTEND_GAPS_NO_HOPS_PHMM: HomopolyPairHMM =
-            HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &NO_HOP_PARAMS);
-        static ref NO_GAPS_WITH_HOPS_PHMM: HomopolyPairHMM =
-            HomopolyPairHMM::new(&NO_GAP_PARAMS, &TestHopParams);
-    }
+    static SINGLE_GAP_PARAMS: TestSingleGapParams = TestSingleGapParams;
+    static EXTEND_GAP_PARAMS: TestExtendGapParams = TestExtendGapParams;
+    static NO_GAP_PARAMS: NoGapParams = NoGapParams;
+    static NO_HOP_PARAMS: TestNoHopParams = TestNoHopParams;
+    static SINGLE_GAPS_NO_HOPS_PHMM: LazyLock<HomopolyPairHMM> =
+        LazyLock::new(|| HomopolyPairHMM::new(&SINGLE_GAP_PARAMS, &NO_HOP_PARAMS));
+    static NO_GAPS_WITH_HOPS_PHMM: LazyLock<HomopolyPairHMM> =
+        LazyLock::new(|| HomopolyPairHMM::new(&NO_GAP_PARAMS, &TestHopParams));
+    static EXTEND_GAPS_NO_HOPS_PHMM: LazyLock<HomopolyPairHMM> =
+        LazyLock::new(|| HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &NO_HOP_PARAMS));
 
     #[test]
     fn impossible_global_alignment() {
@@ -945,11 +947,6 @@ mod tests {
         assert_relative_eq!(*p, *p_max, epsilon = 0.1);
         assert!(*p <= *p_max);
     }
-
-    static SINGLE_GAP_PARAMS: TestSingleGapParams = TestSingleGapParams;
-    static EXTEND_GAP_PARAMS: TestExtendGapParams = TestExtendGapParams;
-    static NO_GAP_PARAMS: NoGapParams = NoGapParams;
-    static NO_HOP_PARAMS: TestNoHopParams = TestNoHopParams;
 
     #[test]
     fn test_same() {

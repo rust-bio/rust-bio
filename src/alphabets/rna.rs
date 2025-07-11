@@ -15,9 +15,9 @@
 //! assert!(!alphabet.is_word(b"ACGT"));
 //! ```
 
-use std::borrow::Borrow;
-
 use crate::alphabets::Alphabet;
+use std::borrow::Borrow;
+use std::sync::LazyLock;
 
 /// The RNA alphabet (uppercase and lowercase).
 pub fn alphabet() -> Alphabet {
@@ -34,19 +34,20 @@ pub fn iupac_alphabet() -> Alphabet {
     Alphabet::new(b"ACGURYSWKMBDHVNZacguryswkmbdhvnz")
 }
 
-lazy_static! {
-    static ref COMPLEMENT: [u8; 256] = {
-        let mut comp = [0; 256];
-        for (v, a) in comp.iter_mut().enumerate() {
-            *a = v as u8;
-        }
-        for (&a, &b) in b"AGCUYRWSKMDVHBNZ".iter().zip(b"UCGARYWSMKHBDVNZ".iter()) {
+static COMPLEMENT: LazyLock<[u8; 256]> = LazyLock::new(|| {
+    let mut comp = [0; 256];
+    comp.iter_mut().enumerate().for_each(|(v, a)| {
+        *a = v as u8;
+    });
+    b"AGCUYRWSKMDVHBNZ"
+        .iter()
+        .zip(b"UCGARYWSMKHBDVNZ".iter())
+        .for_each(|(&a, &b)| {
             comp[a as usize] = b;
-            comp[a as usize + 32] = b + 32;  // lowercase variants
-        }
-        comp
-    };
-}
+            comp[a as usize + 32] = b + 32;
+        });
+    comp
+});
 
 /// Return complement of given RNA alphabet character (IUPAC alphabet supported).
 ///
