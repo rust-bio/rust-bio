@@ -8,16 +8,15 @@ on:
 
 jobs:
   Formatting:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          override: true
           components: rustfmt
 
       - name: Check format
@@ -27,19 +26,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          override: true
           components: clippy
 
       - name: Lint with clippy
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: RUSTFLAGS="-Dwarnings" cargo clippy --all-features --all-targets -- -Dclippy::all -Dunused_imports
 
   Testing:
     needs: Formatting
@@ -61,26 +57,19 @@ jobs:
           - build: stable
             os: ubuntu-latest
             rust: stable
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-          override: true
+        uses: actions/checkout@v4
 
       - name: Install ${{ matrix.rust }} toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.rust }}
-          override: true
 
       - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all --no-fail-fast
+        run: |
+          cargo test --no-fail-fast
 
   MSRV:
     needs: Formatting
@@ -89,13 +78,12 @@ jobs:
       MSRV_VERSION: 1.80.0
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install MSRV toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.MSRV_VERSION }}
-          override: true
 
       - name: check if README matches MSRV defined here
         run: grep $MSRV_VERSION README.md
@@ -104,7 +92,8 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all --no-fail-fast
+          run:
+            cargo test --no-fail-fast
 
   # TODO re-enable coverage estimation once we have removed the simd-dependency which is incompatible
   # with nightly. We need to wait for the stdlib simd implementation to stabilize, see
@@ -112,27 +101,27 @@ jobs:
   # Coverage:
   #   needs: Formatting
   #   runs-on: ubuntu-latest
+  #   container:
+  #    image: xd009642/tarpaulin:develop-nightly
+  #    options: --security-opt seccomp=unconfined
   #   steps:
   #     - name: Checkout repository
-  #       uses: actions/checkout@v2
+  #       uses: actions/checkout@v4
   #       with:
   #         submodules: recursive
 
   #     - name: Install nightly toolchain
-  #       uses: actions-rs/toolchain@v1
+  #       uses: dtolnay/rust-toolchain@stable
   #       with:
   #         toolchain: nightly
-  #         override: true
 
-  #     - name: Install and run cargo-tarpaulin
-  #       uses: actions-rs/tarpaulin@v0.1
-  #       with:
-  #         # TODO: update to latest tarpaulin once artefact download is fixed: https://github.com/actions-rs/tarpaulin/pull/23
-  #         version: "0.22.0"
-  #         args: "--workspace --all-features --run-types Tests,Doctests --out Lcov --timeout 300"
+  #     - name: Run cargo-tarpaulin
+  #       run: |
+  #        set -x
+  #        cargo +nightly tarpaulin --all-features --tests --out Lcov -- --test-threads 1
 
   #     - name: Upload coverage
-  #       uses: coverallsapp/github-action@v1
+  #       uses: coverallsapp/github-action@v2
   #       with:
   #         github-token: ${{ secrets.GITHUB_TOKEN }}
   #         path-to-lcov: ./lcov.info
