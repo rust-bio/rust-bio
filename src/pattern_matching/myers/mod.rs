@@ -4,17 +4,18 @@
 // except according to those terms.
 
 //! Myers bit-parallel approximate pattern matching algorithm.
-//! Finds all matches up to a given edit distance k. Also supports ambiguous matching,
-//! and methods for obtaining the alignment path are provided.
-//! The simple and fast implementation (this module) supports patterns of up to
-//! 64 or 128 symbols (depending on the bit vector type used),
-//! whereas the implementation in the [`long`] submodule works with patterns of
+//! Finds all matches up to a given edit distance k and supports ambiguous matching.
+//! Methods for obtaining the alignment path are provided.
+//! The simple and fast implementation works with patterns of up to
+//! 64 or 128 symbols, depending on the bit vector type used.
+//! The block-based implementation ([`long`] submodule) supports patterns of
 //! arbitrary length.
 //!
-//! Time complexity: O(n)
-//!
-//! Unlimited pattern matching (`long`): O(n * k)
-//!
+//! The time complexity is O(n) where n is the length of the text.
+//! With unlimited pattern matching ([`long`]), the time additionally scales with
+//! the distance threshold k: O(n * k). The search can be considered linear-time
+//! if k is kept constant.
+//! 
 //! While the search only yields the end position and edit distance of matches,
 //! additional methods are provided for obtaining the start and the alignment path
 //! (edit operations) of a hit, in O(m + k) worst-case time.
@@ -22,7 +23,7 @@
 //! although minor differences may occur when there are multiple possible
 //! alignments with the same edit distance.
 //! Edlib prioritizes InDels over substitutions (insertion > deletion > substitution),
-//! whereas our implementation prioritizes substitutions (substitution > insertion > deletion).
+//! whereas this implementation prioritizes substitutions (substitution > insertion > deletion).
 //!
 //! Myers, G. (1999). *A fast bit-vector algorithm for approximate string matching based on dynamic
 //!  programming*. Journal of the ACM (JACM) 46, 395–415. <https://doi.org/10.1145/316542.316550>
@@ -174,17 +175,16 @@
 //!
 //! </pre>
 //!
-//! **Note** that the [`Alignment`](../../alignment/struct.Alignment.html) instance is only created
-//! once and then reused. Because the Myers algorithm is very fast, the allocation necessary for
-//! `Alignment::operations` can have a non-negligible impact on performance; and thus, recycling
-//! makes sense.
+//! **Note** that the [`Alignment`](../../alignment/struct.Alignment.html) instance is created
+//! only once and then reused. Since the Myers algorithm is very fast, the allocation
+//! of `Alignment::operations` can have a non-negligible impact on performance.
 //!
 //! # Finding the best hit
 //!
-//! In many cases, only the match with the smallest edit distance is actually of interest.
-//! Therefore, calculating an alignment for every hit is not necessary.
+//! In many cases, only the match with the smallest edit distance is the only one of.
+//! interest. Therefore, calculating an alignment for every hit is not necessary.
 //! [`LazyMatches`](struct.LazyMatches.html) returned by `Myers::find_all_lazy()`
-//! provide an iterator over tuples of `(end, distance)` as `Myers::find_all_end()` does.
+//! provide an iterator over tuples of `(end, distance)` as `Myers::find_all_end()`.
 //! However, the information needed to calculate the alignment path later on
 //! is also stored. This has a slight performance impact and requires O(n) memory,
 //! as opposed to O(m + k) for `Myers::find_all()`.

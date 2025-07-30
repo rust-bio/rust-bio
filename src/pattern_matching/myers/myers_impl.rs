@@ -294,8 +294,8 @@ where
     }
 }
 
-/// Iterator over tuples of starting position, end position and distance of matches. In addition,
-/// methods for obtaining the hit alignment path are provided.
+/// Iterator over tuples of (start, end, distance).
+/// Further methods for obtaining the hit alignment path are provided.
 #[derive(Debug)]
 pub struct FullMatches<'a, T, C, I>
 where
@@ -494,8 +494,8 @@ where
     }
 }
 
-/// Iterator over tuples of end position and distance of matches. In addition,
-/// methods for obtaining the hit alignment path are provided.
+/// Iterator over tuples of (end, distance).
+/// Further methods for obtaining the hit alignment path are provided.
 #[derive(Debug)]
 pub struct LazyMatches<'a, T, C, I>
 where
