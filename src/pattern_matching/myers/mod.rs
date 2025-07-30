@@ -15,7 +15,7 @@
 //! With unlimited pattern matching ([`long`]), the time additionally scales with
 //! the distance threshold k: O(n * k). The search can be considered linear-time
 //! if k is kept constant.
-//! 
+//!
 //! While the search only yields the end position and edit distance of matches,
 //! additional methods are provided for obtaining the start and the alignment path
 //! (edit operations) of a hit, in O(m + k) worst-case time.
