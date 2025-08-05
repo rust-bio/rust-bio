@@ -33,7 +33,6 @@
 //!        ].as_ref(), None).unwrap();
 
 use std::borrow::Borrow;
-use std::f32::NEG_INFINITY;
 
 use itertools::Itertools;
 use ndarray::prelude::*;
@@ -65,7 +64,7 @@ impl Default for ScoredPos {
     fn default() -> ScoredPos {
         ScoredPos {
             loc: 0,
-            sum: NEG_INFINITY,
+            sum: f32::NEG_INFINITY,
             scores: Vec::new(),
         }
     }

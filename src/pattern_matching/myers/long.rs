@@ -14,7 +14,7 @@ use std::iter;
 use std::marker::PhantomData;
 use std::mem::replace;
 use std::slice;
-use std::u64;
+use u64;
 
 use itertools::Itertools;
 use num_traits::ToPrimitive;
@@ -69,7 +69,7 @@ impl<T: BitVec> Myers<T> {
         let pattern = pattern.into_iter();
         let m = pattern.len();
         assert!(m > 0, "Pattern is empty");
-        assert!(m <= usize::max_value() / 2, "Pattern too long");
+        assert!(m <= usize::MAX / 2, "Pattern too long");
 
         // build peq
         let mut peq = vec![];
@@ -304,7 +304,7 @@ where
             // we initialize the block below the last computed block with meaningful
             // defaults.
             states[pos + source.len()] = State {
-                dist: usize::max_value(),
+                dist: usize::MAX,
                 pv: T::zero(),
                 mv: T::zero(),
             };

@@ -83,7 +83,7 @@
 use crate::alignment::{Alignment, AlignmentOperation};
 use crate::utils::TextSlice;
 use std::cmp::{max, min, Ordering};
-use std::i32;
+use i32;
 use std::ops::Range;
 
 use super::*;
