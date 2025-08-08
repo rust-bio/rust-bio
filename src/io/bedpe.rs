@@ -27,6 +27,7 @@ use std::ops::Deref;
 use bio_types::annot;
 use bio_types::annot::loc::Loc;
 use bio_types::strand;
+use getset::{CloneGetters, CopyGetters, Getters, MutGetters, Setters, WithSetters};
 
 use crate::io::core;
 
@@ -38,14 +39,49 @@ pub type Reader<R> = core::Reader<R, Record>;
 
 /// BEDPE record as defined by bedtools
 /// https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    Getters,
+    Setters,
+    WithSetters,
+    MutGetters,
+    CopyGetters,
+    CloneGetters,
+)]
 pub struct Record {
+    /// Chromosome of first end of the feature.
+    #[getset(get_mut = "pub", set_with = "pub")]
     chrom1: String,
+
+    // Start position of first end of the feature (0-based).
+    #[getset(get_copy = "pub", set = "pub", get_mut = "pub", set_with = "pub")]
     start1: u64,
+
+    // End position of first end of the feature (0-based).
+    #[getset(get_copy = "pub", set = "pub", get_mut = "pub", set_with = "pub")]
     end1: u64,
+
+    /// Chromosome of second end of the feature.
+    #[getset(get_mut = "pub", set_with = "pub")]
     chrom2: String,
+
+    // Start position of second end of the feature (0-based).
+    #[getset(get_copy = "pub", set = "pub", get_mut = "pub", set_with = "pub")]
     start2: u64,
+
+    // End position of second end of the feature (0-based, not-included).
+    #[getset(get_copy = "pub", set = "pub", get_mut = "pub", set_with = "pub")]
     end2: u64,
+
     #[serde(default)]
     aux: Vec<String>,
 }
@@ -61,29 +97,9 @@ impl Record {
         &self.chrom1
     }
 
-    /// Starting position of first end of the feature.
-    pub fn start1(&self) -> u64 {
-        self.start1
-    }
-
-    /// Ending position of first end of the feature.
-    pub fn end1(&self) -> u64 {
-        self.end1
-    }
-
     /// Chromosome of second end of the feature.
     pub fn chrom2(&self) -> &str {
         &self.chrom2
-    }
-
-    /// Starting position of second end of the feature.
-    pub fn start2(&self) -> u64 {
-        self.start2
-    }
-
-    /// Ending position of second end of the feature.
-    pub fn end2(&self) -> u64 {
-        self.end2
     }
 
     /// Access auxilliary fields after the second end field by index
@@ -124,35 +140,17 @@ impl Record {
             _ => None,
         }
     }
+}
 
+impl Record {
     /// Set chromosome of first end of the feature.
     pub fn set_chrom1(&mut self, chrom: &str) {
-        self.chrom1 = chrom.to_owned()
-    }
-
-    /// Set starting position of first end of the feature.
-    pub fn set_start1(&mut self, start: u64) {
-        self.start1 = start
-    }
-
-    /// Set ending position of first end of the feature.
-    pub fn set_end1(&mut self, end: u64) {
-        self.end1 = end
+        self.chrom1 = chrom.into()
     }
 
     /// Set chromosome of second end of the feature.
     pub fn set_chrom2(&mut self, chrom: &str) {
-        self.chrom2 = chrom.to_owned()
-    }
-
-    /// Set starting position of second end of the feature.
-    pub fn set_start2(&mut self, start: u64) {
-        self.start2 = start
-    }
-
-    /// Set ending position of second end of the feature.
-    pub fn set_end2(&mut self, end: u64) {
-        self.end2 = end
+        self.chrom2 = chrom.into()
     }
 
     /// Set auxiliary field after the second end field by index.

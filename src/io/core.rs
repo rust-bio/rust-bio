@@ -27,32 +27,20 @@
 //!
 //! ```
 //! use bio::io::core;
+//! use derefable::Derefable;
 //! use serde::{Deserialize, Serialize};
 //!
-//! // Create a type alias for core::Reader which deserializes into Record when calling
+//! // Create a type alias for core::Reader which deserializes into BedRecord when calling
 //! // self.records()
 //! type Reader<R> = core::Reader<R, BedRecord>;
 //! type Writer<W> = core::Writer<W>;
 //!
+//! // The derefable crate allows to inherit the methods of core::Record.
 //! #[derive(
 //!     Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize,
+//!     Derefable
 //! )]
-//! struct BedRecord(core::Record);
-//!
-//! // Make all methods of core::Record usable from Record.
-//! impl std::ops::Deref for BedRecord {
-//!     type Target = core::Record;
-//!
-//!     fn deref(&self) -> &Self::Target {
-//!         &self.0
-//!     }
-//! }
-//!
-//! impl std::ops::DerefMut for BedRecord {
-//!     fn deref_mut(&mut self) -> &mut Self::Target {
-//!         &mut self.0
-//!     }
-//! }
+//! struct BedRecord(#[deref(mutable)] core::Record);
 //!
 //! impl BedRecord {
 //!     fn new() -> Self {
@@ -82,6 +70,8 @@ use anyhow::Context;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
+
+use getset::{CloneGetters, CopyGetters, Getters, MutGetters, Setters, WithSetters};
 
 /// A TSV reader.
 #[derive(Debug)]
@@ -170,33 +160,21 @@ impl<W: io::Write> Writer<W> {
 /// It can be used as starting point to construct records for other file types like .narrowPeak,
 /// .broadPeak, ecc..
 ///
-/// With the Deref Trait you can write a wrapper around core::Record that maintains its methods,
+/// With the the derefable crate you can write a wrapper around core::Record that maintains its methods,
 /// while giving you the possibility of expanding them.
 ///
 /// ```
 /// use bio::io::core;
+/// use derefable::Derefable;
 /// use serde::{Deserialize, Serialize};
 ///
 /// type Reader<R> = core::Reader<R, BedRecord>;
 ///
 /// #[derive(
 ///     Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize,
+///     Derefable
 /// )]
-/// pub struct BedRecord(core::Record);
-///
-/// /// Inherits default methods from crate::io::core::Record and makes them usable from Record
-/// impl std::ops::Deref for BedRecord {
-///     type Target = core::Record;
-///     fn deref(&self) -> &Self::Target {
-///         &self.0
-///     }
-/// }
-///
-/// impl std::ops::DerefMut for BedRecord {
-///     fn deref_mut(&mut self) -> &mut Self::Target {
-///         &mut self.0
-///     }
-/// }
+/// pub struct BedRecord(#[deref(mutable)] core::Record);
 ///
 /// /// Add new methods specific for a BED Record
 /// impl BedRecord {
@@ -228,11 +206,37 @@ impl<W: io::Write> Writer<W> {
 ///     }
 /// }
 /// ```
-#[derive(Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    Serialize,
+    Deserialize,
+    Getters,
+    Setters,
+    WithSetters,
+    MutGetters,
+    CopyGetters,
+    CloneGetters,
+)]
 pub struct Record {
+    // Chromosome of feature.
+    #[getset(get_mut = "pub", set_with = "pub")]
     chrom: String,
+
+    // Start position of feature (0-based).
+    #[getset(get_copy = "pub", set = "pub", get_mut = "pub", set_with = "pub")]
     start: u64,
+
+    // End position of feature (0-based, not included).
+    #[getset(get_copy = "pub", set = "pub", get_mut = "pub", set_with = "pub")]
     end: u64,
+
     #[serde(default)]
     aux: Vec<String>,
 }
@@ -248,16 +252,6 @@ impl Record {
         &self.chrom
     }
 
-    /// Start position of feature (0-based).
-    pub fn start(&self) -> u64 {
-        self.start
-    }
-
-    /// End position of feature (0-based, not included).
-    pub fn end(&self) -> u64 {
-        self.end
-    }
-
     /// Access auxilliary fields after the end field by index
     /// (counting first field (chromosome) as 0).
     pub fn aux(&self, i: usize) -> Option<&str> {
@@ -268,20 +262,12 @@ impl Record {
             None
         }
     }
+}
 
+impl Record {
     /// Set chromosome.
     pub fn set_chrom(&mut self, chrom: &str) {
         self.chrom = chrom.into()
-    }
-
-    /// Set start of feature.
-    pub fn set_start(&mut self, start: u64) {
-        self.start = start
-    }
-
-    /// Set end of feature.
-    pub fn set_end(&mut self, end: u64) {
-        self.end = end
     }
 
     /// Set auxiliary field after the end field by index.
@@ -308,6 +294,8 @@ impl Record {
 
 #[cfg(test)]
 mod tests {
+    use derefable::Derefable;
+
     use super::*;
 
     const BED_FILE: &[u8] = b"1\t5\t5000\tname1
@@ -325,24 +313,19 @@ mod tests {
 
     // Create test record
     #[derive(
-        Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize,
+        Debug,
+        Default,
+        Clone,
+        Eq,
+        PartialEq,
+        Ord,
+        PartialOrd,
+        Hash,
+        Serialize,
+        Deserialize,
+        Derefable,
     )]
-    struct TestRecord(Record);
-
-    // Make methods of core::Record available for TestRecord
-    impl std::ops::Deref for TestRecord {
-        type Target = Record;
-
-        fn deref(&self) -> &Self::Target {
-            &self.0
-        }
-    }
-
-    impl std::ops::DerefMut for TestRecord {
-        fn deref_mut(&mut self) -> &mut Self::Target {
-            &mut self.0
-        }
-    }
+    struct TestRecord(#[deref(mutable)] Record);
 
     // Implement new methods for TestRecord that were not available for the core::Record
     impl TestRecord {

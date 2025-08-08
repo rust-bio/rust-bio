@@ -53,6 +53,8 @@ thiserror = "2"
 anyhow = "1"
 rand = ">=0.7.3, < 0.10"
 editdistancek = ">=1.0.1, <2"
+getset = "0.1.6"
+derefable = "0.1.0"
 
 [dependencies.vec_map]
 version = "0.8"

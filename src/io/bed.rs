@@ -22,51 +22,27 @@
 
 use std::fmt::Write;
 use std::marker::Copy;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 
 use bio_types::annot;
 use bio_types::annot::loc::Loc;
 use bio_types::strand;
+use derefable::Derefable;
 
 use crate::io::core;
 
 /// BED writer.
 pub type Writer<W> = core::Writer<W>;
 
-/// A BED reader.
+/// BED reader.
 pub type Reader<R> = core::Reader<R, Record>;
 
 /// A BED record as defined by BEDtools
 /// (http://bedtools.readthedocs.org/en/latest/content/general-usage.html)
-#[derive(Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct Record(core::Record);
-
-/// Inherits default methods from core::Record and makes them usable from Record
-///
-/// ```
-/// use bio::io::bed::Reader;
-///
-/// let src = b"1\t2\t3\tname1";
-/// let mut reader = Reader::new(&src[..]);
-/// for record in reader.records() {
-///     let rec = record.expect("Unable to read BED record");
-///     assert_eq!(rec.chrom(), "1");
-///     assert_eq!(rec.name(), Some("name1"));
-/// }
-/// ```
-impl Deref for Record {
-    type Target = core::Record;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Record {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+#[derive(
+    Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Derefable,
+)]
+pub struct Record(#[deref(mutable)] core::Record);
 
 /// Add new methods specific for a BED Record
 impl Record {
