@@ -11,7 +11,7 @@
 //! # Example - basic usage
 //!
 //! ```
-//! use bio::io::core::{Reader, Record, Writer};
+//! use bio::io::common::{Reader, Record, Writer};
 //!
 //! let example = b"1\t5\t5000\tname1\t0.5";
 //! let mut reader: Reader<&[u8], Record> = Reader::new(&example[..]);
@@ -26,21 +26,21 @@
 //! # Example - reader for BED files
 //!
 //! ```
-//! use bio::io::core;
+//! use bio::io::common;
 //! use derefable::Derefable;
 //! use serde::{Deserialize, Serialize};
 //!
-//! // Create a type alias for core::Reader which deserializes into BedRecord when calling
+//! // Create a type alias for common::Reader which deserializes into BedRecord when calling
 //! // self.records()
-//! type Reader<R> = core::Reader<R, BedRecord>;
-//! type Writer<W> = core::Writer<W>;
+//! type Reader<R> = common::Reader<R, BedRecord>;
+//! type Writer<W> = common::Writer<W>;
 //!
-//! // The derefable crate allows to inherit the methods of core::Record.
+//! // The derefable crate allows to inherit the methods of common::Record.
 //! #[derive(
 //!     Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize,
 //!     Derefable
 //! )]
-//! struct BedRecord(#[deref(mutable)] core::Record);
+//! struct BedRecord(#[deref(mutable)] common::Record);
 //!
 //! impl BedRecord {
 //!     fn new() -> Self {
@@ -160,21 +160,21 @@ impl<W: io::Write> Writer<W> {
 /// It can be used as starting point to construct records for other file types like .narrowPeak,
 /// .broadPeak, ecc..
 ///
-/// With the the derefable crate you can write a wrapper around core::Record that maintains its methods,
+/// With the the derefable crate you can write a wrapper around common::Record that maintains its methods,
 /// while giving you the possibility of expanding them.
 ///
 /// ```
-/// use bio::io::core;
+/// use bio::io::common;
 /// use derefable::Derefable;
 /// use serde::{Deserialize, Serialize};
 ///
-/// type Reader<R> = core::Reader<R, BedRecord>;
+/// type Reader<R> = common::Reader<R, BedRecord>;
 ///
 /// #[derive(
 ///     Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize,
 ///     Derefable
 /// )]
-/// pub struct BedRecord(#[deref(mutable)] core::Record);
+/// pub struct BedRecord(#[deref(mutable)] common::Record);
 ///
 /// /// Add new methods specific for a BED Record
 /// impl BedRecord {
@@ -327,7 +327,7 @@ mod tests {
     )]
     struct TestRecord(#[deref(mutable)] Record);
 
-    // Implement new methods for TestRecord that were not available for the core::Record
+    // Implement new methods for TestRecord that were not available for the common::Record
     impl TestRecord {
         pub fn name(&self) -> Option<&str> {
             self.aux(3)
