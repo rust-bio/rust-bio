@@ -180,13 +180,13 @@ impl Record {
     }
 
     /// Set strand of the first end of the feature.
-    pub fn set_strand1(&mut self, strand1: &str) {
-        self.set_aux(8, strand1);
+    pub fn set_strand1(&mut self, strand1: strand::Strand) {
+        self.set_aux(8, strand1.strand_symbol());
     }
 
     /// Set strand of the second end of the feature.
-    pub fn set_strand2(&mut self, strand2: &str) {
-        self.set_aux(9, strand2);
+    pub fn set_strand2(&mut self, strand2: strand::Strand) {
+        self.set_aux(9, strand2.strand_symbol());
     }
 
     /// Add auxilliary field.
@@ -214,8 +214,8 @@ where
         bedpe.set_end2((pos2.pos() + 1) as u64);
         bedpe.set_name("");
         bedpe.set_score("0");
-        bedpe.push_aux(pos1.strand().into().strand_symbol());
-        bedpe.push_aux(pos2.strand().into().strand_symbol());
+        bedpe.set_strand1(pos1.strand().into());
+        bedpe.set_strand2(pos2.strand().into());
         bedpe
     }
 }

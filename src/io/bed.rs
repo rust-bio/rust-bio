@@ -81,8 +81,8 @@ impl Record {
     }
 
     /// Set strand.
-    pub fn set_strand(&mut self, strand: &str) {
-        self.set_aux(5, strand);
+    pub fn set_strand(&mut self, strand: strand::Strand) {
+        self.set_aux(5, strand.strand_symbol());
     }
 }
 
@@ -129,7 +129,7 @@ where
         bed.set_end((pos.pos() + 1) as u64);
         bed.set_name("");
         bed.set_score("0");
-        bed.push_aux(pos.strand().into().strand_symbol());
+        bed.set_strand(pos.strand().into());
         bed
     }
 }
@@ -149,7 +149,7 @@ where
         bed.set_end((contig.start() + contig.length() as isize) as u64);
         bed.set_name("");
         bed.set_score("0");
-        bed.push_aux(contig.strand().into().strand_symbol());
+        bed.set_strand(contig.strand().into());
         bed
     }
 }
@@ -217,7 +217,7 @@ where
         bed.set_end((spliced.start() + spliced.length() as isize) as u64);
         bed.set_name("");
         bed.set_score("0");
-        bed.push_aux(spliced.strand().into().strand_symbol());
+        bed.set_strand(spliced.strand().into());
         bed.push_aux(spliced.start().to_string().as_str()); // thickStart = chromStart
         bed.push_aux(
             (spliced.start() + spliced.length() as isize)
