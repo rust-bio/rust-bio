@@ -29,13 +29,13 @@ use bio_types::annot::loc::Loc;
 use bio_types::strand;
 use getset::{CloneGetters, CopyGetters, Getters, MutGetters, Setters, WithSetters};
 
-use crate::io::core;
+use crate::io::common;
 
 /// A BEDPE writer.
-pub type Writer<W> = core::Writer<W>;
+pub type Writer<W> = common::Writer<W>;
 
 /// A BEDPE reader.
-pub type Reader<R> = core::Reader<R, Record>;
+pub type Reader<R> = common::Reader<R, Record>;
 
 /// BEDPE record as defined by bedtools
 /// https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format
