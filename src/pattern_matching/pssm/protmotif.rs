@@ -4,8 +4,8 @@
 // except according to those terms.
 
 use super::*;
-use ndarray::prelude::Array2;
 use f32;
+use ndarray::prelude::Array2;
 
 /// Position-specific scoring matrix for protein sequences
 #[derive(Default, Clone, PartialEq, Debug)]

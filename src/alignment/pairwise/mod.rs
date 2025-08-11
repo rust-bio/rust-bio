@@ -150,8 +150,8 @@
 //! );
 //! ```
 
-use std::cmp::max;
 use i32;
+use std::cmp::max;
 use std::iter::repeat;
 
 use crate::alignment::{Alignment, AlignmentMode, AlignmentOperation};
