@@ -13,7 +13,7 @@
 //! * BOM algorithm: fast for long patterns and small alphabet.
 //! * KMP algorithm: the classical ancestor.
 //! * Ukkonens algorithm: approximate pattern matching with dynamic programming.
-//! * Myers algorithm: linear-time approximate pattern matching with edit distance for small patterns
+//! * Myers algorithm: linear-time approximate pattern matching with edit distance.
 //!
 //! Another library that provides heavily optimized routines for string search primitives is memchr: https://crates.io/crates/memchr
 

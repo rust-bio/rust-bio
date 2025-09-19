@@ -9,7 +9,7 @@ use u64;
 use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
 
 use crate::pattern_matching::myers::traceback::{StatesHandler, TracebackHandler};
-use crate::pattern_matching::myers::{BitVec, State};
+use crate::pattern_matching::myers::{word_size, BitVec, State};
 
 /// Myers algorithm.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
@@ -144,8 +144,13 @@ impl<'a, T: BitVec + 'a> StatesHandler<'a, T, T::DistType> for ShortStatesHandle
     }
 
     #[inline]
+    fn n_blocks(&self) -> usize {
+        1
+    }
+
+    #[inline]
     fn set_max_state(&self, pos: usize, states: &mut [State<T, T::DistType>]) {
-        states[pos] = State::max();
+        states[pos] = State::init_max_dist();
     }
 
     #[inline]
@@ -159,13 +164,18 @@ impl<'a, T: BitVec + 'a> StatesHandler<'a, T, T::DistType> for ShortStatesHandle
     }
 
     #[inline]
+    fn dist_at(&self, pos: usize, states: &[State<T, T::DistType>]) -> Option<T::DistType> {
+        states.get(pos).map(|s| s.dist)
+    }
+
+    #[inline]
     fn init_traceback(
         &self,
         m: T::DistType,
         pos: usize,
         states: &'a [State<T, T::DistType>],
-    ) -> Self::TracebackHandler {
-        ShortTracebackHandler::new(m, pos, states)
+    ) -> Option<Self::TracebackHandler> {
+        Some(ShortTracebackHandler::new(m, pos, states))
     }
 }
 
@@ -173,22 +183,31 @@ type RevColIter<'a, T> = iter::Rev<slice::Iter<'a, State<T, <T as BitVec>::DistT
 
 pub(super) struct ShortTracebackHandler<'a, T: BitVec> {
     states_iter: iter::Chain<RevColIter<'a, T>, iter::Cycle<RevColIter<'a, T>>>,
-    state: State<T, T::DistType>,
-    left_state: State<T, T::DistType>,
+    // block representing the current TB matrix column
+    block: State<T, T::DistType>,
+    // block representing the TB matrix column to the left
+    left_block: State<T, T::DistType>,
+    // mask with one active bit indicating the position of the last letter
+    // TODO: not needed with padding
     max_mask: T,
-    pos_bitvec: T,
-    left_mask: T,
+    // mask with one active bit indicating the current position (row) in the current block
+    pos_mask: T,
+    // Bit mask that "covers" the range of positions *below* the left cell
+    // in the DP matrix. This is used used to initialize blocks
+    // (adjust the distance score) with `State::adjust_up_by(left_adj_mask)`.
+    left_adj_mask: T,
     _a: PhantomData<&'a ()>,
 }
 
 impl<'a, T: BitVec> ShortTracebackHandler<'a, T> {
     #[inline]
     fn new(m: T::DistType, pos: usize, states: &'a [State<T, T::DistType>]) -> Self {
-        let mask0 = T::one() << (m.to_usize().unwrap() - 1);
+        let pos_mask = T::one() << (m.to_usize().unwrap() - 1);
 
-        // Reverse iterator over states. If remembering all positions,
-        // the chain() and cycle() are not actually needed, but there seems
-        // to be almost no performance loss.
+        // reverse iterator over DP matrix columns
+        // chain + cycle is needed because `find_all` (`FullMatches` iterator)
+        // only stores m + max_dist states, and progressively cycles through the `states`.
+        // `LazyMatches` stores all states (cycle not actually needed, but performance loss small).
         let mut states_iter = states[..=pos]
             .iter()
             .rev()
@@ -197,15 +216,28 @@ impl<'a, T: BitVec> ShortTracebackHandler<'a, T> {
         // // Simpler alternative using skip() is slower in some cases:
         // let mut states = states.iter().rev().cycle().skip(states.len() - pos - 1);
 
+        let state = *states_iter.next().unwrap();
+
+        let mut left_state = *states_iter.next().unwrap();
+        left_state.adjust_one_up(pos_mask);
+        // *note*: this mask is initialized for the left state to be in the diagonal
+        let left_mask = pos_mask;
+
         ShortTracebackHandler {
-            state: *states_iter.next().unwrap(),
-            left_state: *states_iter.next().unwrap(),
+            block: state,
+            left_block: left_state,
             states_iter,
-            max_mask: mask0,
-            pos_bitvec: mask0,
-            left_mask: T::zero(),
+            max_mask: pos_mask,
+            pos_mask,
+            left_adj_mask: left_mask,
             _a: PhantomData,
         }
+    }
+
+    #[inline]
+    fn left_mask_up(&mut self) {
+        self.left_adj_mask = (self.left_adj_mask >> 1) | self.max_mask;
+        // println!("left {:064b}\nmax  {:064b}", self.left_mask, self.max_mask);
     }
 }
 
@@ -214,74 +246,79 @@ where
     T: BitVec + 'a,
 {
     #[inline]
-    fn block(&self) -> &State<T, T::DistType> {
-        &self.state
+    fn dist(&self) -> T::DistType {
+        self.block.dist
     }
 
     #[inline]
-    fn block_mut(&mut self) -> &mut State<T, T::DistType> {
-        &mut self.state
+    fn left_dist(&self) -> T::DistType {
+        self.left_block.dist
     }
 
     #[inline]
-    fn left_block(&self) -> &State<T, T::DistType> {
-        &self.left_state
-    }
-
-    #[inline]
-    fn left_block_mut(&mut self) -> &mut State<T, T::DistType> {
-        &mut self.left_state
-    }
-
-    #[inline]
-    fn pos_bitvec(&self) -> T {
-        self.pos_bitvec
-    }
-
-    #[inline]
-    fn move_up(&mut self, adjust_dist: bool) {
-        if adjust_dist {
-            self.state.adjust_dist(self.pos_bitvec);
-        }
-        self.pos_bitvec >>= 1;
-    }
-
-    #[inline]
-    fn move_up_left(&mut self, adjust_dist: bool) {
-        self.left_mask = (self.left_mask >> 1) | self.max_mask;
-        if adjust_dist {
-            self.left_state.adjust_dist(self.pos_bitvec);
-        }
-    }
-
-    #[inline]
-    fn move_to_left(&mut self) {
-        self.state = replace(&mut self.left_state, *self.states_iter.next().unwrap());
-        self.left_state.adjust_by_mask(self.left_mask);
-    }
-
-    #[inline]
-    fn move_left_down_if_better(&mut self) -> bool {
-        if self.left_state.mv & self.pos_bitvec != T::zero() {
-            self.left_state.dist -= T::DistType::one();
+    fn try_move_up(&mut self) -> bool {
+        if self.block.pv & self.pos_mask != T::zero() {
+            self.move_up();
             return true;
         }
         false
     }
 
     #[inline]
-    fn column_slice(&self) -> &[State<T, T::DistType>] {
-        std::slice::from_ref(&self.state)
+    fn move_up(&mut self) {
+        // (1) move up in current column
+        self.block.adjust_one_up(self.pos_mask);
+        self.pos_mask >>= 1;
+        // (2) move up in left column
+        self.left_mask_up();
+        self.left_block.adjust_one_up(self.pos_mask);
     }
 
     #[inline]
-    fn finished(&self) -> bool {
-        self.pos_bitvec == T::zero()
+    fn try_prepare_left(&mut self) -> bool {
+        if self.left_block.mv & self.pos_mask != T::zero() {
+            self.left_block.dist -= T::DistType::one();
+            return true;
+        }
+        false
+    }
+
+    #[inline]
+    fn prepare_diagonal(&mut self) {
+        self.left_mask_up();
+        self.pos_mask >>= 1;
+    }
+
+    #[inline]
+    fn finish_move_left(&mut self) {
+        self.block = replace(&mut self.left_block, *self.states_iter.next().unwrap());
+        self.left_block.adjust_up_by(self.left_adj_mask);
+    }
+
+    #[inline]
+    fn done(&self) -> bool {
+        self.pos_mask == T::zero()
+    }
+
+    fn print_state(&self) {
+        eprintln!(
+            "--- TB dist ({:?} <-> {:?})",
+            self.left_block.dist, self.block.dist
+        );
+        eprintln!(
+            " lm {:0width$b}\nleft {}\n  m {:0width$b}\ncurrent {}\n",
+            self.left_adj_mask,
+            self.left_block,
+            self.pos_mask,
+            self.block,
+            width = word_size::<T>()
+        );
     }
 }
 
 impl_myers!(
     T::DistType,
+    T::DistType::max_value(),
     Myers<T>,
     crate::pattern_matching::myers::State<T, T::DistType>,
     crate::pattern_matching::myers::simple::ShortStatesHandler<'a>

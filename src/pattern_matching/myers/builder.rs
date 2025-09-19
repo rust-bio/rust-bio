@@ -58,9 +58,12 @@ impl MyersBuilder {
         Self::default()
     }
 
-    /// Allows to specify ambiguous symbols and their equivalents. Note that the ambiguous symbol
-    /// will always be matched by itself. Explicitly including it in the equivalents is not
-    /// necessary.
+    /// Allows to specify ambiguous symbols in the pattern, which will match all
+    /// given equivalent symbols in the text, as well as itself.
+    ///
+    /// The `ambig()` method can be called multiple times with the same symbol
+    /// and (potentially) different equivalents, which are simply added to the
+    /// existing list.
     ///
     /// # Example:
     ///
@@ -83,12 +86,8 @@ impl MyersBuilder {
         I: IntoIterator<Item = B>,
         B: Borrow<u8>,
     {
-        let eq = equivalents
-            .into_iter()
-            .map(|b| *b.borrow())
-            .chain(Some(byte))
-            .collect();
-        self.ambigs.insert(byte, eq);
+        let eq = self.ambigs.entry(byte).or_insert_with(Vec::new);
+        eq.extend(equivalents.into_iter().map(|b| *b.borrow()));
         self
     }
 
@@ -131,7 +130,6 @@ impl MyersBuilder {
 
     /// Creates a Myers instance given a pattern, using `u128` as bit vector type.
     /// Pattern length is restricted to at most 128 symbols.
-    #[cfg(has_u128)]
     pub fn build_128<C, P>(&self, pattern: P) -> Myers<u128>
     where
         C: Borrow<u8>,
@@ -179,7 +177,6 @@ impl MyersBuilder {
 
     /// Creates a `long::Myers` instance given a pattern, using `u128` as bit vector type.
     /// Pattern length is not restricted regardless of the type of the bit vector.
-    #[cfg(has_u128)]
     pub fn build_long_128<C, P>(&self, pattern: P) -> MyersLong<u128>
     where
         C: Borrow<u8>,
