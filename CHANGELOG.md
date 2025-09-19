@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [3.0.0](https://github.com/rust-bio/rust-bio/compare/v2.3.0...v3.0.0) (2025-09-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* improved API and internals for pattern_matching::myers and add LazyMatches::dist_at() ([#640](https://github.com/rust-bio/rust-bio/issues/640))
+
+### Features
+
+* Added BEDPE file support ([#631](https://github.com/rust-bio/rust-bio/issues/631)) ([61adf2a](https://github.com/rust-bio/rust-bio/commit/61adf2ab2b1749804b1a475ba63214c21c9ceebf))
+* improved API and internals for pattern_matching::myers and add LazyMatches::dist_at() ([#640](https://github.com/rust-bio/rust-bio/issues/640)) ([122a44d](https://github.com/rust-bio/rust-bio/commit/122a44d6b6322441d5dba4fafd4a95bc8e0c5aca))
+
 ## [2.3.0](https://github.com/rust-bio/rust-bio/compare/v2.2.0...v2.3.0) (2025-05-09)
 
 
