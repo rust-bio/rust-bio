@@ -51,6 +51,8 @@ triple_accel = ">=0.3, <0.5"
 thiserror = "2"
 anyhow = "1"
 editdistancek = ">=1.0.1, <2"
+getset = "0.1.6"
+derefable = "0.1.0"
 
 [dependencies.vec_map]
 version = "0.8"

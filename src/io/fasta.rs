@@ -882,7 +882,7 @@ impl<W: io::Write> Writer<W> {
     /// {
     ///     let handle = io::BufWriter::new(file);
     ///     let mut writer = Writer::new(handle);
-    ///     
+    ///
     ///     // For demonstration width is 4 chars, use 50, 60 or 70 instead for production
     ///     writer.set_linewrap(Some(4));
     ///

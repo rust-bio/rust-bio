@@ -9,6 +9,7 @@
 //!
 //! ```
 //! use bio::io::bed;
+//!
 //! let example = b"1\t5\t5000\tname1\t0.5";
 //! let mut reader = bed::Reader::new(&example[..]);
 //! let mut writer = bed::Writer::new(vec![]);
@@ -19,139 +20,35 @@
 //! }
 //! ```
 
-use std::convert::AsRef;
 use std::fmt::Write;
-use std::fs;
-use std::io;
 use std::marker::Copy;
 use std::ops::Deref;
-use std::path::Path;
 
-use anyhow::Context;
 use bio_types::annot;
 use bio_types::annot::loc::Loc;
 use bio_types::strand;
+use derefable::Derefable;
 
-/// A BED reader.
-#[derive(Debug)]
-pub struct Reader<R: io::Read> {
-    inner: csv::Reader<R>,
-}
+use crate::io::common;
 
-impl Reader<fs::File> {
-    /// Read from a given file path.
-    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
-        fs::File::open(&path)
-            .map(Reader::new)
-            .with_context(|| format!("Failed to read bed from {:#?}", path))
-    }
-}
+/// BED writer.
+pub type Writer<W> = common::Writer<W>;
 
-impl<R: io::Read> Reader<R> {
-    /// Read from a given reader.
-    pub fn new(reader: R) -> Self {
-        Reader {
-            inner: csv::ReaderBuilder::new()
-                .delimiter(b'\t')
-                .has_headers(false)
-                .comment(Some(b'#'))
-                .from_reader(reader),
-        }
-    }
-
-    /// Iterate over all records.
-    pub fn records(&mut self) -> Records<'_, R> {
-        Records {
-            inner: self.inner.deserialize(),
-        }
-    }
-}
-
-/// An iterator over the records of a BED file.
-pub struct Records<'a, R: io::Read> {
-    inner: csv::DeserializeRecordsIter<'a, R, Record>,
-}
-
-impl<'a, R: io::Read> Iterator for Records<'a, R> {
-    type Item = csv::Result<Record>;
-
-    fn next(&mut self) -> Option<csv::Result<Record>> {
-        self.inner.next()
-    }
-}
-
-/// A BED writer.
-#[derive(Debug)]
-pub struct Writer<W: io::Write> {
-    inner: csv::Writer<W>,
-}
-
-impl Writer<fs::File> {
-    /// Write to a given file path.
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        fs::File::create(path).map(Writer::new)
-    }
-}
-
-impl<W: io::Write> Writer<W> {
-    /// Write to a given writer.
-    pub fn new(writer: W) -> Self {
-        Writer {
-            inner: csv::WriterBuilder::new()
-                .delimiter(b'\t')
-                .flexible(true)
-                .from_writer(writer),
-        }
-    }
-
-    /// Write a given BED record.
-    pub fn write(&mut self, record: &Record) -> csv::Result<()> {
-        if record.aux.is_empty() {
-            self.inner
-                .serialize((&record.chrom, record.start, record.end))
-        } else {
-            self.inner
-                .serialize((&record.chrom, record.start, record.end, &record.aux))
-        }
-    }
-}
+/// BED reader.
+pub type Reader<R> = common::Reader<R, Record>;
 
 /// A BED record as defined by BEDtools
 /// (http://bedtools.readthedocs.org/en/latest/content/general-usage.html)
-#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
-pub struct Record {
-    chrom: String,
-    start: u64,
-    end: u64,
-    #[serde(default)]
-    aux: Vec<String>,
-}
+#[derive(
+    Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Derefable,
+)]
+pub struct Record(#[deref(mutable)] common::Record);
 
+/// Add new methods specific for a BED Record
 impl Record {
-    /// Create a new BED record.
+    /// Create a new Record
     pub fn new() -> Self {
-        Record {
-            chrom: "".to_owned(),
-            start: 0,
-            end: 0,
-            aux: vec![],
-        }
-    }
-
-    /// Chromosome of the feature.
-    pub fn chrom(&self) -> &str {
-        &self.chrom
-    }
-
-    /// Start position of feature (0-based).
-    pub fn start(&self) -> u64 {
-        self.start
-    }
-
-    /// End position of feature (0-based, not included).
-    pub fn end(&self) -> u64 {
-        self.end
+        Self::default()
     }
 
     /// Name of the feature.
@@ -173,56 +70,19 @@ impl Record {
         }
     }
 
-    /// Access auxilliary fields after the strand field by index
-    /// (counting first field (chromosome) as 0).
-    pub fn aux(&self, i: usize) -> Option<&str> {
-        let j = i - 3;
-        if j < self.aux.len() {
-            Some(&self.aux[j])
-        } else {
-            None
-        }
-    }
-
-    /// Set chromosome.
-    pub fn set_chrom(&mut self, chrom: &str) {
-        self.chrom = chrom.to_owned();
-    }
-
-    /// Set start of feature.
-    pub fn set_start(&mut self, start: u64) {
-        self.start = start;
-    }
-
-    /// Set end of feature.
-    pub fn set_end(&mut self, end: u64) {
-        self.end = end;
-    }
-
     /// Set name.
     pub fn set_name(&mut self, name: &str) {
-        if self.aux.is_empty() {
-            self.aux.push(name.to_owned());
-        } else {
-            self.aux[0] = name.to_owned();
-        }
+        self.set_aux(3, name)
     }
 
     /// Set score.
     pub fn set_score(&mut self, score: &str) {
-        if self.aux.is_empty() {
-            self.aux.push("".to_owned());
-        }
-        if self.aux.len() < 2 {
-            self.aux.push(score.to_owned());
-        } else {
-            self.aux[1] = score.to_owned();
-        }
+        self.set_aux(4, score)
     }
 
-    /// Add auxilliary field. This has to happen after name and score have been set.
-    pub fn push_aux(&mut self, field: &str) {
-        self.aux.push(field.to_owned());
+    /// Set strand.
+    pub fn set_strand(&mut self, strand: strand::Strand) {
+        self.set_aux(5, strand.strand_symbol());
     }
 }
 
@@ -245,9 +105,9 @@ impl<'a> From<&'a Record> for annot::contig::Contig<String, strand::Strand> {
     /// ```
     fn from(rec: &Record) -> Self {
         annot::contig::Contig::new(
-            rec.chrom.to_string(),
-            rec.start as isize,
-            (rec.end - rec.start) as usize,
+            rec.chrom().to_string(),
+            rec.start() as isize,
+            (rec.end() - rec.start()) as usize,
             rec.strand().unwrap_or(strand::Strand::Unknown),
         )
     }
@@ -269,7 +129,7 @@ where
         bed.set_end((pos.pos() + 1) as u64);
         bed.set_name("");
         bed.set_score("0");
-        bed.push_aux(pos.strand().into().strand_symbol());
+        bed.set_strand(pos.strand().into());
         bed
     }
 }
@@ -289,7 +149,7 @@ where
         bed.set_end((contig.start() + contig.length() as isize) as u64);
         bed.set_name("");
         bed.set_score("0");
-        bed.push_aux(contig.strand().into().strand_symbol());
+        bed.set_strand(contig.strand().into());
         bed
     }
 }
@@ -357,7 +217,7 @@ where
         bed.set_end((spliced.start() + spliced.length() as isize) as u64);
         bed.set_name("");
         bed.set_score("0");
-        bed.push_aux(spliced.strand().into().strand_symbol());
+        bed.set_strand(spliced.strand().into());
         bed.push_aux(spliced.start().to_string().as_str()); // thickStart = chromStart
         bed.push_aux(
             (spliced.start() + spliced.length() as isize)
@@ -386,6 +246,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
 
     use bio_types::annot::{contig::Contig, pos::Pos, spliced::Spliced};
     use bio_types::strand::{ReqStrand, Strand};
@@ -462,19 +323,22 @@ mod tests {
             .downcast::<String>()
             .unwrap();
 
-        assert_eq!(&error, "Failed to read bed from \"/I/dont/exist.bed\"")
+        assert_eq!(&error, "Failed to read from \"/I/dont/exist.bed\"")
     }
 
     #[test]
     fn test_writer() {
         let mut reader = Reader::new(BED_FILE);
-        let mut writer = Writer::new(vec![]);
-        for r in reader.records() {
-            writer
-                .write(&r.expect("Error reading record"))
-                .expect("Error writing record");
+        let mut output: Vec<u8> = vec![];
+        {
+            let mut writer = Writer::new(&mut output);
+            for r in reader.records() {
+                writer
+                    .write(&r.expect("Error reading record"))
+                    .expect("Error writing record");
+            }
         }
-        assert_eq!(writer.inner.into_inner().unwrap(), BED_FILE);
+        assert_eq!(output, BED_FILE);
     }
 
     #[test]
@@ -538,7 +402,7 @@ mod tests {
             writer.write(&tad3_bed).unwrap();
         }
         assert_eq!("chrXII\t765265\t766358\tYLR316C\t0\t-\t765265\t766358\t0\t3\t808,52,109,\t0,864,984,\n",
-                   String::from_utf8(buf).unwrap().as_str());
+               String::from_utf8(buf).unwrap().as_str());
     }
 
     #[test]
