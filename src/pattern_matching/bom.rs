@@ -94,7 +94,7 @@ impl BOM {
     }
 
     /// Find all matches of the pattern in the given text. Matches are returned as an iterator over start positions.
-    pub fn find_all<'a>(&'a self, text: TextSlice<'a>) -> Matches<'_> {
+    pub fn find_all<'a>(&'a self, text: TextSlice<'a>) -> Matches<'a> {
         Matches {
             bom: self,
             text,

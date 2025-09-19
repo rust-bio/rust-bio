@@ -1,4 +1,6 @@
-use crate::pattern_matching::myers::{BitVec, DistType};
+use std::fmt;
+
+use crate::pattern_matching::myers::{word_size, BitVec, DistType};
 use num_traits::ToPrimitive;
 
 /// The current algorithm state.
@@ -31,38 +33,68 @@ where
         }
     }
 
+    /// Initialize with the maximum distance
     #[inline]
-    pub fn max() -> Self {
+    pub fn init_max_dist() -> Self {
         Self::init(D::max_value())
     }
 
+    /// Returns the known edit distance: this is meant to pair with
+    /// `long::States::known_dist()` and should not be `None`, as there
+    /// is only one "block" with the simple algorithm, and the edit distance
+    /// is thus always known after `Myers::step()`.
     #[inline]
     pub fn known_dist(&self) -> Option<D> {
         Some(self.dist)
     }
 
+    // unmodified State::default() (only used for debugging)
     pub fn is_new(&self) -> bool {
         self.dist == D::zero() && self.pv == T::zero() && self.mv == T::zero()
     }
 
+    // unmodified State::init_max_dist() (only used for debugging)
     pub fn is_max(&self) -> bool {
         self.pv >= (T::max_value() >> 1) && self.mv == T::zero()
     }
 
-    // Adjust the distance of the block ('moving the cursor up in the traceback matrix')
-    // given a range bit mask that specifies which positions should be crossed.
+    /// Adjust the distance score of the current cell C(j) by n positions
+    /// up to cell C(j - n) ('move up' in the DP matrix column).
+    /// The provided `range_mask` must have bits activated at the positions j-1 to j-n,
+    /// (without the current position j).
+    /// See also `adjust_one_up` for 'moving up' only by one position.
+    ///
+    /// This function is called in the traceback phase when moving to the left
+    /// in the DP matrix.
     #[inline]
-    pub fn adjust_by_mask(&mut self, mask: T) {
-        let p = (self.pv & mask).count_ones();
-        let m = (self.mv & mask).count_ones();
+    pub fn adjust_up_by(&mut self, range_mask: T) {
+        let p = (self.pv & range_mask).count_ones();
+        let m = (self.mv & range_mask).count_ones();
         let mut dist = self.dist.to_u64().unwrap();
         dist = dist.wrapping_add(m.to_u64().unwrap());
         dist = dist.wrapping_sub(p.to_u64().unwrap());
         self.dist = D::from_u64(dist).unwrap();
     }
 
+    /// This method may be used for performance comparison instead of adjust_up_by(),
+    /// but requires a single bit to be set in `pos_mask` (as in `adjust_one_up`,
+    /// not a whole range).
     #[inline]
-    pub fn adjust_dist(&mut self, pos_mask: T) {
+    #[allow(dead_code)]
+    pub fn _adjust_up_by(&mut self, mut pos_mask: T, n: usize) {
+        for _ in 0..n {
+            self.adjust_one_up(pos_mask);
+            pos_mask <<= 1;
+        }
+    }
+
+    /// Modify the distance score of the current cell C(j) to C(j-1)
+    /// by applying the vertical delta (= move one position up in the DP matrix).
+    /// Expects a mask with a single activated bit at position j - 1.
+    /// It is the caller's responsibility to track the current position in the
+    /// DP matrix.
+    #[inline]
+    pub fn adjust_one_up(&mut self, pos_mask: T) {
         //debug_assert!(!self.is_max());
         if self.pv & pos_mask != T::zero() {
             self.dist -= D::one();
@@ -74,36 +106,22 @@ where
         // let diff = ((self.mv & pos_mask) != T::zero()) as isize - ((self.pv & pos_mask) != T::zero()) as isize;
         // self.dist = D::from_usize(self.dist.to_usize().unwrap().wrapping_add(diff as usize)).unwrap();
     }
+}
 
-    /// This method may be used for performance comparison instead of adjust_by_mask()
-    #[inline]
-    #[allow(dead_code)]
-    pub fn adjust_many(&mut self, pos_mask: T, n: usize) {
-        let mut pos_mask = pos_mask;
-        for _ in 0..n {
-            self.adjust_dist(pos_mask);
-            pos_mask <<= 1;
-        }
-    }
-
-    /// Writes a distance matrix column to the vector 'out'
-    /// (excluding the uppermost state distance).
-    /// This is done in a reverse order (lowest / highest value first).
-    /// Used for debugging.
-    pub fn write_dist_column(&self, m: usize, out: &mut Vec<D>) {
-        let mut pos_mask = T::one() << (m - 1);
-        let mut dist = self.dist;
-        for _ in 0..m {
-            out.push(dist);
-            if dist != D::max_value() {
-                if self.pv & pos_mask != T::zero() {
-                    dist -= D::one();
-                } else if self.mv & pos_mask != T::zero() {
-                    dist += D::one();
-                }
-            }
-            pos_mask >>= 1;
-        }
+impl<T, D> fmt::Display for State<T, D>
+where
+    T: BitVec,
+    D: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "State {{\n  + {:0width$b}  (dist = {:?})\n  - {:0width$b}\n}}",
+            self.pv,
+            self.dist,
+            self.mv,
+            width = word_size::<T>() // TODO: T::BITS
+        )
     }
 }
 
@@ -111,16 +129,16 @@ where
 // rustfmt::skip prevents automatic indentation.
 // This is not optimal, as no checks are done at all..
 macro_rules! impl_myers {
-    ($DistType:ty, $Myers:ty, $State:ty, $TbHandler:ty) => {
+    ($DistType:ty, $max_dist:expr, $Myers:ty, $State:ty, $TbHandler:ty) => {
         mod myers_impl {
 // Macro implementing common methods in Myers object. Wrapped in a module
 // and then re-exported from there to avoid mixing of namespaces.
 // Indented at top level for readability.
 
 use super::Myers;
+use crate::alignment::{Alignment, AlignmentOperation};
 use crate::pattern_matching::myers::traceback::Traceback;
 use crate::pattern_matching::myers::{update_aln, BitVec};
-use crate::alignment::{Alignment, AlignmentOperation};
 #[allow(unused_imports)] // Bounded is required for <$DistType>::max_value()
 use num_traits::{Bounded, ToPrimitive};
 use std::borrow::Borrow;
@@ -129,6 +147,7 @@ use std::iter;
 
 impl<T: BitVec> $Myers {
     // Combining these two steps into one function seems beneficial for performance
+    #[inline]
     fn step_trace<'a>(
         &mut self,
         mut state: &mut $State,
@@ -140,13 +159,13 @@ impl<T: BitVec> $Myers {
         traceback.add_state(&state, &mut self.states_store);
     }
 
-    /// Calculate the global distance of the pattern to the given text.
+    /// Calculate the distance of the pattern to the given text.
     pub fn distance<C, I>(&self, text: I) -> $DistType
     where
         C: Borrow<u8>,
         I: IntoIterator<Item = C>,
     {
-        let max_dist = <$DistType>::max_value();
+        let max_dist = $max_dist;
         let mut dist = max_dist;
         let m = self.m;
         let mut state = self.initial_state(m, max_dist);
@@ -172,7 +191,7 @@ impl<T: BitVec> $Myers {
         C: Borrow<u8>,
         I: IntoIterator<Item = C>,
     {
-        Matches::new(self, text.into_iter(), max_dist)
+        Matches::new(self, text.into_iter(), max_dist.min($max_dist))
     }
 
     /// Find the best match of the pattern in the given text.
@@ -182,7 +201,7 @@ impl<T: BitVec> $Myers {
         C: Borrow<u8>,
         I: IntoIterator<Item = C>,
     {
-        self.find_all_end(text, <$DistType>::max_value())
+        self.find_all_end(text, $max_dist)
             .min_by_key(|&(_, dist)| dist)
             .unwrap()
     }
@@ -202,7 +221,7 @@ impl<T: BitVec> $Myers {
         I: IntoIterator<Item = C>,
         I::IntoIter: ExactSizeIterator,
     {
-        FullMatches::new(self, text.into_iter(), max_dist)
+        FullMatches::new(self, text.into_iter(), max_dist.min($max_dist))
     }
 
     /// As `find_all_end`, this function returns an iterator over tuples of `(end, distance)`.
@@ -218,7 +237,7 @@ impl<T: BitVec> $Myers {
         I: IntoIterator<Item = C>,
         I::IntoIter: ExactSizeIterator,
     {
-        LazyMatches::new(self, text.into_iter(), max_dist)
+        LazyMatches::new(self, text.into_iter(), max_dist.min($max_dist))
     }
 }
 
@@ -275,8 +294,8 @@ where
     }
 }
 
-/// Iterator over tuples of starting position, end position and distance of matches. In addition,
-/// methods for obtaining the hit alignment path are provided.
+/// Iterator over tuples of (start, end, distance).
+/// Further methods for obtaining the hit alignment path are provided.
 #[derive(Debug)]
 pub struct FullMatches<'a, T, C, I>
 where
@@ -393,7 +412,10 @@ where
         if self.unsuccessfully_finished {
             return None;
         }
-        let (len, _) = self.traceback.traceback(None, &self.myers.states_store);
+        let (len, _) = self
+            .traceback
+            .traceback(None, &self.myers.states_store)
+            .unwrap();
         Some(self.pos + 1 - len.to_usize().unwrap())
     }
 
@@ -422,7 +444,8 @@ where
         ops.clear();
         let (len, _) = self
             .traceback
-            .traceback(Some(ops), &self.myers.states_store);
+            .traceback(Some(ops), &self.myers.states_store)
+            .unwrap();
         Some(self.pos + 1 - len.to_usize().unwrap())
     }
 
@@ -438,7 +461,8 @@ where
             aln.operations.clear();
             let (len, _) = self
                 .traceback
-                .traceback(Some(&mut aln.operations), &self.myers.states_store);
+                .traceback(Some(&mut aln.operations), &self.myers.states_store)
+                .unwrap();
             aln.operations.reverse();
             update_aln(
                 self.pos,
@@ -470,8 +494,8 @@ where
     }
 }
 
-/// Iterator over tuples of end position and distance of matches. In addition,
-/// methods for obtaining the hit alignment path are provided.
+/// Iterator over tuples of (end, distance).
+/// Further methods for obtaining the hit alignment path are provided.
 #[derive(Debug)]
 pub struct LazyMatches<'a, T, C, I>
 where
@@ -496,6 +520,7 @@ where
 {
     type Item = (usize, $DistType);
 
+    #[inline]
     fn next(&mut self) -> Option<(usize, $DistType)> {
         for (i, a) in self.text.by_ref() {
             self.myers.step_trace(
@@ -543,9 +568,17 @@ where
         }
     }
 
-    /// Takes the end position of a hit (as returned by the `LazyMatches` iterator) and returns a
-    /// tuple of the corresponding starting position and the hit distance. If the end position is
-    /// greater than the end position of the previously returned hit, `None` is returned.
+    /// Returns the edit distance of a match given its end position, or `None`
+    /// if the alignment is not known (see [`alignment_at`](Self::alignment_at)).
+    #[inline]
+    pub fn dist_at(&self, end_pos: usize) -> Option<$DistType> {
+        self.traceback.dist_at(end_pos, &self.myers.states_store)
+    }
+
+    /// Returns a tuple of (start position, edit distance) for a match given its
+    /// end position. This involves caluculating the alignment path.
+    /// The function returns `None` if the alignment is not known
+    /// (see [`alignment_at`](Self::alignment_at)).
     #[inline]
     pub fn hit_at(&self, end_pos: usize) -> Option<(usize, $DistType)> {
         self.traceback
@@ -553,9 +586,9 @@ where
             .map(|(len, dist)| (end_pos + 1 - len.to_usize().unwrap(), dist))
     }
 
-    /// Takes the end position of a hit and returns a tuple of the corresponding starting position
-    /// and the hit distance. The alignment path is added to `ops`.
-    /// As in `hit_at`, the end position has to be searched already, otherwise `None` is returned.
+    /// Calculates the alignment path for a match given its end position.
+    /// Returns a tuple of (start position, edit distance) or `None` if the
+    /// alignment is not known (see [`alignment_at`](Self::alignment_at)).
     #[inline]
     pub fn path_at(
         &self,
@@ -568,8 +601,8 @@ where
         })
     }
 
-    /// Like `LazyMatches::path_at()`, but the operations will be in reverse order. This
-    /// is slightly faster, as the traceback algorithm adds them in reverse order,
+    /// Like [`path_at`](Self::path_at), but the operations will be in reverse order.
+    /// This is slightly faster, as the traceback algorithm adds them in reverse order,
     /// and `path_at()` needs to reverse them.
     #[inline]
     pub fn path_at_reverse(
@@ -582,15 +615,22 @@ where
             .map(|(len, dist)| (end_pos + 1 - len.to_usize().unwrap(), dist))
     }
 
-    /// Takes the end position of a hit and returns a tuple of the corresponding starting position
-    /// and the hit distance. The alignment `aln` is updated with the position, alignment path
-    /// and distance (stored in `Alignment::score`).
-    /// If the end position has not yet been searched, nothing is done and `false` is returned.
-    /// This function will succeed even if the edit distance at the given position is greater
-    /// than the maximum distance specified when calling `Myers::find_all_lazy`. However, this
-    /// is only true for the implementation with restricted pattern lengths (in module
-    /// `bio::pattern_matching::myers`). The block-based implementation (in the `long`
-    /// submodule) avoids computing blocks with values > max_dist.
+    /// Calculates the alignment for a match given its end position, which can
+    /// be obtained with `myers.find_all_lazy(text, max_dist)`.
+    /// The supplied [`Alignment`](crate::alignment::Alignment) is updated with the
+    /// position, alignment path and edit distance (stored in the `score` field).
+    ///
+    /// Returns `true` if successful or `false` if the alignment is not known
+    /// because the given position has not yet been searched ([`LazyMatches`]
+    /// iterator not exhausted).
+    ///
+    /// # Note on more distant matches
+    ///
+    /// In the simple case with short patterns, this function succeeds for *all*
+    /// end positions, even if hits are not within `max_dist`. In contrast, the
+    /// the block-based search ([`long`](crate::pattern_matching::myers::long)
+    /// submodule) is only guaranteed to know the alignment for matches <= `max_dist`
+    /// and may return `false` otherwise.
     #[inline]
     pub fn alignment_at(&self, end_pos: usize, aln: &mut Alignment) -> bool {
         aln.operations.clear();
