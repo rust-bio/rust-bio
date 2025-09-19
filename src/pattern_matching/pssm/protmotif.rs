@@ -4,9 +4,8 @@
 // except according to those terms.
 
 use super::*;
+use f32;
 use ndarray::prelude::Array2;
-use std::f32;
-use std::f32::{INFINITY, NEG_INFINITY};
 
 /// Position-specific scoring matrix for protein sequences
 #[derive(Default, Clone, PartialEq, Debug)]
@@ -66,7 +65,7 @@ impl ProtMotif {
             // can't use the regular min/max on f32, so we use f32::min
             let min_sc = (0..20)
                 .map(|b| self.scores[[i, b]])
-                .fold(INFINITY, f32::min);
+                .fold(f32::INFINITY, f32::min);
             self.min_score += min_sc;
         }
 
@@ -75,7 +74,7 @@ impl ProtMotif {
         for i in 0..pssm_len {
             let max_sc = (0..20)
                 .map(|b| self.scores[[i, b]])
-                .fold(NEG_INFINITY, f32::max);
+                .fold(f32::NEG_INFINITY, f32::max);
             self.max_score += max_sc;
         }
     }

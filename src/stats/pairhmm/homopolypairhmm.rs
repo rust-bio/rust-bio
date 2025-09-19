@@ -69,7 +69,7 @@ use std::fmt::Debug;
 use std::iter::once;
 use std::mem;
 use std::ops::Shr;
-use std::usize;
+use usize;
 
 use enum_map::{Enum, EnumMap};
 use itertools::Itertools;

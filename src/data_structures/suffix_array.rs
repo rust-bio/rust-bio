@@ -267,13 +267,13 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
     let mut sais = Sais::new(n);
 
     match alphabet.len() + sentinel_count {
-        a if a <= std::u8::MAX as usize => {
+        a if a <= u8::MAX as usize => {
             sais.construct(&transform_text::<u8>(text, &alphabet, sentinel_count))
         }
-        a if a <= std::u16::MAX as usize => {
+        a if a <= u16::MAX as usize => {
             sais.construct(&transform_text::<u16>(text, &alphabet, sentinel_count))
         }
-        a if a <= std::u32::MAX as usize => {
+        a if a <= u32::MAX as usize => {
             sais.construct(&transform_text::<u32>(text, &alphabet, sentinel_count))
         }
         _ => sais.construct(&transform_text::<u64>(text, &alphabet, sentinel_count)),
@@ -626,11 +626,11 @@ impl Sais {
 
         let lms_substring_count = self.lms_pos.len();
 
-        if lms_substring_count <= std::u8::MAX as usize {
+        if lms_substring_count <= u8::MAX as usize {
             self.sort_lms_suffixes::<T, u8>(text, pos_types, lms_substring_count);
-        } else if lms_substring_count <= std::u16::MAX as usize {
+        } else if lms_substring_count <= u16::MAX as usize {
             self.sort_lms_suffixes::<T, u16>(text, pos_types, lms_substring_count);
-        } else if lms_substring_count <= std::u32::MAX as usize {
+        } else if lms_substring_count <= u32::MAX as usize {
             self.sort_lms_suffixes::<T, u32>(text, pos_types, lms_substring_count);
         } else {
             self.sort_lms_suffixes::<T, u64>(text, pos_types, lms_substring_count);
