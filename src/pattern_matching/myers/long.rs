@@ -17,6 +17,7 @@ use std::iter;
 use std::marker::PhantomData;
 use std::mem::replace;
 use std::slice;
+use u64;
 
 use itertools::Itertools;
 use num_traits::ToPrimitive;

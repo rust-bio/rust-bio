@@ -57,7 +57,7 @@ impl QGramIndex {
         I: Iterator<Item = &'a u8> + ExactSizeIterator + Clone,
         T: IntoIterator<Item = &'a u8, IntoIter = I> + Sized,
     {
-        QGramIndex::with_max_count(q, text, alphabet, std::usize::MAX)
+        QGramIndex::with_max_count(q, text, alphabet, usize::MAX)
     }
 
     /// Create a new q-gram index, only considering q-grams that occur at most `max_count` times.

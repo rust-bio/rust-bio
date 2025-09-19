@@ -4,6 +4,7 @@ use std::iter;
 use std::marker::PhantomData;
 use std::mem::{replace, size_of};
 use std::slice;
+use u64;
 
 use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
 
