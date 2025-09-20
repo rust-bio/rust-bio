@@ -28,7 +28,7 @@ use anyhow::Context;
 use itertools::Itertools;
 use multimap::MultiMap;
 use regex::Regex;
-use std::convert::{AsRef, TryInto};
+use std::convert::{AsRef, TryFrom, TryInto};
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -157,44 +157,55 @@ type GffRecordInner = (
 pub struct Phase(Option<u8>);
 
 impl Phase {
-    fn validate<T: Into<u8>>(p: T) -> Option<u8> {
+    fn validate<T: Into<u8>>(p: T) -> Result<Option<u8>, &'static str> {
         let p = p.into();
         if p < 3 {
-            Some(p)
+            Ok(Some(p))
         } else {
-            None
+            Err("Phase must be 0, 1, 2")
         }
     }
 }
 
-impl From<u8> for Phase {
+impl TryFrom<u8> for Phase {
+    type Error = &'static str;
+
     /// Create a new Phase from a u8.
     ///
     /// # Example
     /// ```
+    /// use std::convert::TryFrom;
     /// use bio::io::gff::Phase;
     ///
-    /// let p = Phase::from(0);
-    /// let p = Phase::from(3); // This will create Phase(None)
+    /// let p = Phase::try_from(0);
+    /// assert!(p.is_ok());
+    /// let p = Phase::try_from(3); // This will throw an error
+    /// assert!(p.is_err());
     /// ```
-    fn from(p: u8) -> Self {
-        Phase(Self::validate(p))
+    fn try_from(p: u8) -> Result<Self, &'static str> {
+        Self::validate(p).map(Phase)
     }
 }
 
-impl From<Option<u8>> for Phase {
+impl TryFrom<Option<u8>> for Phase {
+    type Error = &'static str;
+
     /// Create a new Phase from an Option<u8>.
     ///
     /// # Example
     /// ```
+    /// use std::convert::TryFrom;
     /// use bio::io::gff::Phase;
     ///
-    /// let p = Phase::from(Some(0));
-    /// let p = Phase::from(None);
-    /// let p = Phase::from(Some(3)); // This will create Phase(None)
+    /// let p = Phase::try_from(Some(0));
+    /// let p = Phase::try_from(None);
+    /// let p = Phase::try_from(Some(3)); // This will throw an error
     /// ```
-    fn from(p: Option<u8>) -> Self {
-        Phase(p.and_then(Self::validate))
+    fn try_from(p: Option<u8>) -> Result<Self, &'static str> {
+        match p {
+            Some(p) => Self::validate(p).map(Phase),
+            None => Ok(Phase(None)),
+        }
     }
 }
 
@@ -206,9 +217,9 @@ impl TryInto<u8> for Phase {
     /// # Example
     /// ```
     /// use bio::io::gff::Phase;
-    /// use std::convert::TryInto;
+    /// use std::convert::{TryFrom, TryInto};
     ///
-    /// let p = Phase::from(0);
+    /// let p = Phase::try_from(0).unwrap();
     /// let u: u8 = p.try_into().unwrap();
     /// assert_eq!(u, 0);
     /// ```
@@ -228,13 +239,13 @@ impl TryInto<Option<u8>> for Phase {
     /// # Example
     /// ```
     /// use bio::io::gff::Phase;
-    /// use std::convert::TryInto;
+    /// use std::convert::{TryFrom, TryInto};
     ///
-    /// let p = Phase::from(Some(0));
+    /// let p = Phase::try_from(Some(0)).unwrap();
     /// let u: Option<u8> = p.try_into().unwrap();
     /// assert_eq!(u, Some(0));
     ///
-    /// let p = Phase::from(None);
+    /// let p = Phase::try_from(None).unwrap();
     /// let u: Option<u8> = p.try_into().unwrap();
     /// assert_eq!(u, None);
     /// ```
@@ -254,7 +265,7 @@ impl<'de> Deserialize<'de> for Phase {
             _ => {
                 let p = u8::from_str(&s)
                     .map_err(|_| serde::de::Error::custom("Phase must be \".\", 0, 1, or 2"))?;
-                Ok(Phase(Self::validate(p)))
+                Ok(Phase(Self::validate(p).ok().flatten()))
             }
         }
     }
@@ -757,8 +768,8 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
     }
 
     #[test]
-    fn test_from_u8_creates_phase_with_value() {
-        let phase = Phase::from(1);
+    fn test_try_from_u8_creates_phase_with_value() {
+        let phase = Phase::try_from(1).unwrap();
         assert_eq!(phase, Phase(Some(1)));
     }
 
