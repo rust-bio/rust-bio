@@ -323,10 +323,7 @@ where
         }
 
         if !self.line.starts_with('>') {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Expected > at record start.",
-            ));
+            return Err(io::Error::other("Expected > at record start."));
         }
         let mut header_fields = self.line[1..].trim_end().splitn(2, char::is_whitespace);
         record.id = header_fields.next().map(|s| s.to_owned()).unwrap();
@@ -544,10 +541,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         let idx = self.fetched_idx.clone();
         match (idx, self.start, self.stop) {
             (Some(idx), Some(start), Some(stop)) => self.read_into_buffer(idx, start, stop, seq),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "No sequence fetched for reading.",
-            )),
+            _ => Err(io::Error::other("No sequence fetched for reading.")),
         }
     }
 
@@ -556,10 +550,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         let idx = self.fetched_idx.clone();
         match (idx, self.start, self.stop) {
             (Some(idx), Some(start), Some(stop)) => self.read_into_iter(idx, start, stop),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "No sequence fetched for reading.",
-            )),
+            _ => Err(io::Error::other("No sequence fetched for reading.")),
         }
     }
 
@@ -571,15 +562,9 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         seq: &mut Text,
     ) -> io::Result<()> {
         if stop > idx.len {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "FASTA read interval was out of bounds",
-            ));
+            return Err(io::Error::other("FASTA read interval was out of bounds"));
         } else if start > stop {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Invalid query interval",
-            ));
+            return Err(io::Error::other("Invalid query interval"));
         }
 
         let mut bases_left = stop - start;
@@ -600,15 +585,9 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         stop: u64,
     ) -> io::Result<IndexedReaderIterator<'_, R>> {
         if stop > idx.len {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "FASTA read interval was out of bounds",
-            ));
+            return Err(io::Error::other("FASTA read interval was out of bounds"));
         } else if start > stop {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Invalid query interval",
-            ));
+            return Err(io::Error::other("Invalid query interval"));
         }
 
         let bases_left = stop - start;
@@ -632,10 +611,10 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     fn idx(&self, seqname: &str) -> io::Result<IndexRecord> {
         match self.index.name_to_rid.get(seqname) {
             Some(rid) => self.idx_by_rid(*rid),
-            None => Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Unknown sequence name: {}.", seqname),
-            )),
+            None => Err(io::Error::other(format!(
+                "Unknown sequence name: {}.",
+                seqname
+            ))),
         }
     }
 
@@ -643,10 +622,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     fn idx_by_rid(&self, rid: usize) -> io::Result<IndexRecord> {
         match self.index.inner.get(rid) {
             Some(record) => Ok(record.clone()),
-            None => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Invalid record index in fasta file.",
-            )),
+            None => Err(io::Error::other("Invalid record index in fasta file.")),
         }
     }
 
@@ -916,19 +892,19 @@ impl<W: io::Write> Writer<W> {
     /// Write a Fasta record with given id, optional description and sequence.
     pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> io::Result<()> {
         self.write_record_header(id, desc)?;
-        if self.linewrap == None {
-            self.writer.write_all(seq)?;
-            self.writer.write_all(b"\n")?;
-            Ok(())
-        } else {
+
+        if let Some(linewrap) = self.linewrap {
             // Write Fasta lines with a given linewrap instead of in a single line
-            seq.chunks(self.linewrap.unwrap())
+            seq.chunks(linewrap)
                 .try_for_each(|chunk| -> io::Result<()> {
                     self.writer.write_all(chunk)?;
                     self.writer.write_all(b"\n")?;
-
                     Ok(())
                 })
+        } else {
+            self.writer.write_all(seq)?;
+            self.writer.write_all(b"\n")?;
+            Ok(())
         }
     }
 
@@ -1165,7 +1141,7 @@ TTTA
     impl Read for ReaderMock {
         fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
             if self.read_fails {
-                Err(io::Error::new(io::ErrorKind::Other, "Read set to fail"))
+                Err(io::Error::other("Read set to fail"))
             } else {
                 Ok(buf.len())
             }
@@ -1176,7 +1152,7 @@ TTTA
         fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
             if let io::SeekFrom::Start(pos) = pos {
                 if self.seek_fails {
-                    Err(io::Error::new(io::ErrorKind::Other, "Seek set to fail"))
+                    Err(io::Error::other("Seek set to fail"))
                 } else {
                     Ok(pos)
                 }
@@ -1787,7 +1763,7 @@ TTTA
         let index_reader = IndexedReader::new(reader, FAI_FILE).unwrap();
 
         let actual = index_reader.idx_by_rid(99999).unwrap_err();
-        let expected = io::Error::new(io::ErrorKind::Other, "Invalid record index in fasta file.");
+        let expected = io::Error::other("Invalid record index in fasta file.");
 
         assert_eq!(actual.kind(), expected.kind());
         assert_eq!(actual.to_string(), expected.to_string())

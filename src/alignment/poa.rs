@@ -9,9 +9,9 @@
 //!
 //! For the original concept and theory, see:
 //! * Lee, Christopher, Catherine Grasso, and Mark F. Sharlow. "Multiple sequence alignment using
-//! partial order graphs." Bioinformatics 18.3 (2002): 452-464.
+//!   partial order graphs." Bioinformatics 18.3 (2002): 452-464.
 //! * Lee, Christopher. "Generating consensus sequences from partial order multiple sequence
-//! alignment graphs." Bioinformatics 19.8 (2003): 999-1008.
+//!   alignment graphs." Bioinformatics 19.8 (2003): 999-1008.
 //!
 //! For a modern reference implementation, see poapy:
 //! <https://github.com/ljdursi/poapy>
@@ -41,6 +41,7 @@ use crate::utils::TextSlice;
 
 use crate::alignment::pairwise::{MatchFunc, Scoring};
 
+use num_traits::Saturating;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::Topo;
 
@@ -198,7 +199,7 @@ impl Traceback {
             best_in_last_col: 0,
             best_overall: (0, 0),
             last: NodeIndex::new(0),
-            start_end_vec: start_end_vec,
+            start_end_vec,
             matrix,
         }
     }
@@ -303,7 +304,7 @@ impl<F: MatchFunc> Aligner<F> {
 
     /// Add the alignment to the graph
     pub fn add_alignment(&mut self, alignment: &Alignment) -> &mut Self {
-        self.poa.add_alignment(&alignment, &self.query);
+        self.poa.add_alignment(alignment, &self.query);
         self
     }
 
@@ -595,11 +596,7 @@ impl<F: MatchFunc> Poa<F> {
             // iterate over the predecessors of this node
             let prevs: Vec<NodeIndex<usize>> =
                 self.graph.neighbors_directed(node, Incoming).collect();
-            let start = if bandwidth > max_scoring_j {
-                0
-            } else {
-                max_scoring_j - bandwidth
-            };
+            let start = max_scoring_j.saturating_sub(bandwidth);
             let end = max_scoring_j + bandwidth;
             traceback.new_row(
                 i,
@@ -751,7 +748,7 @@ impl<F: MatchFunc> Poa<F> {
                     }
                 }
                 // Last node to avoid Match(None) which should never occur
-                if prevs.len() == 0 {
+                if prevs.is_empty() {
                     // match
                     if current_cell_score
                         == traceback.get(0, curr_query - 1) + self.scoring.match_fn.score(0, 0)
@@ -791,9 +788,9 @@ impl<F: MatchFunc> Poa<F> {
             curr_query = next_jump;
             curr_node = next_node;
             // break point
-            if prevs.len() == 0 || curr_query == 0 {
+            if prevs.is_empty() || curr_query == 0 {
                 //if at end but not at start of query add bunch of ins(None)
-                if prevs.len() == 0 {
+                if prevs.is_empty() {
                     if curr_query > 0 {
                         for _ in 0..curr_query {
                             if self.scoring.yclip_prefix > MIN_SCORE {
@@ -817,7 +814,7 @@ impl<F: MatchFunc> Poa<F> {
         }
         ops.reverse();
         Alignment {
-            score: final_score as i32,
+            score: final_score,
             operations: ops,
         }
     }

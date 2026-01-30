@@ -24,7 +24,8 @@ use pest::iterators::Pair;
 use pest::Parser;
 use petgraph::graph::NodeIndex;
 use std::fs;
-use std::io;
+use std::io::BufReader;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -92,11 +93,7 @@ fn parse_newick_file(content: &str) -> Result<TreeValue> {
                         .map(parse_value)
                         .collect(),
                 );
-                let name = if let Some(clade) = inner_rules.next() {
-                    Some(clade.as_str().into())
-                } else {
-                    None
-                };
+                let name = inner_rules.next().map(|clade| clade.as_str().into());
                 TreeValue::Node { children, name }
             }
 
@@ -149,7 +146,7 @@ fn parse_newick_file(content: &str) -> Result<TreeValue> {
         }
     }
 
-    let root = NewickParser::parse(Rule::Tree, &content)
+    let root = NewickParser::parse(Rule::Tree, content)
         .map_err(Error::ParsingError)?
         .next()
         .unwrap();
@@ -162,7 +159,7 @@ fn newick_to_graph(root: TreeValue) -> Result<Tree> {
     fn add_node(g: &mut TreeGraph, t: TreeValue) -> NodeIndex {
         match t {
             TreeValue::Node { name, children } => {
-                let node_id = g.add_node(name.unwrap_or("N/A".into()).into());
+                let node_id = g.add_node(name.unwrap_or("N/A".into()));
                 if let Some(children) = children {
                     for child in children {
                         match child {
@@ -203,11 +200,15 @@ pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Tree> {
 }
 
 /// Reads a tree from any type implementing `io::Read`
-pub fn read<R: io::Read>(reader: R) -> Result<Tree> {
+pub fn read<R: Read>(reader: R) -> Result<Tree> {
+    let reader = BufReader::new(reader);
+
     let content_bytes = reader
         .bytes()
         .collect::<Result<Vec<_>, _>>()
         .map_err(Error::Read)?;
+
     let content_str = std::str::from_utf8(&content_bytes).map_err(Error::InvalidContent)?;
-    from_string(&content_str)
+
+    from_string(content_str)
 }

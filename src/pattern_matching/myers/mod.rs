@@ -270,19 +270,19 @@ mod tests {
     // from common_tests.rs
     impl_common_tests!(false, super, u64, u8, build_64);
 
-    use std::iter::repeat;
+    use std::iter::repeat_n;
 
     #[test]
     #[should_panic(expected = "Pattern too long")]
     fn test_pattern_too_long() {
-        let pattern: Vec<_> = repeat(b'T').take(65).collect();
+        let pattern: Vec<_> = repeat_n(b'T', 65).collect::<Vec<u8>>();
         super::Myers::<u8>::new(pattern);
     }
 
     #[test]
     #[should_panic(expected = "Pattern too long")]
     fn test_pattern_too_long_builder() {
-        let pattern: Vec<_> = repeat(b'T').take(65).collect();
+        let pattern: Vec<_> = repeat_n(b'T', 65).collect::<Vec<u8>>();
         super::MyersBuilder::new().build_64(pattern);
     }
 }

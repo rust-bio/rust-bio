@@ -158,7 +158,7 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> SuffixArray
             let mut pos = index;
             let mut offset = 0;
             loop {
-                if pos % self.s == 0 {
+                if pos.is_multiple_of(self.s) {
                     return Some(self.sample[pos / self.s] + offset);
                 }
 
@@ -287,10 +287,10 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
 /// # Arguments
 ///
 /// * `text` - the text, ended by sentinel symbol (being lexicographically smallest).
-/// All symbols, from lexicographically smallest to largest, need to be present in the text,
-/// otherwise SAIS algorithm panics on 'index out of bounds' error.
-/// The text may also contain multiple sentinel symbols, used to concatenate
-/// multiple sequences without mixing their suffixes together.
+///   All symbols, from lexicographically smallest to largest, need to be present in the text,
+///   otherwise SAIS algorithm panics on 'index out of bounds' error.
+///   The text may also contain multiple sentinel symbols, used to concatenate
+///   multiple sequences without mixing their suffixes together.
 ///
 /// # Example
 ///
@@ -305,7 +305,7 @@ where
     T: Integer + Unsigned + NumCast + Copy + Debug,
 {
     let mut sais = Sais::new(text.len());
-    sais.construct(&text);
+    sais.construct(text);
     sais.pos
 }
 
@@ -342,7 +342,7 @@ pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray
     let n = text.len();
 
     // provide the lexicographical rank for each suffix
-    let mut rank: Vec<usize> = iter::repeat(0).take(n).collect();
+    let mut rank: Vec<usize> = iter::repeat_n(0, n).collect();
     for (r, p) in pos.iter().enumerate() {
         rank[*p] = r;
     }

@@ -37,8 +37,17 @@
 //!
 //! // The derefable crate allows to inherit the methods of common::Record.
 //! #[derive(
-//!     Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize,
-//!     Derefable
+//!     Debug,
+//!     Default,
+//!     Clone,
+//!     Eq,
+//!     PartialEq,
+//!     Ord,
+//!     PartialOrd,
+//!     Hash,
+//!     Serialize,
+//!     Deserialize,
+//!     Derefable,
 //! )]
 //! struct BedRecord(#[deref(mutable)] common::Record);
 //!
@@ -171,8 +180,17 @@ impl<W: io::Write> Writer<W> {
 /// type Reader<R> = common::Reader<R, BedRecord>;
 ///
 /// #[derive(
-///     Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize,
-///     Derefable
+///     Debug,
+///     Default,
+///     Clone,
+///     Eq,
+///     PartialEq,
+///     Ord,
+///     PartialOrd,
+///     Hash,
+///     Serialize,
+///     Deserialize,
+///     Derefable,
 /// )]
 /// pub struct BedRecord(#[deref(mutable)] common::Record);
 ///
@@ -418,7 +436,7 @@ mod tests {
         let mut writer = Writer::new(vec![]);
         for r in reader.records() {
             writer
-                .write(&r.expect("Error reading record"))
+                .write(r.expect("Error reading record"))
                 .expect("Error writing record");
         }
         assert_eq!(writer.inner.into_inner().unwrap(), BED_FILE);
@@ -496,7 +514,7 @@ mod tests {
         let mut writer = Writer::new(vec![]);
         for r in reader.records() {
             writer
-                .write(&r.expect("Error reading record"))
+                .write(r.expect("Error reading record"))
                 .expect("Error writing record");
         }
         assert_eq!(writer.inner.into_inner().unwrap(), BED_FILE);

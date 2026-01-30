@@ -14,7 +14,6 @@
 //! assert!(alphabet.is_word(b"gattaca"));
 //! assert!(!alphabet.is_word(b"ACGU"));
 //! ```
-//!
 use crate::alphabets::Alphabet;
 use std::borrow::Borrow;
 use std::sync::LazyLock;

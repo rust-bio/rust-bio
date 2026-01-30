@@ -160,7 +160,7 @@ mod tests {
     fn test_wm_buildpaper() {
         let text = b"476532101417";
         let wm = WaveletMatrix::new(text);
-        let levels = vec![
+        let levels = [
             vec![
                 true, true, true, true, false, false, false, false, false, true, false, true,
             ],
@@ -177,8 +177,8 @@ mod tests {
         assert_eq!(wm.width, levels[0].len());
         for level in 0..wm.height {
             assert_eq!(wm.zeros[level], zeros[level]);
-            for i in 0..wm.width {
-                assert_eq!(wm.levels[level].bits().get(i as u64), levels[level][i]);
+            for (i, &expected) in levels[level].iter().take(wm.width).enumerate() {
+                assert_eq!(wm.levels[level].bits().get(i as u64), expected,);
             }
         }
     }
@@ -187,7 +187,7 @@ mod tests {
     fn test_wm_builddna() {
         let text = b"ACGTN$NAGCT$";
         let wm = WaveletMatrix::new(text);
-        let levels = vec![
+        let levels = [
             vec![
                 false, false, false, false, true, true, true, false, false, false, false, true,
             ],
@@ -204,8 +204,8 @@ mod tests {
         assert_eq!(wm.width, levels[0].len());
         for level in 0..wm.height {
             assert_eq!(wm.zeros[level], zeros[level]);
-            for i in 0..wm.width {
-                assert_eq!(wm.levels[level].bits().get(i as u64), levels[level][i]);
+            for (i, &expected) in levels[level].iter().enumerate().take(wm.width) {
+                assert_eq!(wm.levels[level].bits().get(i as u64), expected);
             }
         }
     }
@@ -255,7 +255,7 @@ mod tests {
         let text = b"476532101417";
         let wm = WaveletMatrix::new(text);
 
-        let ranks = vec![
+        let ranks = [
             vec![0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
             vec![0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3],
             vec![0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1],
@@ -268,8 +268,8 @@ mod tests {
 
         let alphabet = [b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7'];
         for (i, c) in alphabet.iter().enumerate() {
-            for p in 0..text.len() {
-                assert_eq!(wm.rank(*c, p as u64), ranks[i][p]);
+            for (p, &rank) in ranks[i].iter().enumerate() {
+                assert_eq!(wm.rank(*c, p as u64), rank);
             }
         }
     }
@@ -279,7 +279,7 @@ mod tests {
         let text = b"AAGCTC$$CATTNGA";
         let wm = WaveletMatrix::new(text);
 
-        let ranks = vec![
+        let ranks = [
             vec![1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4],
             vec![0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3],
             vec![0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2],
@@ -290,8 +290,8 @@ mod tests {
 
         let alphabet = [b'A', b'C', b'G', b'T', b'N', b'$'];
         for (i, c) in alphabet.iter().enumerate() {
-            for p in 0..text.len() {
-                assert_eq!(wm.rank(*c, p as u64), ranks[i][p]);
+            for (p, &rank) in ranks[i].iter().enumerate() {
+                assert_eq!(wm.rank(*c, p as u64), rank);
             }
         }
     }

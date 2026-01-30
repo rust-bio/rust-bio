@@ -323,7 +323,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `y` - Textslice
     /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
     /// * `allowed_mismatches` - Extend the matches diagonally allowing upto
-    /// the specified number of mismatches (Option<usize>)
+    ///   the specified number of mismatches (Option<usize>)
     /// * `use_lcskpp_union` - Extend the results from sdpkpp using lcskpp
     pub fn custom_with_expanded_matches(
         &mut self,
@@ -377,7 +377,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `y` - Textslice
     /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
     /// * `path` - Vector of indices pointing to `matches` vector
-    /// which defines a path. The validity of the path is not checked.
+    ///   which defines a path. The validity of the path is not checked.
     pub fn custom_with_match_path(
         &mut self,
         x: TextSlice,
@@ -416,16 +416,16 @@ impl<F: MatchFunc> Aligner<F> {
             self.I[k].clear();
             self.D[k].clear();
             self.S[k].clear();
-            self.D[k].extend(repeat(MIN_SCORE).take(m + 1));
-            self.I[k].extend(repeat(MIN_SCORE).take(m + 1));
-            self.S[k].extend(repeat(MIN_SCORE).take(m + 1));
+            self.D[k].extend(repeat_n(MIN_SCORE, m + 1));
+            self.I[k].extend(repeat_n(MIN_SCORE, m + 1));
+            self.S[k].extend(repeat_n(MIN_SCORE, m + 1));
         }
         self.Lx.clear();
-        self.Lx.extend(repeat(0usize).take(n + 1));
+        self.Lx.extend(repeat_n(0usize, n + 1));
         self.Ly.clear();
-        self.Ly.extend(repeat(0usize).take(m + 1));
+        self.Ly.extend(repeat_n(0usize, m + 1));
         self.Sn.clear();
-        self.Sn.extend(repeat(MIN_SCORE).take(m + 1));
+        self.Sn.extend(repeat_n(MIN_SCORE, m + 1));
 
         {
             // Handle j = 0
@@ -1754,7 +1754,7 @@ mod banded {
 
     use crate::alignment::AlignmentOperation::*;
     use crate::scores::blosum62;
-    use std::iter::repeat;
+    use std::iter::repeat_n;
 
     #[test]
     fn test_semiglobal() {
@@ -1826,9 +1826,9 @@ mod banded {
         println!("aln:\n{}", alignment.pretty(x, y, 80));
 
         let mut correct = Vec::new();
-        correct.extend(repeat(Match).take(11));
-        correct.extend(repeat(Ins).take(10));
-        correct.extend(repeat(Match).take(17));
+        correct.extend(repeat_n(Match, 11));
+        correct.extend(repeat_n(Ins, 10));
+        correct.extend(repeat_n(Match, 17));
 
         assert_eq!(alignment.operations, correct);
     }
@@ -2366,7 +2366,7 @@ mod banded {
             let scoring = Scoring {
                 xclip_prefix: 0,
                 yclip_prefix: 0,
-                ..base_score.clone()
+                ..base_score
             };
             let mut al = pairwise::banded::Aligner::with_scoring(scoring, kmer_len, window_len);
             let alignment = al.custom(x, y);
@@ -2377,7 +2377,7 @@ mod banded {
             let scoring = Scoring {
                 xclip_prefix: 0,
                 yclip_suffix: 0,
-                ..base_score.clone()
+                ..base_score
             };
             let mut al = pairwise::banded::Aligner::with_scoring(scoring, kmer_len, window_len);
             let alignment = al.custom(x, y);
@@ -2388,7 +2388,7 @@ mod banded {
             let scoring = Scoring {
                 xclip_suffix: 0,
                 yclip_prefix: 0,
-                ..base_score.clone()
+                ..base_score
             };
             let mut al = pairwise::banded::Aligner::with_scoring(scoring, kmer_len, window_len);
             let alignment = al.custom(x, y);

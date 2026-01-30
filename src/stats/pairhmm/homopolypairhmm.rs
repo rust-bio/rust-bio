@@ -613,10 +613,11 @@ fn min3<T: Ord>(a: T, b: T, c: T) -> T {
 
 #[cfg(test)]
 mod tests {
+    use itertools::repeat_n;
+
     use crate::stats::pairhmm::homopolypairhmm::tests::AlignmentMode::{Global, Semiglobal};
     use crate::stats::pairhmm::PairHMM;
     use crate::stats::{LogProb, Prob};
-    use std::iter::repeat;
     use std::sync::LazyLock;
 
     use super::*;
@@ -837,7 +838,7 @@ mod tests {
         let pair_hmm = &NO_GAPS_WITH_HOPS_PHMM;
         for i in 1..5 {
             let x = b"ACGT".to_vec();
-            let y = format!("AC{}GT", repeat("C").take(i).join(""))
+            let y = format!("AC{}GT", repeat_n("C", i).collect::<String>())
                 .as_bytes()
                 .to_vec();
             let emission_params = TestEmissionParams { x, y };
@@ -864,7 +865,7 @@ mod tests {
     fn test_hompolymer_run_in_x() {
         let pair_hmm = &NO_GAPS_WITH_HOPS_PHMM;
         for i in 1..5 {
-            let x = format!("AC{}GT", repeat("C").take(i).join(""))
+            let x = format!("AC{}GT", repeat_n("C", i).collect::<String>())
                 .as_bytes()
                 .to_vec();
 

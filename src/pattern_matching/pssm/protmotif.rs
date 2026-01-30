@@ -23,7 +23,7 @@ impl ProtMotif {
     /// # Arguments
     /// * `seqs` - sequences incorporated into motif
     /// * `pseudos` - array slice with a pseudocount for each monomer;
-    ///    defaults to pssm::DEF_PSEUDO for all if None is supplied
+    ///   defaults to pssm::DEF_PSEUDO for all if None is supplied
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently impossible - see
@@ -193,7 +193,7 @@ mod tests {
             0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.81, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
             0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
         ])
-        .into_shape((4, 20))
+        .into_shape_with_order((4, 20))
         .unwrap();
         let pssm: ProtMotif = m.into();
         let scored_pos = pssm.score(b"AAAAARNDAAA").unwrap();
@@ -239,6 +239,9 @@ mod tests {
         .unwrap();
         assert_eq!(pssm.degenerate_consensus(), b"XXXXXXXX".to_vec());
     }
+
+    #[test]
+    #[cfg(feature = "generic-simd")]
     fn test_degenerate_input() {
         let pssm = ProtMotif::from_seqs(
             &[b"AAAAARNDAAA".to_vec(), b"AAAAARNDXAA".to_vec()],

@@ -26,8 +26,7 @@
 
 use std::borrow::Borrow;
 use std::cmp::min;
-use std::iter;
-use std::iter::repeat;
+use std::iter::{self, repeat_n};
 
 use crate::utils::TextSlice;
 
@@ -74,7 +73,7 @@ where
     {
         let m = pattern.len();
         self.D[0].clear();
-        self.D[0].extend(repeat(k + 1).take(m + 1));
+        self.D[0].extend(repeat_n(k + 1, m + 1));
         self.D[1].clear();
         self.D[1].extend(0..=m);
         Matches {

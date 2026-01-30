@@ -12,10 +12,10 @@
 //! This module serves two use cases:
 //!
 //! 1. Implementing functions that can be used generically with FASTA/FASTQ records. In this use
-//! case the type may be known at compile time by the caller of your function.
+//!    case the type may be known at compile time by the caller of your function.
 //! 2. Processing data that may be either in the FASTA/FASTQ format. In this use case the type
-//! cannot be known at compile time and you may or may not want to treat FASTA/FASTQ data
-//! differently.
+//!    cannot be known at compile time and you may or may not want to treat FASTA/FASTQ data
+//!    differently.
 //!
 //! # Generic Implementation Examples
 //!
@@ -175,7 +175,6 @@ use std::io;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::io::SeekFrom;
-use std::mem;
 use std::path::Path;
 use thiserror::Error;
 
@@ -251,7 +250,7 @@ pub enum EitherRecord {
 
 impl EitherRecord {
     pub fn to_fasta(self) -> fasta::Record {
-        return self.into();
+        self.into()
     }
 
     pub fn to_fastq(self, default_qual: u8) -> fastq::Record {
@@ -265,9 +264,9 @@ impl EitherRecord {
     }
 }
 
-impl Into<fasta::Record> for EitherRecord {
-    fn into(self) -> fasta::Record {
-        match self {
+impl From<EitherRecord> for fasta::Record {
+    fn from(val: EitherRecord) -> Self {
+        match val {
             EitherRecord::FASTA(f) => f,
             EitherRecord::FASTQ(f) => fasta::Record::with_attrs(f.id(), f.desc(), f.seq()),
         }
@@ -351,7 +350,7 @@ impl<R: BufRead> EitherRecords<R> {
     }
 
     fn initialize(&mut self) -> io::Result<()> {
-        if let Some(reader) = mem::replace(&mut self.reader, None) {
+        if let Some(reader) = self.reader.take() {
             match get_kind(reader) {
                 Err(err) if err.kind() == io::ErrorKind::UnexpectedEof => (),
                 Err(err) => return Err(err),
@@ -573,8 +572,8 @@ pub fn get_kind_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> io::Result<Ki
 impl std::fmt::Display for Kind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Kind::FASTA => write!(f, "{}", "FASTA"),
-            Kind::FASTQ => write!(f, "{}", "FASTQ"),
+            Kind::FASTA => write!(f, "FASTA"),
+            Kind::FASTQ => write!(f, "FASTQ"),
         }
     }
 }
@@ -630,7 +629,7 @@ ACCGTAGGCTGA
     impl<R: BufRead> Read for MockBufReader<R> {
         fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
             if buf.len() + self.bytes_read >= self.error_at_byte {
-                if let Some(err) = mem::replace(&mut self.error, None) {
+                if let Some(err) = self.error.take() {
                     return Err(err);
                 }
             }
@@ -652,7 +651,7 @@ ACCGTAGGCTGA
     fn test_fasta_either_record() {
         let record = EitherRecord::FASTA(fasta::Record::with_attrs("id", Some("desc"), b"ACTG"));
         assert!(matches!(record.kind(), Kind::FASTA));
-        assert!(matches!(record.qual(), None));
+        assert!(record.qual().is_none());
         let fastq = record.clone().to_fastq(b'I');
         assert_eq!(fastq.id(), "id");
         assert_eq!(fastq.qual(), b"IIII");
@@ -669,7 +668,7 @@ ACCGTAGGCTGA
             b"JJJJ",
         ));
         assert!(matches!(record.kind(), Kind::FASTQ));
-        assert!(matches!(record.qual(), Some(_)));
+        assert!(record.qual().is_some());
         let fastq = record.clone().to_fastq(b'I');
         assert_eq!(fastq.id(), "id");
         assert_eq!(fastq.qual(), b"JJJJ");
@@ -711,15 +710,11 @@ ACCGTAGGCTGA
         let error_at_byte = FASTA_FILE
             .bytes()
             .enumerate()
-            .find(move |(i, c)| *i > 0 as usize && c.as_ref().map_or(false, |c| *c == b'>'))
+            .find(move |(i, c)| *i > 0_usize && c.as_ref().is_ok_and(|c| *c == b'>'))
             .unwrap()
             .0
             + 1;
-        let reader = MockBufReader::new(
-            io::Error::new(io::ErrorKind::Other, "error"),
-            error_at_byte,
-            FASTA_FILE,
-        );
+        let reader = MockBufReader::new(io::Error::other("error"), error_at_byte, FASTA_FILE);
         let mut records = EitherRecords::new(reader);
         assert!(matches!(records.next().unwrap().unwrap_err(), Error::IO(_)));
     }
@@ -757,7 +752,7 @@ ACCGTAGGCTGA
     #[test]
     fn test_empty_either_records_kind() {
         let mut records = EitherRecords::new(b"".as_ref());
-        assert!(matches!(records.kind(), Err(_)));
+        assert!(records.kind().is_err());
     }
 
     #[test]
@@ -824,8 +819,7 @@ ACCGTAGGCTGA
 
     #[test]
     fn test_get_kind_detailed_error() {
-        let mock_reader =
-            MockBufReader::new(io::Error::new(io::ErrorKind::Other, "error"), 0, FASTA_FILE);
+        let mock_reader = MockBufReader::new(io::Error::other("error"), 0, FASTA_FILE);
         let (mut reader, err) = get_kind_detailed(mock_reader).err().unwrap();
         assert!(matches!(err.kind(), io::ErrorKind::Other));
         let mut buf = [0u8; 1];

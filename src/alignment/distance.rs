@@ -176,8 +176,6 @@ pub mod simd {
 mod tests {
     use super::*;
 
-    use std::u32;
-
     #[test]
     fn test_hamming_dist_good() {
         let x = b"GTCTGCATGCG";

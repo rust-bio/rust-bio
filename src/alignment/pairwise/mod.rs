@@ -152,7 +152,7 @@
 
 use i32;
 use std::cmp::max;
-use std::iter::repeat;
+use std::iter::repeat_n;
 
 use crate::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use crate::utils::TextSlice;
@@ -278,7 +278,7 @@ impl<F: MatchFunc> Scoring<F> {
     /// * `gap_open` - the score for opening a gap (should not be positive)
     /// * `gap_extend` - the score for extending a gap (should not be positive)
     /// * `match_fn` - function that returns the score for substitutions
-    ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
+    ///   (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         assert!(gap_open <= 0, "gap_open can't be positive");
         assert!(gap_extend <= 0, "gap_extend can't be positive");
@@ -482,7 +482,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `gap_open` - the score for opening a gap (should be negative)
     /// * `gap_extend` - the score for extending a gap (should be negative)
     /// * `match_fn` - function that returns the score for substitutions
-    ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
+    ///   (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn new(gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         Aligner::with_capacity(
             DEFAULT_ALIGNER_CAPACITY,
@@ -503,7 +503,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `gap_open` - the score for opening a gap (should be negative)
     /// * `gap_extend` - the score for extending a gap (should be negative)
     /// * `match_fn` - function that returns the score for substitutions
-    ///    (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
+    ///   (see also [`bio::alignment::pairwise::Scoring`](struct.Scoring.html))
     pub fn with_capacity(m: usize, n: usize, gap_open: i32, gap_extend: i32, match_fn: F) -> Self {
         assert!(gap_open <= 0, "gap_open can't be positive");
         assert!(gap_extend <= 0, "gap_extend can't be positive");
@@ -590,9 +590,9 @@ impl<F: MatchFunc> Aligner<F> {
             self.D[k].clear();
             self.S[k].clear();
 
-            self.D[k].extend(repeat(MIN_SCORE).take(m + 1));
-            self.I[k].extend(repeat(MIN_SCORE).take(m + 1));
-            self.S[k].extend(repeat(MIN_SCORE).take(m + 1));
+            self.D[k].extend(repeat_n(MIN_SCORE, m + 1));
+            self.I[k].extend(repeat_n(MIN_SCORE, m + 1));
+            self.S[k].extend(repeat_n(MIN_SCORE, m + 1));
 
             self.S[k][0] = 0;
 
@@ -601,11 +601,11 @@ impl<F: MatchFunc> Aligner<F> {
                 tb.set_all(TB_START);
                 self.traceback.set(0, 0, tb);
                 self.Lx.clear();
-                self.Lx.extend(repeat(0usize).take(n + 1));
+                self.Lx.extend(repeat_n(0usize, n + 1));
                 self.Ly.clear();
-                self.Ly.extend(repeat(0usize).take(m + 1));
+                self.Ly.extend(repeat_n(0usize, m + 1));
                 self.Sn.clear();
-                self.Sn.extend(repeat(MIN_SCORE).take(m + 1));
+                self.Sn.extend(repeat_n(MIN_SCORE, m + 1));
                 self.Sn[0] = self.scoring.yclip_suffix;
                 self.Ly[0] = n;
             }
@@ -1162,6 +1162,8 @@ impl Traceback {
 
 #[cfg(test)]
 mod tests {
+    use std::iter::repeat_n;
+
     use super::*;
     use crate::alignment::AlignmentOperation::*;
     use crate::scores::blosum62;
@@ -1249,9 +1251,9 @@ mod tests {
         println!("aln:\n{}", alignment.pretty(x, y, 80));
 
         let mut correct = Vec::new();
-        correct.extend(repeat(Match).take(11));
-        correct.extend(repeat(Ins).take(10));
-        correct.extend(repeat(Match).take(17));
+        correct.extend(repeat_n(Match, 11));
+        correct.extend(repeat_n(Ins, 10));
+        correct.extend(repeat_n(Match, 17));
 
         assert_eq!(alignment.operations, correct);
     }

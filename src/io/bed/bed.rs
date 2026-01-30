@@ -86,7 +86,7 @@ impl Record {
     }
 }
 
-impl<'a> From<&'a Record> for annot::contig::Contig<String, strand::Strand> {
+impl From<&Record> for annot::contig::Contig<String, strand::Strand> {
     /// Returns a `Contig` annotation for the BED record.
     ///
     /// ```
@@ -334,7 +334,7 @@ mod tests {
             let mut writer = Writer::new(&mut output);
             for r in reader.records() {
                 writer
-                    .write(&r.expect("Error reading record"))
+                    .write(r.expect("Error reading record"))
                     .expect("Error writing record");
             }
         }

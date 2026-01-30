@@ -30,7 +30,7 @@
 //! ```
 
 use std::collections::BTreeMap;
-use std::iter::{repeat, Enumerate};
+use std::iter::{repeat_n, Enumerate};
 use std::mem::size_of;
 use std::slice;
 
@@ -89,7 +89,7 @@ impl<S: Integer + Bounded + NumCast + Copy, B: Integer + NumCast + Copy> SmallIn
         }
 
         SmallInts {
-            smallints: repeat(v).take(n).collect(),
+            smallints: repeat_n(v, n).collect(),
             bigints: BTreeMap::new(),
         }
     }
@@ -195,12 +195,13 @@ where
     }
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
+    use crate::data_structures::smallints::SmallInts;
     #[test]
     fn test_serde() {
         use serde::{Deserialize, Serialize};
-        fn impls_serde_traits<S: Serialize + Deserialize>() {}
+        fn impls_serde_traits<'a, S: Serialize + Deserialize<'a>>() {}
 
         impls_serde_traits::<SmallInts<i8, isize>>();
     }

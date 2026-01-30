@@ -314,7 +314,7 @@ mod tests {
             let mut writer = Writer::new(&mut output);
             for r in reader.records() {
                 writer
-                    .write(&r.expect("Error reading record"))
+                    .write(r.expect("Error reading record"))
                     .expect("Error writing record");
             }
         }
