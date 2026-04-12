@@ -7,7 +7,7 @@
 //! The implementation is based on the lecture notes
 //! "Algorithmen auf Sequenzen", Kopczynski, Marschall, Martin and Rahmann, 2008 - 2015.
 
-use std::iter::repeat;
+use std::iter::repeat_n;
 
 use crate::alphabets::Alphabet;
 use crate::data_structures::suffix_array::RawSuffixArraySlice;
@@ -39,7 +39,7 @@ pub type BWTFind = Vec<usize>;
 pub fn bwt(text: &[u8], pos: RawSuffixArraySlice) -> BWT {
     assert_eq!(text.len(), pos.len());
     let n = text.len();
-    let mut bwt: BWT = repeat(0).take(n).collect();
+    let mut bwt: BWT = repeat_n(0, n).collect();
     for r in 0..n {
         let p = pos[r];
         bwt[r] = if p > 0 { text[p - 1] } else { text[n - 1] };
@@ -188,7 +188,7 @@ pub fn less(bwt: &BWTSlice, alphabet: &Alphabet) -> Less {
         .max_symbol()
         .expect("Expecting non-empty alphabet.") as usize
         + 2;
-    let mut less: Less = repeat(0).take(m).collect();
+    let mut less: Less = repeat_n(0, m).collect();
     for &c in bwt.iter() {
         less[c as usize] += 1;
     }
@@ -203,7 +203,7 @@ pub fn bwtfind(bwt: &BWTSlice, alphabet: &Alphabet) -> BWTFind {
     let n = bwt.len();
     let mut less = less(bwt, alphabet);
 
-    let mut bwtfind: BWTFind = repeat(0).take(n).collect();
+    let mut bwtfind: BWTFind = repeat_n(0, n).collect();
     for (r, &c) in bwt.iter().enumerate() {
         bwtfind[less[c as usize]] = r;
         less[c as usize] += 1;
