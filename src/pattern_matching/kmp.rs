@@ -59,7 +59,7 @@ impl<'a> KMP<'a> {
 
     /// Find all matches of pattern in a given text. Matches are returned as iterator over start
     /// positions.
-    pub fn find_all<C, T>(&self, text: T) -> Matches<C, T::IntoIter>
+    pub fn find_all<C, T>(&self, text: T) -> Matches<'_, C, T::IntoIter>
     where
         C: Borrow<u8>,
         T: IntoIterator<Item = C>,
