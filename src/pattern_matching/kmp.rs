@@ -23,7 +23,7 @@
 //! ```
 
 use std::borrow::Borrow;
-use std::iter::{repeat, Enumerate};
+use std::iter::{repeat_n, Enumerate};
 
 use crate::utils::TextSlice;
 
@@ -59,7 +59,7 @@ impl<'a> KMP<'a> {
 
     /// Find all matches of pattern in a given text. Matches are returned as iterator over start
     /// positions.
-    pub fn find_all<C, T>(&self, text: T) -> Matches<C, T::IntoIter>
+    pub fn find_all<C, T>(&self, text: T) -> Matches<'_, C, T::IntoIter>
     where
         C: Borrow<u8>,
         T: IntoIterator<Item = C>,
@@ -74,7 +74,7 @@ impl<'a> KMP<'a> {
 
 fn lps(pattern: &[u8]) -> Lps {
     let (m, mut q) = (pattern.len(), 0);
-    let mut lps: Lps = repeat(0).take(m).collect();
+    let mut lps: Lps = repeat_n(0, m).collect();
     for i in 1..m {
         while q > 0 && pattern[q] != pattern[i] {
             q = lps[q - 1];

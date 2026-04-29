@@ -86,7 +86,7 @@ impl MyersBuilder {
         I: IntoIterator<Item = B>,
         B: Borrow<u8>,
     {
-        let eq = self.ambigs.entry(byte).or_insert_with(Vec::new);
+        let eq = self.ambigs.entry(byte).or_default();
         eq.extend(equivalents.into_iter().map(|b| *b.borrow()));
         self
     }
