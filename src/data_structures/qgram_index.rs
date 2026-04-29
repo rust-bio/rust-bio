@@ -408,7 +408,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "nightly")]
+    #[rustversion::nightly]
     fn test_serde() {
         use serde::{Deserialize, Serialize};
         fn impls_serde_traits<S: Serialize + Deserialize>() {}

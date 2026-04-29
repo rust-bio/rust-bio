@@ -308,6 +308,7 @@ mod tests {
         .unwrap();
         assert_eq!(pssm.degenerate_consensus(), b"NNNN".to_vec());
     }
+
     #[test]
     fn test_degenerate_input() {
         let pssm: DNAMotif = DNAMotif::from_seqs(&[b"ATMC".to_vec()], Some(&[0.0; 4])).unwrap();
