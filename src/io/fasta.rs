@@ -823,7 +823,8 @@ impl<W: io::Write> Writer<W> {
     /// use std::io;
     /// use std::path::Path;
     ///
-    /// let path = Path::new("test.fa");
+    /// let tmp = tempfile::NamedTempFile::new().unwrap();
+    /// let path = tmp.path();
     /// let file = fs::File::create(path).unwrap();
     /// {
     ///     let handle = io::BufWriter::new(file);
@@ -853,7 +854,8 @@ impl<W: io::Write> Writer<W> {
     /// use std::io;
     /// use std::path::Path;
     ///
-    /// let path = Path::new("test.fa");
+    /// let tmp = tempfile::NamedTempFile::new().unwrap();
+    /// let path = tmp.path();
     /// let file = fs::File::create(path).unwrap();
     /// {
     ///     let handle = io::BufWriter::new(file);
@@ -1813,7 +1815,8 @@ TTTA
 
     #[test]
     fn test_write_record() {
-        let path = Path::new("test.fa");
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let path = tmp.path();
         let file = fs::File::create(path).unwrap();
         {
             let handle = io::BufWriter::new(file);
