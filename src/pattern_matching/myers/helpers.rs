@@ -105,7 +105,7 @@ pub(crate) fn word_size<T>() -> usize {
 
 #[inline]
 pub(crate) fn ceil_div(x: usize, y: usize) -> usize {
-    if x % y != 0 {
+    if !x.is_multiple_of(y) {
         x / y + 1
     } else {
         x / y
