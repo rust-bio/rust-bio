@@ -619,8 +619,7 @@ impl<F: MatchFunc> Aligner<F> {
                 } else {
                     // Insert all i characters
                     let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32 - 1);
-                    let c_score =
-                        self.scoring.xclip_prefix + self.scoring.gap_open; // Clip then insert
+                    let c_score = self.scoring.xclip_prefix + self.scoring.gap_open; // Clip then insert
                     if i_score > c_score {
                         self.I[k][i] = i_score;
                         tb.set_i_bits(TB_INS);
@@ -678,8 +677,7 @@ impl<F: MatchFunc> Aligner<F> {
                 } else {
                     // Delete all j characters
                     let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32 - 1);
-                    let c_score =
-                        self.scoring.yclip_prefix + self.scoring.gap_open;
+                    let c_score = self.scoring.yclip_prefix + self.scoring.gap_open;
                     if d_score > c_score {
                         self.D[curr][0] = d_score;
                         tb.set_d_bits(TB_DEL);
