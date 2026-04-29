@@ -23,7 +23,7 @@ impl DNAMotif {
     /// # Arguments
     /// * `seqs` - sequences incorporated into motif
     /// * `pseudos` - array slice with a pseudocount for each monomer;
-    ///    defaults to pssm::DEF_PSEUDO for all if None is supplied
+    ///   defaults to pssm::DEF_PSEUDO for all if None is supplied
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently impossible - see
