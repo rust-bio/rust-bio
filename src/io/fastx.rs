@@ -12,10 +12,10 @@
 //! This module serves two use cases:
 //!
 //! 1. Implementing functions that can be used generically with FASTA/FASTQ records. In this use
-//! case the type may be known at compile time by the caller of your function.
+//!    case the type may be known at compile time by the caller of your function.
 //! 2. Processing data that may be either in the FASTA/FASTQ format. In this use case the type
-//! cannot be known at compile time and you may or may not want to treat FASTA/FASTQ data
-//! differently.
+//!    cannot be known at compile time and you may or may not want to treat FASTA/FASTQ data
+//!    differently.
 //!
 //! # Generic Implementation Examples
 //!
@@ -175,12 +175,15 @@ use std::io;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::io::SeekFrom;
-use std::mem;
+
 use std::path::Path;
 use thiserror::Error;
 
 use crate::io::{fasta, fastq};
 use crate::utils::TextSlice;
+
+/// A reader whose first byte has been peeked at and prepended back via `Chain`.
+pub type PeekedReader<R> = io::Chain<io::Cursor<[u8; 1]>, R>;
 
 macro_rules! passthrough {
     ($name:ident, $t:ty) => {
@@ -251,7 +254,7 @@ pub enum EitherRecord {
 
 impl EitherRecord {
     pub fn to_fasta(self) -> fasta::Record {
-        return self.into();
+        self.into()
     }
 
     pub fn to_fastq(self, default_qual: u8) -> fastq::Record {
@@ -265,9 +268,9 @@ impl EitherRecord {
     }
 }
 
-impl Into<fasta::Record> for EitherRecord {
-    fn into(self) -> fasta::Record {
-        match self {
+impl From<EitherRecord> for fasta::Record {
+    fn from(val: EitherRecord) -> Self {
+        match val {
             EitherRecord::FASTA(f) => f,
             EitherRecord::FASTQ(f) => fasta::Record::with_attrs(f.id(), f.desc(), f.seq()),
         }
@@ -311,6 +314,8 @@ impl<T: BufRead> Records<fastq::Record, fastq::Error> for fastq::Records<T> {}
 
 impl<T: BufRead> Records<EitherRecord, Error> for EitherRecords<T> {}
 
+// FASTA/FASTQ are standard bioinformatics format names, not acronyms to be camel-cased.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug)]
 enum EitherRecordsInner<R: BufRead> {
     FASTA(fasta::Records<R>),
@@ -319,7 +324,7 @@ enum EitherRecordsInner<R: BufRead> {
 
 #[derive(Debug)]
 pub struct EitherRecords<R: BufRead> {
-    records: Option<EitherRecordsInner<BufReader<io::Chain<io::Cursor<[u8; 1]>, R>>>>,
+    records: Option<EitherRecordsInner<BufReader<PeekedReader<R>>>>,
     reader: Option<R>,
 }
 
@@ -351,7 +356,7 @@ impl<R: BufRead> EitherRecords<R> {
     }
 
     fn initialize(&mut self) -> io::Result<()> {
-        if let Some(reader) = mem::replace(&mut self.reader, None) {
+        if let Some(reader) = self.reader.take() {
             match get_kind(reader) {
                 Err(err) if err.kind() == io::ErrorKind::UnexpectedEof => (),
                 Err(err) => return Err(err),
@@ -456,7 +461,7 @@ pub enum Kind {
 ///     }
 /// }
 /// ```
-pub fn get_kind<R: Read>(reader: R) -> io::Result<(io::Chain<io::Cursor<[u8; 1]>, R>, Kind)> {
+pub fn get_kind<R: Read>(reader: R) -> io::Result<(PeekedReader<R>, Kind)> {
     match get_kind_detailed(reader) {
         Ok((reader, Ok(kind))) => Ok((reader, kind)),
         Ok((_, Err(err))) => Err(err),
@@ -517,7 +522,7 @@ pub fn get_kind<R: Read>(reader: R) -> io::Result<(io::Chain<io::Cursor<[u8; 1]>
 /// ```
 pub fn get_kind_detailed<R: Read>(
     mut reader: R,
-) -> std::result::Result<(io::Chain<io::Cursor<[u8; 1]>, R>, io::Result<Kind>), (R, io::Error)> {
+) -> std::result::Result<(PeekedReader<R>, io::Result<Kind>), (R, io::Error)> {
     let mut buf = [0];
     if let Err(err) = reader.read_exact(&mut buf) {
         return Err((reader, err));
@@ -573,8 +578,8 @@ pub fn get_kind_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> io::Result<Ki
 impl std::fmt::Display for Kind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Kind::FASTA => write!(f, "{}", "FASTA"),
-            Kind::FASTQ => write!(f, "{}", "FASTQ"),
+            Kind::FASTA => write!(f, "FASTA"),
+            Kind::FASTQ => write!(f, "FASTQ"),
         }
     }
 }
@@ -630,7 +635,7 @@ ACCGTAGGCTGA
     impl<R: BufRead> Read for MockBufReader<R> {
         fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
             if buf.len() + self.bytes_read >= self.error_at_byte {
-                if let Some(err) = mem::replace(&mut self.error, None) {
+                if let Some(err) = self.error.take() {
                     return Err(err);
                 }
             }
