@@ -1400,7 +1400,21 @@ mod tests {
 
         assert_eq!(
             alignment.operations,
-            [Match, Match, Match, Match, Ins, Match, Match, Match, Match, Match, Match]
+            [
+                Xclip(4),
+                Match,
+                Match,
+                Match,
+                Match,
+                Del,
+                Match,
+                Match,
+                Match,
+                Match,
+                Match,
+                Match,
+                Yclip(3)
+            ]
         );
     }
 
