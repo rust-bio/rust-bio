@@ -84,6 +84,7 @@ use crate::alignment::{Alignment, AlignmentOperation};
 use crate::utils::TextSlice;
 use i32;
 use std::cmp::{max, min, Ordering};
+use std::iter::repeat_n;
 use std::ops::Range;
 
 use super::*;
@@ -323,7 +324,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `y` - Textslice
     /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
     /// * `allowed_mismatches` - Extend the matches diagonally allowing upto
-    /// the specified number of mismatches (Option<usize>)
+    ///   the specified number of mismatches (Option<usize>)
     /// * `use_lcskpp_union` - Extend the results from sdpkpp using lcskpp
     pub fn custom_with_expanded_matches(
         &mut self,
@@ -377,7 +378,7 @@ impl<F: MatchFunc> Aligner<F> {
     /// * `y` - Textslice
     /// * `matches` - Vector of kmer matching pairs (xpos, ypos)
     /// * `path` - Vector of indices pointing to `matches` vector
-    /// which defines a path. The validity of the path is not checked.
+    ///   which defines a path. The validity of the path is not checked.
     pub fn custom_with_match_path(
         &mut self,
         x: TextSlice,
@@ -416,16 +417,16 @@ impl<F: MatchFunc> Aligner<F> {
             self.I[k].clear();
             self.D[k].clear();
             self.S[k].clear();
-            self.D[k].extend(repeat(MIN_SCORE).take(m + 1));
-            self.I[k].extend(repeat(MIN_SCORE).take(m + 1));
-            self.S[k].extend(repeat(MIN_SCORE).take(m + 1));
+            self.D[k].extend(repeat_n(MIN_SCORE, m + 1));
+            self.I[k].extend(repeat_n(MIN_SCORE, m + 1));
+            self.S[k].extend(repeat_n(MIN_SCORE, m + 1));
         }
         self.Lx.clear();
-        self.Lx.extend(repeat(0usize).take(n + 1));
+        self.Lx.extend(repeat_n(0usize, n + 1));
         self.Ly.clear();
-        self.Ly.extend(repeat(0usize).take(m + 1));
+        self.Ly.extend(repeat_n(0usize, m + 1));
         self.Sn.clear();
-        self.Sn.extend(repeat(MIN_SCORE).take(m + 1));
+        self.Sn.extend(repeat_n(MIN_SCORE, m + 1));
 
         {
             // Handle j = 0
