@@ -441,13 +441,12 @@ impl<F: MatchFunc> Aligner<F> {
                 let mut tb = TracebackCell::new();
                 tb.set_all(TB_START);
                 if i == 1 {
-                    self.I[curr][i] = self.scoring.gap_open + self.scoring.gap_extend;
+                    self.I[curr][i] = self.scoring.gap_open;
                     tb.set_i_bits(TB_START);
                 } else {
                     // Insert all i characters
-                    let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
-                    let c_score =
-                        self.scoring.xclip_prefix + self.scoring.gap_open + self.scoring.gap_extend; // Clip then insert
+                    let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32 - 1);
+                    let c_score = self.scoring.xclip_prefix + self.scoring.gap_open; // Clip then insert
                     if i_score > c_score {
                         self.I[curr][i] = i_score;
                         tb.set_i_bits(TB_INS);
@@ -513,13 +512,12 @@ impl<F: MatchFunc> Aligner<F> {
                 self.I[curr][0] = MIN_SCORE;
 
                 if j == 1 {
-                    self.D[curr][0] = self.scoring.gap_open + self.scoring.gap_extend;
+                    self.D[curr][0] = self.scoring.gap_open;
                     tb.set_d_bits(TB_START);
                 } else {
                     // Delete all j characters
-                    let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
-                    let c_score =
-                        self.scoring.yclip_prefix + self.scoring.gap_open + self.scoring.gap_extend;
+                    let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32 - 1);
+                    let c_score = self.scoring.yclip_prefix + self.scoring.gap_open;
                     if d_score > c_score {
                         self.D[curr][0] = d_score;
                         tb.set_d_bits(TB_DEL);
@@ -561,7 +559,7 @@ impl<F: MatchFunc> Aligner<F> {
                     } else {
                         self.scoring.yclip_prefix
                     },
-                    self.scoring.gap_open + self.scoring.gap_extend * (j as i32),
+                    self.scoring.gap_open + self.scoring.gap_extend * (j as i32 - 1),
                 );
 
             for i in max(1, i_start)..i_end {
@@ -571,7 +569,7 @@ impl<F: MatchFunc> Aligner<F> {
                 let m_score = self.S[prev][i - 1] + self.scoring.match_fn.score(p, q);
 
                 let i_score = self.I[curr][i - 1] + self.scoring.gap_extend;
-                let s_score = self.S[curr][i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
+                let s_score = self.S[curr][i - 1] + self.scoring.gap_open;
                 let mut best_i_score;
                 if i_score > s_score {
                     best_i_score = i_score;
@@ -581,8 +579,7 @@ impl<F: MatchFunc> Aligner<F> {
                     tb.set_i_bits(self.traceback.get(i - 1, j).get_s_bits());
                 }
                 if j == n {
-                    let clip_score =
-                        self.Sn[i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
+                    let clip_score = self.Sn[i - 1] + self.scoring.gap_open;
                     if clip_score > best_i_score {
                         best_i_score = clip_score;
                         tb.set_i_bits(TB_YCLIP_SUFFIX);
@@ -590,7 +587,7 @@ impl<F: MatchFunc> Aligner<F> {
                 }
 
                 let d_score = self.D[prev][i] + self.scoring.gap_extend;
-                let s_score = self.S[prev][i] + self.scoring.gap_open + self.scoring.gap_extend;
+                let s_score = self.S[prev][i] + self.scoring.gap_open;
                 let best_d_score;
                 if d_score > s_score {
                     best_d_score = d_score;
@@ -629,7 +626,7 @@ impl<F: MatchFunc> Aligner<F> {
 
                 let yclip_score = self.scoring.yclip_prefix
                     + self.scoring.gap_open
-                    + self.scoring.gap_extend * (i as i32);
+                    + self.scoring.gap_extend * (i as i32 - 1);
                 if yclip_score > best_s_score {
                     best_s_score = yclip_score;
                     tb.set_s_bits(TB_YCLIP_PREFIX);
@@ -699,7 +696,7 @@ impl<F: MatchFunc> Aligner<F> {
         for i in max(1, self.band.ranges[n].start)..self.band.ranges[n].end {
             let j = n;
             let curr = j % 2;
-            let s_score = self.S[curr][i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
+            let s_score = self.S[curr][i - 1] + self.scoring.gap_open;
             if s_score > self.I[curr][i] {
                 self.I[curr][i] = s_score;
                 let s_bit = self.traceback.get(i - 1, j).get_s_bits();
@@ -717,7 +714,7 @@ impl<F: MatchFunc> Aligner<F> {
         }
 
         for j in 1..=n {
-            let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
+            let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32 - 1);
             if d_score > self.scoring.yclip_prefix {
                 self.traceback.get_mut(0, j).set_s_bits(TB_DEL);
             } else {
@@ -738,7 +735,7 @@ impl<F: MatchFunc> Aligner<F> {
         }
 
         for i in 1..=m {
-            let c_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
+            let c_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32 - 1);
             if c_score > self.scoring.xclip_prefix {
                 self.traceback.get_mut(i, 0).set_s_bits(TB_INS);
             } else {
@@ -827,7 +824,7 @@ impl<F: MatchFunc> Aligner<F> {
         // Handle the case when the traceback ends outside the band other than at (0, 0)
         if i != 0 {
             // Insert all i characters
-            let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
+            let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32 - 1);
             if i_score > self.scoring.xclip_prefix {
                 operations.resize(operations.len() + i, AlignmentOperation::Ins);
                 xstart = 0;
@@ -838,7 +835,7 @@ impl<F: MatchFunc> Aligner<F> {
         }
         if j != 0 {
             // Delete all j characters
-            let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
+            let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32 - 1);
             if d_score > self.scoring.yclip_prefix {
                 operations.resize(operations.len() + j, AlignmentOperation::Del);
                 ystart = 0;
