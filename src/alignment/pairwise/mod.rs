@@ -122,17 +122,18 @@
 //!     yclip_prefix: 0,
 //!     yclip_suffix: 0,
 //! };
-//! let x = b"GGGGGGACGTACGTACGT";
+//! let x = b"GGGGGGGGGACGTACGTACGT";
 //! let y = b"AAAAACGTACGTACGTAAAA";
 //! let mut aligner = Aligner::with_capacity_and_scoring(x.len(), y.len(), scoring);
 //! let alignment = aligner.custom(x, y);
 //! println!("{}", alignment.pretty(x, y, 80));
+//! println!("{}", alignment.score);
 //! assert_eq!(alignment.score, 2);
 //! assert_eq!(
 //!     alignment.operations,
 //!     [
 //!         Yclip(4),
-//!         Xclip(6),
+//!         Xclip(9),
 //!         Match,
 //!         Match,
 //!         Match,
