@@ -962,12 +962,25 @@ impl Record {
     }
 
     /// Check validity of Fasta record.
+    ///
+    /// Verifies that the record has a non-empty id, that the sequence is
+    /// ASCII, and that every sequence character is a valid IUPAC nucleotide
+    /// or amino acid code (any ASCII letter), a gap (`-`, `.`), or a stop
+    /// (`*`). Characters such as digits, whitespace, or symbols like `@`
+    /// are rejected.
     pub fn check(&self) -> Result<(), &str> {
         if self.id().is_empty() {
             return Err("Expecting id for Fasta record.");
         }
         if !self.seq.is_ascii() {
             return Err("Non-ascii character found in sequence.");
+        }
+        if !self
+            .seq
+            .bytes()
+            .all(|b| b.is_ascii_alphabetic() || matches!(b, b'-' | b'.' | b'*'))
+        {
+            return Err("Non-IUPAC character found in sequence.");
         }
 
         Ok(())
@@ -1254,6 +1267,19 @@ TTTA
             record.check().is_err(),
             "check() should return Err if FASTA sequence is not ASCII"
         );
+    }
+
+    // Regression test for https://github.com/rust-bio/rust-bio/issues/472:
+    // sequence characters that are ASCII but not valid IUPAC residues (e.g.
+    // `@`, `#`, digits, whitespace) used to slip past `check()`.
+    #[test]
+    fn test_check_record_seq_has_non_iupac_raises_err() {
+        let record = Record::with_attrs("id", None, b"ACGT@A");
+
+        let actual = record.check().unwrap_err();
+        let expected = "Non-IUPAC character found in sequence.";
+
+        assert_eq!(actual, expected)
     }
 
     #[test]

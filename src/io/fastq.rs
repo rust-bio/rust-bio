@@ -382,6 +382,13 @@ impl Record {
         if !self.seq.is_ascii() {
             return Err("Non-ascii character found in sequence.");
         }
+        if !self
+            .seq
+            .bytes()
+            .all(|b| b.is_ascii_alphabetic() || matches!(b, b'-' | b'.' | b'*'))
+        {
+            return Err("Non-IUPAC character found in sequence.");
+        }
         if !self.qual.is_ascii() {
             return Err("Non-ascii character found in qualities.");
         }
@@ -726,6 +733,19 @@ IIIIIIJJJJJJ
 
         let actual = record.check().unwrap_err();
         let expected = "Non-ascii character found in sequence.";
+
+        assert_eq!(actual, expected)
+    }
+
+    // Regression test for https://github.com/rust-bio/rust-bio/issues/472:
+    // sequence characters that are ASCII but not valid IUPAC residues (e.g.
+    // `@`, `#`, digits, whitespace) used to slip past `check()`.
+    #[test]
+    fn test_check_record_seq_has_non_iupac_raises_err() {
+        let record = Record::with_attrs("id", None, b"ACGT@A", b"!!!!!!");
+
+        let actual = record.check().unwrap_err();
+        let expected = "Non-IUPAC character found in sequence.";
 
         assert_eq!(actual, expected)
     }
