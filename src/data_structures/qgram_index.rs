@@ -410,7 +410,7 @@ mod tests {
     #[test]
     fn test_serde() {
         use serde::{Deserialize, Serialize};
-        fn impls_serde_traits<'a, S: Serialize + Deserialize<'a>>() {}
+        fn impls_serde_traits<S: Serialize + for<'de> Deserialize<'de>>() {}
 
         impls_serde_traits::<QGramIndex>();
     }

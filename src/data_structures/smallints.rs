@@ -202,11 +202,7 @@ mod tests {
     #[test]
     fn test_serde() {
         use serde::{Deserialize, Serialize};
-<<<<<<< HEAD
-        fn impls_serde_traits<'a, S: Serialize + Deserialize<'a>>() {}
-=======
         fn impls_serde_traits<S: Serialize + for<'de> Deserialize<'de>>() {}
->>>>>>> 50ce27a3dee7089beea5b4fc955adb263995b679
 
         impls_serde_traits::<super::SmallInts<i8, isize>>();
     }
