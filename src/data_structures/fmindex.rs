@@ -161,8 +161,15 @@ pub trait FMIndexable {
             let less = self.less(a);
             pl = l;
             pr = r;
+            let occ_r = self.occ(r, a);
+            // Empty interval; the assignment to `r` below would underflow when
+            // `less == 0`. See https://github.com/rust-bio/rust-bio/issues/606.
+            if occ_r == 0 {
+                complete_match = false;
+                break;
+            }
             l = less + if l > 0 { self.occ(l - 1, a) } else { 0 };
-            r = less + self.occ(r, a) - 1;
+            r = less + occ_r - 1;
 
             // The symbol was not found if we end up with an empty interval.
             // Terminate the LF-mapping process. In this case, also mark that
@@ -571,7 +578,7 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::alphabets::dna;
+    use crate::alphabets::{dna, Alphabet};
     use crate::data_structures::bwt::{bwt, less, Occ};
     use crate::data_structures::suffix_array::suffix_array;
 
@@ -666,6 +673,32 @@ mod tests {
 
         assert_eq!(partial_match_len, 4);
         assert_eq!(positions, [3]);
+    }
+
+    // Regression test for https://github.com/rust-bio/rust-bio/issues/606:
+    // searching for a pattern containing the lex-smallest symbol of the
+    // alphabet used to underflow `r` and crash with an out-of-bounds read.
+    #[test]
+    fn test_fmindex_backward_search_smallest_symbol_no_panic() {
+        // `\0` is both the sentinel (terminal, lex-smallest) and a regular
+        // alphabet symbol with `less[\0] == 0`.
+        let text = b"AAA\0";
+        let alphabet = Alphabet::new(b"\0A");
+        let sa = suffix_array(text);
+        let bwt = bwt(text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+        let fm = FMIndex::new(&bwt, &less, &occ);
+
+        // Pattern is not in the text. Processing the trailing `\0`s in
+        // reverse order used to underflow `r` and panic on the next step.
+        let pattern = b"A\0\0";
+        let result = fm.backward_search(pattern.iter());
+
+        match result {
+            BackwardSearchResult::Absent | BackwardSearchResult::Partial(_, _) => {}
+            BackwardSearchResult::Complete(_) => panic!("pattern is not in text"),
+        }
     }
 
     #[test]
