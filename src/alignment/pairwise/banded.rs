@@ -51,7 +51,7 @@
 //! // explanation
 //!
 //! // The following example considers a modification of the semiglobal mode where you are allowed
-//! // to skip a prefix of the target sequence x, for a penalty of -10, but you have to consume
+//! // to skip a prefix of the target sequence x, for a penalty of -5, but you have to consume
 //! // the rest of the string in the alignment
 //!
 //! let scoring = Scoring {
@@ -59,7 +59,7 @@
 //!     gap_extend: -1,
 //!     match_fn: |a: u8, b: u8| if a == b { 1i32 } else { -3i32 },
 //!     match_scores: Some((1, -3)),
-//!     xclip_prefix: -10,
+//!     xclip_prefix: -5,
 //!     xclip_suffix: MIN_SCORE,
 //!     yclip_prefix: 0,
 //!     yclip_suffix: 0,
