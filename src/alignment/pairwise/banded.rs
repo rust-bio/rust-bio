@@ -14,7 +14,7 @@
 //! matches.  This technique is employed in long-read aligners (e.g. BLASR and BWA)
 //! to drastically reduce runtime compared to Smith Waterman.
 //! Complexity roughly O(min(m,n) * w)
-//! 
+//!
 //! Note on gap open/extension penalties:
 //! With version 4.0 of this crate, the gap extension penalty is applied
 //! for each additional extension of a gap beyond
@@ -22,7 +22,7 @@
 //! wheras gaps of length 1 only receive the gap open penalty.
 //! Before version 4.0, the gap extension penalty was also applied for the initial
 //! gap length of 1.
-//! 
+//!
 //!
 //! # Example
 //!
