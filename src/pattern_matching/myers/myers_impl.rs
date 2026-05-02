@@ -186,7 +186,7 @@ impl<T: BitVec> $Myers {
         &self,
         text: I,
         max_dist: $DistType,
-    ) -> Matches<T, C, I::IntoIter>
+    ) -> Matches<'_, T, C, I::IntoIter>
     where
         C: Borrow<u8>,
         I: IntoIterator<Item = C>,

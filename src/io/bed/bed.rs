@@ -86,7 +86,7 @@ impl Record {
     }
 }
 
-impl<'a> From<&'a Record> for annot::contig::Contig<String, strand::Strand> {
+impl From<&Record> for annot::contig::Contig<String, strand::Strand> {
     /// Returns a `Contig` annotation for the BED record.
     ///
     /// ```

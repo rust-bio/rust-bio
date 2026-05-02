@@ -103,6 +103,8 @@ pub use pairhmm::PairHMM;
 use crate::stats::LogProb;
 
 mod homopolypairhmm;
+// Renaming would change the public module path.
+#[allow(clippy::module_inception)]
 mod pairhmm;
 
 // traits common to pairhmm implementations
