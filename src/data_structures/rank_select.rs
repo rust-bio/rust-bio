@@ -36,7 +36,6 @@ pub struct RankSelect {
     n: usize,
     bits: BitVec<u8>,
     superblocks_1: Vec<SuperblockRank>,
-    superblocks_0: Vec<SuperblockRank>,
     /// superblock size in bits
     s: usize,
     /// superblock size in 32 bits
@@ -63,8 +62,7 @@ impl RankSelect {
             n,
             s,
             k,
-            superblocks_1: superblocks(true, n, s, &bits),
-            superblocks_0: superblocks(false, n, s, &bits),
+            superblocks_1: superblocks(n, s, &bits),
             bits,
         }
     }
@@ -137,7 +135,7 @@ impl RankSelect {
     pub fn select_1(&self, j: u64) -> Option<u64> {
         self.select_x(
             j,
-            &self.superblocks_1,
+            |i| *self.superblocks_1[i],
             |bit| bit != 0,
             |block| block.count_ones(),
         )
@@ -152,35 +150,63 @@ impl RankSelect {
     pub fn select_0(&self, j: u64) -> Option<u64> {
         self.select_x(
             j,
-            &self.superblocks_0,
+            // Derived from `superblocks_1`: at the start of superblock `i`
+            // we have seen `i * s` bits, of which `superblocks_1[i]` are 1s.
+            |i| (i * self.s) as u64 - *self.superblocks_1[i],
             |bit| bit == 0,
             |block| block.count_zeros(),
         )
     }
 
-    fn select_x<F: Fn(u8) -> bool, C: Fn(u8) -> u32>(
+    /// Generic implementation for `select_1` and `select_0`.
+    ///
+    /// `rank_at_superblock(i)` returns the cumulative rank (1s for `select_1`,
+    /// 0s for `select_0`) at the start of superblock `i`. `is_match` and
+    /// `count_all` describe how to inspect a single byte for the appropriate
+    /// bit-class.
+    fn select_x<R: Fn(usize) -> u64, F: Fn(u8) -> bool, C: Fn(u8) -> u32>(
         &self,
         j: u64,
-        superblocks: &[SuperblockRank],
+        rank_at_superblock: R,
         is_match: F,
         count_all: C,
     ) -> Option<u64> {
         if j == 0 {
             return None;
         }
-        let mut superblock = match superblocks.binary_search(&SuperblockRank::First(j)) {
-            Ok(i) | Err(i) => i, // superblock with same rank exists
-        };
-        superblock = superblock.saturating_sub(1);
-        let mut rank = *superblocks[superblock];
 
+        // Find the smallest superblock index whose stored rank is `>= j`.
+        // Manual binary search rather than slice::binary_search so we can
+        // search a virtual array — `select_0` derives its values from
+        // `superblocks_1` rather than storing them.
+        let n_super = self.superblocks_1.len();
+        let mut lo = 0usize;
+        let mut hi = n_super;
+        while lo < hi {
+            let mid = (lo + hi) / 2;
+            if rank_at_superblock(mid) < j {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        // `superblocks[k]` holds the rank *before* superblock k starts, so the
+        // j-th bit lives in superblock `lo - 1` (or 0 if j is small enough
+        // that the very first superblock already meets the rank).
+        let superblock = lo.saturating_sub(1);
+        let mut rank = rank_at_superblock(superblock);
+
+        // Scan blocks within the chosen superblock byte-by-byte, popcounting
+        // each block. Once the running rank would cross `j` inside a block,
+        // walk that block bit-by-bit to find the exact position.
         let first_block = superblock * self.s / 8;
         for block in first_block..cmp::min(first_block + self.s / 8, self.bits.block_len()) {
             let b = self.bits.get_block(block);
             let p = count_all(b) as u64;
             if rank + p >= j {
                 let mut bit = 0b1;
-                // do not look at unused bits of the last block
+                // The final block may extend past the bitvector; clamp to
+                // `bits.len()` so trailing zero-padding bits aren't counted.
                 let max_bit = cmp::min(8, self.bits.len() - block as u64 * 8);
                 for i in 0..max_bit {
                     rank += is_match(b & bit) as u64;
@@ -240,8 +266,11 @@ impl Ord for SuperblockRank {
     }
 }
 
-/// Create `n` superblocks of size `s` from a given bitvector.
-fn superblocks(t: bool, n: usize, s: usize, bits: &BitVec<u8>) -> Vec<SuperblockRank> {
+/// Build the 1-rank superblock samples for a bitvector of `n` bits with
+/// superblock size `s` (in bits). Each entry stores the cumulative rank of
+/// 1s at the start of the corresponding superblock. The 0-rank samples can
+/// be derived as `i * s - superblocks[i].rank()` and so are not stored.
+fn superblocks(n: usize, s: usize, bits: &BitVec<u8>) -> Vec<SuperblockRank> {
     let mut superblocks = Vec::with_capacity(n / s + 1);
     let mut rank: u64 = 0;
     let mut last_rank = None;
@@ -257,11 +286,7 @@ fn superblocks(t: bool, n: usize, s: usize, bits: &BitVec<u8>) -> Vec<Superblock
             });
             last_rank = Some(rank);
         }
-        rank += if t {
-            b.count_ones() as u64
-        } else {
-            b.count_zeros() as u64
-        };
+        rank += b.count_ones() as u64;
         i += 8;
     }
 
@@ -361,6 +386,60 @@ mod tests {
         assert_eq!(rs.select_0(1), Some(0));
         assert_eq!(rs.rank_0(0), Some(1));
         assert_eq!(rs.rank_1(0), Some(0));
+    }
+
+    // Cross-checks `select_1` and `select_0` against a naive linear scan on
+    // a sparse bitvector. Exercises the duplicate-rank path for `select_1`
+    // and the derived-rank path for `select_0` (see issue #548).
+    #[test]
+    fn test_select_against_naive_sparse() {
+        let mut bits: BitVec<u8> = BitVec::new_fill(false, 1024);
+        let one_positions: &[u64] = &[3, 70, 71, 72, 500, 900, 901, 1023];
+        for &p in one_positions {
+            bits.set_bit(p, true);
+        }
+        let zero_positions: Vec<u64> = (0..1024).filter(|i| !one_positions.contains(i)).collect();
+
+        for k in [1usize, 2, 4, 8] {
+            let rs = RankSelect::new(bits.clone(), k);
+            for (i, &expected) in one_positions.iter().enumerate() {
+                assert_eq!(rs.select_1((i + 1) as u64), Some(expected), "k={}", k);
+            }
+            assert_eq!(rs.select_1(one_positions.len() as u64 + 1), None);
+            for (i, &expected) in zero_positions.iter().enumerate() {
+                assert_eq!(rs.select_0((i + 1) as u64), Some(expected), "k={}", k);
+            }
+            assert_eq!(rs.select_0(zero_positions.len() as u64 + 1), None);
+        }
+    }
+
+    #[test]
+    fn test_select_against_naive_randomized() {
+        use rand::{Rng, SeedableRng};
+        let mut rng = rand::rngs::StdRng::seed_from_u64(0xdead_beef);
+        for _ in 0..50 {
+            let n: u64 = 64 + rng.random_range(0..4096);
+            let mut bits: BitVec<u8> = BitVec::new_fill(false, n);
+            let mut ones: Vec<u64> = Vec::new();
+            let mut zeros: Vec<u64> = Vec::new();
+            for i in 0..n {
+                if rng.random_range(0..16) == 0 {
+                    bits.set_bit(i, true);
+                    ones.push(i);
+                } else {
+                    zeros.push(i);
+                }
+            }
+            for &k in &[1usize, 2, 4] {
+                let rs = RankSelect::new(bits.clone(), k);
+                for (i, &expected) in ones.iter().enumerate() {
+                    assert_eq!(rs.select_1((i + 1) as u64), Some(expected));
+                }
+                for (i, &expected) in zeros.iter().enumerate() {
+                    assert_eq!(rs.select_0((i + 1) as u64), Some(expected));
+                }
+            }
+        }
     }
 
     #[test]
