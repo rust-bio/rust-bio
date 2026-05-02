@@ -387,7 +387,7 @@ impl Record {
             .bytes()
             .all(|b| b.is_ascii_alphabetic() || matches!(b, b'-' | b'.' | b'*'))
         {
-            return Err("Non-IUPAC character found in sequence.");
+            return Err("Invalid character found in sequence.");
         }
         if !self.qual.is_ascii() {
             return Err("Non-ascii character found in qualities.");
@@ -745,7 +745,7 @@ IIIIIIJJJJJJ
         let record = Record::with_attrs("id", None, b"ACGT@A", b"!!!!!!");
 
         let actual = record.check().unwrap_err();
-        let expected = "Non-IUPAC character found in sequence.";
+        let expected = "Invalid character found in sequence.";
 
         assert_eq!(actual, expected)
     }

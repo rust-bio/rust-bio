@@ -964,10 +964,10 @@ impl Record {
     /// Check validity of Fasta record.
     ///
     /// Verifies that the record has a non-empty id, that the sequence is
-    /// ASCII, and that every sequence character is a valid IUPAC nucleotide
-    /// or amino acid code (any ASCII letter), a gap (`-`, `.`), or a stop
-    /// (`*`). Characters such as digits, whitespace, or symbols like `@`
-    /// are rejected.
+    /// ASCII, and that every sequence character is an ASCII letter (covering
+    /// e.g. IUPAC nucleotide and amino acid codes), a gap (`-`, `.`), or a
+    /// stop (`*`). Characters such as digits, whitespace, or symbols like
+    /// `@` are rejected.
     pub fn check(&self) -> Result<(), &str> {
         if self.id().is_empty() {
             return Err("Expecting id for Fasta record.");
@@ -980,7 +980,7 @@ impl Record {
             .bytes()
             .all(|b| b.is_ascii_alphabetic() || matches!(b, b'-' | b'.' | b'*'))
         {
-            return Err("Non-IUPAC character found in sequence.");
+            return Err("Invalid character found in sequence.");
         }
 
         Ok(())
@@ -1277,7 +1277,7 @@ TTTA
         let record = Record::with_attrs("id", None, b"ACGT@A");
 
         let actual = record.check().unwrap_err();
-        let expected = "Non-IUPAC character found in sequence.";
+        let expected = "Invalid character found in sequence.";
 
         assert_eq!(actual, expected)
     }
