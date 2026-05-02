@@ -57,7 +57,7 @@ impl<N: Ord + Clone> From<Range<N>> for Interval<N> {
 
 /// Convert a reference to a `Range` to an interval by cloning. This conversion will panic if the
 /// `Range` has end < start
-impl<'a, N: Ord + Clone> From<&'a Range<N>> for Interval<N> {
+impl<N: Ord + Clone> From<&Range<N>> for Interval<N> {
     fn from(r: &Range<N>) -> Self {
         match Interval::new(r.clone()) {
             Ok(interval) => interval,

@@ -14,7 +14,7 @@
 
 use std::cmp;
 use std::mem;
-use std::usize;
+use usize;
 
 pub use crate::stats::pairhmm::{EmissionParameters, GapParameters, StartEndGapParameters};
 use crate::stats::LogProb;

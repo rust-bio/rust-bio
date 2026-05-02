@@ -4,9 +4,8 @@
 // except according to those terms.
 
 use super::*;
+use f32;
 use ndarray::prelude::Array2;
-use std::f32;
-use std::f32::{INFINITY, NEG_INFINITY};
 
 /// Position-specific scoring matrix for DNA sequences
 #[derive(Default, Clone, PartialEq, Debug)]
@@ -24,7 +23,7 @@ impl DNAMotif {
     /// # Arguments
     /// * `seqs` - sequences incorporated into motif
     /// * `pseudos` - array slice with a pseudocount for each monomer;
-    ///    defaults to pssm::DEF_PSEUDO for all if None is supplied
+    ///   defaults to pssm::DEF_PSEUDO for all if None is supplied
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently impossible - see
@@ -63,7 +62,9 @@ impl DNAMotif {
         self.min_score = 0.0;
         for i in 0..pssm_len {
             // can't use the regular min/max on f32, so we use f32::min
-            let min_sc = (0..4).map(|b| self.scores[[i, b]]).fold(INFINITY, f32::min);
+            let min_sc = (0..4)
+                .map(|b| self.scores[[i, b]])
+                .fold(f32::INFINITY, f32::min);
             self.min_score += min_sc;
         }
 
@@ -72,7 +73,7 @@ impl DNAMotif {
         for i in 0..pssm_len {
             let max_sc = (0..4)
                 .map(|b| self.scores[[i, b]])
-                .fold(NEG_INFINITY, f32::max);
+                .fold(f32::NEG_INFINITY, f32::max);
             self.max_score += max_sc;
         }
     }
@@ -307,6 +308,7 @@ mod tests {
         .unwrap();
         assert_eq!(pssm.degenerate_consensus(), b"NNNN".to_vec());
     }
+
     #[test]
     fn test_degenerate_input() {
         let pssm: DNAMotif = DNAMotif::from_seqs(&[b"ATMC".to_vec()], Some(&[0.0; 4])).unwrap();

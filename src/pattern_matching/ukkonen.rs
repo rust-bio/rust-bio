@@ -4,10 +4,10 @@
 // except according to those terms.
 
 //! Bounded version of Ukkonens DP algorithm for approximate pattern matching.
-//! Complexity: O(n * k) on random texts.
+//! Complexity: O(n * k) on random texts of length n.
 //!
 //! The algorithm finds all matches of a pattern in a text with up to k errors.
-//! Idea is to use dynamic programming to column-wise explore the edit matrix, but to omit
+//! The idea is to use dynamic programming to column-wise explore the edit matrix, but to omit
 //! parts of the matrix for which the error exceeds k. To achieve this, a value `lastk` is
 //! maintained that provides the lower feasible boundary of the matrix.
 //! Initially, lastk = min(k, m). In each iteration (over a column), lastk can increase by at most 1.
@@ -27,7 +27,7 @@
 use std::borrow::Borrow;
 use std::cmp::min;
 use std::iter;
-use std::iter::repeat;
+use std::iter::repeat_n;
 
 use crate::utils::TextSlice;
 
@@ -67,14 +67,14 @@ where
         pattern: TextSlice<'a>,
         text: T,
         k: usize,
-    ) -> Matches<'_, F, C, T::IntoIter>
+    ) -> Matches<'a, F, C, T::IntoIter>
     where
         C: Borrow<u8>,
         T: IntoIterator<Item = C>,
     {
         let m = pattern.len();
         self.D[0].clear();
-        self.D[0].extend(repeat(k + 1).take(m + 1));
+        self.D[0].extend(repeat_n(k + 1, m + 1));
         self.D[1].clear();
         self.D[1].extend(0..=m);
         Matches {

@@ -26,7 +26,8 @@ use std::cmp;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::BuildHasherDefault;
-use std::iter;
+use std::iter::repeat_n;
+
 use std::ops::Deref;
 
 use num_integer::Integer;
@@ -158,7 +159,7 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> SuffixArray
             let mut pos = index;
             let mut offset = 0;
             loop {
-                if pos % self.s == 0 {
+                if pos.is_multiple_of(self.s) {
                     return Some(self.sample[pos / self.s] + offset);
                 }
 
@@ -267,13 +268,13 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
     let mut sais = Sais::new(n);
 
     match alphabet.len() + sentinel_count {
-        a if a <= std::u8::MAX as usize => {
+        a if a <= u8::MAX as usize => {
             sais.construct(&transform_text::<u8>(text, &alphabet, sentinel_count))
         }
-        a if a <= std::u16::MAX as usize => {
+        a if a <= u16::MAX as usize => {
             sais.construct(&transform_text::<u16>(text, &alphabet, sentinel_count))
         }
-        a if a <= std::u32::MAX as usize => {
+        a if a <= u32::MAX as usize => {
             sais.construct(&transform_text::<u32>(text, &alphabet, sentinel_count))
         }
         _ => sais.construct(&transform_text::<u64>(text, &alphabet, sentinel_count)),
@@ -287,10 +288,10 @@ pub fn suffix_array(text: &[u8]) -> RawSuffixArray {
 /// # Arguments
 ///
 /// * `text` - the text, ended by sentinel symbol (being lexicographically smallest).
-/// All symbols, from lexicographically smallest to largest, need to be present in the text,
-/// otherwise SAIS algorithm panics on 'index out of bounds' error.
-/// The text may also contain multiple sentinel symbols, used to concatenate
-/// multiple sequences without mixing their suffixes together.
+///   All symbols, from lexicographically smallest to largest, need to be present in the text,
+///   otherwise SAIS algorithm panics on 'index out of bounds' error.
+///   The text may also contain multiple sentinel symbols, used to concatenate
+///   multiple sequences without mixing their suffixes together.
 ///
 /// # Example
 ///
@@ -305,7 +306,7 @@ where
     T: Integer + Unsigned + NumCast + Copy + Debug,
 {
     let mut sais = Sais::new(text.len());
-    sais.construct(&text);
+    sais.construct(text);
     sais.pos
 }
 
@@ -342,7 +343,7 @@ pub fn lcp<SA: Deref<Target = RawSuffixArray>>(text: &[u8], pos: SA) -> LCPArray
     let n = text.len();
 
     // provide the lexicographical rank for each suffix
-    let mut rank: Vec<usize> = iter::repeat(0).take(n).collect();
+    let mut rank: Vec<usize> = repeat_n(0, n).collect();
     for (r, p) in pos.iter().enumerate() {
         rank[*p] = r;
     }
@@ -626,11 +627,11 @@ impl Sais {
 
         let lms_substring_count = self.lms_pos.len();
 
-        if lms_substring_count <= std::u8::MAX as usize {
+        if lms_substring_count <= u8::MAX as usize {
             self.sort_lms_suffixes::<T, u8>(text, pos_types, lms_substring_count);
-        } else if lms_substring_count <= std::u16::MAX as usize {
+        } else if lms_substring_count <= u16::MAX as usize {
             self.sort_lms_suffixes::<T, u16>(text, pos_types, lms_substring_count);
-        } else if lms_substring_count <= std::u32::MAX as usize {
+        } else if lms_substring_count <= u32::MAX as usize {
             self.sort_lms_suffixes::<T, u32>(text, pos_types, lms_substring_count);
         } else {
             self.sort_lms_suffixes::<T, u64>(text, pos_types, lms_substring_count);
@@ -848,11 +849,11 @@ mod tests {
     }
 
     fn rand_seqs(num_seqs: usize, seq_len: usize) -> Vec<u8> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let alpha = [b'A', b'T', b'C', b'G', b'N'];
         let seqs = (0..num_seqs)
             .map(|_| {
-                let len = rng.gen_range((seq_len / 2)..=seq_len);
+                let len = rng.random_range((seq_len / 2)..=seq_len);
                 (0..len)
                     .map(|_| *alpha.choose(&mut rng).unwrap())
                     .collect::<Vec<u8>>()

@@ -57,7 +57,7 @@ impl QGramIndex {
         I: Iterator<Item = &'a u8> + ExactSizeIterator + Clone,
         T: IntoIterator<Item = &'a u8, IntoIter = I> + Sized,
     {
-        QGramIndex::with_max_count(q, text, alphabet, std::usize::MAX)
+        QGramIndex::with_max_count(q, text, alphabet, usize::MAX)
     }
 
     /// Create a new q-gram index, only considering q-grams that occur at most `max_count` times.
@@ -408,10 +408,9 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "nightly")]
     fn test_serde() {
         use serde::{Deserialize, Serialize};
-        fn impls_serde_traits<S: Serialize + Deserialize>() {}
+        fn impls_serde_traits<S: Serialize + for<'de> Deserialize<'de>>() {}
 
         impls_serde_traits::<QGramIndex>();
     }
