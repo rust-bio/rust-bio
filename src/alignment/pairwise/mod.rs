@@ -122,17 +122,18 @@
 //!     yclip_prefix: 0,
 //!     yclip_suffix: 0,
 //! };
-//! let x = b"GGGGGGACGTACGTACGT";
+//! let x = b"GGGGGGGGGACGTACGTACGT";
 //! let y = b"AAAAACGTACGTACGTAAAA";
 //! let mut aligner = Aligner::with_capacity_and_scoring(x.len(), y.len(), scoring);
 //! let alignment = aligner.custom(x, y);
 //! println!("{}", alignment.pretty(x, y, 80));
+//! println!("{}", alignment.score);
 //! assert_eq!(alignment.score, 2);
 //! assert_eq!(
 //!     alignment.operations,
 //!     [
 //!         Yclip(4),
-//!         Xclip(6),
+//!         Xclip(9),
 //!         Match,
 //!         Match,
 //!         Match,
@@ -222,7 +223,7 @@ where
 ///
 /// An [affine gap score model](https://en.wikipedia.org/wiki/Gap_penalty#Affine)
 /// is used so that the gap score for a length `k` is:
-/// `GapScore(k) = gap_open + gap_extend * k`
+/// `GapScore(k) = gap_open + gap_extend * (k - 1)`
 #[derive(
     Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize,
 )]
@@ -614,13 +615,12 @@ impl<F: MatchFunc> Aligner<F> {
                 let mut tb = TracebackCell::new();
                 tb.set_all(TB_START);
                 if i == 1 {
-                    self.I[k][i] = self.scoring.gap_open + self.scoring.gap_extend;
+                    self.I[k][i] = self.scoring.gap_open;
                     tb.set_i_bits(TB_START);
                 } else {
                     // Insert all i characters
-                    let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32);
-                    let c_score =
-                        self.scoring.xclip_prefix + self.scoring.gap_open + self.scoring.gap_extend; // Clip then insert
+                    let i_score = self.scoring.gap_open + self.scoring.gap_extend * (i as i32 - 1);
+                    let c_score = self.scoring.xclip_prefix + self.scoring.gap_open; // Clip then insert
                     if i_score > c_score {
                         self.I[k][i] = i_score;
                         tb.set_i_bits(TB_INS);
@@ -673,13 +673,12 @@ impl<F: MatchFunc> Aligner<F> {
                 self.I[curr][0] = MIN_SCORE;
 
                 if j == 1 {
-                    self.D[curr][0] = self.scoring.gap_open + self.scoring.gap_extend;
+                    self.D[curr][0] = self.scoring.gap_open;
                     tb.set_d_bits(TB_START);
                 } else {
                     // Delete all j characters
-                    let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32);
-                    let c_score =
-                        self.scoring.yclip_prefix + self.scoring.gap_open + self.scoring.gap_extend;
+                    let d_score = self.scoring.gap_open + self.scoring.gap_extend * (j as i32 - 1);
+                    let c_score = self.scoring.yclip_prefix + self.scoring.gap_open;
                     if d_score > c_score {
                         self.D[curr][0] = d_score;
                         tb.set_d_bits(TB_DEL);
@@ -717,7 +716,7 @@ impl<F: MatchFunc> Aligner<F> {
             let xclip_score = self.scoring.xclip_prefix
                 + max(
                     self.scoring.yclip_prefix,
-                    self.scoring.gap_open + self.scoring.gap_extend * (j as i32),
+                    self.scoring.gap_open + self.scoring.gap_extend * (j as i32 - 1),
                 );
             for i in 1..m + 1 {
                 let p = x[i - 1];
@@ -726,7 +725,7 @@ impl<F: MatchFunc> Aligner<F> {
                 let m_score = self.S[prev][i - 1] + self.scoring.match_fn.score(p, q);
 
                 let i_score = self.I[curr][i - 1] + self.scoring.gap_extend;
-                let s_score = self.S[curr][i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
+                let s_score = self.S[curr][i - 1] + self.scoring.gap_open;
                 let best_i_score;
                 if i_score > s_score {
                     best_i_score = i_score;
@@ -737,7 +736,7 @@ impl<F: MatchFunc> Aligner<F> {
                 }
 
                 let d_score = self.D[prev][i] + self.scoring.gap_extend;
-                let s_score = self.S[prev][i] + self.scoring.gap_open + self.scoring.gap_extend;
+                let s_score = self.S[prev][i] + self.scoring.gap_open;
                 let best_d_score;
                 if d_score > s_score {
                     best_d_score = d_score;
@@ -772,7 +771,7 @@ impl<F: MatchFunc> Aligner<F> {
 
                 let yclip_score = self.scoring.yclip_prefix
                     + self.scoring.gap_open
-                    + self.scoring.gap_extend * (i as i32);
+                    + self.scoring.gap_extend * (i as i32 - 1);
                 if yclip_score > best_s_score {
                     best_s_score = yclip_score;
                     tb.set_s_bits(TB_YCLIP_PREFIX);
@@ -818,7 +817,7 @@ impl<F: MatchFunc> Aligner<F> {
         for i in 1..=m {
             let j = n;
             let curr = j % 2;
-            let s_score = self.S[curr][i - 1] + self.scoring.gap_open + self.scoring.gap_extend;
+            let s_score = self.S[curr][i - 1] + self.scoring.gap_open;
             if s_score > self.I[curr][i] {
                 self.I[curr][i] = s_score;
                 let s_bit = self.traceback.get(i - 1, j).get_s_bits();
@@ -1376,6 +1375,51 @@ mod tests {
     }
 
     #[test]
+    fn test_issue656() {
+        let x = b"CTCCCTGTTCTTAT";
+        let y = b"CTGTCTCTTATACA";
+        let scoring = Scoring {
+            gap_open: -6,
+            gap_extend: -1,
+            match_fn: |a: u8, b: u8| if a == b { 1 } else { -1 },
+            match_scores: None,
+            xclip_prefix: 0,
+            xclip_suffix: MIN_SCORE,
+            yclip_prefix: MIN_SCORE,
+            yclip_suffix: 0,
+        };
+
+        let mut aligner = Aligner::with_scoring(scoring);
+        let alignment = aligner.custom(x, y);
+        println!("Alignment between x and y:");
+        println!("x: {}", std::str::from_utf8(x).unwrap());
+        println!("y: {}", std::str::from_utf8(y).unwrap());
+        println!("\nResult:");
+        println!("{}", alignment.pretty(x, y, 80));
+        println!("\nAlignment details:");
+        println!("{:?}", alignment);
+
+        assert_eq!(
+            alignment.operations,
+            [
+                Xclip(4),
+                Match,
+                Match,
+                Match,
+                Match,
+                Del,
+                Match,
+                Match,
+                Match,
+                Match,
+                Match,
+                Match,
+                Yclip(3)
+            ]
+        );
+    }
+
+    #[test]
     fn test_issue12_3() {
         let y = b"CCGTCCGGCAA";
         let x = b"AAAAACCGTTGACGCAA";
@@ -1436,7 +1480,7 @@ mod tests {
         println!("\naln:\n{}", alignment.pretty(x, y, 80));
 
         println!("score:{}", alignment.score);
-        assert_eq!(alignment.score, -9);
+        assert_eq!(alignment.score, -7);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(
@@ -1634,7 +1678,7 @@ mod tests {
         let alignment = aligner.custom(x, y);
 
         println!("{}", alignment.pretty(x, y, 80));
-        assert_eq!(alignment.score, 7);
+        assert_eq!(alignment.score, 8);
     }
 
     #[test]
