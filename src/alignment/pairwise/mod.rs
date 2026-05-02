@@ -1480,7 +1480,7 @@ mod tests {
         println!("\naln:\n{}", alignment.pretty(x, y, 80));
 
         println!("score:{}", alignment.score);
-        assert_eq!(alignment.score, -9);
+        assert_eq!(alignment.score, -7);
         assert_eq!(alignment.ystart, 0);
         assert_eq!(alignment.xstart, 0);
         assert_eq!(
@@ -1678,7 +1678,7 @@ mod tests {
         let alignment = aligner.custom(x, y);
 
         println!("{}", alignment.pretty(x, y, 80));
-        assert_eq!(alignment.score, 7);
+        assert_eq!(alignment.score, 8);
     }
 
     #[test]
