@@ -193,7 +193,7 @@ mod tests {
             0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.81, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
             0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
         ])
-        .into_shape_with_order((4, 20))
+        .into_shape_clone((4, 20))
         .unwrap();
         let pssm: ProtMotif = m.into();
         let scored_pos = pssm.score(b"AAAAARNDAAA").unwrap();
