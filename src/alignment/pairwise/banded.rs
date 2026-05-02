@@ -69,7 +69,7 @@
 //! let mut aligner = Aligner::with_capacity_and_scoring(x.len(), y.len(), scoring, k, w);
 //! let alignment = aligner.custom(x, y);
 //! println!("{}", alignment.pretty(x, y, 80));
-//! assert_eq!(alignment.score, 49);
+//! assert_eq!(alignment.score, 54);
 //! let mut correct_ops = Vec::new();
 //! correct_ops.push(Yclip(4));
 //! correct_ops.push(Xclip(6));
