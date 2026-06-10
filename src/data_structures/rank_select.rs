@@ -119,6 +119,31 @@ impl RankSelect {
         self.n += 1;
     }
 
+    /// Append all bits yielded by an iterator to the end of the underlying bit
+    /// vector, updating the rank/select index as it goes.
+    ///
+    /// This is equivalent to calling [`RankSelect::push`] once per bit and runs
+    /// in amortized `O(1)` per bit. It accepts anything that iterates over
+    /// `bool`, so it can extend a `RankSelect` by another `BitVec`, a
+    /// `Vec<bool>`, or any lazy bit stream.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::rank_select::RankSelect;
+    /// use bv::BitVec;
+    ///
+    /// let mut rs = RankSelect::new(BitVec::new(), 1);
+    /// rs.extend([true, false, true, true]);
+    /// assert_eq!(rs.rank_1(3), Some(3));
+    /// assert_eq!(rs.select_1(2), Some(2));
+    /// ```
+    pub fn extend<I: IntoIterator<Item = bool>>(&mut self, bits: I) {
+        for bit in bits {
+            self.push(bit);
+        }
+    }
+
     /// Return the used k (see `RankSelect::new()`).
     pub fn k(&self) -> usize {
         self.k
@@ -551,6 +576,58 @@ mod tests {
                     "push-built and new-built differ for k={}, n={}",
                     k, n
                 );
+            }
+        }
+    }
+
+    #[test]
+    fn test_extend_basic() {
+        let mut rs = RankSelect::new(BitVec::new(), 1);
+        rs.extend([true, false, true, true, false]);
+        assert_eq!(rs.rank_1(4), Some(3));
+        assert_eq!(rs.rank_0(4), Some(2));
+        assert_eq!(rs.select_1(3), Some(3));
+        assert_eq!(rs.select_0(2), Some(4));
+    }
+
+    /// `extend` must be exactly equivalent to calling `push` once per bit, and
+    /// extending an existing structure must match building the concatenation in
+    /// one shot with `new`. Both invariants are checked across sampling rates
+    /// and split points around block/superblock boundaries.
+    #[test]
+    fn test_extend_equivalent_to_push_and_new() {
+        let mut state: u64 = 0x2545_f491_4f6c_dd1d;
+        let mut next_bit = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state & 1 == 1
+        };
+        for &k in &[1usize, 2, 4] {
+            for split in [0usize, 1, 8, 31, 32, 33, 64, 100] {
+                for tail in [0usize, 1, 7, 32, 65] {
+                    // Generate the prefix and the tail bits.
+                    let prefix: Vec<bool> = (0..split).map(|_| next_bit()).collect();
+                    let extra: Vec<bool> = (0..tail).map(|_| next_bit()).collect();
+
+                    // (a) extend vs push-one-by-one, starting from the same prefix.
+                    let mut by_extend = RankSelect::new(BitVec::new(), k);
+                    by_extend.extend(prefix.iter().copied());
+                    let mut by_push = by_extend.clone();
+                    by_extend.extend(extra.iter().copied());
+                    for &b in &extra {
+                        by_push.push(b);
+                    }
+                    assert_eq!(by_extend, by_push, "extend != push loop (k={k})");
+
+                    // (b) extended structure vs the concatenation built with `new`.
+                    let mut all_bits: BitVec<u8> = BitVec::new();
+                    for &b in prefix.iter().chain(extra.iter()) {
+                        all_bits.push(b);
+                    }
+                    let built = RankSelect::new(all_bits, k);
+                    assert_eq!(by_extend, built, "extend != new (k={k})");
+                }
             }
         }
     }
