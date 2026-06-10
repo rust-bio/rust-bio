@@ -64,7 +64,7 @@ impl<'a> Horspool<'a> {
 
     /// Find all matches with a given text. Matches are returned as an iterator over start
     /// positions.
-    pub fn find_all<'b>(&'b self, text: TextSlice<'b>) -> Matches<'_> {
+    pub fn find_all<'b>(&'b self, text: TextSlice<'b>) -> Matches<'b> {
         Matches {
             horspool: self,
             text,

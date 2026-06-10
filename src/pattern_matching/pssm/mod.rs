@@ -33,10 +33,9 @@
 //!        ].as_ref(), None).unwrap();
 
 use std::borrow::Borrow;
-use std::f32::NEG_INFINITY;
 
 use itertools::Itertools;
-use ndarray::prelude::Array2;
+use ndarray::prelude::*;
 
 mod dnamotif;
 pub mod errors;
@@ -65,7 +64,7 @@ impl Default for ScoredPos {
     fn default() -> ScoredPos {
         ScoredPos {
             loc: 0,
-            sum: NEG_INFINITY,
+            sum: f32::NEG_INFINITY,
             scores: Vec::new(),
         }
     }
@@ -86,23 +85,23 @@ pub trait Motif {
     /// # Arguments
     /// * `seqs` - sequences incorporated into motif
     /// * `pseudos` - array slice with a pseudocount for each monomer;
-    ///    defaults to DEF_PSEUDO for all if None is supplied
+    ///   defaults to DEF_PSEUDO for all if None is supplied
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
-    /// is currently unsupported
-    fn seqs_to_weights(seqs: &[Vec<u8>], _pseudos: Option<&[f32]>) -> Result<Array2<f32>> {
-        let p1 = vec![DEF_PSEUDO; Self::MONO_CT];
-        let pseudos = match _pseudos {
-            Some(p2) => p2,
-            None => p1.as_slice(),
-        };
-
-        if pseudos.len() != Self::MONO_CT {
-            return Err(Error::InvalidPseudos {
-                expected: Self::MONO_CT as u8,
-                received: pseudos.len() as u8,
-            });
+    /// is currently unsupported in stable rust
+    fn seqs_to_weights(seqs: &[Vec<u8>], pseudos: Option<&[f32]>) -> Result<Array2<f32>> {
+        if let Some(p) = pseudos {
+            if p.len() != Self::MONO_CT {
+                return Err(Error::InvalidPseudos {
+                    expected: Self::MONO_CT as u8,
+                    received: p.len() as u8,
+                });
+            }
         }
+        let pseudos: Array1<f32> = match pseudos {
+            Some(p) => Array::from_vec(p.to_vec()),
+            None => Array::from_vec(vec![DEF_PSEUDO; Self::MONO_CT]),
+        };
 
         if seqs.is_empty() {
             return Err(Error::EmptyMotif);
@@ -110,22 +109,17 @@ pub trait Motif {
 
         let seqlen = seqs[0].len();
         let mut counts = Array2::zeros((seqlen, Self::MONO_CT));
-        for i in 0..seqlen {
-            for base in 0..Self::MONO_CT {
-                counts[[i, base]] = pseudos[base];
-            }
+        for mut row in counts.axis_iter_mut(Axis(0)) {
+            row += &pseudos;
         }
 
-        for seq in seqs.iter() {
+        for seq in seqs {
             if seq.len() != seqlen {
                 return Err(Error::InconsistentLen);
             }
 
-            for (idx, base) in seq.iter().enumerate() {
-                match Self::lookup(*base) {
-                    Err(e) => return Err(e),
-                    Ok(pos) => counts[[idx, pos]] += 1.0,
-                }
+            for (mut ctr, base) in counts.axis_iter_mut(Axis(0)).zip(seq.iter()) {
+                ctr += &Self::incr(*base)?;
             }
         }
         Ok(counts)
@@ -148,6 +142,14 @@ pub trait Motif {
             }
         }
     }
+
+    /// Returns an array of length MONO_CT summing to 1.  used to build a PSSM
+    /// from sequences, potentially including ambiguous monomers (eg, M is either A or C)
+    /// # Arguments
+    /// * `mono` - monomer, eg, b'A' for DNA or b'R' for protein
+    /// # Errors
+    /// * `Error::InvalidMonomer(mono)` - `mono` wasn't found in the lookup table
+    fn incr(mono: u8) -> Result<Array1<f32>>;
 
     /// Returns the monomer associated with the given index; the reverse of `lookup`.
     /// Returns INVALID_MONO if the index isn't associated with a monomer.
@@ -204,16 +206,12 @@ pub trait Motif {
         let seq = seq_it.into_iter().map(|c| *c.borrow()).collect_vec();
         let scores = self.get_scores();
         for start in 0..=seq.len() - pssm_len {
-            let m: Vec<f32> = match (0..pssm_len)
+            let m: Vec<f32> = (0..pssm_len)
                 .map(|i| match Self::lookup(seq[start + i]) {
                     Err(e) => Err(e),
                     Ok(pos) => Ok(scores[[i, pos]]),
                 })
-                .collect()
-            {
-                Ok(m) => m,
-                Err(e) => return Err(e),
-            };
+                .collect::<Result<Vec<f32>, _>>()?;
             let tot = m.iter().sum();
             if tot > best_score {
                 best_score = tot;

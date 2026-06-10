@@ -76,10 +76,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIterator<'a, N, D>
 
     fn next(&mut self) -> Option<Entry<'a, N, D>> {
         loop {
-            let candidate = match self.nodes.pop() {
-                None => return None,
-                Some(node) => node,
-            };
+            let candidate = self.nodes.pop()?;
 
             // stop traversal if the query interval is beyond the current node and all children
             if self.interval.start < candidate.max {
@@ -141,10 +138,7 @@ impl<'a, N: Ord + Clone + 'a, D: 'a> Iterator for IntervalTreeIteratorMut<'a, N,
 
     fn next(&mut self) -> Option<EntryMut<'a, N, D>> {
         loop {
-            let candidate = match self.nodes.pop() {
-                None => return None,
-                Some(node) => node,
-            };
+            let candidate = self.nodes.pop()?;
 
             // stop traversal if the query interval is beyond the current node and all children
             if self.interval.start < candidate.max {

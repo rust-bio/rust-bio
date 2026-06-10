@@ -16,158 +16,114 @@ where
 {
     /// Object that helps obtaining a single traceback path
     type TracebackHandler: TracebackHandler<'a, T, D>;
-    /// Type that represents a column in the traceback matrix
+    /// Type that represents a column in the DP matrix
     type TracebackColumn: ?Sized;
 
     /// Prepare for a new search given n (maximum expected number of traceback columns) and
     /// m (pattern length).
     /// Returns the expected size of the vector storing the calculated blocks given this
-    /// information. The vector will then be initialized with the given number of 'empty'
+    /// information. The vector will then be initialized with the given number of
     /// State<T, D> objects and supplied to the other methods as slice.
     fn init(&mut self, n: usize, m: D) -> usize;
 
+    /// The max. number of blocks needed for a DP matrix column
+    fn n_blocks(&self) -> usize;
+
     /// Fill the column at `pos` with states initialized with the maximum distance
-    /// (`State::max()`).
+    /// (`State::init_max_dist()`). The leftmost column of the traceback matrix needs this.
     fn set_max_state(&self, pos: usize, states: &mut [State<T, D>]);
 
     /// This method copies over all blocks (or the one block) from a tracback column
     /// into the mutable `states` slice at the given column position.
     fn add_state(&self, source: &Self::TracebackColumn, pos: usize, states: &mut [State<T, D>]);
 
+    /// Returns the edit distance at the given position, or `None` if `pos` is
+    /// out of bounds.
+    fn dist_at(&self, pos: usize, states: &[State<T, D>]) -> Option<D>;
+
     /// Initiates a `TracebackHandler` object to assist with a traceback, 'starting'
     /// at the given end position.
-    fn init_traceback(&self, m: D, pos: usize, states: &'a [State<T, D>])
-        -> Self::TracebackHandler;
+    /// Should return `None` if the alignment cannot be obtained
+    /// (can happen with block-based algorithm if not all blocks were computed)
+    fn init_traceback(
+        &self,
+        m: D,
+        pos: usize,
+        states: &'a [State<T, D>],
+    ) -> Option<Self::TracebackHandler>;
 }
 
-/// Objects implementing this trait should store states and have methods
-/// necessary for obtaining a single traceback path. This allows to use the
-/// same traceback code for the simple and the block-based Myers pattern
-/// matching approaches. It is designed to be as general as possible
-/// to allow different implementations.
+/// `TracebackHandler` objects assist with the computation of a traceback path.
+///  The trait is implemented both for the simple and the block-based algorithms.
 ///
-/// Implementors of `TracebackHandler` keep two `State<T, D>` instances,
-/// which store the information from two horizontally adjacent traceback
-/// columns, encoded in the PV / MV bit vectors. The columns are accessible
-/// using the methods `block()` (current / right column) and `left_block()`
-/// (left column). Moving horizontally to the next position can be achieved
-/// using `move_left()`.
+/// Implementors must keep track of two cells in the DP matrix:
+/// C = "current" cell
+/// L = "left" cell in the diagonal position
 ///
-/// Implementors also track the vertical cursor positions within the current
-/// traceback columns (two separate cursors for left and right column).
-/// `block()` and `left_block()` will always return the block that currently
-/// contain the cursors.
-/// `pos_bitvec()` returns a bit vector with a single activated bit at the current
-/// vertical position within the *right (current)* column.
-/// Moving to the next vertical position is achieved by `move_up()` and
-/// `move_up_left()`. With the block based implementation, this may involve
-/// switching to a new block.
+///   |————————————
+///   |   |   |   |
+///   |————————————
+///   |   | L |   |
+///   |————————————
+///   |   |   | C |
+///   |————————————
+///
+/// The idea behind this is, that diagonal moves in the DP matrix (= matches /
+/// substitutions) should be made as easy/fast as possible, while InDels
+/// are usually be less common (especially since there are no affine gap penalties)
+/// and upward/leftward moves can thus be more computationally intensive.
+///
+/// Implementors may store two `State<T, D>` blocks, whose `dist` field reflects
+/// the distance score of the current TB matrix cell, and along with that some auxiliary
+/// bit vectors indicating cursor position and assisting with adjustments to `dist` based
+/// deltas from the PV / MV bit vectors.
 pub(super) trait TracebackHandler<'a, T, D>
 where
     T: BitVec + 'a,
     D: DistType,
 {
-    /// Returns a reference to the current (right) block.
-    fn block(&self) -> &State<T, D>;
+    /// Returns the distance score of the current cell C(i, j).
+    fn dist(&self) -> D;
 
-    /// Returns a mutable reference to the current (right) block.
-    fn block_mut(&mut self) -> &mut State<T, D>;
+    /// Returns the distance score of the left cell, which is in the diagonal
+    /// position, C(i-1, j-1).
+    fn left_dist(&self) -> D;
 
-    /// Returns a reference to the left block.
-    fn left_block(&self) -> &State<T, D>;
+    /// Checks if the cell to the left C(i, j-1) has a smaller distance score than
+    /// the current cell C(i, j). If so, it calls `move_up()`.
+    fn try_move_up(&mut self) -> bool;
 
-    /// Returns a mutable reference to the left block.
-    fn left_block_mut(&mut self) -> &mut State<T, D>;
+    /// Moves up by one position in the DP matrix, adjusting the
+    /// distance scores/blocks/bit masks for the current and left columns.
+    fn move_up(&mut self);
 
-    /// Bit vector representing the position in the traceback. Only the bit
-    /// at the current position should be on.
-    /// For a search pattern of length 4, the initial bit vector would be
-    /// `0b1000`. A call to `move_up_cursor()` will shift the vector, so another
-    /// call to `pos_bitvec()` results in `0b100`.
-    /// The bit vector has a width of `T`, meaning that it can store
-    /// the same number of positions as the PV and MV vectors. In the
-    /// case of the block based algorithm, the vector only stores the
-    /// position within the current block.
-    fn pos_bitvec(&self) -> T;
+    /// Checks if the cell to the left C(i-1, j) has a smaller distance score than
+    /// the cell in the diagonal C(i-1, j-1). If so, adjusts the score/block
+    /// for the left column and returns `true`.
+    /// The "current" block needs no adjustment, as it will be discarded in
+    /// `finish_move_left()`, which needs to be called afterwards to complete
+    /// the move.
+    fn try_prepare_left(&mut self) -> bool;
 
-    /// Move up cursor by one position in traceback matrix.
-    ///
-    /// # Arguments
-    ///
-    /// * adjust_dist: If true, the distance score of the block is adjusted
-    ///   based on the current cursor position before moving it up.
-    ///  *Note concerning the block based Myers algorithm:*
-    ///  The the active bit in bit vector returned by `pos_bitvec()`
-    ///  is expected to jump back to the maximum (lowest) position
-    ///  when reaching the uppermost position (like `rotate_right()` does).
-    fn move_up(&mut self, adjust_dist: bool);
+    /// Prepares for a diagonal move (which must be completed with `finish_move_left`).
+    /// Essentially, only bit masks and block indices need to be adjusted to
+    /// reflect the shift upwards by one position.
+    /// The blocks/distances themselves need no modification.
+    fn prepare_diagonal(&mut self);
 
-    /// Move up left cursor by one position in traceback matrix.
-    ///
-    /// # Arguments
-    ///
-    /// * adjust_dist: If true, the distance score of the block is adjusted
-    ///   based on the current cursor position before moving it up.
-    ///   However, the current cursor position of the **right** block is used,
-    ///   **not** the one of the left block. This is an important oddity, which
-    ///   makes only sense because of the design of the traceback algorithm.
-    fn move_up_left(&mut self, adjust_dist: bool);
+    /// Complete a 'move' to the left by
+    /// (1) replacing the current column with the left one (same block and score)
+    /// (2) adding a new column to the left and adjusting the distance score
+    /// to reflect the diagonal position.
+    fn finish_move_left(&mut self);
 
-    /// Shift the view by one traceback column / block to the left. The
-    /// block that was on the left position previously moves to the right /
-    /// current block without changes. The cursor positions have to be
-    /// adjusted indepentedently if necessary using `move_up(false)` /
-    /// `move_up_left(false)`.
-    /// `move_left()` adjusts distance score of the new left block to
-    /// be correct for the left vertical cursor position. It is therefore
-    /// important that the cursor is moved *before* calling `move_left()`.
-    fn move_to_left(&mut self);
-
-    /// Rather specialized method that allows having a simpler code in Traceback::_traceback_at()
-    /// Checks if the position below the left cursor has a smaller distance, and if so,
-    /// moves the cursor to this block and returns `true`.
-    ///
-    /// The problem is that the current implementation always keeps the left cursor in the
-    /// diagonal position for performance reasons. In this case, checking the actual left
-    /// distance score can be complicated with the block-based algorithm since the left cursor
-    /// may be at the lower block boundary. If so, the function thus has to check the topmost
-    /// position of the lower block and keep this block if the distance is better (lower).
-    fn move_left_down_if_better(&mut self) -> bool;
-
-    /// Returns a slice containing all blocks of the current traceback column
-    /// from top to bottom. Used for debugging only.
-    fn column_slice(&self) -> &[State<T, D>];
-
-    /// Returns true if topmost position in the traceback matrix has been reached,
-    /// meaning that the traceback is complete.
-    /// Technically this means, that `move_up_cursor()` was called so many times
-    /// until the uppermost block was reached and the pos_bitvec() does not contain
-    /// any bit, since shifting has removed it from the vector.
-    fn finished(&self) -> bool;
+    /// Returns true if topmost DP matrix row has been reached,
+    /// meaning that the complete alignment path has been found.
+    fn done(&self) -> bool;
 
     /// For debugging only
-    fn print_state(&self) {
-        println!(
-            "--- TB dist ({:?} <-> {:?})",
-            self.left_block().dist,
-            self.block().dist
-        );
-        println!(
-            "{:064b} m\n{:064b} + ({:?}) (left) d={:?}\n{:064b} - ({:?})\n \
-             {:064b} + ({:?}) (current) d={:?}\n{:064b} - ({:?})\n",
-            self.pos_bitvec(),
-            self.left_block().pv,
-            self.left_block().pv,
-            self.left_block().dist,
-            self.left_block().mv,
-            self.left_block().mv,
-            self.block().pv,
-            self.block().pv,
-            self.block().dist,
-            self.block().mv,
-            self.block().mv
-        );
-    }
+    #[allow(dead_code)]
+    fn print_state(&self);
 }
 
 #[derive(Clone, Debug)]
@@ -190,6 +146,9 @@ where
     D: DistType,
     H: StatesHandler<'a, T, D>,
 {
+    /// Creates a new `Traceback` instance.
+    /// The `states` vector is potentially reused, so all `State` instances
+    /// inside it must be initialized to new values.
     #[inline]
     pub fn new(
         states: &mut Vec<State<T, D>>,
@@ -213,16 +172,7 @@ where
         };
 
         // extend or truncate states vector
-        let curr_len = states.len();
-        if n_states > curr_len {
-            states.reserve(n_states);
-            states.extend((0..n_states - curr_len).map(|_| State::default()));
-        } else {
-            states.truncate(n_states);
-            states.shrink_to_fit();
-        }
-        // important if using unsafe in add_state(), and also for correct functioning of traceback
-        debug_assert!(states.len() == n_states);
+        states.resize_with(n_states, Default::default);
 
         // first column is used to ensure a correct path if the text (target)
         // is shorter than the pattern (query)
@@ -241,6 +191,16 @@ where
         self.handler.add_state(column, self.pos, states);
     }
 
+    /// Returns distance for the given end position, or `None` if not stored
+    #[inline]
+    pub fn dist_at(&self, pos: usize, states: &'a [State<T, D>]) -> Option<D> {
+        let pos = pos + 2; // in order to be comparable since self.pos starts at 2, not 0
+        if pos <= self.pos {
+            return self.handler.dist_at(pos, states).map(|d| d as D);
+        }
+        None
+    }
+
     /// Returns the length of the current match, optionally adding the
     /// alignment path to `ops`
     #[inline]
@@ -248,7 +208,7 @@ where
         &self,
         ops: Option<&mut Vec<AlignmentOperation>>,
         states: &'a [State<T, D>],
-    ) -> (D, D) {
+    ) -> Option<(D, D)> {
         self._traceback_at(self.pos, ops, states)
     }
 
@@ -264,12 +224,12 @@ where
     ) -> Option<(D, D)> {
         let pos = pos + 2; // in order to be comparable since self.pos starts at 2, not 0
         if pos <= self.pos {
-            return Some(self._traceback_at(pos, ops, states));
+            return self._traceback_at(pos, ops, states);
         }
         None
     }
 
-    /// returns a tuple of alignment length and hit distance, optionally adding the alignment path
+    /// Returns a tuple of alignment length and hit distance, optionally adding the alignment path
     /// to `ops`
     #[inline]
     fn _traceback_at(
@@ -277,117 +237,138 @@ where
         pos: usize,
         mut ops: Option<&mut Vec<AlignmentOperation>>,
         state_slice: &'a [State<T, D>],
-    ) -> (D, D) {
+    ) -> Option<(D, D)> {
         use self::AlignmentOperation::*;
-
-        // Generic object that holds the necessary data and methods
-        let mut h = self.handler.init_traceback(self.m, pos, state_slice);
 
         // self.print_tb_matrix(pos, state_slice);
 
-        let ops = &mut ops;
+        // Generic object that holds the necessary data and methods
+        let mut h = self.handler.init_traceback(self.m, pos, state_slice)?;
 
         // horizontal column offset from starting point in traceback matrix (bottom right)
         let mut h_offset = D::zero();
 
         // distance of the match (will be returned)
-        let dist = h.block().dist;
-
-        // The cursor of the left state is always for diagonal position in the traceback matrix.
-        // This allows checking for a substitution by a simple comparison.
-        h.move_up_left(true);
+        let dist = h.dist();
 
         // Loop for finding the traceback path
-        // If there are several possible solutions, substitutions are preferred over InDels
-        // (Subst > Ins > Del)
-        while !h.finished() {
+        while !h.done() {
             let op;
-            // This loop is used to allow skipping `move_left()` using break (kind of similar
-            // to 'goto'). This was done to avoid having to inline move_left() three times,
-            // which would use more space.
+            // This loop is used to allow skipping `finish_move_left()` using break
+            // Like this, we avoid having to inline finish_move_left() three times.
             #[allow(clippy::never_loop)]
             loop {
                 // h.print_state();
 
-                if h.left_block().dist.wrapping_add(&D::one()) == h.block().dist {
-                    // Diagonal (substitution)
+                // If there are several possible solutions, substitutions are preferred over InDels
+                // (Subst > Ins > Del)
+                if h.left_dist().wrapping_add(&D::one()) == h.dist() {
+                    // Diagonal (substitution), move up
                     // Since the left cursor is always in the upper diagonal position,
                     // a simple comparison of distances is enough to determine substitutions.
-                    h.move_up(false);
-                    h.move_up_left(false);
+                    h.prepare_diagonal();
                     op = Subst;
-                } else if h.block().pv & h.pos_bitvec() != T::zero() {
-                    // Up
-                    h.move_up(true);
-                    h.move_up_left(true);
+                    // then, move to left (below)
+                } else if h.try_move_up() {
+                    // Up (insertion to target = deletion in query pattern)
                     op = Ins;
                     break;
-                } else if h.move_left_down_if_better() {
-                    // Left
+                } else if h.try_prepare_left() {
+                    // Left (deletion in target text = insertion to query pattern)
                     op = Del;
+                    // then, move to left (below)
                 } else {
-                    // Diagonal (match)
-                    h.move_up(false);
-                    h.move_up_left(false);
+                    // Diagonal (match), move up
+                    debug_assert!(h.left_dist() == h.dist());
+                    h.prepare_diagonal();
                     op = Match;
+                    // then, move to left (below)
                 }
 
-                // Moving one position to the left, adjusting h_offset
+                // // This is (probably) equivalent to the Edlib strategy (Ins > Del > Subst)
+                // // Tests succeed with this strategy as well, and performance is similar.
+                // if h.try_move_up() {
+                //     op = Ins;
+                //     break;
+                // } else if h.left_dist() == h.dist() && h.try_prepare_left() {
+                //     op = Del;
+                // } else {
+                //     h.prepare_diagonal();
+                //     op = if h.left_dist().wrapping_add(&D::one()) == h.dist() {
+                //         Subst
+                //     } else {
+                //         Match
+                //     };
+                // }
+
+                // Moving one column to the left, adjusting h_offset
                 h_offset += D::one();
-                h.move_to_left();
+                h.finish_move_left();
                 break;
             }
 
-            // println!("{:?}", op);
+            // dbg!(op);
 
             if let Some(o) = ops.as_mut() {
                 o.push(op);
             }
         }
 
-        (h_offset, dist)
+        Some((h_offset, dist))
     }
 
     // Useful for debugging
     #[allow(dead_code)]
     fn print_tb_matrix(&self, pos: usize, state_slice: &'a [State<T, D>]) {
-        let mut h = self.handler.init_traceback(self.m, pos, state_slice);
+        let n_blocks = self.handler.n_blocks();
+        let pos = n_blocks * (pos + 1);
+        let states_iter = state_slice[..pos]
+            .chunks(n_blocks)
+            .rev()
+            .chain(state_slice.chunks(n_blocks).rev().cycle());
         let m = self.m.to_usize().unwrap();
         let mut out = vec![];
-        for _ in 0..state_slice.len() {
-            let mut col_out = vec![];
+        for col in states_iter {
+            let mut col_out = Vec::with_capacity(m);
             let mut empty = true;
-            for (i, state) in h.column_slice().iter().enumerate().rev() {
-                if !(state.is_new() || state.is_max()) {
+            for (i, block) in col.iter().enumerate().rev() {
+                if !(block.is_new() || block.is_max()) {
                     empty = false;
                 }
                 let w = word_size::<T>();
                 let end = (i + 1) * w;
-                let n = if end <= m { w } else { m % w };
-                state.write_dist_column(n, &mut col_out);
+                let _m = if end <= m { w } else { m % w };
+                let mut _block = *block;
+                let mut pos_mask = T::one() << (_m - 1);
+                col_out.push(_block.dist);
+                for _ in 0.._m {
+                    // println!("{}\n{:064b}", _block, pos_mask);
+                    _block.adjust_one_up(pos_mask);
+                    pos_mask >>= 1;
+                    col_out.push(_block.dist);
+                }
             }
             out.push(col_out);
-            h.move_to_left();
             if empty {
                 break;
             }
         }
 
         for j in (0..m).rev() {
-            print!("{:>4}: ", m - j + 1);
+            eprint!("{:>4}: ", m - j + 1);
             for col in out.iter().rev() {
                 if let Some(d) = col.get(j) {
                     if *d >= (D::max_value() >> 1) {
                         // missing value
-                        print!("    ");
+                        eprint!("    ");
                     } else {
-                        print!("{:>4?}", d);
+                        eprint!("{:>4?}", d);
                     }
                 } else {
-                    print!("   -");
+                    eprint!("   -");
                 }
             }
-            println!();
+            eprintln!();
         }
     }
 }

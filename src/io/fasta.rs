@@ -323,10 +323,7 @@ where
         }
 
         if !self.line.starts_with('>') {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Expected > at record start.",
-            ));
+            return Err(io::Error::other("Expected > at record start."));
         }
         let mut header_fields = self.line[1..].trim_end().splitn(2, char::is_whitespace);
         record.id = header_fields.next().map(|s| s.to_owned()).unwrap();
@@ -544,10 +541,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         let idx = self.fetched_idx.clone();
         match (idx, self.start, self.stop) {
             (Some(idx), Some(start), Some(stop)) => self.read_into_buffer(idx, start, stop, seq),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "No sequence fetched for reading.",
-            )),
+            _ => Err(io::Error::other("No sequence fetched for reading.")),
         }
     }
 
@@ -556,10 +550,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         let idx = self.fetched_idx.clone();
         match (idx, self.start, self.stop) {
             (Some(idx), Some(start), Some(stop)) => self.read_into_iter(idx, start, stop),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "No sequence fetched for reading.",
-            )),
+            _ => Err(io::Error::other("No sequence fetched for reading.")),
         }
     }
 
@@ -571,15 +562,9 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         seq: &mut Text,
     ) -> io::Result<()> {
         if stop > idx.len {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "FASTA read interval was out of bounds",
-            ));
+            return Err(io::Error::other("FASTA read interval was out of bounds"));
         } else if start > stop {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Invalid query interval",
-            ));
+            return Err(io::Error::other("Invalid query interval"));
         }
 
         let mut bases_left = stop - start;
@@ -600,15 +585,9 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         stop: u64,
     ) -> io::Result<IndexedReaderIterator<'_, R>> {
         if stop > idx.len {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "FASTA read interval was out of bounds",
-            ));
+            return Err(io::Error::other("FASTA read interval was out of bounds"));
         } else if start > stop {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Invalid query interval",
-            ));
+            return Err(io::Error::other("Invalid query interval"));
         }
 
         let bases_left = stop - start;
@@ -632,10 +611,10 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     fn idx(&self, seqname: &str) -> io::Result<IndexRecord> {
         match self.index.name_to_rid.get(seqname) {
             Some(rid) => self.idx_by_rid(*rid),
-            None => Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Unknown sequence name: {}.", seqname),
-            )),
+            None => Err(io::Error::other(format!(
+                "Unknown sequence name: {}.",
+                seqname
+            ))),
         }
     }
 
@@ -643,10 +622,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     fn idx_by_rid(&self, rid: usize) -> io::Result<IndexRecord> {
         match self.index.inner.get(rid) {
             Some(record) => Ok(record.clone()),
-            None => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Invalid record index in fasta file.",
-            )),
+            None => Err(io::Error::other("Invalid record index in fasta file.")),
         }
     }
 
@@ -794,6 +770,7 @@ impl<'a, R: io::Read + io::Seek + 'a> Iterator for IndexedReaderIterator<'a, R> 
 #[derive(Debug)]
 pub struct Writer<W: io::Write> {
     writer: io::BufWriter<W>,
+    linewrap: Option<usize>,
 }
 
 impl Writer<fs::File> {
@@ -814,6 +791,7 @@ impl<W: io::Write> Writer<W> {
     pub fn new(writer: W) -> Self {
         Writer {
             writer: io::BufWriter::new(writer),
+            linewrap: None,
         }
     }
 
@@ -821,12 +799,16 @@ impl<W: io::Write> Writer<W> {
     pub fn with_capacity(capacity: usize, writer: W) -> Self {
         Writer {
             writer: io::BufWriter::with_capacity(capacity, writer),
+            linewrap: None,
         }
     }
 
     /// Create a new Fasta writer with a given BufWriter
     pub fn from_bufwriter(bufwriter: io::BufWriter<W>) -> Self {
-        Writer { writer: bufwriter }
+        Writer {
+            writer: bufwriter,
+            linewrap: None,
+        }
     }
 
     /// Directly write a [`fasta::Record`](struct.Record.html).
@@ -841,7 +823,8 @@ impl<W: io::Write> Writer<W> {
     /// use std::io;
     /// use std::path::Path;
     ///
-    /// let path = Path::new("test.fa");
+    /// let tmp = tempfile::NamedTempFile::new().unwrap();
+    /// let path = tmp.path();
     /// let file = fs::File::create(path).unwrap();
     /// {
     ///     let handle = io::BufWriter::new(file);
@@ -862,8 +845,41 @@ impl<W: io::Write> Writer<W> {
         self.write(record.id(), record.desc(), record.seq())
     }
 
-    /// Write a Fasta record with given id, optional description and sequence.
-    pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> io::Result<()> {
+    /// Set line wrapping behavior.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use bio::io::fasta::{Record, Writer};
+    /// use std::fs;
+    /// use std::io;
+    /// use std::path::Path;
+    ///
+    /// let tmp = tempfile::NamedTempFile::new().unwrap();
+    /// let path = tmp.path();
+    /// let file = fs::File::create(path).unwrap();
+    /// {
+    ///     let handle = io::BufWriter::new(file);
+    ///     let mut writer = Writer::new(handle);
+    ///
+    ///     // For demonstration width is 4 chars, use 50, 60 or 70 instead for production
+    ///     writer.set_linewrap(Some(4));
+    ///
+    ///     let record = Record::with_attrs("id", Some("desc"), b"ACGTACGT");
+    ///     let write_result = writer.write_record(&record);
+    ///     assert!(write_result.is_ok());
+    /// }
+    ///
+    /// let actual = fs::read_to_string(path).unwrap();
+    /// let expected = ">id desc\nACGT\nACGT\n";
+    ///
+    /// assert!(fs::remove_file(path).is_ok());
+    /// assert_eq!(actual, expected)
+    /// ```
+    pub fn set_linewrap(&mut self, linewrap: Option<usize>) {
+        self.linewrap = linewrap
+    }
+
+    pub fn write_record_header(&mut self, id: &str, desc: Option<&str>) -> io::Result<()> {
         self.writer.write_all(b">")?;
         self.writer.write_all(id.as_bytes())?;
         if let Some(desc) = desc {
@@ -871,10 +887,27 @@ impl<W: io::Write> Writer<W> {
             self.writer.write_all(desc.as_bytes())?;
         }
         self.writer.write_all(b"\n")?;
-        self.writer.write_all(seq)?;
-        self.writer.write_all(b"\n")?;
 
         Ok(())
+    }
+
+    /// Write a Fasta record with given id, optional description and sequence.
+    pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> io::Result<()> {
+        self.write_record_header(id, desc)?;
+        if let Some(linewrap) = self.linewrap {
+            // Write Fasta lines with a given linewrap instead of in a single line
+            seq.chunks(linewrap)
+                .try_for_each(|chunk| -> io::Result<()> {
+                    self.writer.write_all(chunk)?;
+                    self.writer.write_all(b"\n")?;
+
+                    Ok(())
+                })
+        } else {
+            self.writer.write_all(seq)?;
+            self.writer.write_all(b"\n")?;
+            Ok(())
+        }
     }
 
     /// Flush the writer, ensuring that everything is written.
@@ -929,12 +962,25 @@ impl Record {
     }
 
     /// Check validity of Fasta record.
+    ///
+    /// Verifies that the record has a non-empty id, that the sequence is
+    /// ASCII, and that every sequence character is an ASCII letter (covering
+    /// e.g. IUPAC nucleotide and amino acid codes), a gap (`-`, `.`), or a
+    /// stop (`*`). Characters such as digits, whitespace, or symbols like
+    /// `@` are rejected.
     pub fn check(&self) -> Result<(), &str> {
         if self.id().is_empty() {
             return Err("Expecting id for Fasta record.");
         }
         if !self.seq.is_ascii() {
             return Err("Non-ascii character found in sequence.");
+        }
+        if !self
+            .seq
+            .bytes()
+            .all(|b| b.is_ascii_alphabetic() || matches!(b, b'-' | b'.' | b'*'))
+        {
+            return Err("Invalid character found in sequence.");
         }
 
         Ok(())
@@ -1092,6 +1138,15 @@ ACCGTAGGCTGA
 >id2
 ATTGTTGTTTTA
 ";
+    const WRITE_FASTA_FILE_WIDTH: &[u8] = b">id desc
+ACCG
+TAGG
+CTGA
+>id2
+ATTG
+TTGT
+TTTA
+";
 
     struct ReaderMock {
         seek_fails: bool,
@@ -1212,6 +1267,19 @@ ATTGTTGTTTTA
             record.check().is_err(),
             "check() should return Err if FASTA sequence is not ASCII"
         );
+    }
+
+    // Regression test for https://github.com/rust-bio/rust-bio/issues/472:
+    // sequence characters that are ASCII but not valid IUPAC residues (e.g.
+    // `@`, `#`, digits, whitespace) used to slip past `check()`.
+    #[test]
+    fn test_check_record_seq_has_non_iupac_raises_err() {
+        let record = Record::with_attrs("id", None, b"ACGT@A");
+
+        let actual = record.check().unwrap_err();
+        let expected = "Invalid character found in sequence.";
+
+        assert_eq!(actual, expected)
     }
 
     #[test]
@@ -1773,11 +1841,15 @@ ATTGTTGTTTTA
 
     #[test]
     fn test_write_record() {
-        let path = Path::new("test.fa");
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let path = tmp.path();
         let file = fs::File::create(path).unwrap();
         {
             let handle = io::BufWriter::new(file);
-            let mut writer = Writer { writer: handle };
+            let mut writer = Writer {
+                writer: handle,
+                linewrap: Some(4),
+            };
             let record = Record::with_attrs("id", Some("desc"), b"ACGT");
 
             let write_result = writer.write_record(&record);
@@ -1789,5 +1861,30 @@ ATTGTTGTTTTA
 
         assert!(fs::remove_file(path).is_ok());
         assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_write_with_linewrap() {
+        let width = 4;
+        let mut writer = Writer::new(Vec::new());
+        writer.set_linewrap(Some(width));
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
+        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
+        writer.flush().unwrap();
+        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE_WIDTH);
+
+        let mut writer = Writer::with_capacity(100, Vec::new());
+        writer.set_linewrap(Some(width));
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
+        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
+        writer.flush().unwrap();
+        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE_WIDTH);
+
+        let mut writer = Writer::from_bufwriter(std::io::BufWriter::with_capacity(100, Vec::new()));
+        writer.set_linewrap(Some(width));
+        writer.write("id", Some("desc"), b"ACCGTAGGCTGA").unwrap();
+        writer.write("id2", None, b"ATTGTTGTTTTA").unwrap();
+        writer.flush().unwrap();
+        assert_eq!(writer.writer.get_ref(), &WRITE_FASTA_FILE_WIDTH);
     }
 }

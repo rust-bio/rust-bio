@@ -21,7 +21,7 @@
 use crate::utils::TextSlice;
 use std::borrow::Borrow;
 use std::cmp::Ord;
-use std::iter::repeat;
+use std::iter::repeat_n;
 
 use vec_map::VecMap;
 
@@ -51,7 +51,7 @@ impl BOM {
         // init suffix table, initially all values unknown
         // suff[i] is the state in which the longest suffix of
         // pattern[..i+1] ends that does not end in i
-        let mut suff: Vec<Option<usize>> = repeat(None).take(m + 1).collect();
+        let mut suff: Vec<Option<usize>> = repeat_n(None, m + 1).collect();
 
         for (j, b) in pattern.rev().enumerate() {
             let i = j + 1;
@@ -94,7 +94,7 @@ impl BOM {
     }
 
     /// Find all matches of the pattern in the given text. Matches are returned as an iterator over start positions.
-    pub fn find_all<'a>(&'a self, text: TextSlice<'a>) -> Matches<'_> {
+    pub fn find_all<'a>(&'a self, text: TextSlice<'a>) -> Matches<'a> {
         Matches {
             bom: self,
             text,
