@@ -161,8 +161,10 @@ impl Phase {
         let p = p.into();
         if p < 3 {
             Ok(Some(p))
+        } else if p == '.' as u8 {
+            Ok(None)
         } else {
-            Err("Phase must be 0, 1, 2")
+            Err("Phase must be 0, 1, 2 or \".\"")
         }
     }
 }
