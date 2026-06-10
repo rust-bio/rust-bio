@@ -6,6 +6,14 @@
 //! Calculate alignments with a generalized variant of the Smith Waterman algorithm.
 //! Complexity: O(n * m) for strings of length m and n.
 //!
+//! Note on gap open/extension penalties:
+//! With version 4.0 of this crate, the gap extension penalty is applied
+//! for each additional extension of a gap beyond
+//! the initial length of 1 (which is penalized by the gap open penalty),
+//! wheras gaps of length 1 only receive the gap open penalty.
+//! Before version 4.0, the gap extension penalty was also applied for the initial
+//! gap length of 1.
+//!
 //! For quick computation of alignments and alignment scores there are 6 simple functions.
 //!
 //! # Example

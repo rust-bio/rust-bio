@@ -9,6 +9,8 @@ documentation = "https://docs.rs/bio"
 readme = "README.md"
 license = "MIT"
 edition = "2018"
+keywords = ["bioinformatics", "alignment", "fasta", "suffix-array", "pattern-matching"]
+categories = ["science::bioinformatics", "algorithms", "data-structures", "parser-implementations"]
 include = ["src/**/*", "LICENSE.md", "README.md", "CHANGELOG.md", "build.rs"]
 
 [package.metadata.release]
@@ -44,7 +46,7 @@ statrs = ">= 0.11, < 0.19"
 bio-types = ">=1.0.0"
 pest = { version = "2", optional = true }
 pest_derive = { version = "2", optional = true }
-strum = ">= 0.16, < 0.27"
+strum = ">= 0.16, < 0.29"
 strum_macros = ">= 0.16, < 0.27"
 enum-map = ">=0.6.4, <3"
 triple_accel = ">=0.3, <0.5"
