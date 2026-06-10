@@ -5,7 +5,7 @@ extern crate test;
 use bio::io::{fasta, fastx};
 use rand::distr::Alphanumeric;
 use rand::rngs::StdRng;
-use rand::Rng;
+use rand::RngExt;
 use rand::SeedableRng;
 use std::io;
 use test::Bencher;
