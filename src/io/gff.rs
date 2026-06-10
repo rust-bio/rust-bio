@@ -267,7 +267,9 @@ impl<'de> Deserialize<'de> for Phase {
             _ => {
                 let p = u8::from_str(&s)
                     .map_err(|_| serde::de::Error::custom("Phase must be \".\", 0, 1, or 2"))?;
-                Ok(Phase(Self::validate(p).ok().flatten()))
+                Self::validate(p)
+                    .map(Phase)
+                    .map_err(serde::de::Error::custom)
             }
         }
     }
