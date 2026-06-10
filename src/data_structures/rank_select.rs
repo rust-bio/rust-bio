@@ -67,6 +67,58 @@ impl RankSelect {
         }
     }
 
+    /// Append a bit to the end of the underlying bit vector, updating the
+    /// rank/select index in amortized `O(1)` time.
+    ///
+    /// Appending a bit cannot change the rank of any earlier position, so the
+    /// existing superblock samples stay valid and only an occasional new sample
+    /// has to be added (once every `s = k * 32` bits). This makes it possible to
+    /// build a `RankSelect` incrementally, e.g. when the bits are produced by a
+    /// streaming computation or when using it as the bitmap backing a wavelet
+    /// tree.
+    ///
+    /// The resulting structure is identical to one built with
+    /// [`RankSelect::new`] from the same bits and the same `k`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::rank_select::RankSelect;
+    /// use bv::BitVec;
+    ///
+    /// let mut rs = RankSelect::new(BitVec::new(), 1);
+    /// rs.push(true);
+    /// rs.push(false);
+    /// rs.push(true);
+    /// assert_eq!(rs.rank_1(2), Some(2));
+    /// assert_eq!(rs.select_1(1), Some(0));
+    /// ```
+    pub fn push(&mut self, bit: bool) {
+        // A new superblock sample starts whenever the current length is a
+        // multiple of the superblock size `s` (this also covers the very first
+        // bit, where `n == 0`). The sample stores the number of 1-bits strictly
+        // before that boundary, which is the current total number of 1-bits.
+        if self.n.is_multiple_of(self.s) {
+            let ones_before = if self.n == 0 {
+                0
+            } else {
+                self.rank_1((self.n - 1) as u64)
+                    .expect("position is within bounds before pushing")
+            };
+            // Mirror the `First`/`Some` encoding used by `superblocks`: a sample
+            // is `First` when its rank differs from the previous sample (or it is
+            // the first one), and `Some` when the rank is unchanged.
+            let sample = match self.superblocks_1.last() {
+                Some(last) if **last == ones_before => SuperblockRank::Some(ones_before),
+                _ => SuperblockRank::First(ones_before),
+            };
+            self.superblocks_1.push(sample);
+        }
+
+        self.bits.push(bit);
+        self.n += 1;
+    }
+
     /// Return the used k (see `RankSelect::new()`).
     pub fn k(&self) -> usize {
         self.k
@@ -450,5 +502,56 @@ mod tests {
         assert_eq!(rs.rank_1(63), Some(1));
         assert_eq!(rs.rank_1(64), Some(1));
         assert_eq!(rs.rank_1(71), Some(1));
+    }
+
+    #[test]
+    fn test_push_basic_rank_select() {
+        let mut rs = RankSelect::new(BitVec::new(), 1);
+        // Build the pattern 1 0 1 1 0.
+        for &b in &[true, false, true, true, false] {
+            rs.push(b);
+        }
+        assert_eq!(rs.rank_1(0), Some(1));
+        assert_eq!(rs.rank_1(4), Some(3));
+        assert_eq!(rs.rank_0(4), Some(2));
+        assert_eq!(rs.select_1(1), Some(0));
+        assert_eq!(rs.select_1(3), Some(3));
+        assert_eq!(rs.select_0(2), Some(4));
+    }
+
+    /// The central guarantee: a `RankSelect` built incrementally with `push`
+    /// must be byte-for-byte identical (superblocks included) to one built with
+    /// `new` from the same bits. `RankSelect` derives `PartialEq`, so this
+    /// compares the full internal state, across several sampling rates `k` and
+    /// lengths that straddle superblock and block boundaries.
+    #[test]
+    fn test_push_equivalent_to_new() {
+        // A small deterministic xorshift keeps this test free of `rand` while
+        // still exercising irregular bit patterns. The exact sequence does not
+        // matter; only that `push` and `new` see the same bits.
+        let mut state: u64 = 0x9e37_79b9_7f4a_7c15;
+        let mut next_bit = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state & 1 == 1
+        };
+        for &k in &[1usize, 2, 4] {
+            for n in [0u64, 1, 7, 8, 9, 31, 32, 33, 63, 64, 65, 200, 257] {
+                let mut bits: BitVec<u8> = BitVec::new();
+                let mut pushed = RankSelect::new(BitVec::new(), k);
+                for _ in 0..n {
+                    let b = next_bit();
+                    bits.push(b);
+                    pushed.push(b);
+                }
+                let built = RankSelect::new(bits, k);
+                assert_eq!(
+                    pushed, built,
+                    "push-built and new-built differ for k={}, n={}",
+                    k, n
+                );
+            }
+        }
     }
 }
