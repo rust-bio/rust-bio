@@ -415,7 +415,7 @@ mod tests {
 
     #[test]
     fn test_select_against_naive_randomized() {
-        use rand::{Rng, SeedableRng};
+        use rand::{RngExt, SeedableRng};
         let mut rng = rand::rngs::StdRng::seed_from_u64(0xdead_beef);
         for _ in 0..50 {
             let n: u64 = 64 + rng.random_range(0..4096);
