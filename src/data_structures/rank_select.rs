@@ -119,6 +119,65 @@ impl RankSelect {
         self.n += 1;
     }
 
+    /// Append all bits yielded by an iterator to the end of the underlying bit
+    /// vector, updating the rank/select index as it goes.
+    ///
+    /// This is equivalent to calling [`RankSelect::push`] once per bit and runs
+    /// in amortized `O(1)` per bit. It accepts anything that iterates over
+    /// `bool`, so it can extend a `RankSelect` by another `BitVec`, a
+    /// `Vec<bool>`, or any lazy bit stream.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::rank_select::RankSelect;
+    /// use bv::BitVec;
+    ///
+    /// let mut rs = RankSelect::new(BitVec::new(), 1);
+    /// rs.extend([true, false, true, true]);
+    /// assert_eq!(rs.rank_1(3), Some(3));
+    /// assert_eq!(rs.select_1(2), Some(2));
+    /// ```
+    pub fn extend<I: IntoIterator<Item = bool>>(&mut self, bits: I) {
+        for bit in bits {
+            self.push(bit);
+        }
+    }
+
+    /// Append all bits of an existing bit container (e.g. another `BitVec`)
+    /// to the end of this `RankSelect`.
+    ///
+    /// This is the same operation as [`RankSelect::extend`], specialized for the
+    /// case where the number of incoming bits is known up front: the backing
+    /// bit vector is grown once with a single block reservation instead of
+    /// reserving on every `push`. The result is identical to extending with the
+    /// same bits one by one.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::rank_select::RankSelect;
+    /// use bv::{BitVec, BitsMut};
+    ///
+    /// let mut tail: BitVec<u8> = BitVec::new_fill(false, 3);
+    /// tail.set_bit(0, true);
+    /// tail.set_bit(2, true);
+    ///
+    /// let mut rs = RankSelect::new(BitVec::new(), 1);
+    /// rs.extend_from_bits(&tail);
+    /// assert_eq!(rs.rank_1(2), Some(2));
+    /// ```
+    pub fn extend_from_bits<B: Bits<Block = u8>>(&mut self, bits: &B) {
+        // Reserve room for all incoming bits in one go, so the per-bit `push`
+        // below does not re-reserve on every call.
+        let additional_blocks = (bits.bit_len() as usize).div_ceil(8);
+        self.bits.block_reserve(additional_blocks);
+
+        for i in 0..bits.bit_len() {
+            self.push(bits.get_bit(i));
+        }
+    }
+
     /// Return the used k (see `RankSelect::new()`).
     pub fn k(&self) -> usize {
         self.k
@@ -551,6 +610,101 @@ mod tests {
                     "push-built and new-built differ for k={}, n={}",
                     k, n
                 );
+            }
+        }
+    }
+
+    #[test]
+    fn test_extend_basic() {
+        let mut rs = RankSelect::new(BitVec::new(), 1);
+        rs.extend([true, false, true, true, false]);
+        assert_eq!(rs.rank_1(4), Some(3));
+        assert_eq!(rs.rank_0(4), Some(2));
+        assert_eq!(rs.select_1(3), Some(3));
+        assert_eq!(rs.select_0(2), Some(4));
+    }
+
+    /// `extend` must be exactly equivalent to calling `push` once per bit, and
+    /// extending an existing structure must match building the concatenation in
+    /// one shot with `new`. Both invariants are checked across sampling rates
+    /// and split points around block/superblock boundaries.
+    #[test]
+    fn test_extend_equivalent_to_push_and_new() {
+        let mut state: u64 = 0x2545_f491_4f6c_dd1d;
+        let mut next_bit = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state & 1 == 1
+        };
+        for &k in &[1usize, 2, 4] {
+            for split in [0usize, 1, 8, 31, 32, 33, 64, 100] {
+                for tail in [0usize, 1, 7, 32, 65] {
+                    // Generate the prefix and the tail bits.
+                    let prefix: Vec<bool> = (0..split).map(|_| next_bit()).collect();
+                    let extra: Vec<bool> = (0..tail).map(|_| next_bit()).collect();
+
+                    // (a) extend vs push-one-by-one, starting from the same prefix.
+                    let mut by_extend = RankSelect::new(BitVec::new(), k);
+                    by_extend.extend(prefix.iter().copied());
+                    let mut by_push = by_extend.clone();
+                    by_extend.extend(extra.iter().copied());
+                    for &b in &extra {
+                        by_push.push(b);
+                    }
+                    assert_eq!(by_extend, by_push, "extend != push loop (k={k})");
+
+                    // (b) extended structure vs the concatenation built with `new`.
+                    let mut all_bits: BitVec<u8> = BitVec::new();
+                    for &b in prefix.iter().chain(extra.iter()) {
+                        all_bits.push(b);
+                    }
+                    let built = RankSelect::new(all_bits, k);
+                    assert_eq!(by_extend, built, "extend != new (k={k})");
+                }
+            }
+        }
+    }
+
+    /// `extend_from_bits` must produce exactly the same structure as the generic
+    /// `extend` (and therefore as `new`), only faster. Checked by extending an
+    /// existing structure with a `BitVec` tail and comparing against the
+    /// bool-iterator path, across sampling rates and boundary-straddling sizes.
+    #[test]
+    fn test_extend_from_bits_matches_extend() {
+        use bv::BitsMut;
+        let mut state: u64 = 0x84242_3f4_d1cdu64.wrapping_mul(3);
+        let mut next_bit = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state & 1 == 1
+        };
+        for &k in &[1usize, 2, 4] {
+            for split in [0usize, 1, 8, 32, 33, 70] {
+                for tail in [0usize, 1, 7, 8, 32, 65] {
+                    let prefix: Vec<bool> = (0..split).map(|_| next_bit()).collect();
+
+                    let mut tail_bv: BitVec<u8> = BitVec::new_fill(false, tail as u64);
+                    for i in 0..tail as u64 {
+                        tail_bv.set_bit(i, next_bit());
+                    }
+
+                    // Path A: generic extend with the tail as a bool iterator.
+                    let mut by_iter = RankSelect::new(BitVec::new(), k);
+                    by_iter.extend(prefix.iter().copied());
+                    by_iter.extend((0..tail as u64).map(|i| tail_bv.get_bit(i)));
+
+                    // Path B: specialized extend_from_bits with the same tail.
+                    let mut by_bits = RankSelect::new(BitVec::new(), k);
+                    by_bits.extend(prefix.iter().copied());
+                    by_bits.extend_from_bits(&tail_bv);
+
+                    assert_eq!(
+                        by_iter, by_bits,
+                        "extend_from_bits != extend (k={k}, split={split}, tail={tail})"
+                    );
+                }
             }
         }
     }
