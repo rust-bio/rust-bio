@@ -101,7 +101,6 @@
 //! }
 //! ```
 
-use anyhow::Context;
 use std::convert::AsRef;
 use std::fmt;
 use std::fs;
@@ -111,7 +110,7 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum Error {
+pub enum ReadError {
     #[error("expected '@' at record start")]
     MissingAt,
 
@@ -119,12 +118,26 @@ pub enum Error {
     FileOpen { path: PathBuf, source: io::Error },
 
     #[error("can't read input")]
-    ReadError(#[from] io::Error),
+    Io(#[from] io::Error),
 
     #[error("Incomplete record. Each FastQ record has to consist of 4 lines: header, sequence, separator and qualities.")]
     IncompleteRecord,
 }
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+pub type Result<T, E = ReadError> = std::result::Result<T, E>;
+
+#[derive(Error, Debug, PartialEq)]
+pub enum CheckError {
+    #[error("Expecting id for FastQ record.")]
+    EmptyId,
+    #[error("Non-ascii character found in sequence.")]
+    NonAsciiSequence,
+    #[error("Invalid character found in sequence.")]
+    InvalidSequence,
+    #[error("Non-ascii character found in qualities.")]
+    NonAsciiQualities,
+    #[error("Unequal length of sequence an qualities.")]
+    UnequalLength,
+}
 
 use bio_types::sequence::SequenceRead;
 
@@ -144,14 +157,11 @@ pub struct Reader<B> {
 
 impl Reader<io::BufReader<fs::File>> {
     /// Read from a given file.
-    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
-        fs::File::open(path.as_ref())
-            .map_err(|e| Error::FileOpen {
-                path: path.as_ref().to_owned(),
-                source: e,
-            })
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path = path.as_ref().to_path_buf();
+        fs::File::open(&path)
+            .map_err(|source| ReadError::FileOpen { path, source })
             .map(Reader::new)
-            .with_context(|| format!("Failed to read fastq from {:#?}", path))
     }
 }
 
@@ -260,7 +270,7 @@ where
 
         if !self.line_buffer.is_empty() {
             if !self.line_buffer.starts_with('@') {
-                return Err(Error::MissingAt);
+                return Err(ReadError::MissingAt);
             }
             let mut header_fields = self.line_buffer[1..].trim_end().splitn(2, ' ');
             record.id = header_fields.next().unwrap_or_default().to_owned();
@@ -281,12 +291,12 @@ where
                 self.line_buffer.clear();
                 self.reader
                     .read_line(&mut self.line_buffer)
-                    .map_err(Error::ReadError)?;
+                    .map_err(ReadError::Io)?;
                 record.qual.push_str(self.line_buffer.trim_end());
             }
 
             if record.qual.is_empty() {
-                return Err(Error::IncompleteRecord);
+                return Err(ReadError::IncompleteRecord);
             }
         }
 
@@ -368,32 +378,32 @@ impl Record {
     /// use bio::io::fastq::Record;
     ///
     /// let mut record = Record::with_attrs("id", None, "Prüfung".as_ref(), b"!!!!!!!");
-    /// let actual = record.check().unwrap_err();
+    /// let actual = record.check().unwrap_err().to_string();
     /// let expected = "Non-ascii character found in sequence.";
     /// assert_eq!(actual, expected);
     ///
     /// record = Record::with_attrs("id_str", Some("desc"), b"ATGCGGG", b"QQQQQQQ");
     /// assert!(record.check().is_ok());
     /// ```
-    pub fn check(&self) -> Result<(), &str> {
+    pub fn check(&self) -> Result<(), CheckError> {
         if self.id().is_empty() {
-            return Err("Expecting id for FastQ record.");
+            return Err(CheckError::EmptyId);
         }
         if !self.seq.is_ascii() {
-            return Err("Non-ascii character found in sequence.");
+            return Err(CheckError::NonAsciiSequence);
         }
         if !self
             .seq
             .bytes()
             .all(|b| b.is_ascii_alphabetic() || matches!(b, b'-' | b'.' | b'*'))
         {
-            return Err("Invalid character found in sequence.");
+            return Err(CheckError::InvalidSequence);
         }
         if !self.qual.is_ascii() {
-            return Err("Non-ascii character found in qualities.");
+            return Err(CheckError::NonAsciiQualities);
         }
         if self.seq().len() != self.qual().len() {
-            return Err("Unequal length of sequence an qualities.");
+            return Err(CheckError::UnequalLength);
         }
 
         Ok(())
@@ -721,7 +731,7 @@ IIIIIIJJJJJJ
     fn test_check_record_id_is_empty_raises_err() {
         let record = Record::with_attrs("", None, b"ACGT", b"!!!!");
 
-        let actual = record.check().unwrap_err();
+        let actual = record.check().unwrap_err().to_string();
         let expected = "Expecting id for FastQ record.";
 
         assert_eq!(actual, expected)
@@ -731,7 +741,7 @@ IIIIIIJJJJJJ
     fn test_check_record_seq_is_not_ascii_raises_err() {
         let record = Record::with_attrs("id", None, "Prüfung".as_ref(), b"!!!!");
 
-        let actual = record.check().unwrap_err();
+        let actual = record.check().unwrap_err().to_string();
         let expected = "Non-ascii character found in sequence.";
 
         assert_eq!(actual, expected)
@@ -744,7 +754,7 @@ IIIIIIJJJJJJ
     fn test_check_record_seq_has_non_iupac_raises_err() {
         let record = Record::with_attrs("id", None, b"ACGT@A", b"!!!!!!");
 
-        let actual = record.check().unwrap_err();
+        let actual = record.check().unwrap_err().to_string();
         let expected = "Invalid character found in sequence.";
 
         assert_eq!(actual, expected)
@@ -754,7 +764,7 @@ IIIIIIJJJJJJ
     fn test_check_record_quality_is_not_ascii_raises_err() {
         let record = Record::with_attrs("id", None, b"ACGT", "Qualität".as_ref());
 
-        let actual = record.check().unwrap_err();
+        let actual = record.check().unwrap_err().to_string();
         let expected = "Non-ascii character found in qualities.";
 
         assert_eq!(actual, expected)
@@ -764,7 +774,7 @@ IIIIIIJJJJJJ
     fn test_check_record_quality_and_seq_diff_len_raises_err() {
         let record = Record::with_attrs("id", None, b"ACGT", b"!!!");
 
-        let actual = record.check().unwrap_err();
+        let actual = record.check().unwrap_err().to_string();
         let expected = "Unequal length of sequence an qualities.";
 
         assert_eq!(actual, expected)
@@ -785,7 +795,7 @@ IIIIIIJJJJJJ
 
         let error = reader.read(&mut record).unwrap_err();
 
-        assert!(matches!(error, Error::MissingAt))
+        assert!(matches!(error, ReadError::MissingAt))
     }
 
     #[test]
@@ -796,7 +806,7 @@ IIIIIIJJJJJJ
 
         let error = reader.read(&mut record).unwrap_err();
 
-        assert!(matches!(error, Error::IncompleteRecord))
+        assert!(matches!(error, ReadError::IncompleteRecord))
     }
 
     #[test]
@@ -842,7 +852,7 @@ IIIIIIJJJJJJ
         reader.read(&mut record).unwrap();
         let error = reader.read(&mut record).unwrap_err();
 
-        assert!(matches!(error, Error::MissingAt))
+        assert!(matches!(error, ReadError::MissingAt))
     }
 
     #[test]
@@ -852,18 +862,14 @@ IIIIIIJJJJJJ
 
         let error = records.next().unwrap().unwrap_err();
 
-        assert!(matches!(error, Error::IncompleteRecord));
+        assert!(matches!(error, ReadError::IncompleteRecord));
     }
 
     #[test]
     fn test_reader_from_file_path_doesnt_exist_returns_err() {
         let path = Path::new("/I/dont/exist.fq");
-        let error = Reader::from_file(path)
-            .unwrap_err()
-            .downcast::<String>()
-            .unwrap();
-
-        assert_eq!(&error, "Failed to read fastq from \"/I/dont/exist.fq\"")
+        let error = Reader::from_file(path).unwrap_err();
+        assert!(matches!(error, ReadError::FileOpen { .. }));
     }
 
     #[test]
@@ -957,7 +963,7 @@ IIIIIIJJJJJJ
         let mut record = Record::new();
         let err = reader.read(&mut record).unwrap_err();
 
-        assert!(matches!(err, Error::IncompleteRecord))
+        assert!(matches!(err, ReadError::IncompleteRecord))
     }
 
     #[test]

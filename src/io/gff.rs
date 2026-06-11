@@ -24,14 +24,13 @@
 //! }
 //! ```
 
-use anyhow::Context;
 use itertools::Itertools;
 use multimap::MultiMap;
 use regex::Regex;
 use std::convert::{AsRef, TryFrom, TryInto};
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use bio_types::strand::Strand;
@@ -56,8 +55,12 @@ pub enum GffType {
     Any(u8, u8, u8),
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("String '{0}' is not a valid GFFType (GFF/GTF format version).")]
+pub struct GffTypeParseError(pub String);
+
 impl FromStr for GffType {
-    type Err = String;
+    type Err = GffTypeParseError;
 
     /// Create a GffType from a string.
     ///
@@ -69,10 +72,7 @@ impl FromStr for GffType {
             "gff3" => Ok(GffType::GFF3),
             "gff2" => Ok(GffType::GFF2),
             "gtf2" => Ok(GffType::GTF2),
-            _ => Err(format!(
-                "String '{}' is not a valid GFFType (GFF/GTF format version).",
-                src_str
-            )),
+            _ => Err(GffTypeParseError(src_str.to_owned())),
         }
     }
 }
@@ -99,15 +99,20 @@ pub struct Reader<R: io::Read> {
     gff_type: GffType,
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("failed to read GFF from {path}: {source}")]
+pub struct GffOpenError {
+    pub(crate) path: PathBuf,
+    pub(crate) source: io::Error,
+}
+
 impl Reader<fs::File> {
     /// Read GFF from given file path in given format.
-    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(
-        path: P,
-        fileformat: GffType,
-    ) -> anyhow::Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(path: P, fileformat: GffType) -> Result<Self, GffOpenError> {
+        let path = path.as_ref().to_path_buf();
         fs::File::open(&path)
+            .map_err(|source| GffOpenError { path, source })
             .map(|f| Reader::new(f, fileformat))
-            .with_context(|| format!("Failed to read GFF from {:#?}", path))
     }
 }
 
@@ -623,12 +628,8 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
     #[test]
     fn test_reader_from_file_path_doesnt_exist_returns_err() {
         let path = Path::new("/I/dont/exist.gff");
-        let error = Reader::from_file(path, GffType::GFF3)
-            .unwrap_err()
-            .downcast::<String>()
-            .unwrap();
-
-        assert_eq!(&error, "Failed to read GFF from \"/I/dont/exist.gff\"")
+        let error = Reader::from_file(path, GffType::GFF3).unwrap_err();
+        assert_eq!(error.source.kind(), io::ErrorKind::NotFound);
     }
 
     #[test]
@@ -642,7 +643,7 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let gtf2 = GffType::from_str("gtf2").expect("Error parsing");
         assert_eq!(gtf2, GffType::GTF2);
 
-        let unk = GffType::from_str("unknown").unwrap_err();
+        let unk = GffType::from_str("unknown").unwrap_err().to_string();
         assert_eq!(
             unk,
             "String 'unknown' is not a valid GFFType (GFF/GTF format version)."
@@ -769,9 +770,10 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
 
     #[test]
     fn test_unknown_gff_type() {
+        let result = GffType::from_str("xtf9");
         assert_eq!(
-            GffType::from_str("xtf9"),
-            Err("String 'xtf9' is not a valid GFFType (GFF/GTF format version).".to_string())
+            result.unwrap_err().to_string(),
+            "String 'xtf9' is not a valid GFFType (GFF/GTF format version)."
         )
     }
 

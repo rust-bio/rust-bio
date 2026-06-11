@@ -64,14 +64,20 @@ use std::convert::AsRef;
 use std::fs;
 use std::io;
 use std::marker::PhantomData;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use anyhow::Context;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
 
 use getset::{CloneGetters, CopyGetters, Getters, MutGetters, Setters, WithSetters};
+
+#[derive(Debug, thiserror::Error)]
+#[error("failed to open {path}: {source}")]
+pub struct OpenError {
+    pub(crate) path: PathBuf,
+    pub(crate) source: io::Error,
+}
 
 /// A TSV reader.
 #[derive(Debug)]
@@ -82,10 +88,11 @@ pub struct Reader<R: io::Read, T: DeserializeOwned> {
 
 impl<T: DeserializeOwned> Reader<fs::File, T> {
     /// Read from a given file path.
-    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, OpenError> {
+        let path = path.as_ref().to_path_buf();
         fs::File::open(&path)
+            .map_err(|source| OpenError { path, source })
             .map(Reader::new)
-            .with_context(|| format!("Failed to read from {:#?}", path))
     }
 }
 
@@ -404,12 +411,8 @@ mod tests {
     #[test]
     fn test_core_reader_from_file_path_doesnt_exist_returns_err() {
         let path = Path::new("/I/dont/exist.bed");
-        let error = Reader::<std::fs::File, Record>::from_file(path)
-            .unwrap_err()
-            .downcast::<String>()
-            .unwrap();
-
-        assert_eq!(&error, "Failed to read from \"/I/dont/exist.bed\"")
+        let error = Reader::<std::fs::File, Record>::from_file(path).unwrap_err();
+        assert_eq!(error.source.kind(), io::ErrorKind::NotFound);
     }
 
     #[test]
@@ -461,12 +464,8 @@ mod tests {
     #[test]
     fn test_implemented_reader_from_file_path_doesnt_exist_returns_err() {
         let path = Path::new("/I/dont/exist.bed");
-        let error = TestReader::from_file(path)
-            .unwrap_err()
-            .downcast::<String>()
-            .unwrap();
-
-        assert_eq!(&error, "Failed to read from \"/I/dont/exist.bed\"")
+        let error = TestReader::from_file(path).unwrap_err();
+        assert_eq!(error.source.kind(), io::ErrorKind::NotFound);
     }
 
     #[test]

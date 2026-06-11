@@ -168,7 +168,6 @@
 //!     get_kind_file("foo.fasta")
 //! }
 //! ```
-use anyhow::Context;
 use std::convert::AsRef;
 use std::fs;
 use std::io;
@@ -176,7 +175,7 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::io::SeekFrom;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use crate::io::{fasta, fastq};
@@ -205,8 +204,9 @@ macro_rules! matchthrough {
 }
 
 pub trait Record {
+    type CheckError: std::error::Error + 'static;
     fn is_empty(&self) -> bool;
-    fn check(&self) -> Result<(), &str>;
+    fn check(&self) -> Result<(), Self::CheckError>;
     fn id(&self) -> &str;
     fn desc(&self) -> Option<&str>;
     fn seq(&self) -> TextSlice<'_>;
@@ -215,8 +215,9 @@ pub trait Record {
 }
 
 impl Record for super::fasta::Record {
+    type CheckError = fasta::CheckError;
     passthrough!(is_empty, bool);
-    passthrough!(check, Result<(), &str>);
+    passthrough!(check, Result<(), Self::CheckError>);
     passthrough!(id, &str);
     passthrough!(desc, Option<&str>);
     passthrough!(seq, TextSlice<'_>);
@@ -231,8 +232,9 @@ impl Record for super::fasta::Record {
 }
 
 impl Record for super::fastq::Record {
+    type CheckError = fastq::CheckError;
     passthrough!(is_empty, bool);
-    passthrough!(check, Result<(), &str>);
+    passthrough!(check, Result<(), Self::CheckError>);
     passthrough!(id, &str);
     passthrough!(desc, Option<&str>);
     passthrough!(seq, TextSlice<'_>);
@@ -244,6 +246,14 @@ impl Record for super::fastq::Record {
     fn kind(&self) -> Kind {
         Kind::FASTQ
     }
+}
+
+#[derive(Debug, Error)]
+pub enum CheckError {
+    #[error(transparent)]
+    Fasta(#[from] fasta::CheckError),
+    #[error(transparent)]
+    Fastq(#[from] fastq::CheckError),
 }
 
 #[derive(Clone, Display, Debug, Serialize, Deserialize)]
@@ -290,8 +300,14 @@ impl From<fastq::Record> for EitherRecord {
 }
 
 impl Record for EitherRecord {
+    type CheckError = CheckError;
     matchthrough!(is_empty, bool);
-    matchthrough!(check, Result<(), &str>);
+    fn check(&self) -> std::result::Result<(), Self::CheckError> {
+        match self {
+            EitherRecord::FASTA(f) => f.check().map_err(CheckError::Fasta),
+            EitherRecord::FASTQ(f) => f.check().map_err(CheckError::Fastq),
+        }
+    }
     matchthrough!(id, &str);
     matchthrough!(desc, Option<&str>);
     matchthrough!(seq, TextSlice<'_>);
@@ -310,7 +326,7 @@ pub trait Records<R: Record, E>: Iterator<Item = Result<R, E>> {}
 
 impl<T: BufRead> Records<fasta::Record, io::Error> for fasta::Records<T> {}
 
-impl<T: BufRead> Records<fastq::Record, fastq::Error> for fastq::Records<T> {}
+impl<T: BufRead> Records<fastq::Record, fastq::ReadError> for fastq::Records<T> {}
 
 impl<T: BufRead> Records<EitherRecord, Error> for EitherRecords<T> {}
 
@@ -328,13 +344,21 @@ pub struct EitherRecords<R: BufRead> {
     reader: Option<R>,
 }
 
+#[derive(Debug, Error)]
+#[error("failed to open {path}: {source}")]
+pub struct OpenError {
+    pub(crate) path: PathBuf,
+    pub(crate) source: io::Error,
+}
+
 impl EitherRecords<BufReader<fs::File>> {
     /// Read from a given file.
-    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
-        fs::File::open(path.as_ref())
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, OpenError> {
+        let path = path.as_ref().to_path_buf();
+        fs::File::open(&path)
+            .map_err(|source| OpenError { path, source })
             .map(BufReader::new)
             .map(EitherRecords::from)
-            .with_context(|| format!("Failed to read fastq from {:#?}", path))
     }
 }
 
@@ -380,15 +404,15 @@ impl<R: BufRead> Iterator for EitherRecords<R> {
     type Item = Result<EitherRecord>;
     fn next(&mut self) -> Option<Self::Item> {
         if let Err(e) = self.initialize() {
-            return Some(Err(Error::IO(e)));
+            return Some(Err(Error::Io(e)));
         }
         match &mut self.records {
             Some(EitherRecordsInner::FASTA(r)) => r
                 .next()
-                .map(|record_res| record_res.map(EitherRecord::FASTA).map_err(Error::IO)),
+                .map(|record_res| record_res.map(EitherRecord::FASTA).map_err(Error::Io)),
             Some(EitherRecordsInner::FASTQ(r)) => r
                 .next()
-                .map(|record_res| record_res.map(EitherRecord::FASTQ).map_err(Error::FASTQ)),
+                .map(|record_res| record_res.map(EitherRecord::FASTQ).map_err(Error::Fastq)),
             None => None,
         }
     }
@@ -403,22 +427,12 @@ impl<R: BufRead> From<R> for EitherRecords<R> {
     }
 }
 
-#[derive(Display, Debug, Error)]
+#[derive(Debug, Error)]
 pub enum Error {
-    IO(io::Error),
-    FASTQ(fastq::Error),
-}
-
-impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Self {
-        Error::IO(err)
-    }
-}
-
-impl From<fastq::Error> for Error {
-    fn from(err: fastq::Error) -> Self {
-        Error::FASTQ(err)
-    }
+    #[error(transparent)]
+    Io(#[from] io::Error),
+    #[error(transparent)]
+    Fastq(#[from] fastq::ReadError),
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -726,7 +740,7 @@ ACCGTAGGCTGA
             FASTA_FILE,
         );
         let mut records = EitherRecords::new(reader);
-        assert!(matches!(records.next().unwrap().unwrap_err(), Error::IO(_)));
+        assert!(matches!(records.next().unwrap().unwrap_err(), Error::Io(_)));
     }
 
     #[test]
@@ -743,7 +757,7 @@ ACCGTAGGCTGA
         let mut records = EitherRecords::new(INCOMPLETE_FASTQ_FILE);
         assert!(matches!(
             records.next().unwrap().unwrap_err(),
-            Error::FASTQ(_)
+            Error::Fastq(_)
         ));
     }
 
