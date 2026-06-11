@@ -162,7 +162,7 @@ impl Phase {
         if p < 3 {
             Ok(Some(p))
         } else {
-            Err(PhaseError::InvalidPhase(p))
+            Err(PhaseError { value: p })
         }
     }
 }
@@ -286,9 +286,9 @@ impl Serialize for Phase {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum PhaseError {
-    #[error("Phase must be 0, 1, or 2, got {0}")]
-    InvalidPhase(u8),
+#[error("Phase must be 0, 1, or 2, got {value}")]
+pub struct PhaseError {
+    value: u8,
 }
 
 /// An iterator over the records of a GFF file.
