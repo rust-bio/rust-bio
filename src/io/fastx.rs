@@ -249,7 +249,7 @@ impl Record for super::fastq::Record {
 }
 
 #[derive(Debug, Error)]
-pub enum CheckError {
+pub enum EitherCheckError {
     #[error(transparent)]
     Fasta(#[from] fasta::CheckError),
     #[error(transparent)]
@@ -300,12 +300,12 @@ impl From<fastq::Record> for EitherRecord {
 }
 
 impl Record for EitherRecord {
-    type CheckError = CheckError;
+    type CheckError = EitherCheckError;
     matchthrough!(is_empty, bool);
     fn check(&self) -> std::result::Result<(), Self::CheckError> {
         match self {
-            EitherRecord::FASTA(f) => f.check().map_err(CheckError::Fasta),
-            EitherRecord::FASTQ(f) => f.check().map_err(CheckError::Fastq),
+            EitherRecord::FASTA(f) => f.check().map_err(EitherCheckError::Fasta),
+            EitherRecord::FASTQ(f) => f.check().map_err(EitherCheckError::Fastq),
         }
     }
     matchthrough!(id, &str);

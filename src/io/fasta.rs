@@ -387,8 +387,10 @@ impl Index {
     /// Open a FASTA index from a given file path.
     pub fn from_file<P: AsRef<Path>>(path: &P) -> Result<Self> {
         let path_buf = path.as_ref().to_path_buf();
-        let file = fs::File::open(&path_buf)
-            .map_err(|source| ReadError::Open { path: path_buf, source })?;
+        let file = fs::File::open(&path_buf).map_err(|source| ReadError::Open {
+            path: path_buf,
+            source,
+        })?;
         Self::new(file).map_err(ReadError::Csv)
     }
 
@@ -430,8 +432,10 @@ impl IndexedReader<fs::File> {
     pub fn from_file<P: AsRef<Path>>(path: &P) -> Result<Self> {
         let index = Index::with_fasta_file(path)?;
         let path_buf = path.as_ref().to_path_buf();
-        let file = fs::File::open(&path_buf)
-            .map_err(|source| ReadError::Open { path: path_buf, source })?;
+        let file = fs::File::open(&path_buf).map_err(|source| ReadError::Open {
+            path: path_buf,
+            source,
+        })?;
         Ok(Self::with_index(file, index))
     }
 }
