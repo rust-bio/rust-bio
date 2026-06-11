@@ -157,18 +157,18 @@ type GffRecordInner = (
 pub struct Phase(Option<u8>);
 
 impl Phase {
-    fn validate<T: Into<u8>>(p: T) -> Result<Option<u8>, &'static str> {
+    fn validate<T: Into<u8>>(p: T) -> Result<Option<u8>, PhaseError> {
         let p = p.into();
         if p < 3 {
             Ok(Some(p))
         } else {
-            Err("Phase must be 0, 1, 2")
+            Err(PhaseError::InvalidPhase(p))
         }
     }
 }
 
 impl TryFrom<u8> for Phase {
-    type Error = &'static str;
+    type Error = PhaseError;
 
     /// Create a new Phase from a u8.
     ///
@@ -182,13 +182,13 @@ impl TryFrom<u8> for Phase {
     /// let p = Phase::try_from(3); // This will throw an error
     /// assert!(p.is_err());
     /// ```
-    fn try_from(p: u8) -> Result<Self, &'static str> {
+    fn try_from(p: u8) -> Result<Self, PhaseError> {
         Self::validate(p).map(Phase)
     }
 }
 
 impl TryFrom<Option<u8>> for Phase {
-    type Error = &'static str;
+    type Error = PhaseError;
 
     /// Create a new Phase from an Option<u8>.
     ///
@@ -201,7 +201,7 @@ impl TryFrom<Option<u8>> for Phase {
     /// let p = Phase::try_from(None);
     /// let p = Phase::try_from(Some(3)); // This will throw an error
     /// ```
-    fn try_from(p: Option<u8>) -> Result<Self, &'static str> {
+    fn try_from(p: Option<u8>) -> Result<Self, PhaseError> {
         match p {
             Some(p) => Self::validate(p).map(Phase),
             None => Ok(Phase(None)),
@@ -283,6 +283,12 @@ impl Serialize for Phase {
             None => serializer.serialize_str("."),
         }
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum PhaseError {
+    #[error("Phase must be 0, 1, or 2, got {0}")]
+    InvalidPhase(u8),
 }
 
 /// An iterator over the records of a GFF file.
