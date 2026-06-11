@@ -183,6 +183,19 @@ fn gff3_decode(s: &str) -> String {
     }
 }
 
+/// Strip a single layer of surrounding single or double quotes from a GFF2/GTF2
+/// attribute tag or value. GFF3 does not treat quotes specially and uses
+/// [`gff3_decode`] instead.
+fn trim_quotes(s: &str) -> String {
+    s.trim_matches('\'').trim_matches('"').to_owned()
+}
+
+/// Identity transform for attribute tags/values that are written verbatim
+/// (every format except GFF3, which percent-encodes via [`gff3_encode`]).
+fn write_attr_verbatim(s: &str) -> String {
+    s.to_owned()
+}
+
 /// A GFF reader.
 #[derive(Debug)]
 pub struct Reader<R: io::Read> {
@@ -224,11 +237,17 @@ impl<R: io::Read> Reader<R> {
             term = term as char
         );
         let attribute_re = Regex::new(&r).unwrap();
+        // Decide once, from the format, how attributes are decoded.
+        let decode_attr: fn(&str) -> String = if self.gff_type == GffType::GFF3 {
+            gff3_decode
+        } else {
+            trim_quotes
+        };
         Records {
             inner: self.inner.deserialize(),
             attribute_re,
             value_delim: vdelim as char,
-            gff_type: self.gff_type,
+            decode_attr,
         }
     }
 }
@@ -369,7 +388,11 @@ pub struct Records<'a, R: io::Read> {
     inner: csv::DeserializeRecordsIter<'a, R, GffRecordInner>,
     attribute_re: Regex,
     value_delim: char,
-    gff_type: GffType,
+    // How a raw attribute tag/value is turned into its stored form. Chosen once
+    // from the format: GFF3 percent-decodes (and keeps quotes verbatim), while
+    // GFF2/GTF2 strip surrounding quotes. Resolving it here keeps the decision
+    // out of the per-attribute loop.
+    decode_attr: fn(&str) -> String,
 }
 
 impl<'a, R: io::Read> Iterator for Records<'a, R> {
@@ -389,20 +412,11 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                     phase,
                     raw_attributes,
                 )| {
-                    let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
-                    let decode = self.gff_type == GffType::GFF3;
+                    let decode_attr = self.decode_attr;
                     let mut attributes = MultiMap::new();
                     for caps in self.attribute_re.captures_iter(&raw_attributes) {
                         for value in caps["value"].split(self.value_delim) {
-                            // GFF3 mandates RFC 3986 percent-decoding of tags and
-                            // values. Unlike GFF2/GTF2, quotes are not special in
-                            // GFF3 and are preserved verbatim.
-                            let (key, value) = if decode {
-                                (gff3_decode(&caps["key"]), gff3_decode(value))
-                            } else {
-                                (trim_quotes(&caps["key"]), trim_quotes(value))
-                            };
-                            attributes.insert(key, value);
+                            attributes.insert(decode_attr(&caps["key"]), decode_attr(value));
                         }
                     }
                     Record {
@@ -428,7 +442,11 @@ pub struct Writer<W: io::Write> {
     inner: csv::Writer<W>,
     delimiter: char,
     terminator: String,
-    gff_type: GffType,
+    // How an attribute tag/value is encoded on write. Chosen once from the
+    // format: GFF3 percent-encodes the reserved characters, every other format
+    // writes verbatim. Resolving it here keeps the decision out of the
+    // per-attribute loop.
+    encode_attr: fn(&str) -> String,
 }
 
 impl Writer<fs::File> {
@@ -451,27 +469,23 @@ impl<W: io::Write> Writer<W> {
                 .from_writer(writer),
             delimiter: delim as char,
             terminator: String::from_utf8(vec![termi]).unwrap(),
-            gff_type: fileformat,
+            // Decide once, from the format, how attributes are encoded.
+            encode_attr: if fileformat == GffType::GFF3 {
+                gff3_encode
+            } else {
+                write_attr_verbatim
+            },
         }
     }
 
     /// Write a given GFF record.
     pub fn write(&mut self, record: &Record) -> csv::Result<()> {
-        let encode = self.gff_type == GffType::GFF3;
+        let encode_attr = self.encode_attr;
         let attributes = if !record.attributes.is_empty() {
             record
                 .attributes
                 .iter()
-                .map(|(a, b)| {
-                    // GFF3 mandates RFC 3986 percent-encoding of the reserved
-                    // characters in tags and values; other formats are written
-                    // verbatim to keep their own quoting conventions.
-                    if encode {
-                        format!("{}{}{}", gff3_encode(a), self.delimiter, gff3_encode(b))
-                    } else {
-                        format!("{}{}{}", a, self.delimiter, b)
-                    }
-                })
+                .map(|(a, b)| format!("{}{}{}", encode_attr(a), self.delimiter, encode_attr(b)))
                 .join(&self.terminator)
         } else {
             "".to_owned()
