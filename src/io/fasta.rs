@@ -136,11 +136,30 @@ use std::convert::AsRef;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::utils::{Text, TextSlice};
-use anyhow::Context;
 use std::fmt;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ReadError {
+    #[error("failed to open {path}: {source}")]
+    Open { path: PathBuf, source: io::Error },
+    #[error(transparent)]
+    Parse(#[from] csv::Error),
+}
+pub type Result<T, E = ReadError> = std::result::Result<T, E>;
+
+#[derive(Error, Debug, PartialEq)]
+pub enum CheckError {
+    #[error("Expecting id for Fasta record.")]
+    EmptyId,
+    #[error("Non-ascii character found in sequence.")]
+    NonAsciiSequence,
+    #[error("Invalid character found in sequence.")]
+    InvalidSequence,
+}
 
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
@@ -159,20 +178,19 @@ pub struct Reader<B> {
 
 impl Reader<io::BufReader<fs::File>> {
     /// Read FASTA from given file path.
-    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path = path.as_ref().to_path_buf();
         fs::File::open(&path)
+            .map_err(|source| ReadError::Open { path, source })
             .map(Reader::new)
-            .with_context(|| format!("Failed to read fasta from {:#?}", path))
     }
 
     /// Read FASTA from give file path and a capacity
-    pub fn from_file_with_capacity<P: AsRef<Path> + std::fmt::Debug>(
-        capacity: usize,
-        path: P,
-    ) -> anyhow::Result<Self> {
+    pub fn from_file_with_capacity<P: AsRef<Path>>(capacity: usize, path: P) -> Result<Self> {
+        let path = path.as_ref().to_path_buf();
         fs::File::open(&path)
+            .map_err(|source| ReadError::Open { path, source })
             .map(|file| Reader::with_capacity(capacity, file))
-            .with_context(|| format!("Failed to read fasta from {:#?}", path))
     }
 }
 
@@ -367,16 +385,18 @@ impl Index {
     }
 
     /// Open a FASTA index from a given file path.
-    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> anyhow::Result<Self> {
-        fs::File::open(path)
-            .map_err(csv::Error::from)
-            .and_then(Self::new)
-            .with_context(|| format!("Failed to read fasta index from {:#?}", path))
+    pub fn from_file<P: AsRef<Path>>(path: &P) -> Result<Self> {
+        let path_buf = path.as_ref().to_path_buf();
+        let file = fs::File::open(&path_buf).map_err(|source| ReadError::Open {
+            path: path_buf,
+            source,
+        })?;
+        Self::new(file).map_err(ReadError::Parse)
     }
 
     /// Open a FASTA index given the corresponding FASTA file path.
     /// That is, for ref.fasta we expect ref.fasta.fai.
-    pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> anyhow::Result<Self> {
+    pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> Result<Self> {
         let mut fai_path = fasta_path.as_ref().as_os_str().to_owned();
         fai_path.push(".fai");
 
@@ -409,12 +429,14 @@ pub struct IndexedReader<R: io::Read + io::Seek> {
 impl IndexedReader<fs::File> {
     /// Read from a given file path. This assumes the index ref.fasta.fai to be
     /// present for FASTA ref.fasta.
-    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> anyhow::Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(path: &P) -> Result<Self> {
         let index = Index::with_fasta_file(path)?;
-        fs::File::open(path)
-            .map(|f| Self::with_index(f, index))
-            .map_err(csv::Error::from)
-            .with_context(|| format!("Failed to read fasta from {:#?}", path))
+        let path_buf = path.as_ref().to_path_buf();
+        let file = fs::File::open(&path_buf).map_err(|source| ReadError::Open {
+            path: path_buf,
+            source,
+        })?;
+        Ok(Self::with_index(file, index))
     }
 }
 
@@ -968,19 +990,19 @@ impl Record {
     /// e.g. IUPAC nucleotide and amino acid codes), a gap (`-`, `.`), or a
     /// stop (`*`). Characters such as digits, whitespace, or symbols like
     /// `@` are rejected.
-    pub fn check(&self) -> Result<(), &str> {
+    pub fn check(&self) -> std::result::Result<(), CheckError> {
         if self.id().is_empty() {
-            return Err("Expecting id for Fasta record.");
+            return Err(CheckError::EmptyId);
         }
         if !self.seq.is_ascii() {
-            return Err("Non-ascii character found in sequence.");
+            return Err(CheckError::NonAsciiSequence);
         }
         if !self
             .seq
             .bytes()
             .all(|b| b.is_ascii_alphabetic() || matches!(b, b'-' | b'.' | b'*'))
         {
-            return Err("Invalid character found in sequence.");
+            return Err(CheckError::InvalidSequence);
         }
 
         Ok(())
@@ -1276,7 +1298,7 @@ TTTA
     fn test_check_record_seq_has_non_iupac_raises_err() {
         let record = Record::with_attrs("id", None, b"ACGT@A");
 
-        let actual = record.check().unwrap_err();
+        let actual = record.check().unwrap_err().to_string();
         let expected = "Invalid character found in sequence.";
 
         assert_eq!(actual, expected)
@@ -1316,12 +1338,8 @@ TTTA
     #[test]
     fn test_reader_from_file_path_doesnt_exist_returns_err() {
         let path = Path::new("/I/dont/exist.fasta");
-        let error = Reader::from_file(path)
-            .unwrap_err()
-            .downcast::<String>()
-            .unwrap();
-
-        assert_eq!(&error, "Failed to read fasta from \"/I/dont/exist.fasta\"")
+        let error = Reader::from_file(path).unwrap_err();
+        assert!(matches!(error, ReadError::Open { .. }));
     }
 
     #[test]
