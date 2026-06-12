@@ -869,7 +869,7 @@ IIIIIIJJJJJJ
     fn test_reader_from_file_path_doesnt_exist_returns_err() {
         let path = Path::new("/I/dont/exist.fq");
         let error = Reader::from_file(path).unwrap_err();
-        assert!(matches!(error, ReadError::FileOpen { .. }));
+        assert!(matches!(error, ReadError::Open { .. }));
     }
 
     #[test]
