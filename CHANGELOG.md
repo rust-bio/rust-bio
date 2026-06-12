@@ -3,6 +3,48 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [4.0.0](https://github.com/rust-bio/rust-bio/compare/v3.0.0...v4.0.0) (2026-06-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* Replace anyhow with typed thiserror errors ([#674](https://github.com/rust-bio/rust-bio/issues/674))
+* Change Phase conversion methods to use TryFrom for better error handling ([#625](https://github.com/rust-bio/rust-bio/issues/625))
+* for pairwise alignment, only apply gap_extend penalty for each extension of a gap beyond length 1, not upon gap opening ([#660](https://github.com/rust-bio/rust-bio/issues/660))
+
+### refactor
+
+* Change Phase conversion methods to use TryFrom for better error handling ([#625](https://github.com/rust-bio/rust-bio/issues/625)) ([c8718fc](https://github.com/rust-bio/rust-bio/commit/c8718fc87444928db55e0e1bb118c4bcd873ae8a))
+* Replace anyhow with typed thiserror errors ([#674](https://github.com/rust-bio/rust-bio/issues/674)) ([ae5d31a](https://github.com/rust-bio/rust-bio/commit/ae5d31a37a83056b34af3f655ed3ec2759110070))
+
+
+### Features
+
+* **gff:** percent-encode and -decode GFF3 attributes per the spec ([#672](https://github.com/rust-bio/rust-bio/issues/672)) ([40166d6](https://github.com/rust-bio/rust-bio/commit/40166d674006c71b5205465f0f15e4a533432035))
+* **rank_select:** add RankSelect::extend for appending many bits ([#671](https://github.com/rust-bio/rust-bio/issues/671)) ([3b90bb3](https://github.com/rust-bio/rust-bio/commit/3b90bb3ad607f8963dd68631d230a9c5b323200d))
+* **rank_select:** add RankSelect::push for incremental construction ([#670](https://github.com/rust-bio/rust-bio/issues/670)) ([aba35b5](https://github.com/rust-bio/rust-bio/commit/aba35b5dc0c6a5a7d70616359d6370b4bcfc861b))
+
+
+### Bug Fixes
+
+* fix compiler warnings ([#661](https://github.com/rust-bio/rust-bio/issues/661)) ([8c9013a](https://github.com/rust-bio/rust-bio/commit/8c9013a1ac8794c35dd08a78fecb2cf3d19d023c))
+* **fmindex:** avoid usize underflow on backward_search for lex-smallest symbol ([#663](https://github.com/rust-bio/rust-bio/issues/663)) ([79dc5d1](https://github.com/rust-bio/rust-bio/commit/79dc5d107fe6cdb1223e857f325e02af8dae72fa))
+* for pairwise alignment, only apply gap_extend penalty for each extension of a gap beyond length 1, not upon gap opening ([#660](https://github.com/rust-bio/rust-bio/issues/660)) ([51e3d29](https://github.com/rust-bio/rust-bio/commit/51e3d295f9d4ffc8fbd09d2b982dde1069800b24)), closes [#656](https://github.com/rust-bio/rust-bio/issues/656)
+* import RngExt so tests and benches compile with rand 0.10 ([#668](https://github.com/rust-bio/rust-bio/issues/668)) ([435d696](https://github.com/rust-bio/rust-bio/commit/435d6968f4a960ef100110f9e256dc3003bfdda8))
+* **io:** reject non-IUPAC characters in FASTA/FASTQ Record::check ([#662](https://github.com/rust-bio/rust-bio/issues/662)) ([607960a](https://github.com/rust-bio/rust-bio/commit/607960a475e17cfb414a82e14252ca01caa95c78))
+* **test:** import RngExt for random_range in rank_select test ([#667](https://github.com/rust-bio/rust-bio/issues/667)) ([ae8d54d](https://github.com/rust-bio/rust-bio/commit/ae8d54dfc15b0bae21d5e875b8dcb91f199fbe78))
+
+
+### Miscellaneous
+
+* add keywords and categories to Cargo.toml ([#669](https://github.com/rust-bio/rust-bio/issues/669)) ([e9f5a84](https://github.com/rust-bio/rust-bio/commit/e9f5a8454ea1133d5731f9f8ed77e3e32474635c))
+
+
+### Dependencies
+
+* update bit-set requirement from 0.8 to 0.10 ([#658](https://github.com/rust-bio/rust-bio/issues/658)) ([2996eae](https://github.com/rust-bio/rust-bio/commit/2996eae3f8264e08abab06db849e44b4611c52f5))
+* update rand requirement from 0.9.0 to 0.10.1 ([#659](https://github.com/rust-bio/rust-bio/issues/659)) ([30244e2](https://github.com/rust-bio/rust-bio/commit/30244e2759ddfb3cc3287d9fa287e9b34884b2ad))
+
 ## [3.0.0](https://github.com/rust-bio/rust-bio/compare/v2.3.0...v3.0.0) (2025-09-19)
 
 
