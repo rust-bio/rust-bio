@@ -75,8 +75,8 @@ use getset::{CloneGetters, CopyGetters, Getters, MutGetters, Setters, WithSetter
 #[derive(Debug, thiserror::Error)]
 #[error("failed to open {path}: {source}")]
 pub struct OpenError {
-    pub(crate) path: PathBuf,
-    pub(crate) source: io::Error,
+    pub path: PathBuf,
+    pub source: io::Error,
 }
 
 /// A TSV reader.

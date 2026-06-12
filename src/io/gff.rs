@@ -102,8 +102,8 @@ pub struct Reader<R: io::Read> {
 #[derive(Debug, thiserror::Error)]
 #[error("failed to read GFF from {path}: {source}")]
 pub struct GffOpenError {
-    pub(crate) path: PathBuf,
-    pub(crate) source: io::Error,
+    pub path: PathBuf,
+    pub source: io::Error,
 }
 
 impl Reader<fs::File> {
