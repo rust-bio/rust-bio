@@ -92,6 +92,110 @@ impl GffType {
     }
 }
 
+/// Whether a byte must be percent-encoded in a GFF3 column-9 tag or value.
+///
+/// Per the [GFF3 specification], only the following must be encoded (using RFC
+/// 3986 percent-encoding): tab, newline, carriage return, the percent sign,
+/// other control characters (`0x00`-`0x1F` and `0x7F`), and the characters that
+/// are reserved in column 9: `;`, `=`, `&` and `,`. Notably, spaces are *not*
+/// encoded, and no other characters may be encoded.
+///
+/// [GFF3 specification]: https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md
+#[inline]
+fn gff3_must_encode(b: u8) -> bool {
+    matches!(b, b'\t' | b'\n' | b'\r' | b'%' | b';' | b'=' | b'&' | b',') || b < 0x20 || b == 0x7f
+}
+
+/// Map a nibble (`0..=15`) to its upper-case ASCII hex digit.
+#[inline]
+fn hex_upper(nibble: u8) -> u8 {
+    match nibble {
+        0..=9 => b'0' + nibble,
+        _ => b'A' + (nibble - 10),
+    }
+}
+
+/// Map an ASCII hex digit to its value, or `None` if it is not a hex digit.
+#[inline]
+fn hex_val(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
+    }
+}
+
+/// Percent-encode a GFF3 attribute tag or value as required by the GFF3 spec.
+///
+/// Only the characters selected by [`gff3_must_encode`] are escaped; every other
+/// byte (including multi-byte UTF-8 sequences and spaces) is passed through
+/// unchanged. The common case of a string with nothing to encode is returned
+/// without allocating a fresh buffer.
+fn gff3_encode(s: &str) -> String {
+    let bytes = s.as_bytes();
+    if !bytes.iter().any(|&b| gff3_must_encode(b)) {
+        return s.to_owned();
+    }
+    let mut out = Vec::with_capacity(s.len());
+    for &b in bytes {
+        if gff3_must_encode(b) {
+            out.push(b'%');
+            out.push(hex_upper(b >> 4));
+            out.push(hex_upper(b & 0x0f));
+        } else {
+            out.push(b);
+        }
+    }
+    // Pass-through bytes keep the original UTF-8 and the inserted escape bytes
+    // are ASCII, so the result is always valid UTF-8.
+    String::from_utf8(out).expect("gff3_encode produced invalid UTF-8")
+}
+
+/// Percent-decode a GFF3 attribute tag or value (RFC 3986).
+///
+/// A `%XX` triple with two hex digits is decoded to the corresponding byte. Any
+/// `%` not followed by two hex digits (truncated or malformed input) is passed
+/// through verbatim, so decoding is infallible. Should the decoded bytes not be
+/// valid UTF-8 (only possible with deliberately malformed input), the
+/// conversion falls back to a lossy one.
+fn gff3_decode(s: &str) -> String {
+    let bytes = s.as_bytes();
+    if !bytes.contains(&b'%') {
+        return s.to_owned();
+    }
+    let mut out = Vec::with_capacity(s.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let (Some(hi), Some(lo)) = (hex_val(bytes[i + 1]), hex_val(bytes[i + 2])) {
+                out.push((hi << 4) | lo);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    match String::from_utf8(out) {
+        Ok(s) => s,
+        Err(e) => String::from_utf8_lossy(e.as_bytes()).into_owned(),
+    }
+}
+
+/// Strip a single layer of surrounding single or double quotes from a GFF2/GTF2
+/// attribute tag or value. GFF3 does not treat quotes specially and uses
+/// [`gff3_decode`] instead.
+fn trim_quotes(s: &str) -> String {
+    s.trim_matches('\'').trim_matches('"').to_owned()
+}
+
+/// Identity transform for attribute tags/values that are written verbatim
+/// (every format except GFF3, which percent-encodes via [`gff3_encode`]).
+fn write_attr_verbatim(s: &str) -> String {
+    s.to_owned()
+}
+
 /// A GFF reader.
 #[derive(Debug)]
 pub struct Reader<R: io::Read> {
@@ -138,10 +242,17 @@ impl<R: io::Read> Reader<R> {
             term = term as char
         );
         let attribute_re = Regex::new(&r).unwrap();
+        // Decide once, from the format, how attributes are decoded.
+        let decode_attr: fn(&str) -> String = if self.gff_type == GffType::GFF3 {
+            gff3_decode
+        } else {
+            trim_quotes
+        };
         Records {
             inner: self.inner.deserialize(),
             attribute_re,
             value_delim: vdelim as char,
+            decode_attr,
         }
     }
 }
@@ -301,6 +412,11 @@ pub struct Records<'a, R: io::Read> {
     inner: csv::DeserializeRecordsIter<'a, R, GffRecordInner>,
     attribute_re: Regex,
     value_delim: char,
+    // How a raw attribute tag/value is turned into its stored form. Chosen once
+    // from the format: GFF3 percent-decodes (and keeps quotes verbatim), while
+    // GFF2/GTF2 strip surrounding quotes. Resolving it here keeps the decision
+    // out of the per-attribute loop.
+    decode_attr: fn(&str) -> String,
 }
 
 impl<'a, R: io::Read> Iterator for Records<'a, R> {
@@ -320,11 +436,11 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                     phase,
                     raw_attributes,
                 )| {
-                    let trim_quotes = |s: &str| s.trim_matches('\'').trim_matches('"').to_owned();
+                    let decode_attr = self.decode_attr;
                     let mut attributes = MultiMap::new();
                     for caps in self.attribute_re.captures_iter(&raw_attributes) {
                         for value in caps["value"].split(self.value_delim) {
-                            attributes.insert(trim_quotes(&caps["key"]), trim_quotes(value));
+                            attributes.insert(decode_attr(&caps["key"]), decode_attr(value));
                         }
                     }
                     Record {
@@ -350,6 +466,11 @@ pub struct Writer<W: io::Write> {
     inner: csv::Writer<W>,
     delimiter: char,
     terminator: String,
+    // How an attribute tag/value is encoded on write. Chosen once from the
+    // format: GFF3 percent-encodes the reserved characters, every other format
+    // writes verbatim. Resolving it here keeps the decision out of the
+    // per-attribute loop.
+    encode_attr: fn(&str) -> String,
 }
 
 impl Writer<fs::File> {
@@ -372,16 +493,23 @@ impl<W: io::Write> Writer<W> {
                 .from_writer(writer),
             delimiter: delim as char,
             terminator: String::from_utf8(vec![termi]).unwrap(),
+            // Decide once, from the format, how attributes are encoded.
+            encode_attr: if fileformat == GffType::GFF3 {
+                gff3_encode
+            } else {
+                write_attr_verbatim
+            },
         }
     }
 
     /// Write a given GFF record.
     pub fn write(&mut self, record: &Record) -> csv::Result<()> {
+        let encode_attr = self.encode_attr;
         let attributes = if !record.attributes.is_empty() {
             record
                 .attributes
                 .iter()
-                .map(|(a, b)| format!("{}{}{}", a, self.delimiter, b))
+                .map(|(a, b)| format!("{}{}{}", encode_attr(a), self.delimiter, encode_attr(b)))
                 .join(&self.terminator)
         } else {
             "".to_owned()
@@ -795,5 +923,94 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let phase = Phase(None);
         let result: Result<u8, ()> = phase.try_into();
         assert_eq!(result, Err(()));
+    }
+
+    #[test]
+    fn test_gff3_encode_reserved_and_passthrough() {
+        // The four column-9 reserved characters plus the percent sign.
+        assert_eq!(gff3_encode("a;b=c,d&e%f"), "a%3Bb%3Dc%2Cd%26e%25f");
+        // Tab, newline and carriage return.
+        assert_eq!(gff3_encode("a\tb\nc\rd"), "a%09b%0Ac%0Dd");
+        // Spaces and other printable characters are left untouched.
+        assert_eq!(gff3_encode("hello world (test)"), "hello world (test)");
+        // Multi-byte UTF-8 passes through unchanged.
+        assert_eq!(gff3_encode("caf\u{e9}\u{3b2}"), "caf\u{e9}\u{3b2}");
+    }
+
+    #[test]
+    fn test_gff3_decode_basic_and_malformed() {
+        assert_eq!(gff3_decode("a%3Bb%3Dc%2Cd%26e%25f"), "a;b=c,d&e%f");
+        assert_eq!(gff3_decode("a%09b%0Ac%0Dd"), "a\tb\nc\rd");
+        // Lower-case hex digits are accepted.
+        assert_eq!(gff3_decode("%3b%3d"), ";=");
+        // A bare percent or a truncated/invalid escape is passed through verbatim.
+        assert_eq!(gff3_decode("100%"), "100%");
+        assert_eq!(gff3_decode("ab%2"), "ab%2");
+        assert_eq!(gff3_decode("%zz"), "%zz");
+    }
+
+    #[test]
+    fn test_gff3_encode_decode_roundtrip() {
+        for s in [
+            "",
+            "plain",
+            "a;b=c,d&e",
+            "%25 already",
+            "tab\tinside",
+            "\u{fc}n\u{ef}c\u{f6}d\u{e9}",
+        ] {
+            assert_eq!(
+                gff3_decode(&gff3_encode(s)),
+                s,
+                "roundtrip failed for {:?}",
+                s
+            );
+        }
+    }
+
+    #[test]
+    fn test_gff3_reader_decodes_attributes() {
+        // An escaped comma and equals sign inside a value must be decoded and
+        // must NOT be treated as a value or key/value separator.
+        let gff = b"seq1\tsrc\tgene\t1\t100\t.\t+\t.\tID=g%3B1;Note=a%2Cb%3Dc\n";
+        let mut reader = Reader::new(&gff[..], GffType::GFF3);
+        let rec = reader.records().next().unwrap().unwrap();
+        assert_eq!(rec.attributes().get("ID"), Some(&"g;1".to_string()));
+        assert_eq!(rec.attributes().get("Note"), Some(&"a,b=c".to_string()));
+    }
+
+    #[test]
+    fn test_gff3_writer_encodes_reserved_characters() {
+        // Parse a record whose attributes contain reserved characters, write it
+        // back out, and confirm they are re-encoded. MultiMap iteration order is
+        // unspecified, so each fragment is checked independently.
+        let gff = b"seq1\tsrc\tgene\t1\t100\t.\t+\t.\tNote=a%2Cb%3Dc;ID=g%3B1\n";
+        let mut reader = Reader::new(&gff[..], GffType::GFF3);
+        let rec = reader.records().next().unwrap().unwrap();
+
+        let mut writer = Writer::new(vec![], GffType::GFF3);
+        writer.write(&rec).unwrap();
+        let out = String::from_utf8(writer.inner.into_inner().unwrap()).unwrap();
+        assert!(out.contains("Note=a%2Cb%3Dc"), "out: {}", out);
+        assert!(out.contains("ID=g%3B1"), "out: {}", out);
+    }
+
+    #[test]
+    fn test_gtf2_attributes_not_percent_encoded() {
+        // GFF2/GTF2 keep their own quoting convention: no percent-encoding is
+        // applied on write, so a %3B must not appear in the output.
+        let gff = b"seq1\tsrc\tgene\t1\t100\t.\t+\t.\tID=a%3Bb\n";
+        let mut reader = Reader::new(&gff[..], GffType::GFF3);
+        let rec = reader.records().next().unwrap().unwrap();
+        assert_eq!(rec.attributes().get("ID"), Some(&"a;b".to_string()));
+
+        let mut writer = Writer::new(vec![], GffType::GTF2);
+        writer.write(&rec).unwrap();
+        let out = String::from_utf8(writer.inner.into_inner().unwrap()).unwrap();
+        assert!(
+            !out.contains("%3B"),
+            "GTF2 output must not be percent-encoded: {}",
+            out
+        );
     }
 }
