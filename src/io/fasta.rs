@@ -147,7 +147,7 @@ pub enum ReadError {
     #[error("failed to open {path}: {source}")]
     Open { path: PathBuf, source: io::Error },
     #[error(transparent)]
-    Csv(#[from] csv::Error),
+    Parse(#[from] csv::Error),
 }
 pub type Result<T, E = ReadError> = std::result::Result<T, E>;
 
@@ -391,7 +391,7 @@ impl Index {
             path: path_buf,
             source,
         })?;
-        Self::new(file).map_err(ReadError::Csv)
+        Self::new(file).map_err(ReadError::Parse)
     }
 
     /// Open a FASTA index given the corresponding FASTA file path.

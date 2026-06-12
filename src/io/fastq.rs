@@ -115,7 +115,7 @@ pub enum ReadError {
     MissingAt,
 
     #[error("can't open {path} file: {source}")]
-    FileOpen { path: PathBuf, source: io::Error },
+    Open { path: PathBuf, source: io::Error },
 
     #[error("can't read input")]
     Io(#[from] io::Error),
@@ -160,7 +160,7 @@ impl Reader<io::BufReader<fs::File>> {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path = path.as_ref().to_path_buf();
         fs::File::open(&path)
-            .map_err(|source| ReadError::FileOpen { path, source })
+            .map_err(|source| ReadError::Open { path, source })
             .map(Reader::new)
     }
 }
