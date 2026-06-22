@@ -28,7 +28,7 @@ bytecount = "0.6"
 csv = "1.1"
 num-traits = "0.2"
 num-integer = "0.1"
-itertools = ">=0.8, <0.15"
+itertools = ">=0.8, <0.16"
 itertools-num = "0.1"
 bv = { version = "0.11", features = ["serde"] }
 bit-set = "0.10"
