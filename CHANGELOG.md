@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [4.0.1](https://github.com/rust-bio/rust-bio/compare/v4.0.0...v4.0.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* **pattern_matching:** reject 64-symbol patterns in shift_and and bndm ([#675](https://github.com/rust-bio/rust-bio/issues/675)) ([49aafac](https://github.com/rust-bio/rust-bio/commit/49aafacb55594de96ee3c1843233e341249b8c09))
+
+
+### Dependencies
+
+* update itertools requirement from &gt;=0.8, &lt;0.15 to >=0.8, <0.16 ([#676](https://github.com/rust-bio/rust-bio/issues/676)) ([1760c1d](https://github.com/rust-bio/rust-bio/commit/1760c1d86e611c2ea324fda50b7d12126de412cd))
+
 ## [4.0.0](https://github.com/rust-bio/rust-bio/compare/v3.0.0...v4.0.0) (2026-06-12)
 
 
