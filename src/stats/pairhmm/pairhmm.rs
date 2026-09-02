@@ -132,6 +132,10 @@ impl PairHMM {
         let mut prev = 0;
         let mut curr = 1;
         self.fm[prev][0] = LogProb::ln_one();
+        // Origin cell: no bases consumed. Global alignment with banding
+        // needs this; otherwise every neighbor is usize::MAX and the first
+        // cell is skipped. Semiglobal also refreshes [prev][0] below.
+        self.min_edit_dist[prev][0] = 0;
 
         // iterate over x
         for i in 0..emission_params.len_x() {
@@ -549,6 +553,53 @@ mod tests {
         assert_relative_eq!(*p_most_likely_path, *p, epsilon = 1e-4);
         assert_relative_eq!(*p, *p_max, epsilon = 1e-1);
         assert!(*p <= *p_max);
+    }
+
+    #[test]
+    fn test_global_exact_match_one_base_with_pruning() {
+        // Global alignment of two identical bases is an exact match (edit distance 0).
+        // Pruning with max_edit_dist = 0 must not turn that into an impossible alignment.
+        let x = b"A";
+        let y = b"A";
+        let emission_params = TestEmissionParams { x, y };
+        let mut pair_hmm = PairHMM::new(&TestSingleGapParams);
+
+        let p = pair_hmm.prob_related(&emission_params, &AlignmentMode::Global, None);
+        let p_banded = pair_hmm.prob_related(&emission_params, &AlignmentMode::Global, Some(0));
+
+        assert_ne!(p, LogProb::ln_zero());
+        assert_ne!(p_banded, LogProb::ln_zero());
+        assert_relative_eq!(*p, *p_banded, epsilon = 1e-12);
+    }
+
+    #[test]
+    fn test_global_pruning_wide_limit_and_reuse() {
+        let x = b"ACGT";
+        let y = b"ACGT";
+        let emission_params = TestEmissionParams { x, y };
+        let mut pair_hmm = PairHMM::new(&TestSingleGapParams);
+
+        let p_none = pair_hmm.prob_related(&emission_params, &AlignmentMode::Global, None);
+        let p_zero = pair_hmm.prob_related(&emission_params, &AlignmentMode::Global, Some(0));
+        let p_wide = pair_hmm.prob_related(&emission_params, &AlignmentMode::Global, Some(x.len()));
+        let p_reuse = pair_hmm.prob_related(&emission_params, &AlignmentMode::Global, None);
+
+        assert_ne!(p_none, LogProb::ln_zero());
+        assert_relative_eq!(*p_none, *p_zero, epsilon = 1e-12);
+        assert_relative_eq!(*p_none, *p_wide, epsilon = 1e-12);
+        assert_relative_eq!(*p_none, *p_reuse, epsilon = 1e-12);
+    }
+
+    #[test]
+    fn test_semiglobal_exact_match_with_pruning() {
+        let x = b"ACGT";
+        let y = b"ACGT";
+        let emission_params = TestEmissionParams { x, y };
+        let mut pair_hmm = PairHMM::new(&TestSingleGapParams);
+        let p = pair_hmm.prob_related(&emission_params, &AlignmentMode::Semiglobal, None);
+        let p_banded = pair_hmm.prob_related(&emission_params, &AlignmentMode::Semiglobal, Some(0));
+        assert_ne!(p, LogProb::ln_zero());
+        assert_relative_eq!(*p, *p_banded, epsilon = 1e-12);
     }
 
     #[test]
