@@ -275,6 +275,7 @@ impl Traceback {
 #[derive(Default, Clone, Debug)]
 pub struct Aligner<F: MatchFunc> {
     traceback: Traceback,
+    alignment: Alignment,
     query: Vec<u8>,
     poa: Poa<F>,
 }
@@ -284,21 +285,29 @@ impl<F: MatchFunc> Aligner<F> {
     pub fn new(scoring: Scoring<F>, reference: TextSlice) -> Self {
         Aligner {
             traceback: Traceback::new(),
+            alignment: Alignment::default(),
             query: reference.to_vec(),
             poa: Poa::from_string(scoring, reference),
         }
     }
 
+    /// Recalculate alignment from `traceback` against the graph that produced
+    /// those scores. Must run before `add_alignment` mutates the graph.
+    fn store_traceback(&mut self, traceback: Traceback) {
+        self.traceback = traceback;
+        self.alignment = self.poa.recalculate_alignment(&self.traceback);
+    }
+
     /// Get the alignment of the last query to the graph and add to graph.
     pub fn add_to_graph(&mut self) -> &mut Self {
-        let alignment = self.poa.recalculate_alignment(&self.traceback);
-        self.poa.add_alignment(&alignment, &self.query);
+        self.poa.add_alignment(&self.alignment, &self.query);
         self
     }
 
-    /// Return alignment of last added query against the graph.
+    /// Return alignment of the last query against the graph as it was when
+    /// `global` / `semiglobal` / `local` / `custom` / `global_banded` ran.
     pub fn alignment(&self) -> Alignment {
-        self.poa.recalculate_alignment(&self.traceback)
+        self.alignment.clone()
     }
 
     /// Add the alignment to the graph
@@ -324,7 +333,8 @@ impl<F: MatchFunc> Aligner<F> {
         self.poa.scoring.yclip_suffix = MIN_SCORE;
 
         self.query = query.to_vec();
-        self.traceback = self.poa.custom(query);
+        let traceback = self.poa.custom(query);
+        self.store_traceback(traceback);
 
         // Set the clip penalties to the original values
         self.poa.scoring.xclip_prefix = clip_penalties[0];
@@ -352,7 +362,8 @@ impl<F: MatchFunc> Aligner<F> {
         self.poa.scoring.yclip_suffix = 0;
 
         self.query = query.to_vec();
-        self.traceback = self.poa.custom(query);
+        let traceback = self.poa.custom(query);
+        self.store_traceback(traceback);
 
         // Set the clip penalties to the original values
         self.poa.scoring.xclip_prefix = clip_penalties[0];
@@ -380,7 +391,8 @@ impl<F: MatchFunc> Aligner<F> {
         self.poa.scoring.yclip_suffix = 0;
 
         self.query = query.to_vec();
-        self.traceback = self.poa.custom(query);
+        let traceback = self.poa.custom(query);
+        self.store_traceback(traceback);
 
         // Set the clip penalties to the original values
         self.poa.scoring.xclip_prefix = clip_penalties[0];
@@ -394,7 +406,8 @@ impl<F: MatchFunc> Aligner<F> {
     /// Custom align a given query against the graph with custom xclip and yclip penalties.
     pub fn custom(&mut self, query: TextSlice) -> &mut Self {
         self.query = query.to_vec();
-        self.traceback = self.poa.custom(query);
+        let traceback = self.poa.custom(query);
+        self.store_traceback(traceback);
         self
     }
 
@@ -402,7 +415,8 @@ impl<F: MatchFunc> Aligner<F> {
     /// optimal score for speed.
     pub fn global_banded(&mut self, query: TextSlice, bandwidth: usize) -> &mut Self {
         self.query = query.to_vec();
-        self.traceback = self.poa.global_banded(query, bandwidth);
+        let traceback = self.poa.global_banded(query, bandwidth);
+        self.store_traceback(traceback);
         self
     }
 
@@ -1238,5 +1252,184 @@ mod tests {
                 AlignmentOperation::Yclip(1, 5)
             ]
         );
+    }
+
+    /// Minimized #641: `alignment()` after `add_to_graph` must not re-trace
+    /// against a graph that has grown since the score matrix was computed.
+    #[test]
+    fn test_alignment_after_add_to_graph_issue_641_minimized() {
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
+        let s1 = b"GTTTTTGTTTGTTTGTTTGTTTGTTTTTT";
+        let s2 = b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT";
+        let mut aligner = Aligner::new(scoring, s1);
+        aligner.global(s2).add_to_graph();
+        let aln = aligner.alignment();
+        assert!(!aln.operations.is_empty());
+        assert!(!aligner.consensus().is_empty());
+    }
+
+    /// Reporter fixture from https://github.com/rust-bio/rust-bio/issues/641
+    /// including the strkit `alignment()` call after all reads are added.
+    #[test]
+    fn test_alignment_after_add_to_graph_issue_641_reporter() {
+        let seqs: &[&[u8]] = &[
+            b"GTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTTGTTTGTTTGTTTGTTTGTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTTT",
+            b"GTTTTTTGTTTGTTTGTTTGTTTGTTTTTTT",
+            b"GTTTTTTGTTTTGTTTGTTTGTTTGTTTTTTT",
+        ];
+        let scoring = Scoring::new(-1, 0, |a: u8, b: u8| if a == b { 1i32 } else { -1i32 });
+        let mut aligner = Aligner::new(scoring, seqs[0]);
+        let mut max_len = seqs[0].len();
+        for y in &seqs[1..] {
+            max_len = std::cmp::max(max_len, y.len());
+            aligner.global(y).add_to_graph();
+        }
+        let cons = aligner.consensus();
+        let pretty = aligner.alignment().pretty(
+            cons.as_slice(),
+            seqs.to_vec(),
+            aligner.graph(),
+            max_len * 4,
+        );
+        assert!(pretty.contains("cons:"));
+        assert!(!cons.is_empty());
+    }
+
+    fn eq_score(a: u8, b: u8) -> i32 {
+        if a == b {
+            1
+        } else {
+            -1
+        }
+    }
+
+    /// A second query on the same aligner must replace the cached alignment.
+    #[test]
+    fn test_cached_alignment_replaced_on_second_query() {
+        let x = b"ACGTACGT";
+        let y1 = b"ACGTACGT";
+        let y2 = b"TTTTTTTT";
+        let y3 = b"ACGTAAAA";
+
+        let mut g = Aligner::new(Scoring::new(-1, 0, eq_score), x);
+        let g1 = g.global(y1).alignment();
+        let g2 = g.global(y2).alignment();
+        assert_ne!(g1, g2);
+        let mut g_fresh = Aligner::new(Scoring::new(-1, 0, eq_score), x);
+        assert_eq!(g2, g_fresh.global(y2).alignment());
+
+        let mut sg = Aligner::new(Scoring::new(-1, 0, eq_score), x);
+        let sg1 = sg.semiglobal(y1).alignment();
+        let sg2 = sg.semiglobal(y2).alignment();
+        assert_ne!(sg1, sg2);
+        let mut sg_fresh = Aligner::new(Scoring::new(-1, 0, eq_score), x);
+        assert_eq!(sg2, sg_fresh.semiglobal(y2).alignment());
+
+        let mut loc = Aligner::new(Scoring::new(-1, 0, eq_score).xclip(0).yclip(0), x);
+        let loc1 = loc.local(y1).alignment();
+        let loc2 = loc.local(y2).alignment();
+        assert_ne!(loc1, loc2);
+        let mut loc_fresh = Aligner::new(Scoring::new(-1, 0, eq_score).xclip(0).yclip(0), x);
+        assert_eq!(loc2, loc_fresh.local(y2).alignment());
+
+        let mut c = Aligner::new(Scoring::new(-1, 0, eq_score), x);
+        let c1 = c.custom(y1).alignment();
+        let c2 = c.custom(y3).alignment();
+        assert_ne!(c1, c2);
+        let mut c_fresh = Aligner::new(Scoring::new(-1, 0, eq_score), x);
+        assert_eq!(c2, c_fresh.custom(y3).alignment());
+
+        let mut b = Aligner::new(Scoring::new(-1, 0, eq_score), x);
+        let b1 = b.global_banded(y1, 8).alignment();
+        let b2 = b.global_banded(y2, 8).alignment();
+        assert_ne!(b1, b2);
+        let mut b_fresh = Aligner::new(Scoring::new(-1, 0, eq_score), x);
+        assert_eq!(b2, b_fresh.global_banded(y2, 8).alignment());
+
+        // Cache must also update after the graph has grown.
+        let mut grown = Aligner::new(Scoring::new(-1, 0, eq_score), x);
+        let n_before = grown.graph().node_count();
+        grown.global(y3).add_to_graph();
+        assert!(
+            grown.graph().node_count() > n_before,
+            "inserted read must add nodes, had {} now {}",
+            n_before,
+            grown.graph().node_count()
+        );
+        let after_insert = grown.alignment();
+        grown.global(y2);
+        assert_ne!(after_insert, grown.alignment());
+    }
+
+    /// `global` / `semiglobal` / `local` reconstruct while temporary clip
+    /// penalties are still in effect, before the originals are restored.
+    #[test]
+    fn test_reconstruction_uses_temporary_clip_penalties() {
+        // Sequences from the existing clip-suffix tests; both global and
+        // clip=0 custom complete without overflow.
+        let x = b"GAAAA";
+        let y = b"CG";
+
+        let mut global_from_clip0 =
+            Aligner::new(Scoring::new(-1, 0, eq_score).xclip(0).yclip(0), x);
+        let aln_global = global_from_clip0.global(y).alignment();
+
+        let mut already_minclip = Aligner::new(Scoring::new(-1, 0, eq_score), x);
+        let aln_minclip = already_minclip.custom(y).alignment();
+        assert_eq!(aln_global, aln_minclip);
+
+        let mut clip0_custom = Aligner::new(Scoring::new(-1, 0, eq_score).xclip(0).yclip(0), x);
+        let aln_clip0 = clip0_custom.custom(y).alignment();
+        assert_ne!(
+            aln_global, aln_clip0,
+            "global reconstruction must not use restored clip=0 scoring"
+        );
+
+        let mut semi_from_clip0 = Aligner::new(Scoring::new(-1, 0, eq_score).xclip(0).yclip(0), x);
+        let aln_semi = semi_from_clip0.semiglobal(y).alignment();
+        let mut semi_expected =
+            Aligner::new(Scoring::new(-1, 0, eq_score).xclip(MIN_SCORE).yclip(0), x);
+        assert_eq!(aln_semi, semi_expected.custom(y).alignment());
+
+        let mut local_from_minclip = Aligner::new(Scoring::new(-1, 0, eq_score), x);
+        let aln_local = local_from_minclip.local(y).alignment();
+        let mut local_expected = Aligner::new(Scoring::new(-1, 0, eq_score).xclip(0).yclip(0), x);
+        assert_eq!(aln_local, local_expected.custom(y).alignment());
     }
 }
