@@ -6,6 +6,17 @@
 //! The [Full-text index in Minute space index (FM-index)](https://doi.org/10.1109/SFCS.2000.892127) and
 //! the FMD-Index for finding suffix array intervals matching a given pattern in linear time.
 //!
+//! # Sentinel requirement
+//!
+//! The text that the underlying suffix array and BWT are built on **must end
+//! with a sentinel symbol** that is lexicographically smaller than every other
+//! symbol and does not occur anywhere else in the text. By convention this is
+//! the `$` character (see [`crate::data_structures::suffix_array::suffix_array`]).
+//! Searching an index built from a text without a trailing sentinel
+//! (e.g. a raw FASTA sequence) silently returns wrong results rather than
+//! erroring, so make sure to append the sentinel before constructing the index.
+//! Multiple sentinels are allowed when concatenating several sequences.
+//!
 //! # Examples
 //!
 //! ## Generate
@@ -109,6 +120,11 @@ pub trait FMIndexable {
     /// not exist.  If none of the pattern can be matched, the `BackwardSearchResult` is
     /// `Absent`.
     /// Complexity: O(m).
+    ///
+    /// Note: the index must have been built from a text ending with a sentinel
+    /// symbol (`$`, lexicographically smallest and not occurring elsewhere). An
+    /// index built from a text without a trailing sentinel yields wrong results
+    /// silently. See the [module-level documentation](self) for details.
     ///
     /// # Arguments
     ///
