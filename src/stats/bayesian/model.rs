@@ -4,6 +4,91 @@
 // except according to those terms.
 
 //! A trait system for Bayesian statistical modelling.
+//!
+//! A [`Model`] is assembled from three pieces that you implement for your own
+//! event and data types: a [`Likelihood`] (`Pr(data | event)`), a [`Prior`]
+//! (`Pr(event)`) and a [`Posterior`], which turns base events into the
+//! (possibly aggregated) events you actually want a posterior probability
+//! for. When there is no aggregation to perform, `Posterior::compute` can
+//! simply forward to the provided `joint_prob` closure, as shown below.
+//!
+//! # Example
+//!
+//! Here, we infer the bias (`Pr(heads)`) of a coin from a series of flips,
+//! using a uniform prior over a small discretized universe of candidate
+//! biases and a binomial likelihood.
+//!
+//! ```
+//! use approx::assert_relative_eq;
+//! use bio::stats::bayesian::model::{Likelihood, Model, Posterior, Prior};
+//! use bio::stats::LogProb;
+//! use ordered_float::NotNan;
+//!
+//! // The observed data: how many heads and tails we saw.
+//! struct Flips {
+//!     heads: u32,
+//!     tails: u32,
+//! }
+//!
+//! // A hypothesis about the coin, i.e. Pr(heads). We use `NotNan` so that
+//! // biases can be hashed and compared, as required by `Model`.
+//! type Bias = NotNan<f64>;
+//!
+//! struct BinomialLikelihood;
+//!
+//! impl Likelihood for BinomialLikelihood {
+//!     type Event = Bias;
+//!     type Data = Flips;
+//!
+//!     fn compute(&self, event: &Bias, data: &Flips, _payload: &mut ()) -> LogProb {
+//!         let p = **event;
+//!         LogProb(f64::from(data.heads) * p.ln() + f64::from(data.tails) * (1. - p).ln())
+//!     }
+//! }
+//!
+//! // A uniform prior over `n` candidate biases.
+//! struct UniformPrior {
+//!     n: usize,
+//! }
+//!
+//! impl Prior for UniformPrior {
+//!     type Event = Bias;
+//!
+//!     fn compute(&self, _event: &Bias) -> LogProb {
+//!         LogProb((1. / self.n as f64).ln())
+//!     }
+//! }
+//!
+//! // With nothing to aggregate, the posterior of an event is just its joint probability.
+//! struct DirectPosterior;
+//!
+//! impl Posterior for DirectPosterior {
+//!     type Event = Bias;
+//!     type BaseEvent = Bias;
+//!     type Data = Flips;
+//!
+//!     fn compute<F: FnMut(&Bias, &Flips) -> LogProb>(
+//!         &self,
+//!         event: &Bias,
+//!         data: &Flips,
+//!         joint_prob: &mut F,
+//!     ) -> LogProb {
+//!         joint_prob(event, data)
+//!     }
+//! }
+//!
+//! // Candidate biases from 0.1 to 0.9 in steps of 0.1.
+//! let universe: Vec<Bias> = (1..10).map(|i| NotNan::new(i as f64 / 10.).unwrap()).collect();
+//! let model = Model::new(BinomialLikelihood, UniformPrior { n: universe.len() }, DirectPosterior);
+//!
+//! // Out of 10 flips, 8 came up heads.
+//! let data = Flips { heads: 8, tails: 2 };
+//! let instance = model.compute(universe, &data);
+//!
+//! // The candidate bias closest to the observed frequency (0.8) should be most probable.
+//! let map = instance.maximum_posterior().unwrap();
+//! assert_relative_eq!(**map, 0.8);
+//! ```
 
 use std::cmp::Eq;
 use std::collections::HashMap;
@@ -118,6 +203,15 @@ where
     }
 
     /// Compute model for a given universe of events.
+    ///
+    /// # Complexity
+    ///
+    /// Calls `Posterior::compute` once per event in `universe`; each such call may in turn
+    /// invoke the `joint_prob` closure (and hence `Likelihood::compute` and `Prior::compute`)
+    /// an arbitrary number of times, depending on the `Posterior` implementation. Every
+    /// distinct base event that is evaluated is cached, so `joint_prob` is never recomputed
+    /// for the same base event. Requires `O(n + b)` additional space, where `n = universe.len()`
+    /// and `b` is the number of distinct base events visited.
     pub fn compute<U: IntoIterator<Item = PosteriorEvent>>(
         &self,
         universe: U,
@@ -152,6 +246,12 @@ where
     }
 
     /// Compute model via the exploration of the marginal distribution of the data.
+    ///
+    /// # Complexity
+    ///
+    /// Same characteristics as [`Model::compute`], except that the events explored (and thus
+    /// the number of calls to `joint_prob`) are driven by the given `Marginal` implementation
+    /// rather than an explicit universe.
     pub fn compute_from_marginal<M>(
         &self,
         marginal: &M,
@@ -219,16 +319,26 @@ where
     PosteriorEvent: Hash + Eq,
 {
     /// Posterior probability of given event.
+    ///
+    /// Runs in `O(1)` average time, a single lookup in the underlying `HashMap`.
     pub fn posterior(&self, event: &PosteriorEvent) -> Option<LogProb> {
         self.posterior_probs.get(event).map(|p| p - self.marginal)
     }
 
     /// Marginal probability.
+    ///
+    /// Runs in `O(1)` time; the marginal is computed once by [`Model::compute`] and simply
+    /// returned here.
     pub fn marginal(&self) -> LogProb {
         self.marginal
     }
 
     /// Maximum a posteriori estimate.
+    ///
+    /// Since dividing by the (fixed) marginal does not change which event maximizes the
+    /// probability, this compares joint probabilities directly rather than posteriors.
+    /// Runs in `O(b)` time, where `b` is the number of distinct base events cached by
+    /// [`Model::compute`].
     pub fn maximum_posterior(&self) -> Option<&Event> {
         self.joint_probs
             .iter()
@@ -237,6 +347,9 @@ where
     }
 
     /// Event posteriors sorted in descending order.
+    ///
+    /// Runs in `O(b log b)` time and requires `O(b)` additional space, where `b` is the number
+    /// of distinct base events cached by [`Model::compute`], due to sorting.
     pub fn event_posteriors(&self) -> impl Iterator<Item = (&Event, LogProb)> {
         self.joint_probs
             .iter()
