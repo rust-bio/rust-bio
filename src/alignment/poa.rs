@@ -16,6 +16,15 @@
 //! For a modern reference implementation, see poapy:
 //! <https://github.com/ljdursi/poapy>
 //!
+//! # Gap scoring
+//!
+//! This aligner uses a **linear** gap penalty: every gap column costs
+//! `Scoring::gap_open`, and `Scoring::gap_extend` is currently ignored. Although
+//! it takes the same [`Scoring`] type as the
+//! `pairwise` aligner (which implements affine gaps), passing a non-trivial
+//! `gap_extend` here has no effect on the result. See
+//! <https://github.com/rust-bio/rust-bio/issues/677>.
+//!
 //! # Example
 //!
 //! ```
@@ -281,6 +290,9 @@ pub struct Aligner<F: MatchFunc> {
 
 impl<F: MatchFunc> Aligner<F> {
     /// Create new instance.
+    ///
+    /// Note: only `scoring.gap_open` is used; gaps are scored linearly and
+    /// `scoring.gap_extend` is ignored (see the [module docs](self#gap-scoring)).
     pub fn new(scoring: Scoring<F>, reference: TextSlice) -> Self {
         Aligner {
             traceback: Traceback::new(),
