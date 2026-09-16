@@ -129,6 +129,7 @@ where
             lastk,
             m,
             k,
+            prev_text_char: None,
         }
     }
 
@@ -275,6 +276,7 @@ where
     lastk: usize,
     m: usize,
     k: usize,
+    prev_text_char: Option<u8>,
 }
 
 impl<'a, F, C, T> Iterator for Matches<'a, F, C, T>
@@ -286,7 +288,6 @@ where
     type Item = (usize, usize);
 
     fn next(&mut self) -> Option<(usize, usize)> {
-        let mut prev_text_char = None;
         for (i, c) in &mut self.text {
             let col = i % 3;
             let prev = (i + 2) % 3;
@@ -313,7 +314,7 @@ where
                     pattern_char,
                     text_char,
                     prev_pattern_char,
-                    prev_text_char,
+                    self.prev_text_char,
                     self.ukkonen.D[col][j - 1],
                     self.ukkonen.D[prev][j],
                     diag_score,
@@ -337,7 +338,7 @@ where
             if self.lastk == self.m {
                 return Some((i, self.ukkonen.D[col][self.m]));
             }
-            prev_text_char = Some(text_char);
+            self.prev_text_char = Some(text_char);
         }
 
         None
