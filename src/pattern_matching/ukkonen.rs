@@ -54,7 +54,7 @@ type ScoreFn<F> =
 
 /// Ukkonens algorithm.
 #[allow(non_snake_case)]
-#[derive(Default, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Ukkonen<F>
 where
     F: Fn(u8, u8) -> u32,
@@ -335,10 +335,11 @@ where
                 self.lastk -= 1;
             }
 
+            self.prev_text_char = Some(text_char);
+
             if self.lastk == self.m {
                 return Some((i, self.ukkonen.D[col][self.m]));
             }
-            self.prev_text_char = Some(text_char);
         }
 
         None
