@@ -14,8 +14,8 @@
 //! Initially, lastk = min(k, m). In each iteration (over a column), lastk can increase
 //! by at most 1.
 //!
-//! Indels (cost 1 per inserted/deleted character) and swaps (CG -> GC with cost 1)
-//! can be optionally allowed.
+//! Indels (cost 1 per inserted/deleted character, enabled by default) and swaps (CG -> GC with cost 1)
+//! can be optionally enabled/disabled.
 //! The cost function can be customized.
 //!
 //! # Example
@@ -28,6 +28,12 @@
 //! let pattern = b"TGAGCGA";
 //! let occ: Vec<(usize, usize)> = ukkonen.find_all_end(pattern, text, 1).collect();
 //! assert_eq!(occ, [(13, 1), (14, 1)]);
+//! 
+//! ukkonen.allow_swaps(true);
+//! let pattern = b"ABCD";
+//! let text = b"ABDC";
+//! let occ: Vec<(usize, usize)> = ukkonen.find_all_end(pattern, text, 1).collect();
+//! assert_eq!(occ, vec![(3, 1)]);
 //! ```
 
 use std::borrow::Borrow;
@@ -42,7 +48,8 @@ pub fn unit_cost(a: u8, b: u8) -> u32 {
     (a != b) as u32
 }
 
-type ScoreFn<F> = fn(&Ukkonen<F>, u8, u8, Option<u8>, Option<u8>, usize, usize, usize, Option<usize>) -> usize;
+type ScoreFn<F> =
+    fn(&Ukkonen<F>, u8, u8, Option<u8>, Option<u8>, usize, usize, usize, Option<usize>) -> usize;
 
 /// Ukkonens algorithm.
 #[allow(non_snake_case)]
@@ -108,7 +115,7 @@ where
         if self.allow_indels {
             self.D[2].extend(0..=lastk);
             self.D[2].extend(repeat_n(k + 1, m - lastk));
-        } else { 
+        } else {
             self.D[2].push(0);
             self.D[2].extend(repeat_n(k + 1, m));
         }
@@ -143,10 +150,11 @@ where
         text_char: u8,
         prev_pattern_char: Option<u8>,
         prev_text_char: Option<u8>,
-        diag_score_2_hop: Option<usize>
+        diag_score_2_hop: Option<usize>,
     ) -> usize {
         if let Some(diag_score_2_hop) = diag_score_2_hop {
-            if let (Some(prev_pattern_char), Some(prev_text_char)) = (prev_pattern_char, prev_text_char)
+            if let (Some(prev_pattern_char), Some(prev_text_char)) =
+                (prev_pattern_char, prev_text_char)
             {
                 if pattern_char == prev_text_char && text_char == prev_pattern_char {
                     return diag_score_2_hop + 1;
@@ -293,7 +301,11 @@ where
             for j in 1..=self.lastk {
                 let pattern_char = self.pattern[j - 1];
                 let diag_score = self.ukkonen.D[prev][j - 1];
-                let diag_score_2_hop = if j > 1 && i >= 1 { Some(self.ukkonen.D[prev_prev][j - 2]) } else { None };
+                let diag_score_2_hop = if j > 1 && i >= 1 {
+                    Some(self.ukkonen.D[prev_prev][j - 2])
+                } else {
+                    None
+                };
 
                 self.ukkonen.D[col][j] = self.ukkonen.score.unwrap()(
                     self.ukkonen,
