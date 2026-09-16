@@ -30,6 +30,7 @@
 //! assert_eq!(occ, [(13, 1), (14, 1)]);
 //! 
 //! ukkonen.allow_swaps(true);
+//! ukkonen.allow_indels(false);
 //! let pattern = b"ABCD";
 //! let text = b"ABDC";
 //! let occ: Vec<(usize, usize)> = ukkonen.find_all_end(pattern, text, 1).collect();
