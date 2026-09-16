@@ -17,7 +17,7 @@ pub mod evidence {
         EnumString,
         EnumIter,
         IntoStaticStr,
-        VariantNames,
+        EnumVariantNames,
     )]
     pub enum KassRaftery {
         #[strum(serialize = "none")]
