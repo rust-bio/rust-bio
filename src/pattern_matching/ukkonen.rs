@@ -429,4 +429,20 @@ mod tests {
         let occ_k2: Vec<(usize, usize)> = ukkonen.find_all_end(pattern, text, 2).collect();
         assert_eq!(occ_k2, vec![(3, 2)]);
     }
+
+    #[test]
+    fn test_swaps_and_indels_together() {
+        let pattern = b"ABCDE";
+        let text = b"ACBDEZ";
+
+        let mut ukkonen = Ukkonen::with_capacity(pattern.len(), unit_cost);
+        ukkonen.allow_swaps(true);
+        ukkonen.allow_indels(true);
+
+        // Best alignment requires one adjacent swap (B<->C) plus one insertion (Z).
+        let occ: Vec<(usize, usize)> = ukkonen.find_all_end(pattern, text, 2).collect();
+        assert!(occ.contains(&(4, 1)));
+        assert!(occ.contains(&(5, 2)));
+    }
+
 }
