@@ -444,5 +444,4 @@ mod tests {
         assert!(occ.contains(&(4, 1)));
         assert!(occ.contains(&(5, 2)));
     }
-
 }
