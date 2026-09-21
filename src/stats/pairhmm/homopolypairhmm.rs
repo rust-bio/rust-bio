@@ -77,9 +77,7 @@ use num_traits::Zero;
 
 use crate::alphabets::dna::iupac_mask;
 use crate::stats::pairhmm::homopolypairhmm::State::*;
-use crate::stats::pairhmm::{
-    Emission, EmissionParameters, GapParameters, StartEndGapParameters, XYEmission,
-};
+use crate::stats::pairhmm::{Emission, EmissionParameters, GapParameters, StartEndGapParameters};
 use crate::stats::probs::LogProb;
 use crate::stats::Prob;
 use std::collections::HashMap;
@@ -315,7 +313,6 @@ impl HomopolyPairHMM {
 
                 let emission_y = emission_params.emission_y(j);
                 let mut any_match = false;
-                let emission = emission_params.prob_emit_xy(i, j);
                 let num_states = MATCH_STATES
                     .iter()
                     .filter(|m| m.supports(emission_x, emission_y))
@@ -323,9 +320,11 @@ impl HomopolyPairHMM {
 
                 for &m in &MATCH_STATES {
                     if m.supports(emission_x, emission_y) {
+                        // The emission is queried per match state, since it can differ between the active states (e.g. for x=T, y=Y, MatchT is a match while MatchC is a mismatch).
                         // Emission prob is the log prob of the emission, adjusted by the number of states. If we have an exact match like ('A', 'A') there is only one active state so we do not need to adjust the emission prob. If there is a mismatch like ('A', 'C') we need to halve the emission prob to account that MatchA and MatchC are active. If there is a IUPAC ambiguity like ('A', 'Y') we need to account for the possible match states MatchA, MatchC, and MatchT.
 
-                        // TODO: We have a problem! Imagine y=Y and x=T. 'supports' is true for states MatchC and MatchT. prob_emit_xy gives us a match for bases Y and T. For MatchT this is correct, but for MatchC we need the emission prob adjusted for the mismatch. But we do not have access to the mismatch probability here, so we cannot adjust the emission prob (Except it is always true, that the probability of a mismatch is `(1 - match) / 3`, since probabilities should sum to 1 and there are 3 possible mismatch configurations). Even if that would be the case it would be wrong, since the we divide both probabilities by `num_states` to adjust for the number of active states, but both states have different probabilities.
+                        let emission =
+                            emission_params.prob_emit_xy_for_base(i, j, m.base().unwrap());
                         let emission_prob = LogProb::from(*emission.prob() - num_states.ln());
 
                         any_match |= emission.is_match();
@@ -632,7 +631,7 @@ fn min3<T: Ord>(a: T, b: T, c: T) -> T {
 #[cfg(test)]
 mod tests {
     use crate::stats::pairhmm::homopolypairhmm::tests::AlignmentMode::{Global, Semiglobal};
-    use crate::stats::pairhmm::PairHMM;
+    use crate::stats::pairhmm::{EmissionParameters, PairHMM, XYEmission};
     use crate::stats::{LogProb, Prob};
     use std::iter::repeat;
     use std::sync::LazyLock;

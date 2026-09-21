@@ -116,6 +116,15 @@ pub trait EmissionParameters {
     /// (e.g., are the same DNA alphabet letter).
     fn prob_emit_xy(&self, i: usize, j: usize) -> XYEmission;
 
+    /// Use only when x or y contains an IUPAC ambiguity code.
+    /// Emission probability for `(x[i], y[j])` given the base of an active match state of the `HomopolyPairHMM`.
+    /// With IUPAC ambiguity codes, several match states can be active for the same pair, each with
+    /// a different emission (e.g. for x=T, y=Y, MatchT is a match while MatchC is a mismatch).
+    /// You still need to provide a default implementation for 'prob_emit_xy' even if you override this method.
+    fn prob_emit_xy_for_base(&self, i: usize, j: usize, _base: u8) -> XYEmission {
+        self.prob_emit_xy(i, j)
+    }
+
     /// Emission probability for `(x[i], -)`.
     fn prob_emit_x(&self, i: usize) -> LogProb;
 
@@ -126,14 +135,15 @@ pub trait EmissionParameters {
 
     fn len_y(&self) -> usize;
 }
+
 /// Trait needed for the `HomopolyPairHMM`, because its implementation details
 /// depend on the actual bases to distinguish between Match states.
 pub trait Emission {
     /// Base emitted at `i` in sequence `x`.
-    /// Should be one of b'A', b'C', b'G' or b'T'.
+    /// Should be one of b'A', b'C', b'G' or b'T' or any of the IUPAC ambiguity codes.
     fn emission_x(&self, i: usize) -> u8;
     /// Base emitted at `i` in sequence `y`.
-    /// Should be one of b'A', b'C', b'G' or b'T'.
+    /// Should be one of b'A', b'C', b'G' or b'T' or any of the IUPAC ambiguity codes.
     fn emission_y(&self, j: usize) -> u8;
 }
 

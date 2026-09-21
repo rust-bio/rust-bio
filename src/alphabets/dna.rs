@@ -113,7 +113,7 @@ pub fn iupac_mask(a: u8) -> u8 {
         b'D' => A | G | T,
         b'H' => A | C | T,
         b'V' => A | C | G,
-        b'N' => A | C | G | T,
+        // b'N' => A | C | G | T,
         _ => 0,
     }
 }
