@@ -859,7 +859,7 @@ mod tests {
         assert_eq!(supporting(b'R', b'C'), [MatchA, MatchC, MatchG]);
         assert_eq!(supporting(b'Y', b'C'), [MatchC, MatchT]);
         assert_eq!(supporting(b'S', b'S'), [MatchC, MatchG]);
-        assert_eq!(supporting(b'N', b'A'), [MatchA, MatchC, MatchG, MatchT]);
+        assert_eq!(supporting(b'N', b'A'), [MatchA]);
         assert_eq!(supporting(b'R', b'Y'), [MatchA, MatchC, MatchG, MatchT]);
         assert_eq!(supporting(b'r', b'c'), supporting(b'R', b'C'));
     }

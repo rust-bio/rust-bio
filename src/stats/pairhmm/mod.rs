@@ -120,7 +120,7 @@ pub trait EmissionParameters {
     /// Emission probability for `(x[i], y[j])` given the base of an active match state of the `HomopolyPairHMM`.
     /// With IUPAC ambiguity codes, several match states can be active for the same pair, each with
     /// a different emission (e.g. for x=T, y=Y, MatchT is a match while MatchC is a mismatch).
-    /// You still need to provide a default implementation for 'prob_emit_xy' even if you override this method.
+    /// You still need to provide a default implementation for 'prob_emit_xy' even if the method is never called.
     fn prob_emit_xy_for_base(&self, i: usize, j: usize, _base: u8) -> XYEmission {
         self.prob_emit_xy(i, j)
     }
