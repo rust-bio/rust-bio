@@ -157,15 +157,16 @@ where
                 // check if leaving orf
                 if self.finder.stop_codons.contains(&self.state.codon) {
                     for start_pos in &self.state.start_pos[offset] {
+                        let orf_len = index + 3 - start_pos;
                         // check if length is sufficient
-                        if index + 1 - start_pos > self.finder.min_len {
+                        if orf_len >= self.finder.min_len {
                             // build results
                             self.state.found.push_back(Orf {
                                 start: start_pos - 2,
                                 end: index + 1,
                                 offset: offset as i8,
                             });
-                        // if the first orf is too short, so are the others
+                        // if this orf is too short, subsequent ones from later start positions are even shorter
                         } else {
                             break;
                         }
@@ -265,5 +266,21 @@ mod tests {
             },
         ];
         assert_eq!(expected, finder.find_all(sequence).collect::<Vec<Orf>>());
+    }
+
+    #[test]
+    fn test_orf_at_min_len_boundary() {
+        let seq = b"ATGTGA";
+        let finder = Finder::new(vec![b"ATG"], vec![b"TGA"], 6);
+        let matches: Vec<Orf> = finder.find_all(seq).collect();
+        assert_eq!(matches.len(), 1);
+        assert_eq!(
+            matches[0],
+            Orf {
+                start: 0,
+                end: 6,
+                offset: 0
+            }
+        );
     }
 }
