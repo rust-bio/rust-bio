@@ -17,6 +17,16 @@
 //! set may freely mix small and large intervals, exactly as in the UCSC genome
 //! browser database tables.
 //!
+//! # Functions and their coordinate ranges
+//!
+//! - [`assign_bin`] and [`overlapping_bins`] cover the full range
+//!   (`end <= `[`MAX_END`], 2 Gb), transparently switching between the standard
+//!   and extended schemes.
+//! - [`containing_bins`], [`contained_bins`] and [`covered_interval`] are
+//!   convenience helpers defined for the **standard scheme only**
+//!   (`end <= `[`MAX_STANDARD_END`], i.e. 512 Mb, and bins `0..=`[`MAX_STANDARD_BIN`]);
+//!   they panic outside it.
+//!
 //! # Example
 //!
 //! ```
@@ -63,6 +73,15 @@ const MAX_END_512M: u32 = 512 * 1024 * 1024;
 /// Largest coordinate the scheme supports: 2 Gb − 1 (2^31 − 1), the limit
 /// imposed by the signed 32-bit coordinates of the reference implementation.
 pub const MAX_END: u32 = i32::MAX as u32;
+
+/// Largest `end` handled by the standard scheme: 512 Mb (2^29). Inputs to
+/// [`containing_bins`] and [`contained_bins`] must satisfy `end <= MAX_STANDARD_END`.
+pub const MAX_STANDARD_END: u32 = MAX_END_512M;
+
+/// Largest bin number of the standard scheme, i.e. bins are `0..=MAX_STANDARD_BIN`.
+/// [`containing_bins`], [`contained_bins`] and [`covered_interval`] operate in
+/// this scheme.
+pub const MAX_STANDARD_BIN: u32 = BIN_OFFSETS[0] + ((MAX_END_512M - 1) >> SHIFT_FIRST);
 
 /// Validate that `[start, end)` is a non-empty interval within the supported
 /// coordinate range, before any arithmetic relies on it.
@@ -209,6 +228,127 @@ fn push_levels(start: u32, end: u32, offsets: &[u32], base: u32, bins: &mut Vec<
     }
 }
 
+/// Validate a query for the standard-scheme helpers below, which are only
+/// defined up to 512 Mb.
+#[inline]
+fn check_standard_range(start: u32, end: u32) {
+    check_range(start, end);
+    assert!(
+        end <= MAX_END_512M,
+        "containing_bins/contained_bins use the standard scheme (end <= {}); got end={}",
+        MAX_END_512M,
+        end
+    );
+}
+
+/// Standard-scheme bins overlapping `[start, end)`, finest level first and
+/// without the extended catch-all — the candidate set the helpers below filter.
+fn standard_overlapping_bins(start: u32, end: u32) -> Vec<u32> {
+    let mut bins = Vec::new();
+    push_levels(start, end, &BIN_OFFSETS, 0, &mut bins);
+    bins
+}
+
+/// Return the bins in which an interval *containing* the query `[start, end)`
+/// could be stored: the query's own bin and every coarser bin above it.
+///
+/// This is the candidate set to scan when looking for stored intervals that
+/// enclose the query, in the standard scheme. The returned bins cover the query
+/// geometrically, but the intervals actually stored in them may be narrower and
+/// need not enclose the query, so each hit still has to be checked. See
+/// [`contained_bins`] for the opposite relation and [`overlapping_bins`] for the
+/// general overlap query.
+///
+/// # Panics
+///
+/// Panics unless `start < end <= `[`MAX_STANDARD_END`] (the standard scheme).
+///
+/// # Example
+///
+/// ```
+/// use bio::data_structures::bin_index::containing_bins;
+///
+/// assert_eq!(containing_bins(0, 131_073), vec![73, 9, 1, 0]);
+/// ```
+pub fn containing_bins(start: u32, end: u32) -> Vec<u32> {
+    check_standard_range(start, end);
+    let max_bin = assign_bin(start, end);
+    standard_overlapping_bins(start, end)
+        .into_iter()
+        .filter(|&bin| bin <= max_bin)
+        .collect()
+}
+
+/// Return the bins in which an interval *contained by* the query `[start, end)`
+/// could be stored: the query's own bin and every finer bin below it.
+///
+/// This is the candidate set to scan when looking for stored intervals enclosed
+/// by the query, in the standard scheme. Like [`overlapping_bins`], it is a
+/// candidate set: a returned bin may also hold intervals that stick out of the
+/// query, so the intervals it yields still have to be checked. See
+/// [`containing_bins`] for the opposite relation.
+///
+/// # Panics
+///
+/// Panics unless `start < end <= `[`MAX_STANDARD_END`] (the standard scheme).
+///
+/// # Example
+///
+/// ```
+/// use bio::data_structures::bin_index::{contained_bins, covered_interval};
+///
+/// assert_eq!(contained_bins(0, 131_073), vec![585, 586, 73]);
+/// // A returned bin can stick out of the query: bin 586 spans [131072, 262144),
+/// // which extends past the query end 131073 — hence "candidate".
+/// assert!(covered_interval(586).1 > 131_073);
+/// ```
+pub fn contained_bins(start: u32, end: u32) -> Vec<u32> {
+    check_standard_range(start, end);
+    let min_bin = assign_bin(start, end);
+    standard_overlapping_bins(start, end)
+        .into_iter()
+        .filter(|&bin| bin >= min_bin)
+        .collect()
+}
+
+/// Return the 0-based, half-open interval `[start, end)` that a standard-scheme
+/// `bin` covers, i.e. the inverse of [`assign_bin`] at the level of `bin`.
+///
+/// # Panics
+///
+/// Panics unless `bin <= `[`MAX_STANDARD_BIN`].
+///
+/// # Example
+///
+/// ```
+/// use bio::data_structures::bin_index::{assign_bin, covered_interval};
+///
+/// assert_eq!(covered_interval(585), (0, 131_072));
+/// // The bin of an interval covers that interval.
+/// let (start, end) = (40_000, 90_000);
+/// let (bin_start, bin_end) = covered_interval(assign_bin(start, end));
+/// assert!(bin_start <= start && end <= bin_end);
+/// ```
+pub fn covered_interval(bin: u32) -> (u32, u32) {
+    assert!(
+        bin <= MAX_STANDARD_BIN,
+        "bin {} out of range; the standard scheme has bins 0..={}",
+        bin,
+        MAX_STANDARD_BIN
+    );
+    let mut shift = SHIFT_FIRST;
+    for &offset in &BIN_OFFSETS {
+        if offset <= bin {
+            let index = bin - offset;
+            return (index << shift, (index + 1) << shift);
+        }
+        shift += SHIFT_NEXT;
+    }
+    // Unreachable: bin 0 has offset 0 at the coarsest level, so some level
+    // always matches.
+    unreachable!("every standard bin maps to a level")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -314,6 +454,77 @@ mod tests {
     #[should_panic(expected = "2 Gb")]
     fn out_of_range_panics() {
         assign_bin(0, MAX_END + 1);
+    }
+
+    // Reference values for the standard-scheme helpers, from the Python
+    // `interval-binning` module (cross-checked over 20k+ ranges).
+    #[test]
+    fn containing_and_contained_reference_values() {
+        assert_eq!(containing_bins(0, 131_073), vec![73, 9, 1, 0]);
+        assert_eq!(contained_bins(0, 131_073), vec![585, 586, 73]);
+        // A point-sized interval: its own finest bin contains and is contained.
+        assert_eq!(containing_bins(0, 1), vec![585, 73, 9, 1, 0]);
+        assert_eq!(contained_bins(0, 1), vec![585]);
+    }
+
+    #[test]
+    fn covered_interval_reference_values() {
+        assert_eq!(covered_interval(585), (0, 131_072)); // finest, first bin
+        assert_eq!(covered_interval(73), (0, 1_048_576)); // 1 Mb level
+        assert_eq!(covered_interval(0), (0, 536_870_912)); // whole 512 Mb
+        assert_eq!(covered_interval(4680), (536_739_840, 536_870_912)); // last bin
+    }
+
+    #[test]
+    fn covered_interval_inverts_assign_bin() {
+        // The bin of an interval always covers that interval.
+        for &(s, e) in &[
+            (0u32, 1u32),
+            (40_000, 90_000),
+            (131_072, 262_144),
+            (1_048_575, 1_048_577),
+            ((1 << 29) - 1, 1 << 29),
+        ] {
+            let (bs, be) = covered_interval(assign_bin(s, e));
+            assert!(
+                bs <= s && e <= be,
+                "covered_interval mismatch for [{}, {})",
+                s,
+                e
+            );
+        }
+    }
+
+    #[test]
+    fn helpers_relate_to_overlap_and_assign() {
+        for &(s, e) in &[
+            (0u32, 1u32),
+            (0, 131_073),
+            (5, 5_000_000),
+            (1 << 28, 1 << 29),
+        ] {
+            let overlap = overlapping_bins(s, e);
+            let bin = assign_bin(s, e);
+            let containing = containing_bins(s, e);
+            let contained = contained_bins(s, e);
+            // Both are subsets of the (standard) overlap set and contain the bin.
+            assert!(containing.iter().all(|b| overlap.contains(b)));
+            assert!(contained.iter().all(|b| overlap.contains(b)));
+            assert!(containing.contains(&bin));
+            assert!(contained.contains(&bin));
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "standard scheme")]
+    fn containing_bins_rejects_extended_range() {
+        containing_bins(0, MAX_END_512M + 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "out of range")]
+    fn covered_interval_rejects_extended_bin() {
+        covered_interval(MAX_STANDARD_BIN + 1);
     }
 
     proptest::proptest! {
