@@ -92,7 +92,14 @@ where
         .collect()
 }
 
-/// Bit mask of the bases an IUPAC code can denote.
+/// Return a bit mask of the bases an IUPAC code can denote.
+///
+/// Each base is encoded as one bit: A → 0b0001, C → 0b0010,
+/// G → 0b0100, T → 0b1000. Ambiguity codes yield the union of their
+/// bases, e.g. R (A or G) → 0b0101.
+/// Unknown symbols yield 0.
+///
+/// Two codes are compatible if their masks intersect.
 pub fn iupac_mask(a: u8) -> u8 {
     const A: u8 = 0b0001;
     const C: u8 = 0b0010;
