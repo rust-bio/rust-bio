@@ -98,8 +98,18 @@ where
 /// G → 0b0100, T → 0b1000. Ambiguity codes yield the union of their
 /// bases, e.g. R (A or G) → 0b0101.
 /// Unknown symbols yield 0.
-///
 /// Two codes are compatible if their masks intersect.
+///
+/// use bio::alphabets::dna;
+///
+/// assert_eq!(dna::iupac_mask(b'A'), 0b0001); // A
+/// assert_eq!(dna::iupac_mask(b'r'), 0b0101); // r → A | G
+/// assert_eq!(dna::iupac_mask(b'N'), 0b1111); // N → A | C | G | T
+/// assert_eq!(dna::iupac_mask(b'-'), 0); // unknown
+/// // Y (C or T) is compatible with T, but not with A
+/// assert_ne!(dna::iupac_mask(b'Y') & dna::iupac_mask(b'T'), 0);
+/// assert_eq!(dna::iupac_mask(b'Y') & dna::iupac_mask(b'A'), 0);
+/// ```
 pub fn iupac_mask(a: u8) -> u8 {
     const A: u8 = 0b0001;
     const C: u8 = 0b0010;
