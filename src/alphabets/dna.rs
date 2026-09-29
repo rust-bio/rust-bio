@@ -113,7 +113,7 @@ pub fn iupac_mask(a: u8) -> u8 {
         b'D' => A | G | T,
         b'H' => A | C | T,
         b'V' => A | C | G,
-        // b'N' => A | C | G | T,
+        b'N' => A | C | G | T,
         _ => 0,
     }
 }
@@ -141,7 +141,7 @@ mod tests {
         assert!(!alphabet().is_word(b"42"));
     }
 
-    const IUPAC_CODES: [(u8, u8); 14] = [
+    const IUPAC_CODES: [(u8, u8); 15] = [
         (b'A', 0b0001),
         (b'C', 0b0010),
         (b'G', 0b0100),
@@ -156,6 +156,7 @@ mod tests {
         (b'D', 0b1101), // A | G | T
         (b'H', 0b1011), // A | C | T
         (b'V', 0b0111), // A | C | G
+        (b'N', 0b1111), // A | C | G | T
     ];
 
     #[test]
