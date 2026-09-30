@@ -48,6 +48,11 @@ pub struct PairHMM {
     fx: [Vec<LogProb>; 2],
     fy: [Vec<LogProb>; 2],
     min_edit_dist: [Vec<usize>; 2],
+    // inclusive ranges of the cells (position in y + 1) written in each of the two columns;
+    // every other cell of a column holds probability zero and an infinite edit distance
+    live: [Vec<(usize, usize)>; 2],
+    // scratch space for the candidate cells of a column
+    candidates: Vec<(usize, usize)>,
     prob_cols: Vec<LogProb>,
     gap_params: GapParamCache,
 }
@@ -89,6 +94,8 @@ impl PairHMM {
             fx: [Vec::new(), Vec::new()],
             fy: [Vec::new(), Vec::new()],
             min_edit_dist: [Vec::new(), Vec::new()],
+            live: [Vec::new(), Vec::new()],
+            candidates: Vec::new(),
             prob_cols: Vec::new(),
             gap_params,
         }
@@ -122,6 +129,7 @@ impl PairHMM {
             self.fx[k].resize(emission_params.len_y() + 1, LogProb::ln_zero());
             self.fy[k].resize(emission_params.len_y() + 1, LogProb::ln_zero());
             self.min_edit_dist[k].resize(emission_params.len_y() + 1, usize::MAX);
+            self.live[k].clear();
 
             if alignment_mode.free_end_gap_x() {
                 let c = (emission_params.len_x() * 3).saturating_sub(self.prob_cols.capacity());
@@ -137,120 +145,175 @@ impl PairHMM {
         // cell is skipped. Semiglobal also refreshes [prev][0] below.
         self.min_edit_dist[prev][0] = 0;
 
+        let len_x = emission_params.len_x();
+        let len_y = emission_params.len_y();
+
         // iterate over x
-        for i in 0..emission_params.len_x() {
+        for i in 0..len_x {
+            // Clear what this column buffer holds from two columns ago, so that every cell
+            // outside of the ranges written below is empty (see `live`).
+            for &(a, b) in &self.live[curr] {
+                self.fm[curr][a..=b].fill(LogProb::ln_zero());
+                self.fx[curr][a..=b].fill(LogProb::ln_zero());
+                self.fy[curr][a..=b].fill(LogProb::ln_zero());
+                self.min_edit_dist[curr][a..=b].fill(usize::MAX);
+            }
+            self.live[curr].clear();
+            self.fm[curr][0] = LogProb::ln_zero();
+            self.min_edit_dist[curr][0] = usize::MAX;
+
             // allow alignment to start from offset in x (if prob_start_gap_x is set accordingly)
             self.fm[prev][0] = self.fm[prev][0].ln_add_exp(alignment_mode.prob_start_gap_x(i));
+            // With a band, an alignment starting at column i has to consume the whole of y
+            // within the remaining columns, which needs at least len_y - (len_x - i)
+            // insertions: beyond that it cannot stay inside the band and would only be
+            // computed to be pruned.
+            let may_start = match max_edit_dist {
+                Some(d) => i <= (len_x + d).saturating_sub(len_y),
+                None => true,
+            };
             if alignment_mode.free_start_gap_x() {
-                self.min_edit_dist[prev][0] = 0;
+                if may_start {
+                    self.min_edit_dist[prev][0] = 0;
+                } else {
+                    self.fm[prev][0] = LogProb::ln_zero();
+                    self.min_edit_dist[prev][0] = usize::MAX;
+                }
             }
 
             let prob_emit_x = emission_params.prob_emit_x(i);
 
-            // TODO: in the case of no gap extensions, we can reduce the number of columns of y that need to be looked at (by cone).
-            let (j_min, j_max) = (0, emission_params.len_y());
-
-            // iterate over y
-            for j in j_min..j_max {
-                let j_ = j + 1;
-                let j_minus_one = j_ - 1;
-
-                let min_edit_dist_topleft = self.min_edit_dist[prev][j_minus_one];
-                let min_edit_dist_top = self.min_edit_dist[curr][j_minus_one];
-                let min_edit_dist_left = self.min_edit_dist[prev][j_];
-
-                if let Some(max_edit_dist) = max_edit_dist {
-                    if cmp::min(
-                        min_edit_dist_topleft,
-                        cmp::min(min_edit_dist_top, min_edit_dist_left),
-                    ) > max_edit_dist
-                    {
-                        // skip this cell if best edit dist is already larger than given maximum;
-                        // clear it, otherwise it would keep the values of the previous column
-                        self.fm[curr][j_] = LogProb::ln_zero();
-                        self.fx[curr][j_] = LogProb::ln_zero();
-                        self.fy[curr][j_] = LogProb::ln_zero();
-                        self.min_edit_dist[curr][j_] = usize::MAX;
-                        continue;
-                    }
+            // A cell can only be inside the band if its top left or left neighbour (previous
+            // column) or its top neighbour (this column) is. Hence the candidates are the
+            // ranges written in the previous column, extended by one to the right, the first
+            // cell if an alignment may start in this column, and the chain of top neighbours
+            // of every cell found inside the band. Without a band every cell is visited.
+            let mut candidates = std::mem::take(&mut self.candidates);
+            candidates.clear();
+            if self.min_edit_dist[prev][0] != usize::MAX {
+                candidates.push((1, 1));
+            }
+            candidates.extend(
+                self.live[prev]
+                    .iter()
+                    .map(|&(a, b)| (a, (b + 1).min(len_y))),
+            );
+            let mut next = 1;
+            for &(a, b) in &candidates {
+                let mut j_ = a.max(next);
+                if j_ > b {
+                    continue;
                 }
+                loop {
+                    let j = j_ - 1;
+                    let j_minus_one = j;
 
-                let (prob_match_mismatch, prob_gap_x, prob_gap_y, min_edit_dist) = {
-                    let fm_curr = &self.fm[curr];
-                    let fm_prev = &self.fm[prev];
-                    let fx_prev = &self.fx[prev];
-                    let fy_curr = &self.fy[curr];
-                    let fy_prev = &self.fy[prev];
+                    let min_edit_dist_topleft = self.min_edit_dist[prev][j_minus_one];
+                    let min_edit_dist_top = self.min_edit_dist[curr][j_minus_one];
+                    let min_edit_dist_left = self.min_edit_dist[prev][j_];
 
-                    // match or mismatch
-                    let emit_xy = emission_params.prob_emit_xy(i, j);
-                    let prob_match_mismatch = emit_xy.prob()
-                        + ln_sum3_exp_approx(
-                            self.gap_params.prob_no_gap + fm_prev[j_minus_one],
-                            // coming from state X (which is extended with prob_gap_y_extend)
-                            self.gap_params.prob_no_gap_y_extend + fx_prev[j_minus_one],
-                            // coming from state Y (which is extended with prob_gap_x_extend)
-                            self.gap_params.prob_no_gap_x_extend + fy_prev[j_minus_one],
-                        );
-
-                    // gap in y
-                    let mut prob_gap_y = prob_emit_x
-                        + (
-                            // open gap
-                            self.gap_params.prob_gap_y + fm_prev[j_]
-                        );
-                    if self.gap_params.do_gap_y_extend {
-                        prob_gap_y = prob_gap_y.ln_add_exp(
-                            // extend gap (the base is emitted just like when opening the gap)
-                            prob_emit_x + self.gap_params.prob_gap_y_extend + fx_prev[j_],
-                        );
-                    }
-
-                    // gap in x
-                    let prob_emit_y = emission_params.prob_emit_y(j);
-                    let mut prob_gap_x = prob_emit_y
-                        + (
-                            // open gap
-                            self.gap_params.prob_gap_x + fm_curr[j_minus_one]
-                        );
-                    if self.gap_params.do_gap_x_extend {
-                        prob_gap_x = prob_gap_x.ln_add_exp(
-                            // extend gap (the base is emitted just like when opening the gap)
-                            prob_emit_y + self.gap_params.prob_gap_x_extend + fy_curr[j_minus_one],
-                        );
-                    }
-
-                    // calculate minimal number of mismatches
-                    let min_edit_dist = if max_edit_dist.is_some() {
-                        cmp::min(
-                            if emit_xy.is_match() {
-                                // a match, so nothing changes
-                                min_edit_dist_topleft
-                            } else {
-                                // one new mismatch
-                                min_edit_dist_topleft.saturating_add(1)
-                            },
+                    let inside = match max_edit_dist {
+                        Some(max_edit_dist) => {
                             cmp::min(
-                                // gap in y (no new mismatch)
-                                min_edit_dist_left.saturating_add(1),
-                                // gap in x (no new mismatch)
-                                min_edit_dist_top.saturating_add(1),
-                            ),
-                        )
-                    } else {
-                        0
+                                min_edit_dist_topleft,
+                                cmp::min(min_edit_dist_top, min_edit_dist_left),
+                            ) <= max_edit_dist
+                        }
+                        None => true,
                     };
 
-                    (prob_match_mismatch, prob_gap_x, prob_gap_y, min_edit_dist)
-                };
+                    if inside {
+                        let (prob_match_mismatch, prob_gap_x, prob_gap_y, min_edit_dist) = {
+                            let fm_curr = &self.fm[curr];
+                            let fm_prev = &self.fm[prev];
+                            let fx_prev = &self.fx[prev];
+                            let fy_curr = &self.fy[curr];
+                            let fy_prev = &self.fy[prev];
 
-                self.fm[curr][j_] = prob_match_mismatch;
-                self.fx[curr][j_] = prob_gap_y;
-                self.fy[curr][j_] = prob_gap_x;
-                if max_edit_dist.is_some() {
-                    self.min_edit_dist[curr][j_] = min_edit_dist;
+                            // match or mismatch
+                            let emit_xy = emission_params.prob_emit_xy(i, j);
+                            let prob_match_mismatch = emit_xy.prob()
+                                + ln_sum3_exp_approx(
+                                    self.gap_params.prob_no_gap + fm_prev[j_minus_one],
+                                    // coming from state X (which is extended with prob_gap_y_extend)
+                                    self.gap_params.prob_no_gap_y_extend + fx_prev[j_minus_one],
+                                    // coming from state Y (which is extended with prob_gap_x_extend)
+                                    self.gap_params.prob_no_gap_x_extend + fy_prev[j_minus_one],
+                                );
+
+                            // gap in y
+                            let mut prob_gap_y = prob_emit_x
+                                + (
+                                    // open gap
+                                    self.gap_params.prob_gap_y + fm_prev[j_]
+                                );
+                            if self.gap_params.do_gap_y_extend {
+                                prob_gap_y = prob_gap_y.ln_add_exp(
+                                    // extend gap (the base is emitted just like when opening the gap)
+                                    prob_emit_x + self.gap_params.prob_gap_y_extend + fx_prev[j_],
+                                );
+                            }
+
+                            // gap in x
+                            let prob_emit_y = emission_params.prob_emit_y(j);
+                            let mut prob_gap_x = prob_emit_y
+                                + (
+                                    // open gap
+                                    self.gap_params.prob_gap_x + fm_curr[j_minus_one]
+                                );
+                            if self.gap_params.do_gap_x_extend {
+                                prob_gap_x = prob_gap_x.ln_add_exp(
+                                    // extend gap (the base is emitted just like when opening the gap)
+                                    prob_emit_y
+                                        + self.gap_params.prob_gap_x_extend
+                                        + fy_curr[j_minus_one],
+                                );
+                            }
+
+                            // calculate minimal number of mismatches
+                            let min_edit_dist = if max_edit_dist.is_some() {
+                                cmp::min(
+                                    if emit_xy.is_match() {
+                                        // a match, so nothing changes
+                                        min_edit_dist_topleft
+                                    } else {
+                                        // one new mismatch
+                                        min_edit_dist_topleft.saturating_add(1)
+                                    },
+                                    cmp::min(
+                                        // gap in y (no new mismatch)
+                                        min_edit_dist_left.saturating_add(1),
+                                        // gap in x (no new mismatch)
+                                        min_edit_dist_top.saturating_add(1),
+                                    ),
+                                )
+                            } else {
+                                0
+                            };
+
+                            (prob_match_mismatch, prob_gap_x, prob_gap_y, min_edit_dist)
+                        };
+
+                        self.fm[curr][j_] = prob_match_mismatch;
+                        self.fx[curr][j_] = prob_gap_y;
+                        self.fy[curr][j_] = prob_gap_x;
+                        if max_edit_dist.is_some() {
+                            self.min_edit_dist[curr][j_] = min_edit_dist;
+                        }
+                        match self.live[curr].last_mut() {
+                            Some((_, last)) if *last + 1 == j_ => *last = j_,
+                            _ => self.live[curr].push((j_, j_)),
+                        }
+                    }
+
+                    j_ += 1;
+                    if j_ > len_y || (j_ > b && !inside) {
+                        break;
+                    }
                 }
+                next = j_;
             }
+            self.candidates = candidates;
 
             if alignment_mode.free_end_gap_x() {
                 // Cache column probabilities or simply record the last probability.
@@ -261,21 +324,9 @@ impl PairHMM {
                 // TODO check removing this (we don't want open gaps in x):
                 self.prob_cols.push(*self.fy[curr].last().unwrap());
             }
-
             // next column
             mem::swap(&mut curr, &mut prev);
-            // reset next column to zeros
-            self.fm[curr].fill(LogProb::ln_zero());
-            self.fx[curr].fill(LogProb::ln_zero());
-            self.fy[curr].fill(LogProb::ln_zero());
-            if max_edit_dist.is_some() {
-                self.min_edit_dist[curr].fill(usize::MAX);
-                if alignment_mode.free_start_gap_x() {
-                    self.min_edit_dist[curr][0] = 0;
-                }
-            }
         }
-
         let p = if alignment_mode.free_end_gap_x() {
             LogProb::ln_sum_exp(&self.prob_cols)
         } else {
