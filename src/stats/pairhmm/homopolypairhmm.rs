@@ -578,20 +578,21 @@ fn build_transition_table<G: GapParameters, H: BaseSpecificHopParameters>(
         transition_probs.insert(*a >> *b, match_other);
     });
 
+    // GapX consumes a base of y only (a gap in x), GapY a base of x only (a gap in y)
     MATCH_STATES.iter().for_each(|&a| {
-        transition_probs.insert(a >> GapX, prob_gap_y);
+        transition_probs.insert(a >> GapX, prob_gap_x);
     });
     MATCH_STATES.iter().for_each(|&a| {
-        transition_probs.insert(a >> GapY, prob_gap_x);
+        transition_probs.insert(a >> GapY, prob_gap_y);
     });
     MATCH_STATES.iter().for_each(|&b| {
-        transition_probs.insert(GapX >> b, prob_gap_y_extend.ln_one_minus_exp());
+        transition_probs.insert(GapX >> b, prob_gap_x_extend.ln_one_minus_exp());
     });
     MATCH_STATES.iter().for_each(|&b| {
-        transition_probs.insert(GapY >> b, prob_gap_x_extend.ln_one_minus_exp());
+        transition_probs.insert(GapY >> b, prob_gap_y_extend.ln_one_minus_exp());
     });
-    transition_probs.insert(GapX >> GapX, prob_gap_y_extend);
-    transition_probs.insert(GapY >> GapY, prob_gap_x_extend);
+    transition_probs.insert(GapX >> GapX, prob_gap_x_extend);
+    transition_probs.insert(GapY >> GapY, prob_gap_y_extend);
     transition_probs
 }
 
@@ -629,10 +630,10 @@ mod tests {
 
     // log(0.0021)
     const PROB_SUBSTITUTION: LogProb = LogProb(-6.165_817_934_252_76);
-    // log(2.8e-6)
-    const PROB_OPEN_GAP_Y: LogProb = LogProb(-12.785_891_140_783_116);
-    // log(5.1e-6)
-    const PROB_OPEN_GAP_X: LogProb = LogProb(-12.186_270_018_233_994);
+    // log(2.8e-6): a gap in x is an insertion in y
+    const PROB_OPEN_GAP_X: LogProb = LogProb(-12.785_891_140_783_116);
+    // log(5.1e-6): a gap in y is a deletion in y
+    const PROB_OPEN_GAP_Y: LogProb = LogProb(-12.186_270_018_233_994);
 
     const EMIT_MATCH: LogProb = LogProb(-0.0021022080918701985);
     const EMIT_GAP_AND_Y: LogProb = LogProb(-0.0021022080918701985);
@@ -644,8 +645,8 @@ mod tests {
     const T_HOP_Y_TO_HOP_Y: LogProb = LogProb(-2.3025850929940455);
 
     const T_MATCH_TO_MATCH: LogProb = LogProb(-7.900_031_205_113_962e-6);
-    const T_MATCH_TO_GAP_Y: LogProb = LogProb(-12.785_891_140_783_116);
-    const T_MATCH_TO_GAP_X: LogProb = LogProb(-12.186_270_018_233_994);
+    const T_MATCH_TO_GAP_X: LogProb = LogProb(-12.785_891_140_783_116);
+    const T_MATCH_TO_GAP_Y: LogProb = LogProb(-12.186_270_018_233_994);
     const T_GAP_TO_GAP: LogProb = LogProb(-9.210340371976182);
 
     pub enum AlignmentMode {
@@ -714,11 +715,11 @@ mod tests {
 
     impl GapParameters for TestSingleGapParams {
         fn prob_gap_x(&self) -> LogProb {
-            PROB_OPEN_GAP_Y
+            PROB_OPEN_GAP_X
         }
 
         fn prob_gap_y(&self) -> LogProb {
-            PROB_OPEN_GAP_X
+            PROB_OPEN_GAP_Y
         }
 
         fn prob_gap_x_extend(&self) -> LogProb {
@@ -1131,11 +1132,11 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         }
         impl crate::stats::pairhmm::GapParameters for TestSingleGapParamsPairHMM {
             fn prob_gap_x(&self) -> LogProb {
-                LogProb::from(PROB_ILLUMINA_DEL)
+                LogProb::from(PROB_ILLUMINA_INS)
             }
 
             fn prob_gap_y(&self) -> LogProb {
-                LogProb::from(PROB_ILLUMINA_INS)
+                LogProb::from(PROB_ILLUMINA_DEL)
             }
 
             fn prob_gap_x_extend(&self) -> LogProb {
@@ -1196,5 +1197,48 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
             None,
         );
         assert_relative_eq!(*p1, *p2, epsilon = 1e-4)
+    }
+
+    /// `prob_gap_x` opens a gap in x, i.e. a base of y emitted alone (an insertion in y), and
+    /// `prob_gap_y` a gap in y, as for `PairHMM`: with insertions far more likely than deletions,
+    /// an extra base in y has to be more probable than a missing one.
+    #[test]
+    fn test_gap_parameters_refer_to_the_sequence_with_the_gap() {
+        struct InsertionsLikely;
+        impl GapParameters for InsertionsLikely {
+            fn prob_gap_x(&self) -> LogProb {
+                LogProb::from(Prob(1e-2))
+            }
+
+            fn prob_gap_y(&self) -> LogProb {
+                LogProb::from(Prob(1e-6))
+            }
+
+            fn prob_gap_x_extend(&self) -> LogProb {
+                LogProb::zero()
+            }
+
+            fn prob_gap_y_extend(&self) -> LogProb {
+                LogProb::zero()
+            }
+        }
+        let pair_hmm = HomopolyPairHMM::new(&InsertionsLikely, &NO_HOP_PARAMS);
+        let x = b"ACGTTGCAGT".to_vec();
+        let insertion = TestEmissionParams {
+            x: x.clone(),
+            y: b"ACGTTGACAGT".to_vec(),
+        };
+        let deletion = TestEmissionParams {
+            x,
+            y: b"ACGTTGAGT".to_vec(),
+        };
+        let p_insertion = pair_hmm.prob_related(&insertion, &Global, None);
+        let p_deletion = pair_hmm.prob_related(&deletion, &Global, None);
+        assert!(
+            p_insertion > p_deletion,
+            "insertion {} should be more likely than deletion {}",
+            *p_insertion,
+            *p_deletion
+        );
     }
 }
