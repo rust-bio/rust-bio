@@ -116,7 +116,7 @@ pub trait EmissionParameters {
     /// (e.g., are the same DNA alphabet letter).
     fn prob_emit_xy(&self, i: usize, j: usize) -> XYEmission;
 
-    /// Use only when x or y contains an IUPAC ambiguity code.
+    /// Use only when x or y contains a IUPAC ambiguity code.
     /// Emission probability for `(x[i], y[j])` given the base of an active match state of the `HomopolyPairHMM`.
     /// With IUPAC ambiguity codes, several match states can be active for the same pair, each with
     /// a different emission (e.g. for x=T, y=Y, MatchT is a match while MatchC is a mismatch).
