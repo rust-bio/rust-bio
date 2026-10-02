@@ -165,7 +165,12 @@ impl PairHMM {
                         cmp::min(min_edit_dist_top, min_edit_dist_left),
                     ) > max_edit_dist
                     {
-                        // skip this cell if best edit dist is already larger than given maximum
+                        // skip this cell if best edit dist is already larger than given maximum;
+                        // clear it, otherwise it would keep the values of the previous column
+                        self.fm[curr][j_] = LogProb::ln_zero();
+                        self.fx[curr][j_] = LogProb::ln_zero();
+                        self.fy[curr][j_] = LogProb::ln_zero();
+                        self.min_edit_dist[curr][j_] = usize::MAX;
                         continue;
                     }
                 }
@@ -182,10 +187,10 @@ impl PairHMM {
                     let prob_match_mismatch = emit_xy.prob()
                         + ln_sum3_exp_approx(
                             self.gap_params.prob_no_gap + fm_prev[j_minus_one],
-                            // coming from state X
-                            self.gap_params.prob_no_gap_x_extend + fx_prev[j_minus_one],
-                            // coming from state Y
-                            self.gap_params.prob_no_gap_y_extend + fy_prev[j_minus_one],
+                            // coming from state X (which is extended with prob_gap_y_extend)
+                            self.gap_params.prob_no_gap_y_extend + fx_prev[j_minus_one],
+                            // coming from state Y (which is extended with prob_gap_x_extend)
+                            self.gap_params.prob_no_gap_x_extend + fy_prev[j_minus_one],
                         );
 
                     // gap in y
@@ -196,21 +201,22 @@ impl PairHMM {
                         );
                     if self.gap_params.do_gap_y_extend {
                         prob_gap_y = prob_gap_y.ln_add_exp(
-                            // extend gap
-                            self.gap_params.prob_gap_y_extend + fx_prev[j_],
+                            // extend gap (the base is emitted just like when opening the gap)
+                            prob_emit_x + self.gap_params.prob_gap_y_extend + fx_prev[j_],
                         );
                     }
 
                     // gap in x
-                    let mut prob_gap_x = emission_params.prob_emit_y(j)
+                    let prob_emit_y = emission_params.prob_emit_y(j);
+                    let mut prob_gap_x = prob_emit_y
                         + (
                             // open gap
                             self.gap_params.prob_gap_x + fm_curr[j_minus_one]
                         );
                     if self.gap_params.do_gap_x_extend {
                         prob_gap_x = prob_gap_x.ln_add_exp(
-                            // extend gap
-                            self.gap_params.prob_gap_x_extend + fy_curr[j_minus_one],
+                            // extend gap (the base is emitted just like when opening the gap)
+                            prob_emit_y + self.gap_params.prob_gap_x_extend + fy_curr[j_minus_one],
                         );
                     }
 
@@ -259,8 +265,14 @@ impl PairHMM {
             // next column
             mem::swap(&mut curr, &mut prev);
             // reset next column to zeros
-            for v in &mut self.fm[curr] {
-                *v = LogProb::ln_zero();
+            self.fm[curr].fill(LogProb::ln_zero());
+            self.fx[curr].fill(LogProb::ln_zero());
+            self.fy[curr].fill(LogProb::ln_zero());
+            if max_edit_dist.is_some() {
+                self.min_edit_dist[curr].fill(usize::MAX);
+                if alignment_mode.free_start_gap_x() {
+                    self.min_edit_dist[curr][0] = 0;
+                }
             }
         }
 
@@ -625,5 +637,183 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         let p_banded = pair_hmm.prob_related(&emission_params, &AlignmentMode::Semiglobal, Some(2));
 
         assert_relative_eq!(*p, *p_banded, epsilon = 1e-7);
+    }
+
+    /// Straightforward three-state forward algorithm in linear space (Durbin et al., 4.2) for
+    /// global alignment, as an independent reference.
+    fn naive_global_forward<E, G>(e: &E, g: &G) -> f64
+    where
+        E: EmissionParameters,
+        G: GapParameters,
+    {
+        let (n, m) = (e.len_x(), e.len_y());
+        let p = |l: LogProb| l.exp();
+        let (gap_x, gap_y) = (p(g.prob_gap_x()), p(g.prob_gap_y()));
+        let (ext_x, ext_y) = (p(g.prob_gap_x_extend()), p(g.prob_gap_y_extend()));
+        let mut fm = vec![vec![0.0; m + 1]; n + 1];
+        let mut fx = fm.clone();
+        let mut fy = fm.clone();
+        fm[0][0] = 1.0;
+        for i in 0..=n {
+            for j in 0..=m {
+                if i == 0 && j == 0 {
+                    continue;
+                }
+                if i > 0 && j > 0 {
+                    fm[i][j] = p(e.prob_emit_xy(i - 1, j - 1).prob())
+                        * ((1.0 - gap_x - gap_y) * fm[i - 1][j - 1]
+                            + (1.0 - ext_y) * fx[i - 1][j - 1]
+                            + (1.0 - ext_x) * fy[i - 1][j - 1]);
+                }
+                if i > 0 {
+                    // x[i] emitted alone: state X, opened with prob_gap_y, extended with
+                    // prob_gap_y_extend
+                    fx[i][j] =
+                        p(e.prob_emit_x(i - 1)) * (gap_y * fm[i - 1][j] + ext_y * fx[i - 1][j]);
+                }
+                if j > 0 {
+                    // y[j] emitted alone: state Y, opened with prob_gap_x, extended with
+                    // prob_gap_x_extend
+                    fy[i][j] =
+                        p(e.prob_emit_y(j - 1)) * (gap_x * fm[i][j - 1] + ext_x * fy[i][j - 1]);
+                }
+            }
+        }
+        (fm[n][m] + fx[n][m] + fy[n][m]).ln()
+    }
+
+    struct ExtendGapParams;
+
+    impl GapParameters for ExtendGapParams {
+        fn prob_gap_x(&self) -> LogProb {
+            LogProb::from(Prob(1e-3))
+        }
+
+        fn prob_gap_y(&self) -> LogProb {
+            LogProb::from(Prob(2e-3))
+        }
+
+        fn prob_gap_x_extend(&self) -> LogProb {
+            LogProb::from(Prob(0.3))
+        }
+
+        fn prob_gap_y_extend(&self) -> LogProb {
+            LogProb::from(Prob(0.4))
+        }
+    }
+
+    impl StartEndGapParameters for ExtendGapParams {
+        fn free_start_gap_x(&self) -> bool {
+            false
+        }
+
+        fn free_end_gap_x(&self) -> bool {
+            false
+        }
+    }
+
+    /// A base emitted alone in y is a sequencing error, hence unlikely.
+    struct ErrorEmissionParams {
+        x: &'static [u8],
+        y: &'static [u8],
+    }
+
+    impl EmissionParameters for ErrorEmissionParams {
+        fn prob_emit_xy(&self, i: usize, j: usize) -> XYEmission {
+            if self.x[i] == self.y[j] {
+                XYEmission::Match(LogProb::from(Prob(1.0 - 1e-4)))
+            } else {
+                XYEmission::Mismatch(LogProb::from(Prob(1e-4 / 3.0)))
+            }
+        }
+
+        fn prob_emit_x(&self, _: usize) -> LogProb {
+            LogProb::from(Prob(0.9))
+        }
+
+        fn prob_emit_y(&self, _: usize) -> LogProb {
+            LogProb::from(Prob(1e-4))
+        }
+
+        fn len_x(&self) -> usize {
+            self.x.len()
+        }
+
+        fn len_y(&self) -> usize {
+            self.y.len()
+        }
+    }
+
+    // y carries a three base insertion relative to x
+    const INSERTION_EMISSION: ErrorEmissionParams = ErrorEmissionParams {
+        x: b"ACGTACGTACGT",
+        y: b"ACGTAGGGCGTACGT",
+    };
+
+    /// Gap extensions must emit their bases and be closed with the complement of their own
+    /// extension probability.
+    #[test]
+    fn test_gap_extension_matches_naive_forward() {
+        let expected = naive_global_forward(&INSERTION_EMISSION, &ExtendGapParams);
+        let p = PairHMM::new(&ExtendGapParams).prob_related(
+            &INSERTION_EMISSION,
+            &ExtendGapParams,
+            None,
+        );
+        assert_relative_eq!(*p, expected, epsilon = 1e-3);
+    }
+
+    struct SemiglobalExtendGapParams;
+
+    impl GapParameters for SemiglobalExtendGapParams {
+        fn prob_gap_x(&self) -> LogProb {
+            ExtendGapParams.prob_gap_x()
+        }
+
+        fn prob_gap_y(&self) -> LogProb {
+            ExtendGapParams.prob_gap_y()
+        }
+
+        fn prob_gap_x_extend(&self) -> LogProb {
+            ExtendGapParams.prob_gap_x_extend()
+        }
+
+        fn prob_gap_y_extend(&self) -> LogProb {
+            ExtendGapParams.prob_gap_y_extend()
+        }
+    }
+
+    impl StartEndGapParameters for SemiglobalExtendGapParams {
+        fn free_start_gap_x(&self) -> bool {
+            true
+        }
+
+        fn free_end_gap_x(&self) -> bool {
+            true
+        }
+    }
+
+    /// A band that contains every plausible alignment must not change the result: cells outside
+    /// the band have to be cleared instead of keeping the values of the column before. Both
+    /// cases have four edits and a band of ten.
+    #[test]
+    fn test_banded_matches_unbanded_with_gap_extension() {
+        let em = ErrorEmissionParams {
+            x: b"GTGGTGTGTCACTCCGGACCTAAGACGAGCACTGCGGT",
+            y: b"GTGGTGTGTCACTCTCGGACCTTAAGACCGAGCACTGCGGGT",
+        };
+        let mut pair_hmm = PairHMM::new(&ExtendGapParams);
+        let p = pair_hmm.prob_related(&em, &ExtendGapParams, None);
+        let p_banded = pair_hmm.prob_related(&em, &ExtendGapParams, Some(10));
+        assert_relative_eq!(*p, *p_banded, epsilon = 1e-4);
+
+        let em = ErrorEmissionParams {
+            x: b"ATTATATACTGCTACCCCCGGCAATGAGGAGGT",
+            y: b"ATTATATACTGCTACCACTCGGAATGAGGACGG",
+        };
+        let mut pair_hmm = PairHMM::new(&SemiglobalExtendGapParams);
+        let p = pair_hmm.prob_related(&em, &SemiglobalExtendGapParams, None);
+        let p_banded = pair_hmm.prob_related(&em, &SemiglobalExtendGapParams, Some(10));
+        assert_relative_eq!(*p, *p_banded, epsilon = 1e-4);
     }
 }
