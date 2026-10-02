@@ -190,7 +190,7 @@ impl PairHMM {
             // of every cell found inside the band. Without a band every cell is visited.
             let mut candidates = std::mem::take(&mut self.candidates);
             candidates.clear();
-            if self.min_edit_dist[prev][0] != usize::MAX {
+            if len_y > 0 && self.min_edit_dist[prev][0] != usize::MAX {
                 candidates.push((1, 1));
             }
             candidates.extend(
@@ -847,6 +847,20 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
     /// A band that contains every plausible alignment must not change the result: cells outside
     /// the band have to be cleared instead of keeping the values of the column before. Both
     /// cases have four edits and a band of ten.
+    #[test]
+    fn test_empty_y_is_zero() {
+        // An empty y has no cell to visit: the probability is zero, as before
+        // the band scan, instead of reading past the end of the first row.
+        let emission_params = TestEmissionParams { x: b"ACGT", y: b"" };
+        let mut pair_hmm = PairHMM::new(&TestSingleGapParams);
+        for max_edit_dist in [None, Some(0), Some(2)] {
+            for mode in [AlignmentMode::Semiglobal, AlignmentMode::Global] {
+                let p = pair_hmm.prob_related(&emission_params, &mode, max_edit_dist);
+                assert_eq!(p, LogProb::ln_zero());
+            }
+        }
+    }
+
     #[test]
     fn test_banded_matches_unbanded_with_gap_extension() {
         let em = ErrorEmissionParams {
