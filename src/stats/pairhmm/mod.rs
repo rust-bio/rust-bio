@@ -102,6 +102,7 @@ pub use pairhmm::PairHMM;
 
 use crate::stats::LogProb;
 
+mod band;
 mod homopolypairhmm;
 // Renaming would change the public module path.
 #[allow(clippy::module_inception)]
