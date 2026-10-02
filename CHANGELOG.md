@@ -3,6 +3,28 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [4.1.0](https://github.com/rust-bio/rust-bio/compare/v4.0.1...v4.1.0) (2026-10-02)
+
+
+### Features
+
+* support IUPAC ambiguity codes in HomopolyPairHMM ([#698](https://github.com/rust-bio/rust-bio/issues/698)) ([98b2ae0](https://github.com/rust-bio/rust-bio/commit/98b2ae01106bfb2b080139d68185a869290f4dbc))
+
+
+### Bug Fixes
+
+* cap ordered-float below 5.5 to preserve MSRV 1.87 ([#691](https://github.com/rust-bio/rust-bio/issues/691)) ([2278282](https://github.com/rust-bio/rust-bio/commit/227828275fed8d9c97b7ef3ac76b1d8718b9542b))
+* emit bases in extended gaps and clear cells outside the band in PairHMM ([#701](https://github.com/rust-bio/rust-bio/issues/701)) ([f1d9871](https://github.com/rust-bio/rust-bio/commit/f1d98718d5fe45f6c1bcbb9452465412220d4dbb))
+* initialize PairHMM origin edit distance for global banding ([#688](https://github.com/rust-bio/rust-bio/issues/688)) ([3e60e2b](https://github.com/rust-bio/rust-bio/commit/3e60e2bc5c559217422ac49fc2d234cbcdd603c3))
+* open HomopolyPairHMM gaps with the probability of the sequence that has the gap ([#703](https://github.com/rust-bio/rust-bio/issues/703)) ([0462c15](https://github.com/rust-bio/rust-bio/commit/0462c15bed940c30b7ed139e3a45c75d4fd9c9b5))
+* **poa:** preserve alignment across graph insertion ([#690](https://github.com/rust-bio/rust-bio/issues/690)) ([841f86f](https://github.com/rust-bio/rust-bio/commit/841f86f61525f0771aad2284ac3e9f7abae800c4))
+
+
+### Dependencies
+
+* update bit-set requirement from 0.10 to 0.11 ([#681](https://github.com/rust-bio/rust-bio/issues/681)) ([f325291](https://github.com/rust-bio/rust-bio/commit/f3252912e610f9a80793c26968eec982c2a3a70a))
+* update statrs requirement from &gt;= 0.11, &lt; 0.19 to >= 0.11, < 0.20 ([#683](https://github.com/rust-bio/rust-bio/issues/683)) ([e536843](https://github.com/rust-bio/rust-bio/commit/e536843cb2053a6cfc295e567d52e05bbbffe6a6))
+
 ## [4.0.1](https://github.com/rust-bio/rust-bio/compare/v4.0.0...v4.0.1) (2026-06-29)
 
 
