@@ -92,6 +92,48 @@ where
         .collect()
 }
 
+/// Return a bit mask of the bases a IUPAC code can denote.
+///
+/// Each base is encoded as one bit: A → 0b0001, C → 0b0010,
+/// G → 0b0100, T → 0b1000. Ambiguity codes yield the union of their
+/// bases, e.g. R (A or G) → 0b0101.
+/// Unknown symbols yield 0.
+/// Two codes are compatible if their masks intersect.
+///
+/// use bio::alphabets::dna;
+///
+/// assert_eq!(dna::iupac_mask(b'A'), 0b0001); // A
+/// assert_eq!(dna::iupac_mask(b'r'), 0b0101); // r → A | G
+/// assert_eq!(dna::iupac_mask(b'N'), 0b1111); // N → A | C | G | T
+/// assert_eq!(dna::iupac_mask(b'-'), 0); // unknown
+/// // Y (C or T) is compatible with T, but not with A
+/// assert_ne!(dna::iupac_mask(b'Y') & dna::iupac_mask(b'T'), 0);
+/// assert_eq!(dna::iupac_mask(b'Y') & dna::iupac_mask(b'A'), 0);
+/// ```
+pub fn iupac_mask(a: u8) -> u8 {
+    const A: u8 = 0b0001;
+    const C: u8 = 0b0010;
+    const G: u8 = 0b0100;
+    const T: u8 = 0b1000;
+    match a.to_ascii_uppercase() {
+        b'A' => A,
+        b'C' => C,
+        b'G' => G,
+        b'T' => T,
+        b'R' => A | G,
+        b'Y' => C | T,
+        b'S' => C | G,
+        b'W' => A | T,
+        b'K' => G | T,
+        b'M' => A | C,
+        b'B' => C | G | T,
+        b'D' => A | G | T,
+        b'H' => A | C | T,
+        b'V' => A | C | G,
+        b'N' => A | C | G | T,
+        _ => 0,
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -114,5 +156,37 @@ mod tests {
     #[test]
     fn number_is_no_word() {
         assert!(!alphabet().is_word(b"42"));
+    }
+
+    const IUPAC_CODES: [(u8, u8); 15] = [
+        (b'A', 0b0001),
+        (b'C', 0b0010),
+        (b'G', 0b0100),
+        (b'T', 0b1000),
+        (b'R', 0b0101), // A | G = 0001 | 0100
+        (b'Y', 0b1010), // C | T = 0010 | 1000
+        (b'S', 0b0110), // C | G
+        (b'W', 0b1001), // A | T
+        (b'K', 0b1100), // G | T
+        (b'M', 0b0011), // A | C
+        (b'B', 0b1110), // C | G | T
+        (b'D', 0b1101), // A | G | T
+        (b'H', 0b1011), // A | C | T
+        (b'V', 0b0111), // A | C | G
+        (b'N', 0b1111), // A | C | G | T
+    ];
+
+    #[test]
+    fn iupac_mask_is_the_union_of_the_denoted_bases() {
+        for (code, expected) in IUPAC_CODES {
+            assert_eq!(iupac_mask(code), expected);
+        }
+    }
+
+    #[test]
+    fn iupac_mask_of_unknown_symbol_is_zero() {
+        for symbol in [b'Z', b'-', b'*', b' ', 0, 255] {
+            assert_eq!(iupac_mask(symbol), 0);
+        }
     }
 }
