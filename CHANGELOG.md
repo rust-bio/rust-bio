@@ -5,11 +5,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [4.2.0](https://github.com/rust-bio/rust-bio/compare/v4.1.0...v4.2.0) (2026-10-02)
 
-
-### ⚠ BREAKING CHANGES
-
-* allow swaps and configuration of indel support in ukkonen's pattern matching algorithm; remove non-reasonable traits from the Ukkonen struct ([#692](https://github.com/rust-bio/rust-bio/issues/692))
-
 ### Features
 
 * allow swaps and configuration of indel support in ukkonen's pattern matching algorithm; remove non-reasonable traits from the Ukkonen struct ([#692](https://github.com/rust-bio/rust-bio/issues/692)) ([cbb2fca](https://github.com/rust-bio/rust-bio/commit/cbb2fcae1f08ce6d3e8bea43c7624bf5e293c9c0))
