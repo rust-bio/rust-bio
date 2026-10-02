@@ -6,6 +6,9 @@
 //! sequencing data.
 //!
 //! Traits defined in this module apply to both `PairHMM` and `HomopolyPairHMM`.
+//! `LinearPairHMM` computes the same forward probability as `PairHMM` on plain `f64`
+//! probabilities (see `LinearEmissionParameters`), several times faster, and reports an
+//! underflow by returning `None` instead of a result.
 //!
 //! # Examples
 //! ```
@@ -98,12 +101,14 @@
 //! assert_relative_eq!(*prob_related, *prob_expected, epsilon = 1e-5);
 //! ```
 pub use homopolypairhmm::{BaseSpecificHopParameters, HomopolyPairHMM, HopParameters};
+pub use linearpairhmm::{LinearEmissionParameters, LinearPairHMM, LogSpaceEmission};
 pub use pairhmm::PairHMM;
 
 use crate::stats::LogProb;
 
 mod band;
 mod homopolypairhmm;
+mod linearpairhmm;
 // Renaming would change the public module path.
 #[allow(clippy::module_inception)]
 mod pairhmm;
