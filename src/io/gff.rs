@@ -27,6 +27,7 @@
 use itertools::Itertools;
 use multimap::MultiMap;
 use regex::Regex;
+use std::borrow::Cow;
 use std::convert::{AsRef, TryFrom, TryInto};
 use std::fs;
 use std::io;
@@ -92,18 +93,41 @@ impl GffType {
     }
 }
 
-/// Whether a byte must be percent-encoded in a GFF3 column-9 tag or value.
+/// Whether a byte must be percent-encoded in any GFF3 column.
 ///
-/// Per the [GFF3 specification], only the following must be encoded (using RFC
-/// 3986 percent-encoding): tab, newline, carriage return, the percent sign,
-/// other control characters (`0x00`-`0x1F` and `0x7F`), and the characters that
-/// are reserved in column 9: `;`, `=`, `&` and `,`. Notably, spaces are *not*
-/// encoded, and no other characters may be encoded.
+/// Per the [GFF3 specification], tab, newline, carriage return, the percent
+/// sign and the other control characters (`0x00`-`0x1F` and `0x7F`) must be
+/// encoded (using RFC 3986 percent-encoding) in every column, and no other
+/// characters may be encoded there. Notably, spaces are *not* encoded.
 ///
 /// [GFF3 specification]: https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md
 #[inline]
-fn gff3_must_encode(b: u8) -> bool {
-    matches!(b, b'\t' | b'\n' | b'\r' | b'%' | b';' | b'=' | b'&' | b',') || b < 0x20 || b == 0x7f
+fn gff3_must_encode_anywhere(b: u8) -> bool {
+    matches!(b, b'\t' | b'\n' | b'\r' | b'%') || b < 0x20 || b == 0x7f
+}
+
+/// Whether a byte must be percent-encoded in a GFF3 column-9 tag or value.
+///
+/// On top of [`gff3_must_encode_anywhere`], the characters that are reserved
+/// in column 9 must be escaped there: `;`, `=`, `&` and `,`.
+#[inline]
+fn gff3_must_encode_attr(b: u8) -> bool {
+    gff3_must_encode_anywhere(b) || matches!(b, b';' | b'=' | b'&' | b',')
+}
+
+/// Whether a byte must be percent-encoded in a GFF3 `seqid` (column 1).
+///
+/// The specification restricts this column further than the others: an ID may
+/// contain any character, but must escape every one outside the set
+/// `[a-zA-Z0-9.:^*$@!+_?-|]`, so that it contains no unescaped whitespace and
+/// does not begin with an unescaped `>`.
+#[inline]
+fn gff3_must_encode_seqid(b: u8) -> bool {
+    !(b.is_ascii_alphanumeric()
+        || matches!(
+            b,
+            b'.' | b':' | b'^' | b'*' | b'$' | b'@' | b'!' | b'+' | b'_' | b'?' | b'-' | b'|'
+        ))
 }
 
 /// Map a nibble (`0..=15`) to its upper-case ASCII hex digit.
@@ -126,20 +150,19 @@ fn hex_val(b: u8) -> Option<u8> {
     }
 }
 
-/// Percent-encode a GFF3 attribute tag or value as required by the GFF3 spec.
+/// Percent-encode the bytes of `s` selected by `must_encode`.
 ///
-/// Only the characters selected by [`gff3_must_encode`] are escaped; every other
-/// byte (including multi-byte UTF-8 sequences and spaces) is passed through
-/// unchanged. The common case of a string with nothing to encode is returned
-/// without allocating a fresh buffer.
-fn gff3_encode(s: &str) -> String {
+/// Every other byte (including multi-byte UTF-8 sequences and spaces) is
+/// passed through unchanged. The common case of a string with nothing to
+/// encode is returned borrowed, without allocating.
+fn gff3_encode_with(s: &str, must_encode: impl Fn(u8) -> bool) -> Cow<'_, str> {
     let bytes = s.as_bytes();
-    if !bytes.iter().any(|&b| gff3_must_encode(b)) {
-        return s.to_owned();
+    if !bytes.iter().any(|&b| must_encode(b)) {
+        return Cow::Borrowed(s);
     }
-    let mut out = Vec::with_capacity(s.len());
+    let mut out = Vec::with_capacity(s.len() + 8);
     for &b in bytes {
-        if gff3_must_encode(b) {
+        if must_encode(b) {
             out.push(b'%');
             out.push(hex_upper(b >> 4));
             out.push(hex_upper(b & 0x0f));
@@ -149,7 +172,40 @@ fn gff3_encode(s: &str) -> String {
     }
     // Pass-through bytes keep the original UTF-8 and the inserted escape bytes
     // are ASCII, so the result is always valid UTF-8.
-    String::from_utf8(out).expect("gff3_encode produced invalid UTF-8")
+    Cow::Owned(String::from_utf8(out).expect("gff3_encode_with produced invalid UTF-8"))
+}
+
+/// Percent-encode a GFF3 attribute tag or value as required by the GFF3 spec
+/// (the characters selected by [`gff3_must_encode_attr`]).
+fn gff3_encode(s: &str) -> String {
+    gff3_encode_with(s, gff3_must_encode_attr).into_owned()
+}
+
+/// Percent-encode a GFF3 `seqid` (column 1) as required by the GFF3 spec.
+fn gff3_encode_seqid(s: &str) -> Cow<'_, str> {
+    gff3_encode_with(s, gff3_must_encode_seqid)
+}
+
+/// Percent-encode a GFF3 `source` or `type` column (the always-encoded set
+/// only; the column-9 reserved characters are not special there).
+fn gff3_encode_column(s: &str) -> Cow<'_, str> {
+    gff3_encode_with(s, gff3_must_encode_anywhere)
+}
+
+/// Identity transform for columns that are written verbatim (every format
+/// except GFF3).
+fn write_column_verbatim(s: &str) -> Cow<'_, str> {
+    Cow::Borrowed(s)
+}
+
+/// Percent-decode a GFF3 `seqid`, `source` or `type` column, reusing the
+/// buffer when there is nothing to decode.
+fn gff3_decode_column(s: String) -> String {
+    if s.contains('%') {
+        gff3_decode(&s)
+    } else {
+        s
+    }
 }
 
 /// Percent-decode a GFF3 attribute tag or value (RFC 3986).
@@ -243,16 +299,19 @@ impl<R: io::Read> Reader<R> {
         );
         let attribute_re = Regex::new(&r).unwrap();
         // Decide once, from the format, how attributes are decoded.
-        let decode_attr: fn(&str) -> String = if self.gff_type == GffType::GFF3 {
-            gff3_decode
+        let gff3 = self.gff_type == GffType::GFF3;
+        let decode_attr: fn(&str) -> String = if gff3 { gff3_decode } else { trim_quotes };
+        let decode_column: fn(String) -> String = if gff3 {
+            gff3_decode_column
         } else {
-            trim_quotes
+            std::convert::identity
         };
         Records {
             inner: self.inner.deserialize(),
             attribute_re,
             value_delim: vdelim as char,
             decode_attr,
+            decode_column,
         }
     }
 }
@@ -417,6 +476,11 @@ pub struct Records<'a, R: io::Read> {
     // GFF2/GTF2 strip surrounding quotes. Resolving it here keeps the decision
     // out of the per-attribute loop.
     decode_attr: fn(&str) -> String,
+    // Same for the `seqid`, `source` and `type` columns: GFF3 percent-decodes
+    // them (the always-encoded set applies to every column), the other formats
+    // keep them as read. The remaining columns are not escaped: the spec
+    // defines them as numeric or drawn from a fixed alphabet.
+    decode_column: fn(String) -> String,
 }
 
 impl<'a, R: io::Read> Iterator for Records<'a, R> {
@@ -437,6 +501,7 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                     raw_attributes,
                 )| {
                     let decode_attr = self.decode_attr;
+                    let decode_column = self.decode_column;
                     let mut attributes = MultiMap::new();
                     for caps in self.attribute_re.captures_iter(&raw_attributes) {
                         for value in caps["value"].split(self.value_delim) {
@@ -444,9 +509,9 @@ impl<'a, R: io::Read> Iterator for Records<'a, R> {
                         }
                     }
                     Record {
-                        seqname,
-                        source,
-                        feature_type,
+                        seqname: decode_column(seqname),
+                        source: decode_column(source),
+                        feature_type: decode_column(feature_type),
                         start,
                         end,
                         score,
@@ -471,6 +536,11 @@ pub struct Writer<W: io::Write> {
     // writes verbatim. Resolving it here keeps the decision out of the
     // per-attribute loop.
     encode_attr: fn(&str) -> String,
+    // Same for the `seqid` column (its own, stricter set) and for the `source`
+    // and `type` columns (the always-encoded set): GFF3 percent-encodes, every
+    // other format writes verbatim.
+    encode_seqid: for<'a> fn(&'a str) -> Cow<'a, str>,
+    encode_column: for<'a> fn(&'a str) -> Cow<'a, str>,
 }
 
 impl Writer<fs::File> {
@@ -499,12 +569,24 @@ impl<W: io::Write> Writer<W> {
             } else {
                 write_attr_verbatim
             },
+            encode_seqid: if fileformat == GffType::GFF3 {
+                gff3_encode_seqid
+            } else {
+                write_column_verbatim
+            },
+            encode_column: if fileformat == GffType::GFF3 {
+                gff3_encode_column
+            } else {
+                write_column_verbatim
+            },
         }
     }
 
     /// Write a given GFF record.
     pub fn write(&mut self, record: &Record) -> csv::Result<()> {
         let encode_attr = self.encode_attr;
+        let encode_seqid = self.encode_seqid;
+        let encode_column = self.encode_column;
         let attributes = if !record.attributes.is_empty() {
             record
                 .attributes
@@ -516,9 +598,9 @@ impl<W: io::Write> Writer<W> {
         };
 
         self.inner.serialize((
-            &record.seqname,
-            &record.source,
-            &record.feature_type,
+            encode_seqid(&record.seqname),
+            encode_column(&record.source),
+            encode_column(&record.feature_type),
             record.start,
             record.end,
             &record.score,
@@ -993,6 +1075,71 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
         let out = String::from_utf8(writer.inner.into_inner().unwrap()).unwrap();
         assert!(out.contains("Note=a%2Cb%3Dc"), "out: {}", out);
         assert!(out.contains("ID=g%3B1"), "out: {}", out);
+    }
+
+    #[test]
+    fn test_gff3_reader_decodes_columns_1_to_3() {
+        // The always-encoded set (tab, newline, carriage return, percent and
+        // control characters) applies to every column, not only to column 9.
+        let gff = b"chr%201\tsrc%25name\tgene%09type\t1\t10\t.\t+\t.\tID=g1%3B\n";
+        let mut reader = Reader::new(&gff[..], GffType::GFF3);
+        let record = reader.records().next().unwrap().unwrap();
+        assert_eq!(record.seqname(), "chr 1");
+        assert_eq!(record.source(), "src%name");
+        assert_eq!(record.feature_type(), "gene\ttype");
+        assert_eq!(record.attributes().get("ID").unwrap(), "g1;");
+    }
+
+    #[test]
+    fn test_gff3_writer_encodes_columns_1_to_3() {
+        // Column 1 escapes everything outside [a-zA-Z0-9.:^*$@!+_?-|]; columns
+        // 2 and 3 escape only the always-encoded set, so the column-9 reserved
+        // characters stay verbatim there. Exact bytes: the raw tab must be
+        // encoded before the csv writer sees it, or it would be quoted instead.
+        let mut record = Record::new();
+        *record.seqname_mut() = "chr 1>a;b\tc".to_owned();
+        *record.source_mut() = "100%;a=b,c&d\te".to_owned();
+        *record.feature_type_mut() = "gene\x01".to_owned();
+        *record.start_mut() = 1;
+        *record.end_mut() = 10;
+        *record.score_mut() = ".".to_owned();
+        *record.strand_mut() = "+".to_owned();
+        let mut writer = Writer::new(vec![], GffType::GFF3);
+        writer.write(&record).unwrap();
+        let out = String::from_utf8(writer.inner.into_inner().unwrap()).unwrap();
+        assert_eq!(
+            out,
+            "chr%201%3Ea%3Bb%09c\t100%25;a=b,c&d%09e\tgene%01\t1\t10\t.\t+\t.\t\n"
+        );
+    }
+
+    #[test]
+    fn test_gff3_columns_roundtrip_normalises_bare_percent() {
+        // A `%` that is not a valid escape is read verbatim and written as
+        // `%25`: the output is the spec-conformant spelling of the same value.
+        let gff = b"chr1\t100%\tgene\t1\t10\t.\t+\t.\tID=g1\n";
+        let mut reader = Reader::new(&gff[..], GffType::GFF3);
+        let record = reader.records().next().unwrap().unwrap();
+        assert_eq!(record.source(), "100%");
+        let mut writer = Writer::new(vec![], GffType::GFF3);
+        writer.write(&record).unwrap();
+        let out = String::from_utf8(writer.inner.into_inner().unwrap()).unwrap();
+        assert_eq!(out, "chr1\t100%25\tgene\t1\t10\t.\t+\t.\tID=g1\n");
+    }
+
+    #[test]
+    fn test_gtf2_columns_not_percent_encoded() {
+        // GFF2/GTF2 have no percent-encoding: columns 1-3 round-trip verbatim.
+        let gtf = b"chr%201\t100%\tgene\t1\t10\t.\t+\t.\tgene_id \"g1\";\n";
+        let mut reader = Reader::new(&gtf[..], GffType::GTF2);
+        let record = reader.records().next().unwrap().unwrap();
+        assert_eq!(record.seqname(), "chr%201");
+        assert_eq!(record.source(), "100%");
+        let mut writer = Writer::new(vec![], GffType::GTF2);
+        writer.write(&record).unwrap();
+        let out = String::from_utf8(writer.inner.into_inner().unwrap()).unwrap();
+        // (GTF2 attributes lose their quotes on read, as before.)
+        assert_eq!(out, "chr%201\t100%\tgene\t1\t10\t.\t+\t.\tgene_id g1\n");
     }
 
     #[test]
