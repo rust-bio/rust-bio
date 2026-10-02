@@ -75,10 +75,9 @@ use enum_map::{Enum, EnumMap};
 use itertools::Itertools;
 use num_traits::Zero;
 
+use crate::alphabets::dna::iupac_mask;
 use crate::stats::pairhmm::homopolypairhmm::State::*;
-use crate::stats::pairhmm::{
-    Emission, EmissionParameters, GapParameters, StartEndGapParameters, XYEmission,
-};
+use crate::stats::pairhmm::{Emission, EmissionParameters, GapParameters, StartEndGapParameters};
 use crate::stats::probs::LogProb;
 use crate::stats::Prob;
 use std::collections::HashMap;
@@ -107,12 +106,17 @@ pub enum State {
 impl State {
     fn supports(&self, x: u8, y: u8) -> bool {
         match self {
-            MatchA if x == b'A' || y == b'A' => true,
-            MatchC if x == b'C' || y == b'C' => true,
-            MatchG if x == b'G' || y == b'G' => true,
-            MatchT if x == b'T' || y == b'T' => true,
+            // For each match state, check if the base of the match state is supported by the IUPAC mask of x and y.
+            MatchA | MatchC | MatchG | MatchT => {
+                iupac_mask(self.base().unwrap()) & (iupac_mask(x) | iupac_mask(y)) != 0
+            }
             _ => false,
         }
+    }
+
+    fn supports_base(&self, symbol: u8) -> bool {
+        self.base()
+            .is_some_and(|base| iupac_mask(base) & iupac_mask(symbol) != 0)
     }
 
     fn base(&self) -> Option<u8> {
@@ -309,15 +313,20 @@ impl HomopolyPairHMM {
 
                 let emission_y = emission_params.emission_y(j);
                 let mut any_match = false;
+                let num_states = MATCH_STATES
+                    .iter()
+                    .filter(|m| m.supports(emission_x, emission_y))
+                    .count() as f64;
+
                 for &m in &MATCH_STATES {
                     if m.supports(emission_x, emission_y) {
-                        let emission = emission_params.prob_emit_xy(i, j);
-                        let emission_prob = match emission {
-                            XYEmission::Match(p) => p,
-                            // since we have separate match states, we need to halve mismatch probs
-                            // (since e.g. ('A', _) and (_, 'A') are distinct cases)
-                            XYEmission::Mismatch(p) => LogProb::from(*p - 2f64.ln()),
-                        };
+                        // The emission is queried per match state, since it can differ between the active states (e.g. for x=T, y=Y, MatchT is a match while MatchC is a mismatch).
+                        // Emission prob is the log prob of the emission, adjusted by the number of states. If we have an exact match like ('A', 'A') there is only one active state so we do not need to adjust the emission prob. If there is a mismatch like ('A', 'C') we need to halve the emission prob to account that MatchA and MatchC are active. If there is a IUPAC ambiguity like ('A', 'Y') we need to account for the possible match states MatchA, MatchC, and MatchT.
+
+                        let emission =
+                            emission_params.prob_emit_xy_for_base(i, j, m.base().unwrap());
+                        let emission_prob = LogProb::from(*emission.prob() - num_states.ln());
+
                         any_match |= emission.is_match();
                         v[curr][m][j_] = emission_prob
                             + LogProb::ln_sum_exp(
@@ -344,8 +353,12 @@ impl HomopolyPairHMM {
                     );
 
                 MATCH_HOP_Y.iter().for_each(|&(m, h)| {
-                    v[curr][h][j_] = (transition_probs[&(m >> h)] + v[prev][m][j_])
-                        .ln_add_exp(transition_probs[&(h >> h)] + v[prev][h][j_])
+                    v[curr][h][j_] = if h.supports_base(emission_x) {
+                        (transition_probs[&(m >> h)] + v[prev][m][j_])
+                            .ln_add_exp(transition_probs[&(h >> h)] + v[prev][h][j_])
+                    } else {
+                        LogProb::zero()
+                    }
                 });
 
                 v[curr][GapX][j_] = emission_params.prob_emit_y(j)
@@ -360,8 +373,12 @@ impl HomopolyPairHMM {
                     );
 
                 MATCH_HOP_X.iter().for_each(|&(m, h)| {
-                    v[curr][h][j_] = (transition_probs[&(m >> h)] + v[curr][m][j_minus_one])
-                        .ln_add_exp(transition_probs[&(h >> h)] + v[curr][h][j_minus_one])
+                    v[curr][h][j_] = if h.supports_base(emission_y) {
+                        (transition_probs[&(m >> h)] + v[curr][m][j_minus_one])
+                            .ln_add_exp(transition_probs[&(h >> h)] + v[curr][h][j_minus_one])
+                    } else {
+                        LogProb::zero()
+                    };
                 });
 
                 // calculate minimal number of mismatches
@@ -614,7 +631,7 @@ fn min3<T: Ord>(a: T, b: T, c: T) -> T {
 #[cfg(test)]
 mod tests {
     use crate::stats::pairhmm::homopolypairhmm::tests::AlignmentMode::{Global, Semiglobal};
-    use crate::stats::pairhmm::PairHMM;
+    use crate::stats::pairhmm::{EmissionParameters, PairHMM, XYEmission};
     use crate::stats::{LogProb, Prob};
     use std::iter::repeat;
     use std::sync::LazyLock;
@@ -820,6 +837,32 @@ mod tests {
         LazyLock::new(|| HomopolyPairHMM::new(&NO_GAP_PARAMS, &TestHopParams));
     static EXTEND_GAPS_NO_HOPS_PHMM: LazyLock<HomopolyPairHMM> =
         LazyLock::new(|| HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &NO_HOP_PARAMS));
+
+    /// Match states supporting the pair `(x, y)`
+    fn supporting(x: u8, y: u8) -> Vec<State> {
+        MATCH_STATES
+            .iter()
+            .copied()
+            .filter(|m| m.supports(x, y))
+            .collect()
+    }
+
+    #[test]
+    fn supports_unambiguous_bases() {
+        assert_eq!(supporting(b'A', b'A'), [MatchA]);
+        assert_eq!(supporting(b'A', b'G'), [MatchA, MatchG]);
+        assert_eq!(supporting(b'T', b'C'), [MatchC, MatchT]);
+    }
+
+    #[test]
+    fn supports_ambiguous_codes() {
+        assert_eq!(supporting(b'R', b'C'), [MatchA, MatchC, MatchG]);
+        assert_eq!(supporting(b'Y', b'C'), [MatchC, MatchT]);
+        assert_eq!(supporting(b'S', b'S'), [MatchC, MatchG]);
+        assert_eq!(supporting(b'N', b'A'), [MatchA, MatchC, MatchG, MatchT]);
+        assert_eq!(supporting(b'R', b'Y'), [MatchA, MatchC, MatchG, MatchT]);
+        assert_eq!(supporting(b'r', b'c'), supporting(b'R', b'C'));
+    }
 
     #[test]
     fn impossible_global_alignment() {
