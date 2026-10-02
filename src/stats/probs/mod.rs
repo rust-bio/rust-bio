@@ -315,7 +315,7 @@ impl LogProb {
             .map(|(i, v)| LogProb(*density(i, v) + 2.0f64.ln()))
             .collect_vec();
         probs.push(density(0, a));
-        probs.push(density(n, b));
+        probs.push(density(n - 1, b));
         let width = f64::from(b - a);
 
         LogProb(*Self::ln_sum_exp(&probs) + width.ln() - (2.0 * (n - 1) as f64).ln())
@@ -339,7 +339,7 @@ impl LogProb {
             })
             .collect_vec();
         probs.push(density(0, a));
-        probs.push(density(n, b));
+        probs.push(density(n - 1, b));
         let width = f64::from(b - a);
 
         LogProb(*Self::ln_sum_exp(&probs) + width.ln() - ((n - 1) as f64).ln() - 3.0f64.ln())
@@ -542,7 +542,8 @@ mod tests {
 
     #[test]
     fn test_trapezoidal_integrate() {
-        let density = |_, _| LogProb(0.1f64.ln());
+        let vals = vec![LogProb(0.1f64.ln()); 5];
+        let density = |i, _| vals[i];
         let prob = LogProb::ln_trapezoidal_integrate_exp(density, 0.0, 10.0, 5);
         assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon = 0.0000001);
     }
@@ -557,7 +558,8 @@ mod tests {
 
     #[test]
     fn test_simpsons_integrate() {
-        let density = |_, _| LogProb(0.1f64.ln());
+        let vals = vec![LogProb(0.1f64.ln()); 5];
+        let density = |i, _| vals[i];
         let prob = LogProb::ln_simpsons_integrate_exp(density, 0.0, 10.0, 5);
         assert_relative_eq!(*prob, *LogProb::ln_one(), epsilon = 0.0000001);
     }
