@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [4.2.1](https://github.com/rust-bio/rust-bio/compare/v4.2.0...v4.2.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* let every hop state return to every match state in HomopolyPairHMM ([#714](https://github.com/rust-bio/rust-bio/issues/714)) ([ceadf27](https://github.com/rust-bio/rust-bio/commit/ceadf27b5c4657aead648ca80aff706ebecbf4c3))
+* sum the column ends of HomopolyPairHMM once per column in semiglobal mode ([#711](https://github.com/rust-bio/rust-bio/issues/711)) ([9ac1a66](https://github.com/rust-bio/rust-bio/commit/9ac1a665b7892921ff1a425547c126e296ef81fa))
+
 ## [4.2.0](https://github.com/rust-bio/rust-bio/compare/v4.1.0...v4.2.0) (2026-10-02)
 
 ### Features
