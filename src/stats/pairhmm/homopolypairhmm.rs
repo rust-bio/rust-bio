@@ -467,15 +467,15 @@ const HOP_X_MATCH: [(State, State); 16] = [
     (HopAX, MatchC),
     (HopAX, MatchG),
     (HopAX, MatchT),
-    (HopCX, MatchC),
+    (HopCX, MatchA),
     (HopCX, MatchC),
     (HopCX, MatchG),
     (HopCX, MatchT),
-    (HopGX, MatchG),
+    (HopGX, MatchA),
     (HopGX, MatchC),
     (HopGX, MatchG),
     (HopGX, MatchT),
-    (HopTX, MatchT),
+    (HopTX, MatchA),
     (HopTX, MatchC),
     (HopTX, MatchG),
     (HopTX, MatchT),
@@ -485,15 +485,15 @@ const HOP_Y_MATCH: [(State, State); 16] = [
     (HopAY, MatchC),
     (HopAY, MatchG),
     (HopAY, MatchT),
-    (HopCY, MatchC),
+    (HopCY, MatchA),
     (HopCY, MatchC),
     (HopCY, MatchG),
     (HopCY, MatchT),
-    (HopGY, MatchG),
+    (HopGY, MatchA),
     (HopGY, MatchC),
     (HopGY, MatchG),
     (HopGY, MatchT),
-    (HopTY, MatchT),
+    (HopTY, MatchA),
     (HopTY, MatchC),
     (HopTY, MatchG),
     (HopTY, MatchT),
@@ -1321,6 +1321,39 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         );
         let p_pair = PairHMM::new(&FreeEnds).prob_related(&Emission { x, y }, &FreeEnds, None);
         assert_relative_eq!(*p_homopoly, *p_pair, epsilon = 1e-4);
+    }
+
+    /// With base-independent parameters and emissions, renaming the bases consistently in x and y
+    /// must not change the probability.
+    #[test]
+    fn test_base_renaming_does_not_change_probability() {
+        let phmm = HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &TestHopParams);
+        let x = b"ACCCAGGGTTTACGAAATCCC".to_vec();
+        let y = b"ACCAGGGGTTACGAAAATCC".to_vec();
+        let reference = phmm.prob_related(
+            &TestEmissionParams {
+                x: x.clone(),
+                y: y.clone(),
+            },
+            &Global,
+            None,
+        );
+        for perm in [*b"CAGT", *b"GTAC", *b"TGCA", *b"CGTA", *b"ATGC"] {
+            let rename = |s: &[u8]| -> Vec<u8> {
+                s.iter()
+                    .map(|b| perm[b"ACGT".iter().position(|c| c == b).unwrap()])
+                    .collect()
+            };
+            let p = phmm.prob_related(
+                &TestEmissionParams {
+                    x: rename(&x),
+                    y: rename(&y),
+                },
+                &Global,
+                None,
+            );
+            assert_relative_eq!(*p, *reference, epsilon = 1e-9);
+        }
     }
 
     /// `prob_gap_x` opens a gap in x, i.e. a base of y emitted alone (an insertion in y), and
