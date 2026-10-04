@@ -397,18 +397,19 @@ impl HomopolyPairHMM {
                         min_edit_dist_top.saturating_add(1),
                     )
                 };
-
-                if free_end_gap_x {
-                    // Cache column probabilities or simply record the last probability.
-                    // We can put all of them in one array since we simply have to sum in the end.
-                    // This is also good for numerical stability.
-                    prob_cols.extend(MATCH_STATES.iter().map(|&s| v[curr][s][len_y]));
-                    prob_cols.extend(HOP_Y_STATES.iter().map(|&s| v[curr][s][len_y]));
-                    prob_cols.extend(HOP_X_STATES.iter().map(|&s| v[curr][s][len_y]));
-                    prob_cols.push(v[curr][GapY][len_y]);
-                    // TODO check removing this (we don't want open gaps in x):
-                    prob_cols.push(v[curr][GapX][len_y]);
-                }
+            }
+            if free_end_gap_x {
+                // Record the probability of ending in this column, once per column and once the
+                // last row has been computed: the hop and gap rows are not reset between
+                // columns, so reading them earlier would pick up the previous column's values.
+                // All of them go in one array since we simply have to sum in the end, which is
+                // also good for numerical stability.
+                prob_cols.extend(MATCH_STATES.iter().map(|&s| v[curr][s][len_y]));
+                prob_cols.extend(HOP_Y_STATES.iter().map(|&s| v[curr][s][len_y]));
+                prob_cols.extend(HOP_X_STATES.iter().map(|&s| v[curr][s][len_y]));
+                prob_cols.push(v[curr][GapY][len_y]);
+                // TODO check removing this (we don't want open gaps in x):
+                prob_cols.push(v[curr][GapX][len_y]);
             }
             mem::swap(&mut prev, &mut curr);
             for &s in &MATCH_STATES {
@@ -1240,6 +1241,86 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
             None,
         );
         assert_relative_eq!(*p1, *p2, epsilon = 1e-4)
+    }
+
+    /// With no hops, `HomopolyPairHMM` is a `PairHMM`, in semiglobal mode too: the sum over the
+    /// column ends has to contain each column once, with the values of that column.
+    #[test]
+    fn test_phmm_vs_phhmm_semiglobal() {
+        struct FreeEnds;
+        impl crate::stats::pairhmm::StartEndGapParameters for FreeEnds {
+            fn free_start_gap_x(&self) -> bool {
+                true
+            }
+
+            fn free_end_gap_x(&self) -> bool {
+                true
+            }
+        }
+        impl crate::stats::pairhmm::GapParameters for FreeEnds {
+            fn prob_gap_x(&self) -> LogProb {
+                LogProb::from(PROB_ILLUMINA_INS)
+            }
+
+            fn prob_gap_y(&self) -> LogProb {
+                LogProb::from(PROB_ILLUMINA_DEL)
+            }
+
+            fn prob_gap_x_extend(&self) -> LogProb {
+                LogProb::zero()
+            }
+
+            fn prob_gap_y_extend(&self) -> LogProb {
+                LogProb::zero()
+            }
+        }
+        struct Emission {
+            x: &'static [u8],
+            y: &'static [u8],
+        }
+        impl crate::stats::pairhmm::EmissionParameters for Emission {
+            fn prob_emit_xy(&self, i: usize, j: usize) -> crate::stats::pairhmm::XYEmission {
+                if self.x[i] == self.y[j] {
+                    crate::stats::pairhmm::XYEmission::Match(LogProb::from(
+                        Prob(1.0) - PROB_ILLUMINA_SUBST,
+                    ))
+                } else {
+                    crate::stats::pairhmm::XYEmission::Mismatch(LogProb::from(
+                        PROB_ILLUMINA_SUBST / Prob(3.0),
+                    ))
+                }
+            }
+
+            fn prob_emit_x(&self, _: usize) -> LogProb {
+                LogProb::from(Prob(1.0) - PROB_ILLUMINA_SUBST)
+            }
+
+            fn prob_emit_y(&self, _: usize) -> LogProb {
+                LogProb::from(Prob(1.0) - PROB_ILLUMINA_SUBST)
+            }
+
+            fn len_x(&self) -> usize {
+                self.x.len()
+            }
+
+            fn len_y(&self) -> usize {
+                self.y.len()
+            }
+        }
+
+        // y is a window of x with one substitution, one insertion and one deletion.
+        let x = b"GATCACAGGTCTATCACCCTATTAACCACTCACGGGAGCTCTCCATGCATTTGGTATTTTCGTCTGGGGGGTATGCAC";
+        let y = b"TCTATCACCCTATTAACCTCTCACGGGAGCTCTCCCATGCATTTGGTATTTTCG";
+        let p_homopoly = SINGLE_GAPS_NO_HOPS_PHMM.prob_related(
+            &TestEmissionParams {
+                x: x.to_vec(),
+                y: y.to_vec(),
+            },
+            &Semiglobal,
+            None,
+        );
+        let p_pair = PairHMM::new(&FreeEnds).prob_related(&Emission { x, y }, &FreeEnds, None);
+        assert_relative_eq!(*p_homopoly, *p_pair, epsilon = 1e-4);
     }
 
     /// `prob_gap_x` opens a gap in x, i.e. a base of y emitted alone (an insertion in y), and
