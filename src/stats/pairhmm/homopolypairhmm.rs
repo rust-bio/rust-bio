@@ -424,6 +424,10 @@ impl HomopolyPairHMM {
             for &s in &MATCH_STATES {
                 v[curr][s].reset(LogProb::zero());
             }
+            // In global mode only the origin is allowed to be 0. After the swap we have to overwrite the min_edit_dist in order to not allow free start gaps.
+            if max_edit_dist.is_some() {
+                min_edit_dist[curr].reset(usize::MAX);
+            }
         }
         let p = if free_end_gap_x {
             LogProb::ln_sum_exp(&prob_cols.iter().cloned().collect_vec())
@@ -1171,6 +1175,25 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
 
         let p_banded = pair_hmm.prob_related(&emission_params, &Semiglobal, Some(2));
         assert_relative_eq!(*p, *p_banded, epsilon = 1e-3);
+    }
+
+    /// In global mode only the origin starts with an edit distance of 0, so leading bases of x
+    /// that y lacks count against the band
+    #[test]
+    fn test_global_band_counts_leading_bases_of_x() {
+        let e = TestEmissionParams {
+            x: b"GGGGACGTACGT".to_vec(),
+            y: b"ACGTACGT".to_vec(),
+        };
+        let pair_hmm = &EXTEND_GAPS_NO_HOPS_PHMM;
+        let p = pair_hmm.prob_related(&e, &Global, None);
+        assert_ne!(p, LogProb::ln_zero());
+        assert_eq!(
+            pair_hmm.prob_related(&e, &Global, Some(1)),
+            LogProb::ln_zero()
+        );
+        let p_wide = pair_hmm.prob_related(&e, &Global, Some(e.x.len()));
+        assert_relative_eq!(*p, *p_wide, epsilon = 1e-12);
     }
 
     #[test]
