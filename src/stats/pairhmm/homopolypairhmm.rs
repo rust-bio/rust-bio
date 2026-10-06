@@ -275,6 +275,7 @@ impl HomopolyPairHMM {
         let len_x = emission_params.len_x();
         let mut min_edit_dist: [Vec<usize>; 2] =
             [vec![usize::MAX; len_y + 1], vec![usize::MAX; len_y + 1]];
+        min_edit_dist[0][0] = 0;
         let free_end_gap_x = alignment_mode.free_end_gap_x();
         let free_start_gap_x = alignment_mode.free_start_gap_x();
 
@@ -1428,7 +1429,12 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         let phmm = HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &TestHopParams);
         let mut values = Vec::new();
         for (x, y) in windows {
-            for (mode_is_global, band) in [(true, None), (false, None), (false, Some(6))] {
+            for (mode_is_global, band) in [
+                (true, None),
+                (true, Some(6)),
+                (false, None),
+                (false, Some(6)),
+            ] {
                 let e = TestEmissionParams {
                     x: x.to_vec(),
                     y: y.to_vec(),
@@ -1443,11 +1449,14 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         }
         let expected = [
             -32.086378685365,
+            -32.086378685365,
             -29.001106194398,
             -29.001106194398,
             -75.954685092471,
+            -75.954685092471,
             -38.906771826337,
             -38.906771826337,
+            -29.588020202579,
             -29.588020202579,
             -20.095429251557,
             -20.095429251557,
