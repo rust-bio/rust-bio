@@ -601,13 +601,13 @@ fn build_transition_table<G: GapParameters, H: BaseSpecificHopParameters>(
         hop_params.prob_hop_x_with_base(b'C'),
         hop_params.prob_hop_x_with_base(b'G'),
         hop_params.prob_hop_x_with_base(b'T'),
-    ]) - LogProb(4.0);
+    ]) - LogProb(4f64.ln());
     let prob_hop_y = LogProb::ln_sum_exp(&[
         hop_params.prob_hop_y_with_base(b'A'),
         hop_params.prob_hop_y_with_base(b'C'),
         hop_params.prob_hop_y_with_base(b'G'),
         hop_params.prob_hop_y_with_base(b'T'),
-    ]) - LogProb(4.0);
+    ]) - LogProb(4f64.ln());
     let match_same =
         LogProb::ln_sum_exp(&[prob_gap_y, prob_gap_x, prob_hop_x, prob_hop_y]).ln_one_minus_exp();
     let match_other =
@@ -1441,7 +1441,6 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         );
     }
 
-    /// Reference values computed before the transition table became a dense array.
     #[test]
     fn test_values_are_unchanged() {
         let windows: [(&[u8], &[u8]); 3] = [
@@ -1466,15 +1465,15 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
             }
         }
         let expected = [
-            -32.086378685365,
-            -29.001106194398,
-            -29.001106194398,
-            -75.954685092471,
-            -38.906771826337,
-            -38.906771826337,
-            -29.588020202579,
-            -20.095429251557,
-            -20.095429251557,
+            -32.086804829650,
+            -29.001549177914,
+            -29.001549177914,
+            -75.955006302229,
+            -38.907141016940,
+            -38.907141016940,
+            -29.588464914570,
+            -20.095892482263,
+            -20.095892482263,
         ];
         for (v, e) in values.iter().zip(expected) {
             assert_relative_eq!(*v, e, epsilon = 1e-9);
