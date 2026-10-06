@@ -275,6 +275,7 @@ impl HomopolyPairHMM {
         let len_x = emission_params.len_x();
         let mut min_edit_dist: [Vec<usize>; 2] =
             [vec![usize::MAX; len_y + 1], vec![usize::MAX; len_y + 1]];
+        min_edit_dist[0][0] = 0;
         let free_end_gap_x = alignment_mode.free_end_gap_x();
         let free_start_gap_x = alignment_mode.free_start_gap_x();
 
