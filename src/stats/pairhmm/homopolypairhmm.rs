@@ -954,9 +954,7 @@ mod tests {
     }
 
     /// As for the gap states, a hop state can only stay in its run (`prob_hop_*_extend`) or leave
-    /// it to a match state (`1 - prob_hop_*_extend`), so stay + leave = 1 (up to the precision of
-    /// `fastexp`). Every match state gets the full leave probability, since the emission of the
-    /// next pair picks the base.
+    /// it to a match state (`1 - prob_hop_*_extend`), so stay + leave = 1.
     #[test]
     fn test_hop_states_are_left_with_one_minus_extend() {
         let phmm = HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &TestHopParams);
@@ -1435,8 +1433,6 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         );
     }
 
-    /// Reference values, last recomputed when hop states began to be left with
-    /// `1 - prob_hop_*_extend`. Only a change of the model itself may change them.
     #[test]
     fn test_values_are_unchanged() {
         let windows: [(&[u8], &[u8]); 3] = [
