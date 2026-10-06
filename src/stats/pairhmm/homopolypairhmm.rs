@@ -577,7 +577,7 @@ fn build_transition_table<G: GapParameters, H: BaseSpecificHopParameters>(
             *a,
             *b,
             hop_params
-                .prob_hop_x_with_base(a.base().expect("Unsupported base"))
+                .prob_hop_x_extend_with_base(a.base().expect("Unsupported base"))
                 .ln_one_minus_exp(),
         );
     });
@@ -586,7 +586,7 @@ fn build_transition_table<G: GapParameters, H: BaseSpecificHopParameters>(
             *a,
             *b,
             hop_params
-                .prob_hop_y_with_base(a.base().expect("Unsupported base"))
+                .prob_hop_y_extend_with_base(a.base().expect("Unsupported base"))
                 .ln_one_minus_exp(),
         );
     });
@@ -950,6 +950,24 @@ mod tests {
             assert!(*p <= 0.0);
             assert!(*p >= *p_most_likely_path_with_hops);
             assert!(*p < *p_most_likely_path_with_hops + 1.);
+        }
+    }
+
+    /// As for the gap states, a hop state can only stay in its run (`prob_hop_*_extend`) or leave
+    /// it to a match state (`1 - prob_hop_*_extend`), so stay + leave = 1 (up to the precision of
+    /// `fastexp`). Every match state gets the full leave probability, since the emission of the
+    /// next pair picks the base.
+    #[test]
+    fn test_hop_states_are_left_with_one_minus_extend() {
+        let phmm = HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &TestHopParams);
+        let t = &phmm.transition_probs;
+        for &hop in HOP_X_STATES.iter().chain(&HOP_Y_STATES) {
+            for &match_state in &MATCH_STATES {
+                // exp turns the log probabilities back into plain probabilities
+                let stay = t[hop as usize][hop as usize].exp();
+                let leave = t[hop as usize][match_state as usize].exp();
+                assert_relative_eq!(stay + leave, 1.0, epsilon = 1e-6);
+            }
         }
     }
 
@@ -1417,7 +1435,8 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         );
     }
 
-    /// Reference values computed before the transition table became a dense array.
+    /// Reference values, last recomputed when hop states began to be left with
+    /// `1 - prob_hop_*_extend`. Only a change of the model itself may change them.
     #[test]
     fn test_values_are_unchanged() {
         let windows: [(&[u8], &[u8]); 3] = [
@@ -1442,15 +1461,15 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
             }
         }
         let expected = [
-            -32.086378685365,
-            -29.001106194398,
-            -29.001106194398,
-            -75.954685092471,
-            -38.906771826337,
-            -38.906771826337,
-            -29.588020202579,
-            -20.095429251557,
-            -20.095429251557,
+            -32.145127065030,
+            -29.006676356299,
+            -29.006676356299,
+            -76.236756259332,
+            -38.972469203554,
+            -38.972469203554,
+            -29.657085263104,
+            -20.095969086285,
+            -20.095969086285,
         ];
         for (v, e) in values.iter().zip(expected) {
             assert_relative_eq!(*v, e, epsilon = 1e-9);
