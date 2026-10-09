@@ -449,22 +449,23 @@ pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>
                 vals[[0, *j]] = hmm.end_prob(j);
             }
 
-            for j in hmm.states() {
-                let xs = hmm
+            if n == 1 {
+                // One observation: initial, emission, and end. No transition.
+                prob_vec_final = hmm
                     .states()
-                    .map(|k| {
-                        vals[[i, *k]]
-                            + hmm.transition_prob_idx(j, k, n - i)
-                            + hmm.observation_prob(k, o)
-                    })
+                    .map(|k| vals[[i, *k]] + hmm.initial_prob(k) + hmm.observation_prob(k, o))
                     .collect::<Vec<LogProb>>();
-                if observations.len() > 1 {
-                    vals[[i + 1, *j]] = LogProb::ln_sum_exp(&xs);
-                } else {
-                    prob_vec_final = hmm
+            } else {
+                for j in hmm.states() {
+                    let xs = hmm
                         .states()
-                        .map(|k| vals[[i, *k]] + hmm.initial_prob(k) + hmm.observation_prob(k, o))
+                        .map(|k| {
+                            vals[[i, *k]]
+                                + hmm.transition_prob_idx(j, k, n - i - 1)
+                                + hmm.observation_prob(k, o)
+                        })
                         .collect::<Vec<LogProb>>();
+                    vals[[i + 1, *j]] = LogProb::ln_sum_exp(&xs);
                 }
             }
         } else if i == (observations.len() - 1) {
@@ -479,7 +480,7 @@ pub fn backward<O, M: Model<O>>(hmm: &M, observations: &[O]) -> (Array2<LogProb>
                     .states()
                     .map(|k| {
                         vals[[i, *k]]
-                            + hmm.transition_prob_idx(j, k, n - i)
+                            + hmm.transition_prob_idx(j, k, n - i - 1)
                             + hmm.observation_prob(k, o)
                     })
                     .collect::<Vec<LogProb>>();
@@ -1595,5 +1596,344 @@ mod tests {
             .iter()
             .zip(end_hat_vec_ori.iter())
             .all(|(a, b)| (*b - Prob::from(0.01) <= *a) && (*a <= *b + Prob::from(0.01))));
+    }
+
+    /// Position-dependent two-state HMM. `transitions[t][from][to]` is used when the
+    /// destination observation index is `t`, matching `Model::transition_prob_idx`.
+    struct IdxHmm {
+        initial: [f64; 2],
+        /// `emit[state][symbol]`
+        emit: [[f64; 2]; 2],
+        /// `transitions[dest_idx][from][to]`
+        transitions: Vec<[[f64; 2]; 2]>,
+        end: [f64; 2],
+        calls: RefCell<Vec<(usize, usize, usize)>>,
+    }
+
+    impl IdxHmm {
+        fn take_calls(&self) -> Vec<(usize, usize, usize)> {
+            self.calls.replace(Vec::new())
+        }
+    }
+
+    impl Model<usize> for IdxHmm {
+        fn num_states(&self) -> usize {
+            2
+        }
+
+        fn states(&self) -> StateIter {
+            StateIter::new(2)
+        }
+
+        fn transitions(&self) -> StateTransitionIter {
+            StateTransitionIter::new(2)
+        }
+
+        fn transition_prob(&self, _from: State, _to: State) -> LogProb {
+            panic!("IdxHmm is position-dependent; use transition_prob_idx");
+        }
+
+        fn transition_prob_idx(&self, from: State, to: State, to_idx: usize) -> LogProb {
+            self.calls.borrow_mut().push((*from, *to, to_idx));
+            assert!(
+                to_idx < self.transitions.len(),
+                "destination observation index {} is out of range (have {})",
+                to_idx,
+                self.transitions.len()
+            );
+            LogProb::from(Prob(self.transitions[to_idx][*from][*to]))
+        }
+
+        fn initial_prob(&self, state: State) -> LogProb {
+            LogProb::from(Prob(self.initial[*state]))
+        }
+
+        fn observation_prob(&self, state: State, observation: &usize) -> LogProb {
+            LogProb::from(Prob(self.emit[*state][*observation]))
+        }
+
+        fn end_prob(&self, state: State) -> LogProb {
+            LogProb::from(Prob(self.end[*state]))
+        }
+    }
+
+    /// Ordinary-probability path sum: initial * emissions * dest-indexed
+    /// transitions * end. Does not use `ln_sum_exp`.
+    fn oracle_path_sum(hmm: &IdxHmm, obs: &[usize]) -> f64 {
+        let n = obs.len();
+        let n_paths = 2usize.pow(n as u32);
+        let mut total = 0.0;
+        for p in 0..n_paths {
+            let mut states = vec![0usize; n];
+            let mut x = p;
+            for t in (0..n).rev() {
+                states[t] = x % 2;
+                x /= 2;
+            }
+            let mut w = hmm.initial[states[0]] * hmm.emit[states[0]][obs[0]];
+            for t in 1..n {
+                w *= hmm.transitions[t][states[t - 1]][states[t]];
+                w *= hmm.emit[states[t]][obs[t]];
+            }
+            w *= hmm.end[states[n - 1]];
+            total += w;
+        }
+        total
+    }
+
+    /// Asymmetric dest-indexed transitions; distinct emissions per state.
+    /// Slot 0 is allocated but is not a legal transition destination.
+    fn posdep_hmm(n_obs: usize, end: [f64; 2]) -> IdxHmm {
+        let mut transitions = Vec::with_capacity(n_obs);
+        for t in 0..n_obs {
+            let p00 = 0.12 + 0.07 * (t as f64);
+            let p10 = 0.33 + 0.04 * (t as f64);
+            transitions.push([[p00, 1.0 - p00], [p10, 1.0 - p10]]);
+        }
+        IdxHmm {
+            initial: [0.55, 0.45],
+            emit: [[0.7, 0.3], [0.25, 0.75]],
+            transitions,
+            end,
+            calls: RefCell::new(Vec::new()),
+        }
+    }
+
+    fn expected_forward_calls(n: usize) -> Vec<(usize, usize, usize)> {
+        let mut v = Vec::new();
+        for dest in 1..n {
+            for to in 0..2 {
+                for from in 0..2 {
+                    v.push((from, to, dest));
+                }
+            }
+        }
+        v
+    }
+
+    fn expected_backward_calls(n: usize) -> Vec<(usize, usize, usize)> {
+        let mut v = Vec::new();
+        for dest in (1..n).rev() {
+            for from in 0..2 {
+                for to in 0..2 {
+                    v.push((from, to, dest));
+                }
+            }
+        }
+        v
+    }
+
+    fn suffix_beta(hmm: &IdxHmm, obs: &[usize], t: usize, state: usize) -> f64 {
+        let n = obs.len();
+        if t + 1 == n {
+            return hmm.end[state];
+        }
+        let future = n - t - 1;
+        let n_paths = 2usize.pow(future as u32);
+        let mut total = 0.0;
+        for p in 0..n_paths {
+            let mut states = vec![0usize; n];
+            states[t] = state;
+            let mut x = p;
+            for u in (t + 1..n).rev() {
+                states[u] = x % 2;
+                x /= 2;
+            }
+            let mut w = 1.0;
+            for u in t + 1..n {
+                w *= hmm.transitions[u][states[u - 1]][states[u]];
+                w *= hmm.emit[states[u]][obs[u]];
+            }
+            w *= hmm.end[states[n - 1]];
+            total += w;
+        }
+        total
+    }
+
+    #[test]
+    fn test_backward_single_observation_has_no_transition_calls() {
+        let hmm = IdxHmm {
+            initial: [0.6, 0.4],
+            emit: [[0.9, 0.1], [0.8, 0.2]],
+            transitions: vec![[[0.5, 0.5], [0.5, 0.5]]],
+            end: [0.5, 0.25],
+            calls: RefCell::new(Vec::new()),
+        };
+        let (_table, log_prob) = backward(&hmm, &[0]);
+        assert!(
+            hmm.calls.borrow().is_empty(),
+            "single observation must not evaluate transitions, got {:?}",
+            hmm.calls.borrow()
+        );
+        // 0.6 * 0.9 * 0.5 + 0.4 * 0.8 * 0.25 = 0.35
+        let got = (*log_prob).exp();
+        assert!(got.is_finite() && got > 0.0);
+        // Two-term ln_sum_exp uses FastExp; measured abs error ~1e-8 on 0.35.
+        assert_relative_eq!(got, 0.35, epsilon = 1e-18, max_relative = 1e-7);
+        let fwd = forward(&hmm, &[0]).1;
+        assert_relative_eq!((*fwd).exp(), 0.35, epsilon = 1e-18, max_relative = 1e-7);
+        assert_relative_eq!(oracle_path_sum(&hmm, &[0]), 0.35, epsilon = 1e-15);
+    }
+
+    #[test]
+    fn test_backward_two_observations_matches_oracle() {
+        let hmm = posdep_hmm(2, [1.0, 1.0]);
+        let obs = [0, 1];
+        let lin = oracle_path_sum(&hmm, &obs);
+        assert!(lin > 0.0);
+        let (_, fwd) = forward(&hmm, &obs);
+        let fwd_calls = hmm.take_calls();
+        let (_, bwd) = backward(&hmm, &obs);
+        let bwd_calls = hmm.take_calls();
+        assert_eq!(fwd_calls, expected_forward_calls(2));
+        assert_eq!(bwd_calls, expected_backward_calls(2));
+        assert_relative_eq!((*fwd).exp(), lin, epsilon = 1e-18, max_relative = 1e-5);
+        assert_relative_eq!((*bwd).exp(), lin, epsilon = 1e-18, max_relative = 1e-5);
+        assert_relative_eq!(*fwd, *bwd, epsilon = 1e-5);
+    }
+
+    #[test]
+    fn test_backward_three_observations_matches_oracle() {
+        let hmm = posdep_hmm(3, [0.5, 0.25]);
+        let obs = [1, 0, 1];
+        let lin = oracle_path_sum(&hmm, &obs);
+        assert!(lin > 0.0);
+        let (_, fwd) = forward(&hmm, &obs);
+        let fwd_calls = hmm.take_calls();
+        let (_, bwd) = backward(&hmm, &obs);
+        let bwd_calls = hmm.take_calls();
+        assert_eq!(fwd_calls, expected_forward_calls(3));
+        assert_eq!(bwd_calls, expected_backward_calls(3));
+        assert_relative_eq!((*fwd).exp(), lin, epsilon = 1e-18, max_relative = 1e-5);
+        assert_relative_eq!((*bwd).exp(), lin, epsilon = 1e-18, max_relative = 1e-5);
+        assert_relative_eq!(*fwd, *bwd, epsilon = 1e-5);
+    }
+
+    #[test]
+    fn test_backward_index_trace_and_no_dest_zero() {
+        let n = 4;
+        let hmm = posdep_hmm(n, [1.0, 1.0]);
+        let obs = [0, 1, 0, 1];
+        let _ = forward(&hmm, &obs);
+        let fwd_calls = hmm.take_calls();
+        let _ = backward(&hmm, &obs);
+        let bwd_calls = hmm.take_calls();
+        assert!(fwd_calls.iter().all(|&(_, _, d)| d >= 1 && d < n));
+        assert!(bwd_calls.iter().all(|&(_, _, d)| d >= 1 && d < n));
+        assert_eq!(fwd_calls, expected_forward_calls(n));
+        assert_eq!(bwd_calls, expected_backward_calls(n));
+        let bwd_dests: Vec<usize> = bwd_calls.iter().map(|c| c.2).collect();
+        let mut expected_dests = Vec::new();
+        for dest in (1..n).rev() {
+            expected_dests.extend(std::iter::repeat(dest).take(4));
+        }
+        assert_eq!(bwd_dests, expected_dests);
+    }
+
+    #[test]
+    fn test_backward_table_suffix_paths() {
+        let hmm = posdep_hmm(3, [0.5, 0.25]);
+        let obs = [0, 1, 0];
+        let (table, _) = backward(&hmm, &obs);
+        for s in 0..2 {
+            assert_relative_eq!(
+                (*table[[0, s]]).exp(),
+                hmm.end[s],
+                epsilon = 1e-18,
+                max_relative = 1e-12
+            );
+        }
+        for r in 1..3 {
+            let t = 3 - 1 - r;
+            for s in 0..2 {
+                let want = suffix_beta(&hmm, &obs, t, s);
+                assert!(want > 0.0);
+                assert_relative_eq!(
+                    (*table[[r, s]]).exp(),
+                    want,
+                    epsilon = 1e-18,
+                    max_relative = 1e-5
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_backward_impossible_sequence_is_neg_infinity() {
+        let mut hmm = posdep_hmm(2, [1.0, 1.0]);
+        hmm.emit = [[1.0, 0.0], [1.0, 0.0]];
+        let obs = [0, 1];
+        assert_eq!(oracle_path_sum(&hmm, &obs), 0.0);
+        let (_, fwd) = forward(&hmm, &obs);
+        let (_, bwd) = backward(&hmm, &obs);
+        assert!(!(*fwd).is_nan());
+        assert!(!(*bwd).is_nan());
+        assert_eq!(*fwd, *LogProb::ln_zero());
+        assert_eq!(*bwd, *LogProb::ln_zero());
+    }
+
+    #[test]
+    fn test_backward_zero_transition_still_matches_oracle() {
+        let mut hmm = posdep_hmm(2, [1.0, 1.0]);
+        hmm.transitions[1][0][1] = 0.0;
+        hmm.transitions[1][0][0] = 1.0;
+        let obs = [0, 1];
+        let lin = oracle_path_sum(&hmm, &obs);
+        assert!(lin > 0.0);
+        let (_, fwd) = forward(&hmm, &obs);
+        let (_, bwd) = backward(&hmm, &obs);
+        assert!((*fwd).exp() > 0.0);
+        assert_relative_eq!((*fwd).exp(), lin, epsilon = 1e-18, max_relative = 1e-5);
+        assert_relative_eq!((*bwd).exp(), lin, epsilon = 1e-18, max_relative = 1e-5);
+    }
+
+    #[test]
+    fn test_backward_binary_sequence_sweep() {
+        let mut n_pos = 0usize;
+        let mut max_abs = 0.0f64;
+        let mut max_rel = 0.0f64;
+        for &end in &[[1.0, 1.0], [0.5, 0.25]] {
+            for n in 1..=6 {
+                let hmm = posdep_hmm(n, end);
+                for bits in 0..(1usize << n) {
+                    let mut obs = vec![0usize; n];
+                    for t in 0..n {
+                        obs[t] = (bits >> t) & 1;
+                    }
+                    let lin = oracle_path_sum(&hmm, &obs);
+                    hmm.take_calls();
+                    let (_, fwd) = forward(&hmm, &obs);
+                    let fwd_calls = hmm.take_calls();
+                    let (_, bwd) = backward(&hmm, &obs);
+                    let bwd_calls = hmm.take_calls();
+                    assert_eq!(fwd_calls, expected_forward_calls(n));
+                    assert_eq!(bwd_calls, expected_backward_calls(n));
+                    if n == 1 {
+                        assert!(bwd_calls.is_empty());
+                    }
+                    assert!(!(*fwd).is_nan() && !(*bwd).is_nan());
+                    if lin == 0.0 {
+                        assert_eq!(*fwd, *LogProb::ln_zero());
+                        assert_eq!(*bwd, *LogProb::ln_zero());
+                    } else {
+                        let gf = (*fwd).exp();
+                        let gb = (*bwd).exp();
+                        assert!(gf > 0.0 && gb > 0.0);
+                        max_abs = max_abs.max((gf - lin).abs()).max((gb - lin).abs());
+                        max_rel = max_rel
+                            .max(((gf - lin) / lin).abs())
+                            .max(((gb - lin) / lin).abs());
+                        assert_relative_eq!(gf, lin, epsilon = 1e-18, max_relative = 1e-5);
+                        assert_relative_eq!(gb, lin, epsilon = 1e-18, max_relative = 1e-5);
+                        n_pos += 1;
+                    }
+                }
+            }
+        }
+        assert_eq!(n_pos, 252);
+        eprintln!(
+            "sweep positive cases={} max_abs={} max_rel={}",
+            n_pos, max_abs, max_rel
+        );
     }
 }
