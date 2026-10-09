@@ -16,7 +16,8 @@ use std::cmp;
 use std::mem;
 use usize;
 
-pub use crate::stats::pairhmm::{EmissionParameters, GapParameters, StartEndGapParameters};
+use crate::stats::pairhmm::band::BandScan;
+use crate::stats::pairhmm::{EmissionParameters, GapParameters, StartEndGapParameters};
 use crate::stats::LogProb;
 
 /// Fast approximation of sum over the three given proabilities. If the largest is sufficiently
@@ -48,6 +49,9 @@ pub struct PairHMM {
     fx: [Vec<LogProb>; 2],
     fy: [Vec<LogProb>; 2],
     min_edit_dist: [Vec<usize>; 2],
+    // which cells of the two columns have been written; every other cell holds probability
+    // zero and an infinite edit distance
+    scan: BandScan,
     prob_cols: Vec<LogProb>,
     gap_params: GapParamCache,
 }
@@ -89,6 +93,7 @@ impl PairHMM {
             fx: [Vec::new(), Vec::new()],
             fy: [Vec::new(), Vec::new()],
             min_edit_dist: [Vec::new(), Vec::new()],
+            scan: BandScan::default(),
             prob_cols: Vec::new(),
             gap_params,
         }
@@ -131,50 +136,74 @@ impl PairHMM {
 
         let mut prev = 0;
         let mut curr = 1;
+        self.scan.reset();
         self.fm[prev][0] = LogProb::ln_one();
         // Origin cell: no bases consumed. Global alignment with banding
         // needs this; otherwise every neighbor is usize::MAX and the first
         // cell is skipped. Semiglobal also refreshes [prev][0] below.
         self.min_edit_dist[prev][0] = 0;
 
+        let len_x = emission_params.len_x();
+        let len_y = emission_params.len_y();
+
         // iterate over x
-        for i in 0..emission_params.len_x() {
+        for i in 0..len_x {
+            // Clear what this column buffer holds from two columns ago, so that every cell
+            // outside of the ranges written below is empty.
+            for &(a, b) in self.scan.stale(curr) {
+                self.fm[curr][a..=b].fill(LogProb::ln_zero());
+                self.fx[curr][a..=b].fill(LogProb::ln_zero());
+                self.fy[curr][a..=b].fill(LogProb::ln_zero());
+                self.min_edit_dist[curr][a..=b].fill(usize::MAX);
+            }
+            self.fm[curr][0] = LogProb::ln_zero();
+            self.min_edit_dist[curr][0] = usize::MAX;
+
             // allow alignment to start from offset in x (if prob_start_gap_x is set accordingly)
             self.fm[prev][0] = self.fm[prev][0].ln_add_exp(alignment_mode.prob_start_gap_x(i));
+            // With a band, an alignment starting at column i has to consume the whole of y
+            // within the remaining columns, which needs at least len_y - (len_x - i)
+            // insertions: beyond that it cannot stay inside the band and would only be
+            // computed to be pruned.
+            let may_start = match max_edit_dist {
+                Some(d) => i <= (len_x + d).saturating_sub(len_y),
+                None => true,
+            };
             if alignment_mode.free_start_gap_x() {
-                self.min_edit_dist[prev][0] = 0;
+                if may_start {
+                    self.min_edit_dist[prev][0] = 0;
+                } else {
+                    self.fm[prev][0] = LogProb::ln_zero();
+                    self.min_edit_dist[prev][0] = usize::MAX;
+                }
             }
 
             let prob_emit_x = emission_params.prob_emit_x(i);
 
-            // TODO: in the case of no gap extensions, we can reduce the number of columns of y that need to be looked at (by cone).
-            let (j_min, j_max) = (0, emission_params.len_y());
-
-            // iterate over y
-            for j in j_min..j_max {
-                let j_ = j + 1;
-                let j_minus_one = j_ - 1;
+            // See `BandScan`: only the cells that can be inside the band are examined.
+            self.scan
+                .begin_column(curr, prev, len_y, self.min_edit_dist[prev][0] != usize::MAX);
+            let mut inside = false;
+            while let Some(j_) = self.scan.next_cell(inside) {
+                let j = j_ - 1;
+                let j_minus_one = j;
 
                 let min_edit_dist_topleft = self.min_edit_dist[prev][j_minus_one];
                 let min_edit_dist_top = self.min_edit_dist[curr][j_minus_one];
                 let min_edit_dist_left = self.min_edit_dist[prev][j_];
 
-                if let Some(max_edit_dist) = max_edit_dist {
-                    if cmp::min(
-                        min_edit_dist_topleft,
-                        cmp::min(min_edit_dist_top, min_edit_dist_left),
-                    ) > max_edit_dist
-                    {
-                        // skip this cell if best edit dist is already larger than given maximum;
-                        // clear it, otherwise it would keep the values of the previous column
-                        self.fm[curr][j_] = LogProb::ln_zero();
-                        self.fx[curr][j_] = LogProb::ln_zero();
-                        self.fy[curr][j_] = LogProb::ln_zero();
-                        self.min_edit_dist[curr][j_] = usize::MAX;
-                        continue;
+                inside = match max_edit_dist {
+                    Some(max_edit_dist) => {
+                        cmp::min(
+                            min_edit_dist_topleft,
+                            cmp::min(min_edit_dist_top, min_edit_dist_left),
+                        ) <= max_edit_dist
                     }
+                    None => true,
+                };
+                if !inside {
+                    continue;
                 }
-
                 let (prob_match_mismatch, prob_gap_x, prob_gap_y, min_edit_dist) = {
                     let fm_curr = &self.fm[curr];
                     let fm_prev = &self.fm[prev];
@@ -250,6 +279,7 @@ impl PairHMM {
                 if max_edit_dist.is_some() {
                     self.min_edit_dist[curr][j_] = min_edit_dist;
                 }
+                self.scan.mark(curr, j_);
             }
 
             if alignment_mode.free_end_gap_x() {
@@ -261,21 +291,9 @@ impl PairHMM {
                 // TODO check removing this (we don't want open gaps in x):
                 self.prob_cols.push(*self.fy[curr].last().unwrap());
             }
-
             // next column
             mem::swap(&mut curr, &mut prev);
-            // reset next column to zeros
-            self.fm[curr].fill(LogProb::ln_zero());
-            self.fx[curr].fill(LogProb::ln_zero());
-            self.fy[curr].fill(LogProb::ln_zero());
-            if max_edit_dist.is_some() {
-                self.min_edit_dist[curr].fill(usize::MAX);
-                if alignment_mode.free_start_gap_x() {
-                    self.min_edit_dist[curr][0] = 0;
-                }
-            }
         }
-
         let p = if alignment_mode.free_end_gap_x() {
             LogProb::ln_sum_exp(&self.prob_cols)
         } else {
@@ -796,6 +814,20 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
     /// A band that contains every plausible alignment must not change the result: cells outside
     /// the band have to be cleared instead of keeping the values of the column before. Both
     /// cases have four edits and a band of ten.
+    #[test]
+    fn test_empty_y_is_zero() {
+        // An empty y has no cell to visit: the probability is zero, as before
+        // the band scan, instead of reading past the end of the first row.
+        let emission_params = TestEmissionParams { x: b"ACGT", y: b"" };
+        let mut pair_hmm = PairHMM::new(&TestSingleGapParams);
+        for max_edit_dist in [None, Some(0), Some(2)] {
+            for mode in [AlignmentMode::Semiglobal, AlignmentMode::Global] {
+                let p = pair_hmm.prob_related(&emission_params, &mode, max_edit_dist);
+                assert_eq!(p, LogProb::ln_zero());
+            }
+        }
+    }
+
     #[test]
     fn test_banded_matches_unbanded_with_gap_extension() {
         let em = ErrorEmissionParams {
