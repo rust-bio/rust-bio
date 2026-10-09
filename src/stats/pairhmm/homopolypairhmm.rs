@@ -582,7 +582,7 @@ fn build_transition_table<G: GapParameters, H: BaseSpecificHopParameters>(
             *a,
             *b,
             hop_params
-                .prob_hop_x_with_base(a.base().expect("Unsupported base"))
+                .prob_hop_x_extend_with_base(a.base().expect("Unsupported base"))
                 .ln_one_minus_exp(),
         );
     });
@@ -591,7 +591,7 @@ fn build_transition_table<G: GapParameters, H: BaseSpecificHopParameters>(
             *a,
             *b,
             hop_params
-                .prob_hop_y_with_base(a.base().expect("Unsupported base"))
+                .prob_hop_y_extend_with_base(a.base().expect("Unsupported base"))
                 .ln_one_minus_exp(),
         );
     });
@@ -684,8 +684,7 @@ mod tests {
     const T_MATCH_TO_HOP_Y: LogProb = LogProb(-11.512925464970229);
     const T_HOP_X_TO_HOP_X: LogProb = LogProb(-2.3025850929940455);
     const T_HOP_Y_TO_HOP_Y: LogProb = LogProb(-2.3025850929940455);
-
-    const T_MATCH_TO_MATCH: LogProb = LogProb(-7.900_031_205_113_962e-6);
+    const T_MATCH_TO_MATCH_GAPS_NO_HOPS: LogProb = LogProb(-7.900_031_205_113_962e-6);
     const T_MATCH_TO_GAP_X: LogProb = LogProb(-12.785_891_140_783_116);
     const T_MATCH_TO_GAP_Y: LogProb = LogProb(-12.186_270_018_233_994);
     const T_GAP_TO_GAP: LogProb = LogProb(-9.210340371976182);
@@ -903,6 +902,13 @@ mod tests {
     #[test]
     fn test_hompolymer_run_in_y() {
         let pair_hmm = &NO_GAPS_WITH_HOPS_PHMM;
+        // Without gaps, a match state can transition either to a hop state in x, to a hop state in
+        // y or to a match state, so match -> match is the rest: 1 - prob_hop_x - prob_hop_y.
+        let t_match_to_match = T_MATCH_TO_HOP_X
+            .ln_add_exp(T_MATCH_TO_HOP_Y)
+            .ln_one_minus_exp();
+        // A hop state can transition either to a match state or to itself. So the transition probability from a hop state to a match state is 1 - prob_hop_x_extend.
+        let t_hop_x_to_match = T_HOP_X_TO_HOP_X.ln_one_minus_exp();
         for i in 1..5 {
             let x = b"ACGT".to_vec();
             let y = format!("AC{}GT", repeat("C").take(i).join(""))
@@ -912,14 +918,15 @@ mod tests {
 
             let p = pair_hmm.prob_related(&emission_params, &Global, None);
             let p_most_likely_path_with_hops = LogProb(
-                *EMIT_MATCH // A A
-                    + *T_MATCH_TO_MATCH
+                *t_match_to_match // start -> MatchA
+                    + *EMIT_MATCH // A A
+                    + *t_match_to_match // MatchA -> MatchC
                     + *EMIT_MATCH // C C
                     + *T_MATCH_TO_HOP_X // C CC
                     + *T_HOP_X_TO_HOP_X * ((i - 1) as f64)
-                    + (1. - 0.1f64).ln()
+                    + *t_hop_x_to_match // HopCX -> MatchG
                     + *EMIT_MATCH // G G
-                    + *T_MATCH_TO_MATCH
+                    + *t_match_to_match // MatchG -> MatchT
                     + *EMIT_MATCH, // T T
             );
             assert!(*p <= 0.0);
@@ -931,30 +938,52 @@ mod tests {
     #[test]
     fn test_hompolymer_run_in_x() {
         let pair_hmm = &NO_GAPS_WITH_HOPS_PHMM;
+        // Without gaps, a match state can transition either to a hop state in x, to a hop state in
+        // y or to a match state, so match -> match is the rest: 1 - prob_hop_x - prob_hop_y.
+        let t_match_to_match = T_MATCH_TO_HOP_X
+            .ln_add_exp(T_MATCH_TO_HOP_Y)
+            .ln_one_minus_exp();
+        // A hop state can transition either to a match state or to itself. So the transition probability from a hop state to a match state is 1 - prob_hop_y_extend.
+        let t_hop_y_to_match = T_HOP_Y_TO_HOP_Y.ln_one_minus_exp();
         for i in 1..5 {
             let x = format!("AC{}GT", repeat("C").take(i).join(""))
                 .as_bytes()
                 .to_vec();
-
             let y = b"ACGT".to_vec();
-
             let emission_params = TestEmissionParams { x, y };
 
             let p = pair_hmm.prob_related(&emission_params, &Global, None);
             let p_most_likely_path_with_hops = LogProb(
-                *EMIT_MATCH // A A
-                    + *T_MATCH_TO_MATCH
+                *t_match_to_match // start -> MatchA
+                    + *EMIT_MATCH // A A
+                    + *t_match_to_match // MatchA -> MatchC
                     + *EMIT_MATCH // C C
                     + *T_MATCH_TO_HOP_Y // CC C
                     + *T_HOP_Y_TO_HOP_Y * ((i - 1) as f64)
-                    + (1. - 0.1f64).ln()
+                    + *t_hop_y_to_match // HopCY -> MatchG
                     + *EMIT_MATCH // G G
-                    + *T_MATCH_TO_MATCH
+                    + *t_match_to_match // MatchG -> MatchT
                     + *EMIT_MATCH, // T T
             );
             assert!(*p <= 0.0);
             assert!(*p >= *p_most_likely_path_with_hops);
             assert!(*p < *p_most_likely_path_with_hops + 1.);
+        }
+    }
+
+    /// As for the gap states, a hop state can only stay in its run (`prob_hop_*_extend`) or leave
+    /// it to a match state (`1 - prob_hop_*_extend`), so stay + leave = 1.
+    #[test]
+    fn test_hop_states_are_left_with_one_minus_extend() {
+        let phmm = HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &TestHopParams);
+        let t = &phmm.transition_probs;
+        for &hop in HOP_X_STATES.iter().chain(&HOP_Y_STATES) {
+            for &match_state in &MATCH_STATES {
+                // exp turns the log probabilities back into plain probabilities
+                let stay = t[hop as usize][hop as usize].exp();
+                let leave = t[hop as usize][match_state as usize].exp();
+                assert_relative_eq!(stay + leave, 1.0, epsilon = 1e-6);
+            }
         }
     }
 
@@ -973,7 +1002,7 @@ mod tests {
 
         let p_most_likely_path = LogProb(
             *EMIT_MATCH * n_matches
-                + *T_MATCH_TO_MATCH * (n_matches - n_insertions)
+                + *T_MATCH_TO_MATCH_GAPS_NO_HOPS * (n_matches - n_insertions)
                 + *EMIT_GAP_AND_Y * n_insertions
                 + *T_MATCH_TO_GAP_X * n_insertions
                 + *(PROB_OPEN_GAP_Y.ln_one_minus_exp()) * n_insertions,
@@ -1002,7 +1031,7 @@ mod tests {
 
         let p_most_likely_path = LogProb(
             *EMIT_MATCH * n_matches
-                + *T_MATCH_TO_MATCH * (n_matches - n_insertions)
+                + *T_MATCH_TO_MATCH_GAPS_NO_HOPS * (n_matches - n_insertions)
                 + *EMIT_X_AND_GAP * n_insertions
                 + *T_MATCH_TO_GAP_Y * n_insertions
                 + *PROB_OPEN_GAP_X.ln_one_minus_exp() * n_insertions,
@@ -1025,7 +1054,8 @@ mod tests {
         let pair_hmm = &SINGLE_GAPS_NO_HOPS_PHMM;
         let p = pair_hmm.prob_related(&emission_params, &Global, None);
         let n = 17.;
-        let p_most_likely_path = LogProb(*EMIT_MATCH * n + *T_MATCH_TO_MATCH * (n - 1.));
+        let p_most_likely_path =
+            LogProb(*EMIT_MATCH * n + *T_MATCH_TO_MATCH_GAPS_NO_HOPS * (n - 1.));
         let p_max = LogProb(*EMIT_MATCH * n);
         assert!(*p <= 0.0);
         assert_relative_eq!(*p_most_likely_path, *p, epsilon = 0.001);
@@ -1047,7 +1077,7 @@ mod tests {
 
         let p_most_likely_path = LogProb(
             *EMIT_MATCH * n_matches
-                + *T_MATCH_TO_MATCH * (n_matches - n_insertions)
+                + *T_MATCH_TO_MATCH_GAPS_NO_HOPS * (n_matches - n_insertions)
                 + *EMIT_GAP_AND_Y * n_insertions
                 + *T_MATCH_TO_GAP_X * n_insertions
                 + (1. - *PROB_ILLUMINA_INS).ln(),
@@ -1074,7 +1104,7 @@ mod tests {
 
         let p_most_likely_path = LogProb(
             *EMIT_MATCH * n_matches
-                + *T_MATCH_TO_MATCH * (n_matches - n_insertions)
+                + *T_MATCH_TO_MATCH_GAPS_NO_HOPS * (n_matches - n_insertions)
                 + *EMIT_GAP_AND_Y * n_insertions
                 + *T_MATCH_TO_GAP_X * n_insertions
                 + (1. - *PROB_ILLUMINA_INS).ln(),
@@ -1101,7 +1131,7 @@ mod tests {
 
         let p_most_likely_path = LogProb(
             *EMIT_MATCH * n_matches
-                + *T_MATCH_TO_MATCH * (n_matches - n_deletions)
+                + *T_MATCH_TO_MATCH_GAPS_NO_HOPS * (n_matches - n_deletions)
                 + *EMIT_X_AND_GAP * n_deletions
                 + *T_MATCH_TO_GAP_Y * n_deletions
                 + (1. - *PROB_ILLUMINA_DEL).ln(),
@@ -1127,7 +1157,7 @@ mod tests {
         let n_consecutive_deletions = 3.;
         let p_most_likely_path = LogProb(
             *EMIT_MATCH * n_matches
-                + *T_MATCH_TO_MATCH * (n_matches - n_consecutive_deletions)
+                + *T_MATCH_TO_MATCH_GAPS_NO_HOPS * (n_matches - n_consecutive_deletions)
                 + *PROB_OPEN_GAP_Y
                 + *EMIT_X_AND_GAP * n_consecutive_deletions
                 + *T_GAP_TO_GAP * (n_consecutive_deletions - 1.)
@@ -1150,7 +1180,7 @@ mod tests {
         let n = 17.;
         let p_most_likely_path = LogProb(
             *EMIT_MATCH * (n - 2.)
-                + *T_MATCH_TO_MATCH * (n - 1.)
+                + *T_MATCH_TO_MATCH_GAPS_NO_HOPS * (n - 1.)
                 + (*PROB_ILLUMINA_SUBST / 3.).ln() * 2.,
         );
         let p_max = LogProb((*PROB_ILLUMINA_SUBST / 3.).ln() * 2.);
@@ -1451,7 +1481,12 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
         let phmm = HomopolyPairHMM::new(&EXTEND_GAP_PARAMS, &TestHopParams);
         let mut values = Vec::new();
         for (x, y) in windows {
-            for (mode_is_global, band) in [(true, None), (false, None), (false, Some(6))] {
+            for (mode_is_global, band) in [
+                (true, None),
+                (true, Some(10)),
+                (false, None),
+                (false, Some(6)),
+            ] {
                 let e = TestEmissionParams {
                     x: x.to_vec(),
                     y: y.to_vec(),
@@ -1465,15 +1500,18 @@ CTGTCTTTGATTCCTGCCTCATCCTATTATTTATCGCACCTACGTTCAATATTACAGGCGAACATACTTACTAAAGTGT"
             }
         }
         let expected = [
-            -32.086804829650,
-            -29.001549177914,
-            -29.001549177914,
-            -75.955006302229,
-            -38.907141016940,
-            -38.907141016940,
-            -29.588464914570,
-            -20.095892482263,
-            -20.095892482263,
+            -32.145553229858,
+            -32.145553229858,
+            -29.007119448210,
+            -29.007119448210,
+            -76.237077557287,
+            -76.237077557287,
+            -38.972838470918,
+            -38.972838470918,
+            -29.657529984326,
+            -29.657529984326,
+            -20.096432327515,
+            -20.096432327515,
         ];
         for (v, e) in values.iter().zip(expected) {
             assert_relative_eq!(*v, e, epsilon = 1e-9);
