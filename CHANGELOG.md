@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [4.2.2](https://github.com/rust-bio/rust-bio/compare/v4.2.1...v4.2.2) (2026-10-09)
+
+
+### Bug Fixes
+
+* change probs of leaving hop states ([#718](https://github.com/rust-bio/rust-bio/issues/718)) ([4c929f5](https://github.com/rust-bio/rust-bio/commit/4c929f5963ae97bdb84bc2ba59478189122dc108))
+* do not allow free start gaps in global mode ([#717](https://github.com/rust-bio/rust-bio/issues/717)) ([9a5997b](https://github.com/rust-bio/rust-bio/commit/9a5997bd269968fe601b22a5591d0e6c31052022))
+
 ## [4.2.1](https://github.com/rust-bio/rust-bio/compare/v4.2.0...v4.2.1) (2026-10-04)
 
 
