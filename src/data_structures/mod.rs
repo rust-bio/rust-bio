@@ -6,6 +6,7 @@
 //! Various useful data structures.
 
 pub mod annot_map;
+pub mod bin_index;
 pub mod bit_tree;
 pub mod bitenc;
 pub mod bwt;
