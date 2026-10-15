@@ -466,6 +466,7 @@ pub struct Writer<W: io::Write> {
     inner: csv::Writer<W>,
     delimiter: char,
     terminator: String,
+    value_delim: char,
     // How an attribute tag/value is encoded on write. Chosen once from the
     // format: GFF3 percent-encodes the reserved characters, every other format
     // writes verbatim. Resolving it here keeps the decision out of the
@@ -484,7 +485,7 @@ impl Writer<fs::File> {
 impl<W: io::Write> Writer<W> {
     /// Write to a given writer.
     pub fn new(writer: W, fileformat: GffType) -> Self {
-        let (delim, termi, _) = fileformat.separator();
+        let (delim, termi, vdelim) = fileformat.separator();
 
         Writer {
             inner: csv::WriterBuilder::new()
@@ -493,6 +494,7 @@ impl<W: io::Write> Writer<W> {
                 .from_writer(writer),
             delimiter: delim as char,
             terminator: String::from_utf8(vec![termi]).unwrap(),
+            value_delim: vdelim as char,
             // Decide once, from the format, how attributes are encoded.
             encode_attr: if fileformat == GffType::GFF3 {
                 gff3_encode
@@ -508,8 +510,24 @@ impl<W: io::Write> Writer<W> {
         let attributes = if !record.attributes.is_empty() {
             record
                 .attributes
-                .iter()
-                .map(|(a, b)| format!("{}{}{}", encode_attr(a), self.delimiter, encode_attr(b)))
+                .iter_all()
+                .map(|(key, values)| {
+                    let key = encode_attr(key);
+                    let mut values = values.iter().map(|value| encode_attr(value));
+                    if self.value_delim == '\0' {
+                        // GFF2/GTF2 repeat the key instead of separating values.
+                        values
+                            .map(|value| format!("{}{}{}", key, self.delimiter, value))
+                            .join(&self.terminator)
+                    } else {
+                        format!(
+                            "{}{}{}",
+                            key,
+                            self.delimiter,
+                            values.join(&self.value_delim.to_string())
+                        )
+                    }
+                })
                 .join(&self.terminator)
         } else {
             "".to_owned()
@@ -870,6 +888,26 @@ P0A7B8\tUniProtKB\tChain\t2\t176\t50\t+\t.\tID PRO_0000148105
                 .expect("Error writing record");
         }
         assert_eq!(writer.inner.into_inner().unwrap(), GFF_FILE_ONE_ATTRIB)
+    }
+
+    #[test]
+    fn test_writer_multiple_attribute_values() {
+        for (fileformat, attributes) in [
+            (GffType::GFF3, "Alias=a,b"),
+            (GffType::GFF3, "Alias=a%2Cb,c%3Bd,e%3Df"),
+            (GffType::GFF2, "Alias a;Alias b"),
+            (GffType::GTF2, "Alias a;Alias b"),
+            (GffType::Any(b'=', b';', b'|'), "Alias=a|b"),
+            (GffType::Any(b'=', b';', 0), "Alias=a;Alias=b"),
+        ] {
+            let gff = format!("chr1\t.\tgene\t1\t9\t.\t+\t.\t{}\n", attributes);
+            let mut reader = Reader::new(gff.as_bytes(), fileformat);
+            let record = reader.records().next().unwrap().unwrap();
+            let mut writer = Writer::new(vec![], fileformat);
+            writer.write(&record).unwrap();
+            let out = String::from_utf8(writer.inner.into_inner().unwrap()).unwrap();
+            assert_eq!(out, gff);
+        }
     }
 
     #[test]
