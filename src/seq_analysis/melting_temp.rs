@@ -137,6 +137,17 @@ const RNA_NN3_INIT: DnaInitParams = DnaInitParams {
     sym: [0.0, -1.4],
 };
 
+// R_DNA_NN1 (Sugimoto et al. 1995) - RNA/DNA hybrid
+const R_DNA_NN1_INIT: DnaInitParams = DnaInitParams {
+    init: [1.9, -3.9],
+    init_at: [0.0, 0.0],
+    init_gc: [0.0, 0.0],
+    init_one_gc: [0.0, 0.0],
+    init_all_at: [0.0, 0.0],
+    init_5t_a: [0.0, 0.0],
+    sym: [0.0, 0.0],
+};
+
 type HS = [f64; 2];
 const D_H: usize = 0;
 const D_S: usize = 1;
@@ -159,6 +170,8 @@ pub enum NnTable {
     RnaNn2,
     /// Chen et al. (2012) - RNA/RNA
     RnaNn3,
+    /// Sugimoto et al. (1995) - RNA/DNA hybrid
+    RnaDnaNn1,
 }
 
 impl NnTable {
@@ -172,6 +185,7 @@ impl NnTable {
             NnTable::RnaNn1 => rna_nn1_lookup(pair),
             NnTable::RnaNn2 => rna_nn2_lookup(pair),
             NnTable::RnaNn3 => rna_nn3_lookup(pair),
+            NnTable::RnaDnaNn1 => rdna_nn1_lookup(pair),
         }
     }
 
@@ -185,6 +199,7 @@ impl NnTable {
             NnTable::RnaNn1 => RNA_NN1_INIT,
             NnTable::RnaNn2 => RNA_NN2_INIT,
             NnTable::RnaNn3 => RNA_NN3_INIT,
+            NnTable::RnaDnaNn1 => R_DNA_NN1_INIT,
         }
     }
 }
@@ -335,6 +350,29 @@ fn rna_nn3_lookup(pair: &[u8]) -> Option<HS> {
         b"CT/GG" => Some([-9.44, -24.7]),
         b"GG/CT" => Some([-7.03, -16.8]),
         b"GT/CG" => Some([-11.09, -28.8]),
+        _ => None,
+    }
+}
+
+// Helper: Look up NN value from R_DNA_NN1 table (Sugimoto et al. 1995)
+fn rdna_nn1_lookup(pair: &[u8]) -> Option<HS> {
+    match pair {
+        b"TT/AA" => Some([-11.5, -36.4]),
+        b"GT/CA" => Some([-7.8, -21.6]),
+        b"CT/GA" => Some([-7.0, -19.7]),
+        b"AT/TA" => Some([-8.3, -23.9]),
+        b"TG/AC" => Some([-10.4, -28.4]),
+        b"GG/CC" => Some([-12.8, -31.9]),
+        b"CG/GC" => Some([-16.3, -47.1]),
+        b"AG/TC" => Some([-9.1, -23.5]),
+        b"TC/AG" => Some([-8.6, -22.9]),
+        b"GC/CG" => Some([-8.0, -17.1]),
+        b"CC/GG" => Some([-9.3, -23.2]),
+        b"AC/TG" => Some([-5.9, -12.3]),
+        b"TA/AT" => Some([-7.8, -23.2]),
+        b"GA/CT" => Some([-5.5, -13.5]),
+        b"CA/GT" => Some([-9.0, -26.1]),
+        b"AA/TT" => Some([-7.8, -21.9]),
         _ => None,
     }
 }
@@ -1119,52 +1157,142 @@ mod tests {
         .is_err());
     }
 
-    /// Test different NN tables produce different results
+    /// Test each NN table reproduces the reference Tm values from Biopython's
+    /// MeltingTemp module (doctest examples for DNA_NN1, DNA_NN2, DNA_NN3,
+    /// RNA_NN1, and R_DNA_NN1, plus the remaining tables computed with the
+    /// same module).
     #[test]
-    fn test_nn_table_selection() {
-        let seq = b"CGCTCAGAGACAAGCCGTTACAACGTAACC";
+    fn test_nn_table_tm_values() {
+        let seq = b"CGTTCCAAAGATGTGGGCATGAGCTTAC";
 
-        // DNA_NN3 (default)
-        let tm_nn3 = tm_nn(seq, None, TmNnParams::default()).unwrap();
-        assert!((tm_nn3 - 63.05).abs() < 0.01);
+        let cases = [
+            (NnTable::DnaNn1, 72.19),
+            (NnTable::DnaNn2, 65.47),
+            (NnTable::DnaNn3, 60.32),
+            (NnTable::DnaNn4, 60.27),
+            (NnTable::RnaNn1, 73.35),
+            (NnTable::RnaNn2, 76.42),
+            (NnTable::RnaNn3, 75.19),
+            (NnTable::RnaDnaNn1, 58.45),
+        ];
 
-        // DNA_NN1 (Breslauer '86)
-        let tm_nn1 = tm_nn(
+        for (nn_table, expected) in cases {
+            let tm = tm_nn(
+                seq,
+                None,
+                TmNnParams {
+                    nn_table,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            assert!(
+                (tm - expected).abs() < 0.01,
+                "unexpected Tm for {:?}: {} (expected {})",
+                nn_table,
+                tm,
+                expected
+            );
+        }
+    }
+
+    /// Test the initiation parameters for each NN table against the values
+    /// from Biopython's ``MeltingTemp`` module.
+    #[test]
+    fn test_nn_table_init_params() {
+        let dna_nn1 = NnTable::DnaNn1.init_params();
+        assert_eq!(dna_nn1.init, [0.0, 0.0]);
+        assert_eq!(dna_nn1.init_at, [0.0, 0.0]);
+        assert_eq!(dna_nn1.init_gc, [0.0, 0.0]);
+        assert_eq!(dna_nn1.init_one_gc, [0.0, -16.8]);
+        assert_eq!(dna_nn1.init_all_at, [0.0, -20.1]);
+        assert_eq!(dna_nn1.init_5t_a, [0.0, 0.0]);
+        assert_eq!(dna_nn1.sym, [0.0, -1.3]);
+
+        let dna_nn2 = NnTable::DnaNn2.init_params();
+        assert_eq!(dna_nn2.init, [0.6, -9.0]);
+        assert_eq!(dna_nn2.init_at, [0.0, 0.0]);
+        assert_eq!(dna_nn2.init_gc, [0.0, 0.0]);
+        assert_eq!(dna_nn2.init_one_gc, [0.0, 0.0]);
+        assert_eq!(dna_nn2.init_all_at, [0.0, 0.0]);
+        assert_eq!(dna_nn2.init_5t_a, [0.0, 0.0]);
+        assert_eq!(dna_nn2.sym, [0.0, -1.4]);
+
+        let dna_nn3 = NnTable::DnaNn3.init_params();
+        assert_eq!(dna_nn3.init, [0.0, 0.0]);
+        assert_eq!(dna_nn3.init_at, [2.3, 4.1]);
+        assert_eq!(dna_nn3.init_gc, [0.1, -2.8]);
+        assert_eq!(dna_nn3.init_one_gc, [0.0, 0.0]);
+        assert_eq!(dna_nn3.init_all_at, [0.0, 0.0]);
+        assert_eq!(dna_nn3.init_5t_a, [0.0, 0.0]);
+        assert_eq!(dna_nn3.sym, [0.0, -1.4]);
+
+        let dna_nn4 = NnTable::DnaNn4.init_params();
+        assert_eq!(dna_nn4.init, [0.2, -5.7]);
+        assert_eq!(dna_nn4.init_at, [2.2, 6.9]);
+        assert_eq!(dna_nn4.init_gc, [0.0, 0.0]);
+        assert_eq!(dna_nn4.init_one_gc, [0.0, 0.0]);
+        assert_eq!(dna_nn4.init_all_at, [0.0, 0.0]);
+        assert_eq!(dna_nn4.init_5t_a, [0.0, 0.0]);
+        assert_eq!(dna_nn4.sym, [0.0, -1.4]);
+
+        let rna_nn1 = NnTable::RnaNn1.init_params();
+        assert_eq!(rna_nn1.init, [0.0, -10.8]);
+        assert_eq!(rna_nn1.init_at, [0.0, 0.0]);
+        assert_eq!(rna_nn1.init_gc, [0.0, 0.0]);
+        assert_eq!(rna_nn1.init_one_gc, [0.0, 0.0]);
+        assert_eq!(rna_nn1.init_all_at, [0.0, 0.0]);
+        assert_eq!(rna_nn1.init_5t_a, [0.0, 0.0]);
+        assert_eq!(rna_nn1.sym, [0.0, -1.4]);
+
+        let rna_nn2 = NnTable::RnaNn2.init_params();
+        assert_eq!(rna_nn2.init, [3.61, -1.5]);
+        assert_eq!(rna_nn2.init_at, [3.72, 10.5]);
+        assert_eq!(rna_nn2.init_gc, [0.0, 0.0]);
+        assert_eq!(rna_nn2.init_one_gc, [0.0, 0.0]);
+        assert_eq!(rna_nn2.init_all_at, [0.0, 0.0]);
+        assert_eq!(rna_nn2.init_5t_a, [0.0, 0.0]);
+        assert_eq!(rna_nn2.sym, [0.0, -1.4]);
+
+        let rna_nn3 = NnTable::RnaNn3.init_params();
+        assert_eq!(rna_nn3.init, [6.40, 6.99]);
+        assert_eq!(rna_nn3.init_at, [3.85, 11.04]);
+        assert_eq!(rna_nn3.init_gc, [0.0, 0.0]);
+        assert_eq!(rna_nn3.init_one_gc, [0.0, 0.0]);
+        assert_eq!(rna_nn3.init_all_at, [0.0, 0.0]);
+        assert_eq!(rna_nn3.init_5t_a, [0.0, 0.0]);
+        assert_eq!(rna_nn3.sym, [0.0, -1.4]);
+
+        let rna_dna_nn1 = NnTable::RnaDnaNn1.init_params();
+        assert_eq!(rna_dna_nn1.init, [1.9, -3.9]);
+        assert_eq!(rna_dna_nn1.init_at, [0.0, 0.0]);
+        assert_eq!(rna_dna_nn1.init_gc, [0.0, 0.0]);
+        assert_eq!(rna_dna_nn1.init_one_gc, [0.0, 0.0]);
+        assert_eq!(rna_dna_nn1.init_all_at, [0.0, 0.0]);
+        assert_eq!(rna_dna_nn1.init_5t_a, [0.0, 0.0]);
+        assert_eq!(rna_dna_nn1.sym, [0.0, 0.0]);
+    }
+
+    /// RNA dangling-end example from Biopython's ``MeltingTemp`` docstring.
+    #[test]
+    fn test_tm_nn_rna_dangling_end() {
+        // Biopython uses RNA sequences (U is back-transcribed to T during
+        // checking); the Rust port expects DNA/RNA data expressed with T.
+        let seq = b"CGTTCCAAAGATGTGGGCATGAGCTTAC";
+        let c_seq = b"TGCAAGGCTTCTACACCCGTACTCGAATGC";
+
+        let tm = tm_nn(
             seq,
-            None,
+            Some(c_seq),
             TmNnParams {
-                nn_table: NnTable::DnaNn1,
+                shift: 1,
+                nn_table: NnTable::RnaNn3,
+                de_table: DeTable::RnaDe1,
                 ..Default::default()
             },
         )
         .unwrap();
-        // Different table should give different result
-        assert!((tm_nn1 - tm_nn3).abs() > 0.1);
 
-        // DNA_NN2 (Sugimoto '96)
-        let tm_nn2 = tm_nn(
-            seq,
-            None,
-            TmNnParams {
-                nn_table: NnTable::DnaNn2,
-                ..Default::default()
-            },
-        )
-        .unwrap();
-        // Different table should give different result
-        assert!((tm_nn2 - tm_nn3).abs() > 0.1);
-
-        // DNA_NN4 (SantaLucia & Hicks 2004)
-        let tm_nn4 = tm_nn(
-            seq,
-            None,
-            TmNnParams {
-                nn_table: NnTable::DnaNn4,
-                ..Default::default()
-            },
-        )
-        .unwrap();
-        // NN4 should be close to NN3 (same values for most pairs)
-        assert!((tm_nn4 - tm_nn3).abs() < 0.1);
+        assert!((tm - 73.00).abs() < 0.01, "unexpected Tm: {}", tm);
     }
 }
