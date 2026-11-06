@@ -1,9 +1,25 @@
 //! Melting temperature calculation for nucleotide sequences.
 //!
 //! This is a port of the nearest-neighbor method from Biopython's
-//! `Bio.SeqUtils.MeltingTemp.Tm_NN`. It provides the DNA/DNA, RNA/RNA and
-//! RNA/DNA thermodynamic tables implemented by Biopython, together with
-//! correction for dangling ends, terminal mismatches and salt concentration.
+//! [`Bio.SeqUtils.MeltingTemp.Tm_NN`](https://biopython.org/docs/latest/api/Bio.SeqUtils.MeltingTemp.html).
+//! It provides the DNA/DNA, RNA/RNA and RNA/DNA thermodynamic tables
+//! implemented by Biopython, together with correction for dangling ends,
+//! terminal mismatches and salt concentration.
+//!
+//! # Examples
+//!
+//! ```
+//! use bio::seq_analysis::melting_temp::{tm_nn, TmNnParams};
+//!
+//! let tm = tm_nn(b"CGTTCCAAAGATGTGGGCATGAGCTTAC", None, TmNnParams::default())
+//!     .expect("sequence and default parameters are valid");
+//! assert!((tm - 60.32).abs() < 0.01);
+//! ```
+//!
+//! # References
+//!
+//! * [Biopython `MeltingTemp` module documentation](https://biopython.org/docs/latest/api/Bio.SeqUtils.MeltingTemp.html)
+//! * [Biopython `MeltingTemp.py` source](https://github.com/biopython/biopython/blob/master/Bio/SeqUtils/MeltingTemp.py)
 
 use crate::alphabets::dna;
 use crate::seq_analysis::gc::gc_content;
@@ -29,8 +45,9 @@ pub struct TmNnParams {
     /// are skipped and the result may be inaccurate. Unknown nearest-neighbor
     /// pairs always produce an error.
     pub strict: bool,
-    /// Shift of `sequence` relative to `c_sequence` (see Biopython's
-    /// `Tm_NN` `shift` argument for the alignment convention).
+    /// Shift of `sequence` relative to `c_sequence`: positive values add
+    /// leading `.` gaps to `sequence`, negative values add leading `.` gaps
+    /// to `c_sequence`.
     pub shift: i32,
     /// Concentration of the higher concentrated strand in nM (default: 25).
     pub dnac1: f64,
@@ -50,8 +67,9 @@ pub struct TmNnParams {
     /// dNTP concentration in mM (default: 0).
     pub dntps: f64,
     /// Salt correction method (0 = none, 1–7; default: 5). See Biopython's
-    /// `salt_correction` for the formulas. Note: method 7 is currently
-    /// approximated with method 6.
+    /// [`salt_correction`](https://biopython.org/docs/latest/api/Bio.SeqUtils.MeltingTemp.html)
+    /// for the formulas. Note: method 7 is currently approximated with
+    /// method 6.
     pub saltcorr: u8,
     /// Nearest-neighbor thermodynamic table (default: [`NnTable::DnaNn3`]).
     pub nn_table: NnTable,
@@ -85,13 +103,20 @@ impl Default for TmNnParams {
 /// tables. Each value is `[ΔH (kcal/mol), ΔS (cal/mol K)]`.
 #[derive(Copy, Clone)]
 pub struct DnaInitParams {
-    init: HS,        // Basic initiation
-    init_at: HS,     // A/T terminal basepairs
-    init_gc: HS,     // G/C terminal basepairs
-    init_one_gc: HS, // At least one G/C pair
-    init_all_at: HS, // All A/T pairs
-    init_5t_a: HS,   // 5' end is T or 3' end is A
-    sym: HS,         // Symmetry correction
+    /// Basic initiation.
+    pub init: [f64; 2],
+    /// Terminal A/T basepairs.
+    pub init_at: [f64; 2],
+    /// Terminal G/C basepairs.
+    pub init_gc: [f64; 2],
+    /// At least one G/C pair.
+    pub init_one_gc: [f64; 2],
+    /// All A/T pairs.
+    pub init_all_at: [f64; 2],
+    /// 5' end is T or 3' end is A.
+    pub init_5t_a: [f64; 2],
+    /// Symmetry correction.
+    pub sym: [f64; 2],
 }
 
 // DNA_NN1 (Breslauer et al. 1986)
@@ -215,7 +240,18 @@ impl NnTable {
     /// Look up `[ΔH, ΔS]` for a nearest-neighbor pair.
     ///
     /// `pair` must be formatted as `b"XY/ZW"`, e.g. `b"GT/CA"`.
-    pub fn lookup(&self, pair: &[u8]) -> Option<HS> {
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::seq_analysis::melting_temp::NnTable;
+    ///
+    /// let [delta_h, delta_s] = NnTable::DnaNn3
+    ///     .lookup(b"GT/CA")
+    ///     .expect("GT/CA is part of the DNA_NN3 table");
+    /// assert_eq!([delta_h, delta_s], [-8.4, -22.4]);
+    /// ```
+    pub fn lookup(&self, pair: &[u8]) -> Option<[f64; 2]> {
         match self {
             NnTable::DnaNn1 => dna_nn1_lookup(pair),
             NnTable::DnaNn2 => dna_nn2_lookup(pair),
@@ -229,6 +265,16 @@ impl NnTable {
     }
 
     /// Return the initiation parameters for this table.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::seq_analysis::melting_temp::NnTable;
+    ///
+    /// let params = NnTable::DnaNn3.init_params();
+    /// assert_eq!(params.init_at, [2.3, 4.1]);
+    /// assert_eq!(params.sym, [0.0, -1.4]);
+    /// ```
     pub fn init_params(&self) -> DnaInitParams {
         match self {
             NnTable::DnaNn1 => DNA_NN1_INIT,
@@ -260,7 +306,18 @@ impl DeTable {
     /// Look up `[ΔH, ΔS]` for a dangling-end pair.
     ///
     /// `seq_pair` must be formatted as `b"XY/.Z"` or `b".X/YZ"`.
-    pub fn lookup(&self, seq_pair: &[u8]) -> Option<HS> {
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::seq_analysis::melting_temp::DeTable;
+    ///
+    /// let [delta_h, delta_s] = DeTable::DnaDe1
+    ///     .lookup(b"AA/.T")
+    ///     .expect("AA/.T is part of the DNA_DE1 table");
+    /// assert_eq!([delta_h, delta_s], [0.2, 2.3]);
+    /// ```
+    pub fn lookup(&self, seq_pair: &[u8]) -> Option<[f64; 2]> {
         match self {
             DeTable::DnaDe1 => de1_lookup(seq_pair),
             DeTable::RnaDe1 => rna_de1_lookup(seq_pair),
@@ -728,10 +785,11 @@ fn salt_correction(
 
 /// Calculate the melting temperature using nearest neighbor thermodynamics.
 ///
-/// This is a port of Biopython's `Bio.SeqUtils.MeltingTemp.Tm_NN`. It sums
-/// enthalpy and entropy contributions from initiation, terminal base pairs,
-/// dangling ends, terminal mismatches and nearest-neighbor pairs, then applies
-/// an optional salt correction.
+/// This is a port of Biopython's
+/// [`Bio.SeqUtils.MeltingTemp.Tm_NN`](https://biopython.org/docs/latest/api/Bio.SeqUtils.MeltingTemp.html).
+/// It sums enthalpy and entropy contributions from initiation, terminal base
+/// pairs, dangling ends, terminal mismatches and nearest-neighbor pairs, then
+/// applies an optional salt correction.
 ///
 /// `sequence` is the primer/probe sequence. For RNA/DNA hybridizations it must
 /// be the RNA strand, expressed with `T` rather than `U` (matching the
@@ -739,12 +797,24 @@ fn salt_correction(
 /// sequence in 3'→5' direction; it is required for mismatch and dangling-end
 /// correction. When `None`, the perfect complement is used.
 ///
+/// # Complexity
+///
+/// Runs in `O(n)` time and uses `O(n)` memory, where `n` is the length of the
+/// longer of `sequence` and `c_sequence`.
+///
+/// # Errors
+///
+/// Returns an error if `sequence` is empty, if `dnac1 - dnac2 / 2` is
+/// negative, or if no thermodynamic data is available for a neighbor pair
+/// (or for a dangling end when `strict` is `true`).
+///
 /// # Examples
 ///
 /// ```
 /// use bio::seq_analysis::melting_temp::{tm_nn, NnTable, TmNnParams};
 ///
-/// let tm = tm_nn(b"CGTTCCAAAGATGTGGGCATGAGCTTAC", None, TmNnParams::default()).unwrap();
+/// let tm = tm_nn(b"CGTTCCAAAGATGTGGGCATGAGCTTAC", None, TmNnParams::default())
+///     .expect("sequence and default parameters are valid");
 /// assert!((tm - 60.32).abs() < 0.01);
 ///
 /// let tm = tm_nn(
@@ -755,7 +825,7 @@ fn salt_correction(
 ///         ..Default::default()
 ///     },
 /// )
-/// .unwrap();
+/// .expect("sequence and DNA_NN1 parameters are valid");
 /// assert!((tm - 72.19).abs() < 0.01);
 /// ```
 pub fn tm_nn(
@@ -786,7 +856,7 @@ pub fn tm_nn(
                 .to_mut()
                 .splice(0..0, std::iter::repeat_n(b'.', params.shift as usize));
         } else if params.shift < 0 {
-            tmp_seq
+            tmp_cseq
                 .to_mut()
                 .splice(0..0, std::iter::repeat_n(b'.', (-params.shift) as usize));
         }
@@ -1070,6 +1140,24 @@ mod tests {
             )
             .unwrap()
                 - 55.69)
+                .abs()
+                < 0.01
+        );
+    }
+
+    #[test]
+    fn test_tm_nn_negative_shift() {
+        assert!(
+            (tm_nn(
+                b"CGTAAGCTCATGCCCACATCTTCGGAACGT",
+                Some(b"CATTCGAGTACGGGTGTAGAAACCTTGC"),
+                TmNnParams {
+                    shift: -1,
+                    ..Default::default()
+                }
+            )
+            .unwrap()
+                - 54.63)
                 .abs()
                 < 0.01
         );
