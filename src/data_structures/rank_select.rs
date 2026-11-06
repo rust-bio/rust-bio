@@ -36,7 +36,6 @@ pub struct RankSelect {
     n: usize,
     bits: BitVec<u8>,
     superblocks_1: Vec<SuperblockRank>,
-    superblocks_0: Vec<SuperblockRank>,
     /// superblock size in bits
     s: usize,
     /// superblock size in 32 bits
@@ -63,9 +62,119 @@ impl RankSelect {
             n,
             s,
             k,
-            superblocks_1: superblocks(true, n, s, &bits),
-            superblocks_0: superblocks(false, n, s, &bits),
+            superblocks_1: superblocks(n, s, &bits),
             bits,
+        }
+    }
+
+    /// Append a bit to the end of the underlying bit vector, updating the
+    /// rank/select index in amortized `O(1)` time.
+    ///
+    /// Appending a bit cannot change the rank of any earlier position, so the
+    /// existing superblock samples stay valid and only an occasional new sample
+    /// has to be added (once every `s = k * 32` bits). This makes it possible to
+    /// build a `RankSelect` incrementally, e.g. when the bits are produced by a
+    /// streaming computation or when using it as the bitmap backing a wavelet
+    /// tree.
+    ///
+    /// The resulting structure is identical to one built with
+    /// [`RankSelect::new`] from the same bits and the same `k`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::rank_select::RankSelect;
+    /// use bv::BitVec;
+    ///
+    /// let mut rs = RankSelect::new(BitVec::new(), 1);
+    /// rs.push(true);
+    /// rs.push(false);
+    /// rs.push(true);
+    /// assert_eq!(rs.rank_1(2), Some(2));
+    /// assert_eq!(rs.select_1(1), Some(0));
+    /// ```
+    pub fn push(&mut self, bit: bool) {
+        // A new superblock sample starts whenever the current length is a
+        // multiple of the superblock size `s` (this also covers the very first
+        // bit, where `n == 0`). The sample stores the number of 1-bits strictly
+        // before that boundary, which is the current total number of 1-bits.
+        if self.n.is_multiple_of(self.s) {
+            let ones_before = if self.n == 0 {
+                0
+            } else {
+                self.rank_1((self.n - 1) as u64)
+                    .expect("position is within bounds before pushing")
+            };
+            // Mirror the `First`/`Some` encoding used by `superblocks`: a sample
+            // is `First` when its rank differs from the previous sample (or it is
+            // the first one), and `Some` when the rank is unchanged.
+            let sample = match self.superblocks_1.last() {
+                Some(last) if **last == ones_before => SuperblockRank::Some(ones_before),
+                _ => SuperblockRank::First(ones_before),
+            };
+            self.superblocks_1.push(sample);
+        }
+
+        self.bits.push(bit);
+        self.n += 1;
+    }
+
+    /// Append all bits yielded by an iterator to the end of the underlying bit
+    /// vector, updating the rank/select index as it goes.
+    ///
+    /// This is equivalent to calling [`RankSelect::push`] once per bit and runs
+    /// in amortized `O(1)` per bit. It accepts anything that iterates over
+    /// `bool`, so it can extend a `RankSelect` by another `BitVec`, a
+    /// `Vec<bool>`, or any lazy bit stream.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::rank_select::RankSelect;
+    /// use bv::BitVec;
+    ///
+    /// let mut rs = RankSelect::new(BitVec::new(), 1);
+    /// rs.extend([true, false, true, true]);
+    /// assert_eq!(rs.rank_1(3), Some(3));
+    /// assert_eq!(rs.select_1(2), Some(2));
+    /// ```
+    pub fn extend<I: IntoIterator<Item = bool>>(&mut self, bits: I) {
+        for bit in bits {
+            self.push(bit);
+        }
+    }
+
+    /// Append all bits of an existing bit container (e.g. another `BitVec`)
+    /// to the end of this `RankSelect`.
+    ///
+    /// This is the same operation as [`RankSelect::extend`], specialized for the
+    /// case where the number of incoming bits is known up front: the backing
+    /// bit vector is grown once with a single block reservation instead of
+    /// reserving on every `push`. The result is identical to extending with the
+    /// same bits one by one.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bio::data_structures::rank_select::RankSelect;
+    /// use bv::{BitVec, BitsMut};
+    ///
+    /// let mut tail: BitVec<u8> = BitVec::new_fill(false, 3);
+    /// tail.set_bit(0, true);
+    /// tail.set_bit(2, true);
+    ///
+    /// let mut rs = RankSelect::new(BitVec::new(), 1);
+    /// rs.extend_from_bits(&tail);
+    /// assert_eq!(rs.rank_1(2), Some(2));
+    /// ```
+    pub fn extend_from_bits<B: Bits<Block = u8>>(&mut self, bits: &B) {
+        // Reserve room for all incoming bits in one go, so the per-bit `push`
+        // below does not re-reserve on every call.
+        let additional_blocks = (bits.bit_len() as usize).div_ceil(8);
+        self.bits.block_reserve(additional_blocks);
+
+        for i in 0..bits.bit_len() {
+            self.push(bits.get_bit(i));
         }
     }
 
@@ -137,7 +246,7 @@ impl RankSelect {
     pub fn select_1(&self, j: u64) -> Option<u64> {
         self.select_x(
             j,
-            &self.superblocks_1,
+            |i| *self.superblocks_1[i],
             |bit| bit != 0,
             |block| block.count_ones(),
         )
@@ -152,35 +261,63 @@ impl RankSelect {
     pub fn select_0(&self, j: u64) -> Option<u64> {
         self.select_x(
             j,
-            &self.superblocks_0,
+            // Derived from `superblocks_1`: at the start of superblock `i`
+            // we have seen `i * s` bits, of which `superblocks_1[i]` are 1s.
+            |i| (i * self.s) as u64 - *self.superblocks_1[i],
             |bit| bit == 0,
             |block| block.count_zeros(),
         )
     }
 
-    fn select_x<F: Fn(u8) -> bool, C: Fn(u8) -> u32>(
+    /// Generic implementation for `select_1` and `select_0`.
+    ///
+    /// `rank_at_superblock(i)` returns the cumulative rank (1s for `select_1`,
+    /// 0s for `select_0`) at the start of superblock `i`. `is_match` and
+    /// `count_all` describe how to inspect a single byte for the appropriate
+    /// bit-class.
+    fn select_x<R: Fn(usize) -> u64, F: Fn(u8) -> bool, C: Fn(u8) -> u32>(
         &self,
         j: u64,
-        superblocks: &[SuperblockRank],
+        rank_at_superblock: R,
         is_match: F,
         count_all: C,
     ) -> Option<u64> {
         if j == 0 {
             return None;
         }
-        let mut superblock = match superblocks.binary_search(&SuperblockRank::First(j)) {
-            Ok(i) | Err(i) => i, // superblock with same rank exists
-        };
-        superblock = superblock.saturating_sub(1);
-        let mut rank = *superblocks[superblock];
 
+        // Find the smallest superblock index whose stored rank is `>= j`.
+        // Manual binary search rather than slice::binary_search so we can
+        // search a virtual array — `select_0` derives its values from
+        // `superblocks_1` rather than storing them.
+        let n_super = self.superblocks_1.len();
+        let mut lo = 0usize;
+        let mut hi = n_super;
+        while lo < hi {
+            let mid = (lo + hi) / 2;
+            if rank_at_superblock(mid) < j {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        // `superblocks[k]` holds the rank *before* superblock k starts, so the
+        // j-th bit lives in superblock `lo - 1` (or 0 if j is small enough
+        // that the very first superblock already meets the rank).
+        let superblock = lo.saturating_sub(1);
+        let mut rank = rank_at_superblock(superblock);
+
+        // Scan blocks within the chosen superblock byte-by-byte, popcounting
+        // each block. Once the running rank would cross `j` inside a block,
+        // walk that block bit-by-bit to find the exact position.
         let first_block = superblock * self.s / 8;
         for block in first_block..cmp::min(first_block + self.s / 8, self.bits.block_len()) {
             let b = self.bits.get_block(block);
             let p = count_all(b) as u64;
             if rank + p >= j {
                 let mut bit = 0b1;
-                // do not look at unused bits of the last block
+                // The final block may extend past the bitvector; clamp to
+                // `bits.len()` so trailing zero-padding bits aren't counted.
                 let max_bit = cmp::min(8, self.bits.len() - block as u64 * 8);
                 for i in 0..max_bit {
                     rank += is_match(b & bit) as u64;
@@ -240,8 +377,11 @@ impl Ord for SuperblockRank {
     }
 }
 
-/// Create `n` superblocks of size `s` from a given bitvector.
-fn superblocks(t: bool, n: usize, s: usize, bits: &BitVec<u8>) -> Vec<SuperblockRank> {
+/// Build the 1-rank superblock samples for a bitvector of `n` bits with
+/// superblock size `s` (in bits). Each entry stores the cumulative rank of
+/// 1s at the start of the corresponding superblock. The 0-rank samples can
+/// be derived as `i * s - superblocks[i].rank()` and so are not stored.
+fn superblocks(n: usize, s: usize, bits: &BitVec<u8>) -> Vec<SuperblockRank> {
     let mut superblocks = Vec::with_capacity(n / s + 1);
     let mut rank: u64 = 0;
     let mut last_rank = None;
@@ -257,11 +397,7 @@ fn superblocks(t: bool, n: usize, s: usize, bits: &BitVec<u8>) -> Vec<Superblock
             });
             last_rank = Some(rank);
         }
-        rank += if t {
-            b.count_ones() as u64
-        } else {
-            b.count_zeros() as u64
-        };
+        rank += b.count_ones() as u64;
         i += 8;
     }
 
@@ -363,6 +499,60 @@ mod tests {
         assert_eq!(rs.rank_1(0), Some(0));
     }
 
+    // Cross-checks `select_1` and `select_0` against a naive linear scan on
+    // a sparse bitvector. Exercises the duplicate-rank path for `select_1`
+    // and the derived-rank path for `select_0` (see issue #548).
+    #[test]
+    fn test_select_against_naive_sparse() {
+        let mut bits: BitVec<u8> = BitVec::new_fill(false, 1024);
+        let one_positions: &[u64] = &[3, 70, 71, 72, 500, 900, 901, 1023];
+        for &p in one_positions {
+            bits.set_bit(p, true);
+        }
+        let zero_positions: Vec<u64> = (0..1024).filter(|i| !one_positions.contains(i)).collect();
+
+        for k in [1usize, 2, 4, 8] {
+            let rs = RankSelect::new(bits.clone(), k);
+            for (i, &expected) in one_positions.iter().enumerate() {
+                assert_eq!(rs.select_1((i + 1) as u64), Some(expected), "k={}", k);
+            }
+            assert_eq!(rs.select_1(one_positions.len() as u64 + 1), None);
+            for (i, &expected) in zero_positions.iter().enumerate() {
+                assert_eq!(rs.select_0((i + 1) as u64), Some(expected), "k={}", k);
+            }
+            assert_eq!(rs.select_0(zero_positions.len() as u64 + 1), None);
+        }
+    }
+
+    #[test]
+    fn test_select_against_naive_randomized() {
+        use rand::{RngExt, SeedableRng};
+        let mut rng = rand::rngs::StdRng::seed_from_u64(0xdead_beef);
+        for _ in 0..50 {
+            let n: u64 = 64 + rng.random_range(0..4096);
+            let mut bits: BitVec<u8> = BitVec::new_fill(false, n);
+            let mut ones: Vec<u64> = Vec::new();
+            let mut zeros: Vec<u64> = Vec::new();
+            for i in 0..n {
+                if rng.random_range(0..16) == 0 {
+                    bits.set_bit(i, true);
+                    ones.push(i);
+                } else {
+                    zeros.push(i);
+                }
+            }
+            for &k in &[1usize, 2, 4] {
+                let rs = RankSelect::new(bits.clone(), k);
+                for (i, &expected) in ones.iter().enumerate() {
+                    assert_eq!(rs.select_1((i + 1) as u64), Some(expected));
+                }
+                for (i, &expected) in zeros.iter().enumerate() {
+                    assert_eq!(rs.select_0((i + 1) as u64), Some(expected));
+                }
+            }
+        }
+    }
+
     #[test]
     fn test_rank_k() {
         let mut bits: BitVec<u8> = BitVec::new_fill(false, 72);
@@ -371,5 +561,151 @@ mod tests {
         assert_eq!(rs.rank_1(63), Some(1));
         assert_eq!(rs.rank_1(64), Some(1));
         assert_eq!(rs.rank_1(71), Some(1));
+    }
+
+    #[test]
+    fn test_push_basic_rank_select() {
+        let mut rs = RankSelect::new(BitVec::new(), 1);
+        // Build the pattern 1 0 1 1 0.
+        for &b in &[true, false, true, true, false] {
+            rs.push(b);
+        }
+        assert_eq!(rs.rank_1(0), Some(1));
+        assert_eq!(rs.rank_1(4), Some(3));
+        assert_eq!(rs.rank_0(4), Some(2));
+        assert_eq!(rs.select_1(1), Some(0));
+        assert_eq!(rs.select_1(3), Some(3));
+        assert_eq!(rs.select_0(2), Some(4));
+    }
+
+    /// The central guarantee: a `RankSelect` built incrementally with `push`
+    /// must be byte-for-byte identical (superblocks included) to one built with
+    /// `new` from the same bits. `RankSelect` derives `PartialEq`, so this
+    /// compares the full internal state, across several sampling rates `k` and
+    /// lengths that straddle superblock and block boundaries.
+    #[test]
+    fn test_push_equivalent_to_new() {
+        // A small deterministic xorshift keeps this test free of `rand` while
+        // still exercising irregular bit patterns. The exact sequence does not
+        // matter; only that `push` and `new` see the same bits.
+        let mut state: u64 = 0x9e37_79b9_7f4a_7c15;
+        let mut next_bit = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state & 1 == 1
+        };
+        for &k in &[1usize, 2, 4] {
+            for n in [0u64, 1, 7, 8, 9, 31, 32, 33, 63, 64, 65, 200, 257] {
+                let mut bits: BitVec<u8> = BitVec::new();
+                let mut pushed = RankSelect::new(BitVec::new(), k);
+                for _ in 0..n {
+                    let b = next_bit();
+                    bits.push(b);
+                    pushed.push(b);
+                }
+                let built = RankSelect::new(bits, k);
+                assert_eq!(
+                    pushed, built,
+                    "push-built and new-built differ for k={}, n={}",
+                    k, n
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_extend_basic() {
+        let mut rs = RankSelect::new(BitVec::new(), 1);
+        rs.extend([true, false, true, true, false]);
+        assert_eq!(rs.rank_1(4), Some(3));
+        assert_eq!(rs.rank_0(4), Some(2));
+        assert_eq!(rs.select_1(3), Some(3));
+        assert_eq!(rs.select_0(2), Some(4));
+    }
+
+    /// `extend` must be exactly equivalent to calling `push` once per bit, and
+    /// extending an existing structure must match building the concatenation in
+    /// one shot with `new`. Both invariants are checked across sampling rates
+    /// and split points around block/superblock boundaries.
+    #[test]
+    fn test_extend_equivalent_to_push_and_new() {
+        let mut state: u64 = 0x2545_f491_4f6c_dd1d;
+        let mut next_bit = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state & 1 == 1
+        };
+        for &k in &[1usize, 2, 4] {
+            for split in [0usize, 1, 8, 31, 32, 33, 64, 100] {
+                for tail in [0usize, 1, 7, 32, 65] {
+                    // Generate the prefix and the tail bits.
+                    let prefix: Vec<bool> = (0..split).map(|_| next_bit()).collect();
+                    let extra: Vec<bool> = (0..tail).map(|_| next_bit()).collect();
+
+                    // (a) extend vs push-one-by-one, starting from the same prefix.
+                    let mut by_extend = RankSelect::new(BitVec::new(), k);
+                    by_extend.extend(prefix.iter().copied());
+                    let mut by_push = by_extend.clone();
+                    by_extend.extend(extra.iter().copied());
+                    for &b in &extra {
+                        by_push.push(b);
+                    }
+                    assert_eq!(by_extend, by_push, "extend != push loop (k={k})");
+
+                    // (b) extended structure vs the concatenation built with `new`.
+                    let mut all_bits: BitVec<u8> = BitVec::new();
+                    for &b in prefix.iter().chain(extra.iter()) {
+                        all_bits.push(b);
+                    }
+                    let built = RankSelect::new(all_bits, k);
+                    assert_eq!(by_extend, built, "extend != new (k={k})");
+                }
+            }
+        }
+    }
+
+    /// `extend_from_bits` must produce exactly the same structure as the generic
+    /// `extend` (and therefore as `new`), only faster. Checked by extending an
+    /// existing structure with a `BitVec` tail and comparing against the
+    /// bool-iterator path, across sampling rates and boundary-straddling sizes.
+    #[test]
+    fn test_extend_from_bits_matches_extend() {
+        use bv::BitsMut;
+        let mut state: u64 = 0x84242_3f4_d1cdu64.wrapping_mul(3);
+        let mut next_bit = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state & 1 == 1
+        };
+        for &k in &[1usize, 2, 4] {
+            for split in [0usize, 1, 8, 32, 33, 70] {
+                for tail in [0usize, 1, 7, 8, 32, 65] {
+                    let prefix: Vec<bool> = (0..split).map(|_| next_bit()).collect();
+
+                    let mut tail_bv: BitVec<u8> = BitVec::new_fill(false, tail as u64);
+                    for i in 0..tail as u64 {
+                        tail_bv.set_bit(i, next_bit());
+                    }
+
+                    // Path A: generic extend with the tail as a bool iterator.
+                    let mut by_iter = RankSelect::new(BitVec::new(), k);
+                    by_iter.extend(prefix.iter().copied());
+                    by_iter.extend((0..tail as u64).map(|i| tail_bv.get_bit(i)));
+
+                    // Path B: specialized extend_from_bits with the same tail.
+                    let mut by_bits = RankSelect::new(BitVec::new(), k);
+                    by_bits.extend(prefix.iter().copied());
+                    by_bits.extend_from_bits(&tail_bv);
+
+                    assert_eq!(
+                        by_iter, by_bits,
+                        "extend_from_bits != extend (k={k}, split={split}, tail={tail})"
+                    );
+                }
+            }
+        }
     }
 }

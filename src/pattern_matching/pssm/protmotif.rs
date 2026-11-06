@@ -23,7 +23,7 @@ impl ProtMotif {
     /// # Arguments
     /// * `seqs` - sequences incorporated into motif
     /// * `pseudos` - array slice with a pseudocount for each monomer;
-    ///    defaults to pssm::DEF_PSEUDO for all if None is supplied
+    ///   defaults to pssm::DEF_PSEUDO for all if None is supplied
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently impossible - see
@@ -239,6 +239,8 @@ mod tests {
         .unwrap();
         assert_eq!(pssm.degenerate_consensus(), b"XXXXXXXX".to_vec());
     }
+
+    // TODO fix and enable this test
     fn test_degenerate_input() {
         let pssm = ProtMotif::from_seqs(
             &[b"AAAAARNDAAA".to_vec(), b"AAAAARNDXAA".to_vec()],

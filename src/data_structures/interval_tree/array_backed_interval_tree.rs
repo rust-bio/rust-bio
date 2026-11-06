@@ -172,7 +172,7 @@ impl<N: Ord + Clone + Copy, D: Clone> ArrayBackedIntervalTree<N, D> {
     /// # Panics
     ///
     /// Panics if this `IITree` instance has not been indexed yet.
-    pub fn find<I: Into<Interval<N>>>(&self, interval: I) -> Vec<Entry<N, D>> {
+    pub fn find<I: Into<Interval<N>>>(&self, interval: I) -> Vec<Entry<'_, N, D>> {
         let mut buf = Vec::with_capacity(512);
         self.find_into(interval, &mut buf);
         buf

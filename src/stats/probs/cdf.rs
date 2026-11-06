@@ -291,13 +291,7 @@ impl<T: Ord> CDF<T> {
                         self.inner[0].prob
                     }
                 }
-                Err(i) => {
-                    if i > 0 {
-                        self.inner[i - 1].prob
-                    } else {
-                        LogProb::ln_zero()
-                    }
-                }
+                Err(_) => LogProb::ln_zero(),
             })
         }
     }
@@ -455,5 +449,17 @@ mod test {
         }
 
         assert_relative_eq!(cdf.sample(5).total_prob().exp(), 1.0);
+    }
+
+    #[test]
+    fn test_get_pmf_missing_value() {
+        let pmf = vec![
+            Entry::new(10, LogProb(0.4f64.ln())),
+            Entry::new(20, LogProb(0.6f64.ln())),
+        ];
+        let cdf = CDF::from_pmf(pmf);
+        assert_eq!(cdf.get_pmf(&5), Some(LogProb::ln_zero()));
+        assert_eq!(cdf.get_pmf(&15), Some(LogProb::ln_zero()));
+        assert_eq!(cdf.get_pmf(&25), Some(LogProb::ln_zero()));
     }
 }

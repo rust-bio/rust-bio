@@ -165,9 +165,9 @@ impl Alphabet {
     /// assert_eq!(intersect_alpha, alphabets::Alphabet::new(b"atcg"));
     /// ```
     pub fn intersection(&self, other: &Alphabet) -> Self {
-        return Alphabet {
+        Alphabet {
             symbols: self.symbols.intersection(&other.symbols).collect(),
-        };
+        }
     }
 
     /// Return a new alphabet taking the difference between this and other.
@@ -183,9 +183,9 @@ impl Alphabet {
     /// assert_eq!(dna_lower, alphabets::Alphabet::new(b"atcg"));
     /// ```
     pub fn difference(&self, other: &Alphabet) -> Self {
-        return Alphabet {
+        Alphabet {
             symbols: self.symbols.difference(&other.symbols).collect(),
-        };
+        }
     }
 
     /// Return a new alphabet taking the union between this and other.
@@ -201,9 +201,9 @@ impl Alphabet {
     /// assert_eq!(alpha, alphabets::Alphabet::new(b"ATCG?|"));
     /// ```
     pub fn union(&self, other: &Alphabet) -> Self {
-        return Alphabet {
+        Alphabet {
             symbols: self.symbols.union(&other.symbols).collect(),
-        };
+        }
     }
 }
 

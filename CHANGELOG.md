@@ -3,6 +3,114 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [4.2.2](https://github.com/rust-bio/rust-bio/compare/v4.2.1...v4.2.2) (2026-10-09)
+
+
+### Bug Fixes
+
+* change probs of leaving hop states ([#718](https://github.com/rust-bio/rust-bio/issues/718)) ([4c929f5](https://github.com/rust-bio/rust-bio/commit/4c929f5963ae97bdb84bc2ba59478189122dc108))
+* do not allow free start gaps in global mode ([#717](https://github.com/rust-bio/rust-bio/issues/717)) ([9a5997b](https://github.com/rust-bio/rust-bio/commit/9a5997bd269968fe601b22a5591d0e6c31052022))
+
+## [4.2.1](https://github.com/rust-bio/rust-bio/compare/v4.2.0...v4.2.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* let every hop state return to every match state in HomopolyPairHMM ([#714](https://github.com/rust-bio/rust-bio/issues/714)) ([ceadf27](https://github.com/rust-bio/rust-bio/commit/ceadf27b5c4657aead648ca80aff706ebecbf4c3))
+* sum the column ends of HomopolyPairHMM once per column in semiglobal mode ([#711](https://github.com/rust-bio/rust-bio/issues/711)) ([9ac1a66](https://github.com/rust-bio/rust-bio/commit/9ac1a665b7892921ff1a425547c126e296ef81fa))
+
+## [4.2.0](https://github.com/rust-bio/rust-bio/compare/v4.1.0...v4.2.0) (2026-10-02)
+
+### Features
+
+* allow swaps and configuration of indel support in ukkonen's pattern matching algorithm; remove non-reasonable traits from the Ukkonen struct ([#692](https://github.com/rust-bio/rust-bio/issues/692)) ([cbb2fca](https://github.com/rust-bio/rust-bio/commit/cbb2fcae1f08ce6d3e8bea43c7624bf5e293c9c0))
+
+
+### Bug Fixes
+
+* critical bugs and numerical invariant violations identified via formal audit ([#697](https://github.com/rust-bio/rust-bio/issues/697)) ([2d958ac](https://github.com/rust-bio/rust-bio/commit/2d958ace7317c9295f831afa3c75e847247400b9))
+
+
+### Miscellaneous
+
+* overwrite breaking change annotation ([fae6451](https://github.com/rust-bio/rust-bio/commit/fae6451234bd32f2ebdc79c481b8190906ac81e7))
+
+## [4.1.0](https://github.com/rust-bio/rust-bio/compare/v4.0.1...v4.1.0) (2026-10-02)
+
+
+### Features
+
+* support IUPAC ambiguity codes in HomopolyPairHMM ([#698](https://github.com/rust-bio/rust-bio/issues/698)) ([98b2ae0](https://github.com/rust-bio/rust-bio/commit/98b2ae01106bfb2b080139d68185a869290f4dbc))
+
+
+### Bug Fixes
+
+* cap ordered-float below 5.5 to preserve MSRV 1.87 ([#691](https://github.com/rust-bio/rust-bio/issues/691)) ([2278282](https://github.com/rust-bio/rust-bio/commit/227828275fed8d9c97b7ef3ac76b1d8718b9542b))
+* emit bases in extended gaps and clear cells outside the band in PairHMM ([#701](https://github.com/rust-bio/rust-bio/issues/701)) ([f1d9871](https://github.com/rust-bio/rust-bio/commit/f1d98718d5fe45f6c1bcbb9452465412220d4dbb))
+* initialize PairHMM origin edit distance for global banding ([#688](https://github.com/rust-bio/rust-bio/issues/688)) ([3e60e2b](https://github.com/rust-bio/rust-bio/commit/3e60e2bc5c559217422ac49fc2d234cbcdd603c3))
+* open HomopolyPairHMM gaps with the probability of the sequence that has the gap ([#703](https://github.com/rust-bio/rust-bio/issues/703)) ([0462c15](https://github.com/rust-bio/rust-bio/commit/0462c15bed940c30b7ed139e3a45c75d4fd9c9b5))
+* **poa:** preserve alignment across graph insertion ([#690](https://github.com/rust-bio/rust-bio/issues/690)) ([841f86f](https://github.com/rust-bio/rust-bio/commit/841f86f61525f0771aad2284ac3e9f7abae800c4))
+
+
+### Dependencies
+
+* update bit-set requirement from 0.10 to 0.11 ([#681](https://github.com/rust-bio/rust-bio/issues/681)) ([f325291](https://github.com/rust-bio/rust-bio/commit/f3252912e610f9a80793c26968eec982c2a3a70a))
+* update statrs requirement from &gt;= 0.11, &lt; 0.19 to >= 0.11, < 0.20 ([#683](https://github.com/rust-bio/rust-bio/issues/683)) ([e536843](https://github.com/rust-bio/rust-bio/commit/e536843cb2053a6cfc295e567d52e05bbbffe6a6))
+
+## [4.0.1](https://github.com/rust-bio/rust-bio/compare/v4.0.0...v4.0.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* **pattern_matching:** reject 64-symbol patterns in shift_and and bndm ([#675](https://github.com/rust-bio/rust-bio/issues/675)) ([49aafac](https://github.com/rust-bio/rust-bio/commit/49aafacb55594de96ee3c1843233e341249b8c09))
+
+
+### Dependencies
+
+* update itertools requirement from &gt;=0.8, &lt;0.15 to >=0.8, <0.16 ([#676](https://github.com/rust-bio/rust-bio/issues/676)) ([1760c1d](https://github.com/rust-bio/rust-bio/commit/1760c1d86e611c2ea324fda50b7d12126de412cd))
+
+## [4.0.0](https://github.com/rust-bio/rust-bio/compare/v3.0.0...v4.0.0) (2026-06-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* Replace anyhow with typed thiserror errors ([#674](https://github.com/rust-bio/rust-bio/issues/674))
+* Change Phase conversion methods to use TryFrom for better error handling ([#625](https://github.com/rust-bio/rust-bio/issues/625))
+* for pairwise alignment, only apply gap_extend penalty for each extension of a gap beyond length 1, not upon gap opening ([#660](https://github.com/rust-bio/rust-bio/issues/660))
+
+### refactor
+
+* Change Phase conversion methods to use TryFrom for better error handling ([#625](https://github.com/rust-bio/rust-bio/issues/625)) ([c8718fc](https://github.com/rust-bio/rust-bio/commit/c8718fc87444928db55e0e1bb118c4bcd873ae8a))
+* Replace anyhow with typed thiserror errors ([#674](https://github.com/rust-bio/rust-bio/issues/674)) ([ae5d31a](https://github.com/rust-bio/rust-bio/commit/ae5d31a37a83056b34af3f655ed3ec2759110070))
+
+
+### Features
+
+* **gff:** percent-encode and -decode GFF3 attributes per the spec ([#672](https://github.com/rust-bio/rust-bio/issues/672)) ([40166d6](https://github.com/rust-bio/rust-bio/commit/40166d674006c71b5205465f0f15e4a533432035))
+* **rank_select:** add RankSelect::extend for appending many bits ([#671](https://github.com/rust-bio/rust-bio/issues/671)) ([3b90bb3](https://github.com/rust-bio/rust-bio/commit/3b90bb3ad607f8963dd68631d230a9c5b323200d))
+* **rank_select:** add RankSelect::push for incremental construction ([#670](https://github.com/rust-bio/rust-bio/issues/670)) ([aba35b5](https://github.com/rust-bio/rust-bio/commit/aba35b5dc0c6a5a7d70616359d6370b4bcfc861b))
+
+
+### Bug Fixes
+
+* fix compiler warnings ([#661](https://github.com/rust-bio/rust-bio/issues/661)) ([8c9013a](https://github.com/rust-bio/rust-bio/commit/8c9013a1ac8794c35dd08a78fecb2cf3d19d023c))
+* **fmindex:** avoid usize underflow on backward_search for lex-smallest symbol ([#663](https://github.com/rust-bio/rust-bio/issues/663)) ([79dc5d1](https://github.com/rust-bio/rust-bio/commit/79dc5d107fe6cdb1223e857f325e02af8dae72fa))
+* for pairwise alignment, only apply gap_extend penalty for each extension of a gap beyond length 1, not upon gap opening ([#660](https://github.com/rust-bio/rust-bio/issues/660)) ([51e3d29](https://github.com/rust-bio/rust-bio/commit/51e3d295f9d4ffc8fbd09d2b982dde1069800b24)), closes [#656](https://github.com/rust-bio/rust-bio/issues/656)
+* import RngExt so tests and benches compile with rand 0.10 ([#668](https://github.com/rust-bio/rust-bio/issues/668)) ([435d696](https://github.com/rust-bio/rust-bio/commit/435d6968f4a960ef100110f9e256dc3003bfdda8))
+* **io:** reject non-IUPAC characters in FASTA/FASTQ Record::check ([#662](https://github.com/rust-bio/rust-bio/issues/662)) ([607960a](https://github.com/rust-bio/rust-bio/commit/607960a475e17cfb414a82e14252ca01caa95c78))
+* **test:** import RngExt for random_range in rank_select test ([#667](https://github.com/rust-bio/rust-bio/issues/667)) ([ae8d54d](https://github.com/rust-bio/rust-bio/commit/ae8d54dfc15b0bae21d5e875b8dcb91f199fbe78))
+
+
+### Miscellaneous
+
+* add keywords and categories to Cargo.toml ([#669](https://github.com/rust-bio/rust-bio/issues/669)) ([e9f5a84](https://github.com/rust-bio/rust-bio/commit/e9f5a8454ea1133d5731f9f8ed77e3e32474635c))
+
+
+### Dependencies
+
+* update bit-set requirement from 0.8 to 0.10 ([#658](https://github.com/rust-bio/rust-bio/issues/658)) ([2996eae](https://github.com/rust-bio/rust-bio/commit/2996eae3f8264e08abab06db849e44b4611c52f5))
+* update rand requirement from 0.9.0 to 0.10.1 ([#659](https://github.com/rust-bio/rust-bio/issues/659)) ([30244e2](https://github.com/rust-bio/rust-bio/commit/30244e2759ddfb3cc3287d9fa287e9b34884b2ad))
+
 ## [3.0.0](https://github.com/rust-bio/rust-bio/compare/v2.3.0...v3.0.0) (2025-09-19)
 
 

@@ -226,6 +226,7 @@ mod tests {
 
     use bio_types::annot::pos::Pos;
     use bio_types::strand::{ReqStrand, Strand};
+    use std::io;
     use std::path::Path;
 
     const BEDPE_FILE: &[u8] = b"\
@@ -298,12 +299,8 @@ mod tests {
     #[test]
     fn test_reader_from_file_path_doesnt_exist_returns_err() {
         let path = Path::new("/I/dont/exist.bedpe");
-        let error = Reader::from_file(path)
-            .unwrap_err()
-            .downcast::<String>()
-            .unwrap();
-
-        assert_eq!(&error, "Failed to read from \"/I/dont/exist.bedpe\"")
+        let error = Reader::from_file(path).unwrap_err();
+        assert_eq!(error.source.kind(), io::ErrorKind::NotFound);
     }
 
     #[test]

@@ -136,11 +136,30 @@ use std::convert::AsRef;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::utils::{Text, TextSlice};
-use anyhow::Context;
 use std::fmt;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ReadError {
+    #[error("failed to open {path}: {source}")]
+    Open { path: PathBuf, source: io::Error },
+    #[error(transparent)]
+    Parse(#[from] csv::Error),
+}
+pub type Result<T, E = ReadError> = std::result::Result<T, E>;
+
+#[derive(Error, Debug, PartialEq)]
+pub enum CheckError {
+    #[error("Expecting id for Fasta record.")]
+    EmptyId,
+    #[error("Non-ascii character found in sequence.")]
+    NonAsciiSequence,
+    #[error("Invalid character found in sequence.")]
+    InvalidSequence,
+}
 
 /// Maximum size of temporary buffer used for reading indexed FASTA files.
 const MAX_FASTA_BUFFER_SIZE: usize = 512;
@@ -159,20 +178,19 @@ pub struct Reader<B> {
 
 impl Reader<io::BufReader<fs::File>> {
     /// Read FASTA from given file path.
-    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: P) -> anyhow::Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path = path.as_ref().to_path_buf();
         fs::File::open(&path)
+            .map_err(|source| ReadError::Open { path, source })
             .map(Reader::new)
-            .with_context(|| format!("Failed to read fasta from {:#?}", path))
     }
 
     /// Read FASTA from give file path and a capacity
-    pub fn from_file_with_capacity<P: AsRef<Path> + std::fmt::Debug>(
-        capacity: usize,
-        path: P,
-    ) -> anyhow::Result<Self> {
+    pub fn from_file_with_capacity<P: AsRef<Path>>(capacity: usize, path: P) -> Result<Self> {
+        let path = path.as_ref().to_path_buf();
         fs::File::open(&path)
+            .map_err(|source| ReadError::Open { path, source })
             .map(|file| Reader::with_capacity(capacity, file))
-            .with_context(|| format!("Failed to read fasta from {:#?}", path))
     }
 }
 
@@ -323,10 +341,7 @@ where
         }
 
         if !self.line.starts_with('>') {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Expected > at record start.",
-            ));
+            return Err(io::Error::other("Expected > at record start."));
         }
         let mut header_fields = self.line[1..].trim_end().splitn(2, char::is_whitespace);
         record.id = header_fields.next().map(|s| s.to_owned()).unwrap();
@@ -370,16 +385,18 @@ impl Index {
     }
 
     /// Open a FASTA index from a given file path.
-    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> anyhow::Result<Self> {
-        fs::File::open(path)
-            .map_err(csv::Error::from)
-            .and_then(Self::new)
-            .with_context(|| format!("Failed to read fasta index from {:#?}", path))
+    pub fn from_file<P: AsRef<Path>>(path: &P) -> Result<Self> {
+        let path_buf = path.as_ref().to_path_buf();
+        let file = fs::File::open(&path_buf).map_err(|source| ReadError::Open {
+            path: path_buf,
+            source,
+        })?;
+        Self::new(file).map_err(ReadError::Parse)
     }
 
     /// Open a FASTA index given the corresponding FASTA file path.
     /// That is, for ref.fasta we expect ref.fasta.fai.
-    pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> anyhow::Result<Self> {
+    pub fn with_fasta_file<P: AsRef<Path>>(fasta_path: &P) -> Result<Self> {
         let mut fai_path = fasta_path.as_ref().as_os_str().to_owned();
         fai_path.push(".fai");
 
@@ -412,12 +429,14 @@ pub struct IndexedReader<R: io::Read + io::Seek> {
 impl IndexedReader<fs::File> {
     /// Read from a given file path. This assumes the index ref.fasta.fai to be
     /// present for FASTA ref.fasta.
-    pub fn from_file<P: AsRef<Path> + std::fmt::Debug>(path: &P) -> anyhow::Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(path: &P) -> Result<Self> {
         let index = Index::with_fasta_file(path)?;
-        fs::File::open(path)
-            .map(|f| Self::with_index(f, index))
-            .map_err(csv::Error::from)
-            .with_context(|| format!("Failed to read fasta from {:#?}", path))
+        let path_buf = path.as_ref().to_path_buf();
+        let file = fs::File::open(&path_buf).map_err(|source| ReadError::Open {
+            path: path_buf,
+            source,
+        })?;
+        Ok(Self::with_index(file, index))
     }
 }
 
@@ -544,10 +563,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         let idx = self.fetched_idx.clone();
         match (idx, self.start, self.stop) {
             (Some(idx), Some(start), Some(stop)) => self.read_into_buffer(idx, start, stop, seq),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "No sequence fetched for reading.",
-            )),
+            _ => Err(io::Error::other("No sequence fetched for reading.")),
         }
     }
 
@@ -556,10 +572,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         let idx = self.fetched_idx.clone();
         match (idx, self.start, self.stop) {
             (Some(idx), Some(start), Some(stop)) => self.read_into_iter(idx, start, stop),
-            _ => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "No sequence fetched for reading.",
-            )),
+            _ => Err(io::Error::other("No sequence fetched for reading.")),
         }
     }
 
@@ -571,15 +584,9 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         seq: &mut Text,
     ) -> io::Result<()> {
         if stop > idx.len {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "FASTA read interval was out of bounds",
-            ));
+            return Err(io::Error::other("FASTA read interval was out of bounds"));
         } else if start > stop {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Invalid query interval",
-            ));
+            return Err(io::Error::other("Invalid query interval"));
         }
 
         let mut bases_left = stop - start;
@@ -600,15 +607,9 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
         stop: u64,
     ) -> io::Result<IndexedReaderIterator<'_, R>> {
         if stop > idx.len {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "FASTA read interval was out of bounds",
-            ));
+            return Err(io::Error::other("FASTA read interval was out of bounds"));
         } else if start > stop {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Invalid query interval",
-            ));
+            return Err(io::Error::other("Invalid query interval"));
         }
 
         let bases_left = stop - start;
@@ -632,10 +633,10 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     fn idx(&self, seqname: &str) -> io::Result<IndexRecord> {
         match self.index.name_to_rid.get(seqname) {
             Some(rid) => self.idx_by_rid(*rid),
-            None => Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Unknown sequence name: {}.", seqname),
-            )),
+            None => Err(io::Error::other(format!(
+                "Unknown sequence name: {}.",
+                seqname
+            ))),
         }
     }
 
@@ -643,10 +644,7 @@ impl<R: io::Read + io::Seek> IndexedReader<R> {
     fn idx_by_rid(&self, rid: usize) -> io::Result<IndexRecord> {
         match self.index.inner.get(rid) {
             Some(record) => Ok(record.clone()),
-            None => Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Invalid record index in fasta file.",
-            )),
+            None => Err(io::Error::other("Invalid record index in fasta file.")),
         }
     }
 
@@ -847,7 +845,8 @@ impl<W: io::Write> Writer<W> {
     /// use std::io;
     /// use std::path::Path;
     ///
-    /// let path = Path::new("test.fa");
+    /// let tmp = tempfile::NamedTempFile::new().unwrap();
+    /// let path = tmp.path();
     /// let file = fs::File::create(path).unwrap();
     /// {
     ///     let handle = io::BufWriter::new(file);
@@ -877,7 +876,8 @@ impl<W: io::Write> Writer<W> {
     /// use std::io;
     /// use std::path::Path;
     ///
-    /// let path = Path::new("test.fa");
+    /// let tmp = tempfile::NamedTempFile::new().unwrap();
+    /// let path = tmp.path();
     /// let file = fs::File::create(path).unwrap();
     /// {
     ///     let handle = io::BufWriter::new(file);
@@ -916,19 +916,19 @@ impl<W: io::Write> Writer<W> {
     /// Write a Fasta record with given id, optional description and sequence.
     pub fn write(&mut self, id: &str, desc: Option<&str>, seq: TextSlice<'_>) -> io::Result<()> {
         self.write_record_header(id, desc)?;
-        if self.linewrap == None {
-            self.writer.write_all(seq)?;
-            self.writer.write_all(b"\n")?;
-            Ok(())
-        } else {
+        if let Some(linewrap) = self.linewrap {
             // Write Fasta lines with a given linewrap instead of in a single line
-            seq.chunks(self.linewrap.unwrap())
+            seq.chunks(linewrap)
                 .try_for_each(|chunk| -> io::Result<()> {
                     self.writer.write_all(chunk)?;
                     self.writer.write_all(b"\n")?;
 
                     Ok(())
                 })
+        } else {
+            self.writer.write_all(seq)?;
+            self.writer.write_all(b"\n")?;
+            Ok(())
         }
     }
 
@@ -984,12 +984,25 @@ impl Record {
     }
 
     /// Check validity of Fasta record.
-    pub fn check(&self) -> Result<(), &str> {
+    ///
+    /// Verifies that the record has a non-empty id, that the sequence is
+    /// ASCII, and that every sequence character is an ASCII letter (covering
+    /// e.g. IUPAC nucleotide and amino acid codes), a gap (`-`, `.`), or a
+    /// stop (`*`). Characters such as digits, whitespace, or symbols like
+    /// `@` are rejected.
+    pub fn check(&self) -> std::result::Result<(), CheckError> {
         if self.id().is_empty() {
-            return Err("Expecting id for Fasta record.");
+            return Err(CheckError::EmptyId);
         }
         if !self.seq.is_ascii() {
-            return Err("Non-ascii character found in sequence.");
+            return Err(CheckError::NonAsciiSequence);
+        }
+        if !self
+            .seq
+            .bytes()
+            .all(|b| b.is_ascii_alphabetic() || matches!(b, b'-' | b'.' | b'*'))
+        {
+            return Err(CheckError::InvalidSequence);
         }
 
         Ok(())
@@ -1278,6 +1291,19 @@ TTTA
         );
     }
 
+    // Regression test for https://github.com/rust-bio/rust-bio/issues/472:
+    // sequence characters that are ASCII but not valid IUPAC residues (e.g.
+    // `@`, `#`, digits, whitespace) used to slip past `check()`.
+    #[test]
+    fn test_check_record_seq_has_non_iupac_raises_err() {
+        let record = Record::with_attrs("id", None, b"ACGT@A");
+
+        let actual = record.check().unwrap_err().to_string();
+        let expected = "Invalid character found in sequence.";
+
+        assert_eq!(actual, expected)
+    }
+
     #[test]
     fn test_reader_read_fails() {
         let mut reader = Reader::new(ReaderMock {
@@ -1312,12 +1338,8 @@ TTTA
     #[test]
     fn test_reader_from_file_path_doesnt_exist_returns_err() {
         let path = Path::new("/I/dont/exist.fasta");
-        let error = Reader::from_file(path)
-            .unwrap_err()
-            .downcast::<String>()
-            .unwrap();
-
-        assert_eq!(&error, "Failed to read fasta from \"/I/dont/exist.fasta\"")
+        let error = Reader::from_file(path).unwrap_err();
+        assert!(matches!(error, ReadError::Open { .. }));
     }
 
     #[test]
@@ -1837,7 +1859,8 @@ TTTA
 
     #[test]
     fn test_write_record() {
-        let path = Path::new("test.fa");
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let path = tmp.path();
         let file = fs::File::create(path).unwrap();
         {
             let handle = io::BufWriter::new(file);

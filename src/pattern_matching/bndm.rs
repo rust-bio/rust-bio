@@ -4,7 +4,7 @@
 // except according to those terms.
 
 //! Backward nondeterministic DAWG matching (BNDM).
-//! Best-case complexity: O(n / m) with pattern of length m <= 64 and text of length n.
+//! Best-case complexity: O(n / m) with pattern of length m < 64 and text of length n.
 //! Worst case complexity: O(n * m).
 //!
 //! # Example
@@ -40,7 +40,7 @@ impl BNDM {
     {
         let pattern = pattern.into_iter();
         let m = pattern.len();
-        assert!(m <= 64, "Expecting a pattern of at most 64 symbols.");
+        assert!(m < 64, "Expecting a pattern of less than 64 symbols.");
         // take the reverse pattern and build nondeterministic
         // suffix automaton
         let (masks, accept) = masks(pattern.rev());
@@ -128,5 +128,26 @@ mod tests {
         let pattern = b"dhjalk";
         let bndm = BNDM::new(pattern);
         assert_eq!(bndm.find_all(text).collect_vec(), [0]);
+    }
+
+    #[test]
+    fn test_max_length_pattern() {
+        // 63 symbols is the longest supported pattern. Previously a 64-symbol
+        // pattern panicked with a shift overflow at `1u64 << m` (#203); 63 must
+        // work correctly.
+        let pattern = [b'A'; 63];
+        let mut text = vec![b'C'; 10];
+        text.extend_from_slice(&pattern);
+        let bndm = BNDM::new(&pattern[..]);
+        assert_eq!(bndm.find_all(&text[..]).collect_vec(), [10]);
+    }
+
+    #[test]
+    #[should_panic(expected = "less than 64 symbols")]
+    fn test_too_long_pattern_panics() {
+        // 64 symbols would overflow the u64 masks / the `1u64 << m` shift; it
+        // must be rejected at construction time (#203).
+        let pattern = [b'A'; 64];
+        BNDM::new(&pattern[..]);
     }
 }

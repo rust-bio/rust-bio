@@ -56,7 +56,15 @@ pub fn combinations(n: u64, k: u64) -> f64 {
 /// assert_relative_eq!(combinations_with_repl(5, 3), 35., epsilon = f64::EPSILON);
 /// ```
 pub fn combinations_with_repl(n: u64, k: u64) -> f64 {
-    combinations(n + k - 1, k)
+    if n == 0 {
+        if k == 0 {
+            1.0
+        } else {
+            0.0
+        }
+    } else {
+        combinations(n + k - 1, k)
+    }
 }
 
 #[cfg(test)]
@@ -67,6 +75,8 @@ mod tests {
     fn test_comb() {
         assert_relative_eq!(combinations(10, 3), 120.0, epsilon = f64::EPSILON);
         assert_relative_eq!(combinations_with_repl(10, 3), 220.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(combinations_with_repl(0, 0), 1.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(combinations_with_repl(0, 5), 0.0, epsilon = f64::EPSILON);
         assert_relative_eq!(
             combinations(200, 10),
             22451004309013280.0,

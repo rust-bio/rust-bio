@@ -23,7 +23,7 @@ impl DNAMotif {
     /// # Arguments
     /// * `seqs` - sequences incorporated into motif
     /// * `pseudos` - array slice with a pseudocount for each monomer;
-    ///    defaults to pssm::DEF_PSEUDO for all if None is supplied
+    ///   defaults to pssm::DEF_PSEUDO for all if None is supplied
     ///
     /// FIXME: pseudos should be an array of size MONO_CT, but that
     /// is currently impossible - see
@@ -308,6 +308,7 @@ mod tests {
         .unwrap();
         assert_eq!(pssm.degenerate_consensus(), b"NNNN".to_vec());
     }
+
     #[test]
     fn test_degenerate_input() {
         let pssm: DNAMotif = DNAMotif::from_seqs(&[b"ATMC".to_vec()], Some(&[0.0; 4])).unwrap();

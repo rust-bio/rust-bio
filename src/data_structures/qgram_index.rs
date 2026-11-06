@@ -408,10 +408,9 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "nightly")]
     fn test_serde() {
         use serde::{Deserialize, Serialize};
-        fn impls_serde_traits<S: Serialize + Deserialize>() {}
+        fn impls_serde_traits<S: Serialize + for<'de> Deserialize<'de>>() {}
 
         impls_serde_traits::<QGramIndex>();
     }

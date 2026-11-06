@@ -6,6 +6,17 @@
 //! The [Full-text index in Minute space index (FM-index)](https://doi.org/10.1109/SFCS.2000.892127) and
 //! the FMD-Index for finding suffix array intervals matching a given pattern in linear time.
 //!
+//! # Sentinel requirement
+//!
+//! The text that the underlying suffix array and BWT are built on **must end
+//! with a sentinel symbol** that is lexicographically smaller than every other
+//! symbol and does not occur anywhere else in the text. By convention this is
+//! the `$` character (see [`crate::data_structures::suffix_array::suffix_array`]).
+//! Searching an index built from a text without a trailing sentinel
+//! (e.g. a raw FASTA sequence) silently returns wrong results rather than
+//! erroring, so make sure to append the sentinel before constructing the index.
+//! Multiple sentinels are allowed when concatenating several sequences.
+//!
 //! # Examples
 //!
 //! ## Generate
@@ -110,6 +121,11 @@ pub trait FMIndexable {
     /// `Absent`.
     /// Complexity: O(m).
     ///
+    /// Note: the index must have been built from a text ending with a sentinel
+    /// symbol (`$`, lexicographically smallest and not occurring elsewhere). An
+    /// index built from a text without a trailing sentinel yields wrong results
+    /// silently. See the [module-level documentation](self) for details.
+    ///
     /// # Arguments
     ///
     /// * `pattern` - the pattern to search
@@ -161,8 +177,15 @@ pub trait FMIndexable {
             let less = self.less(a);
             pl = l;
             pr = r;
+            let occ_r = self.occ(r, a);
+            // Empty interval; the assignment to `r` below would underflow when
+            // `less == 0`. See https://github.com/rust-bio/rust-bio/issues/606.
+            if occ_r == 0 {
+                complete_match = false;
+                break;
+            }
             l = less + if l > 0 { self.occ(l - 1, a) } else { 0 };
-            r = less + self.occ(r, a) - 1;
+            r = less + occ_r - 1;
 
             // The symbol was not found if we end up with an empty interval.
             // Terminate the LF-mapping process. In this case, also mark that
@@ -571,7 +594,7 @@ impl<DBWT: Borrow<BWT>, DLess: Borrow<Less>, DOcc: Borrow<Occ>> FMDIndex<DBWT, D
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::alphabets::dna;
+    use crate::alphabets::{dna, Alphabet};
     use crate::data_structures::bwt::{bwt, less, Occ};
     use crate::data_structures::suffix_array::suffix_array;
 
@@ -666,6 +689,32 @@ mod tests {
 
         assert_eq!(partial_match_len, 4);
         assert_eq!(positions, [3]);
+    }
+
+    // Regression test for https://github.com/rust-bio/rust-bio/issues/606:
+    // searching for a pattern containing the lex-smallest symbol of the
+    // alphabet used to underflow `r` and crash with an out-of-bounds read.
+    #[test]
+    fn test_fmindex_backward_search_smallest_symbol_no_panic() {
+        // `\0` is both the sentinel (terminal, lex-smallest) and a regular
+        // alphabet symbol with `less[\0] == 0`.
+        let text = b"AAA\0";
+        let alphabet = Alphabet::new(b"\0A");
+        let sa = suffix_array(text);
+        let bwt = bwt(text, &sa);
+        let less = less(&bwt, &alphabet);
+        let occ = Occ::new(&bwt, 3, &alphabet);
+        let fm = FMIndex::new(&bwt, &less, &occ);
+
+        // Pattern is not in the text. Processing the trailing `\0`s in
+        // reverse order used to underflow `r` and panic on the next step.
+        let pattern = b"A\0\0";
+        let result = fm.backward_search(pattern.iter());
+
+        match result {
+            BackwardSearchResult::Absent | BackwardSearchResult::Partial(_, _) => {}
+            BackwardSearchResult::Complete(_) => panic!("pattern is not in text"),
+        }
     }
 
     #[test]

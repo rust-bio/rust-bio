@@ -4,7 +4,7 @@
 // except according to those terms.
 
 //! `ShiftAnd` algorithm for pattern matching.
-//! Patterns may contain at most 64 symbols.
+//! Patterns may contain less than 64 symbols.
 //! Complexity: O(n) with text length n.
 //!
 //! # Example
@@ -39,7 +39,7 @@ impl ShiftAnd {
     {
         let pattern = pattern.into_iter();
         let m = pattern.len();
-        assert!(m <= 64, "Expecting a pattern of at most 64 symbols.");
+        assert!(m < 64, "Expecting a pattern of less than 64 symbols.");
         let (masks, accept) = masks(pattern);
 
         ShiftAnd { m, masks, accept }
@@ -136,5 +136,25 @@ mod tests {
         let pattern = b"CC";
         let shiftand = ShiftAnd::new(pattern);
         assert_eq!(shiftand.find_all(text).collect_vec(), [0, 3, 6]);
+    }
+
+    #[test]
+    fn test_max_length_pattern() {
+        // 63 symbols is the longest supported pattern (the masks are u64, so
+        // bit 63 is the highest usable position). It must still match.
+        let pattern = [b'A'; 63];
+        let mut text = vec![b'C'; 10];
+        text.extend_from_slice(&pattern);
+        let shiftand = ShiftAnd::new(&pattern);
+        assert_eq!(shiftand.find_all(&text).collect_vec(), [10]);
+    }
+
+    #[test]
+    #[should_panic(expected = "less than 64 symbols")]
+    fn test_too_long_pattern_panics() {
+        // 64 symbols would overflow the u64 masks; this must be rejected up
+        // front rather than silently producing a wrong `accept` mask (#203).
+        let pattern = [b'A'; 64];
+        ShiftAnd::new(&pattern);
     }
 }

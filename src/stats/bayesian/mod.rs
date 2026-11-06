@@ -25,6 +25,36 @@ use crate::stats::LogProb;
 /// # Returns
 ///
 /// A vector of expected FDRs in the same order as the given PEPs.
+///
+/// # Example
+///
+/// ```
+/// use approx::assert_relative_eq;
+/// use bio::stats::bayesian::expected_fdr;
+/// use bio::stats::{LogProb, Prob};
+///
+/// // Three hypothesis tests with posterior error probabilities (PEPs) of
+/// // 0.1, 0.0 (i.e. certainly not null) and 0.25.
+/// let peps = [
+///     LogProb::from(Prob(0.1)),
+///     LogProb::ln_zero(),
+///     LogProb::from(Prob(0.25)),
+/// ];
+/// let fdrs = expected_fdr(&peps);
+///
+/// // The hypothesis with PEP = 0.0 is never expected to be a false positive.
+/// assert_relative_eq!(*fdrs[1], *LogProb::ln_zero());
+/// // Rejecting just the two most confident hypotheses (indices 1 and 0) yields
+/// // an expected FDR of (0.0 + 0.1) / 2 = 0.05.
+/// assert_relative_eq!(*fdrs[0], *LogProb::from(Prob(0.05)), epsilon = 1e-6);
+/// // Rejecting all three yields an expected FDR of (0.0 + 0.1 + 0.25) / 3.
+/// assert_relative_eq!(*fdrs[2], *LogProb::from(Prob(0.35 / 3.0)), epsilon = 1e-6);
+/// ```
+///
+/// # Complexity
+///
+/// Runs in _O(n log n)_ time and requires _O(n)_ additional space, where
+/// `n = peps.len()`, dominated by sorting the PEPs by ascending probability.
 pub fn expected_fdr(peps: &[LogProb]) -> Vec<LogProb> {
     // sort indices
     let sorted_idx =

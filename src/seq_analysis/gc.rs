@@ -18,7 +18,11 @@ fn gcn_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T, step: usiz
             b'c' | b'g' | b'G' | b'C' => (l + 1, count + 1),
             _ => (l + 1, count),
         });
-    count as f32 / l as f32
+    if l == 0 {
+        0.0
+    } else {
+        count as f32 / l as f32
+    }
 }
 
 /// Returns the ratio of bases which are guanine or cytososine
@@ -52,12 +56,12 @@ pub fn gc_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 
 /// ```
 /// use approx::assert_relative_eq;
 /// use bio::seq_analysis::gc::gc3_content;
-/// const seq: &'static [u8] = b"GATATACA";
-/// //                           ^  ^  ^
+/// const seq: &'static [u8] = b"AAGTAGTAA";
+/// //                             ^  ^  ^
 /// assert_relative_eq!(gc3_content(seq), 2. / 3., epsilon = f32::EPSILON);
 /// ```
 pub fn gc3_content<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> f32 {
-    gcn_content(sequence, 3usize)
+    gcn_content(sequence.into_iter().skip(2), 3usize)
 }
 
 #[cfg(test)]
@@ -72,6 +76,16 @@ mod tests {
         assert_relative_eq!(gc_content(gc50), 0.5, epsilon = f32::EPSILON);
         let gc100 = b"GCGC";
         assert_relative_eq!(gc_content(gc100), 1.0, epsilon = f32::EPSILON);
+    }
+
+    #[test]
+    fn test_gc3_content() {
+        let seq = b"AAGTAGTAA";
+        assert_relative_eq!(gc3_content(seq), 2.0 / 3.0, epsilon = f32::EPSILON);
+        let seq2 = b"GAA";
+        assert_relative_eq!(gc3_content(seq2), 0.0, epsilon = f32::EPSILON);
+        let empty: &[u8] = b"";
+        assert_relative_eq!(gc3_content(empty), 0.0, epsilon = f32::EPSILON);
     }
 
     #[test]
