@@ -65,6 +65,6 @@ features = ["stable_graph"]
 
 
 [dev-dependencies]
-proptest = "1"
+proptest = "~1.11"
 tempfile = "3.1.0"
 rand = "0.10.1"
