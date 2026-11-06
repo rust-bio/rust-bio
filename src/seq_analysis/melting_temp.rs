@@ -1,3 +1,10 @@
+//! Melting temperature calculation for nucleotide sequences.
+//!
+//! This is a port of the nearest-neighbor method from Biopython's
+//! `Bio.SeqUtils.MeltingTemp.Tm_NN`. It provides the DNA/DNA, RNA/RNA and
+//! RNA/DNA thermodynamic tables implemented by Biopython, together with
+//! correction for dangling ends, terminal mismatches and salt concentration.
+
 use crate::alphabets::dna;
 use crate::seq_analysis::gc::gc_content;
 use std::borrow::{Borrow, Cow};
@@ -10,20 +17,45 @@ fn compl_seq<C: Borrow<u8>, T: IntoIterator<Item = C>>(sequence: T) -> Vec<u8> {
         .collect()
 }
 
+/// Parameters for [`tm_nn`].
+///
+/// The defaults match Biopython's `Tm_NN` defaults: DNA_NN3 table, DNA
+/// dangling ends, `Na = 50 mM`, `dnac1 = dnac2 = 25 nM`, and salt
+/// correction method 5.
 #[derive(Clone)]
 pub struct TmNnParams {
+    /// If `true` (default), return an error when no thermodynamic data is
+    /// available for a dangling end. If `false`, missing dangling-end terms
+    /// are skipped and the result may be inaccurate. Unknown nearest-neighbor
+    /// pairs always produce an error.
     pub strict: bool,
+    /// Shift of `sequence` relative to `c_sequence` (see Biopython's
+    /// `Tm_NN` `shift` argument for the alignment convention).
     pub shift: i32,
+    /// Concentration of the higher concentrated strand in nM (default: 25).
     pub dnac1: f64,
+    /// Concentration of the lower concentrated strand in nM (default: 25).
     pub dnac2: f64,
+    /// Treat the sequence as self-complementary. If `true`, `dnac2` is
+    /// ignored and a symmetry correction is applied.
     pub selfcomp: bool,
+    /// Na⁺ concentration in mM (default: 50).
     pub na: f64,
+    /// K⁺ concentration in mM (default: 0).
     pub k: f64,
+    /// Tris concentration in mM (default: 0).
     pub tris: f64,
+    /// Mg²⁺ concentration in mM (default: 0).
     pub mg: f64,
+    /// dNTP concentration in mM (default: 0).
     pub dntps: f64,
+    /// Salt correction method (0 = none, 1–7; default: 5). See Biopython's
+    /// `salt_correction` for the formulas. Note: method 7 is currently
+    /// approximated with method 6.
     pub saltcorr: u8,
+    /// Nearest-neighbor thermodynamic table (default: [`NnTable::DnaNn3`]).
     pub nn_table: NnTable,
+    /// Dangling-end thermodynamic table (default: [`DeTable::DnaDe1`]).
     pub de_table: DeTable,
 }
 
@@ -47,8 +79,10 @@ impl Default for TmNnParams {
     }
 }
 
-// Structure to hold initiation parameters for DNA_NN tables
-// These are the "init_*" values from the thermodynamic tables
+/// Initiation parameters for a nearest-neighbor table.
+///
+/// These are the `init*` and `sym` values from Biopython's thermodynamic
+/// tables. Each value is `[ΔH (kcal/mol), ΔS (cal/mol K)]`.
 #[derive(Copy, Clone)]
 pub struct DnaInitParams {
     init: HS,        // Basic initiation
@@ -152,7 +186,10 @@ type HS = [f64; 2];
 const D_H: usize = 0;
 const D_S: usize = 1;
 
-/// Enum for nearest-neighbor thermodynamic tables
+/// Nearest-neighbor thermodynamic tables.
+///
+/// The keys are nearest-neighbor duplexes (e.g. `GT/CA` reads 5'-GT-3'
+/// over 3'-CA-5'); values are `[ΔH (kcal/mol), ΔS (cal/mol K)]`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum NnTable {
     /// Breslauer et al. (1986) - DNA/DNA
@@ -175,7 +212,9 @@ pub enum NnTable {
 }
 
 impl NnTable {
-    /// Look up nearest-neighbor thermodynamic values
+    /// Look up `[ΔH, ΔS]` for a nearest-neighbor pair.
+    ///
+    /// `pair` must be formatted as `b"XY/ZW"`, e.g. `b"GT/CA"`.
     pub fn lookup(&self, pair: &[u8]) -> Option<HS> {
         match self {
             NnTable::DnaNn1 => dna_nn1_lookup(pair),
@@ -189,7 +228,7 @@ impl NnTable {
         }
     }
 
-    /// Get initiation parameters for this table
+    /// Return the initiation parameters for this table.
     pub fn init_params(&self) -> DnaInitParams {
         match self {
             NnTable::DnaNn1 => DNA_NN1_INIT,
@@ -204,7 +243,10 @@ impl NnTable {
     }
 }
 
-/// Enum for dangling end tables
+/// Dangling-end thermodynamic tables.
+///
+/// The keys include a `.` for the unpaired base (e.g. `AA/.T`); values are
+/// `[ΔH (kcal/mol), ΔS (cal/mol K)]`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DeTable {
     /// Bommarito et al. (2000) - DNA dangling ends (default)
@@ -215,7 +257,9 @@ pub enum DeTable {
 }
 
 impl DeTable {
-    /// Look up dangling end thermodynamic values
+    /// Look up `[ΔH, ΔS]` for a dangling-end pair.
+    ///
+    /// `seq_pair` must be formatted as `b"XY/.Z"` or `b".X/YZ"`.
     pub fn lookup(&self, seq_pair: &[u8]) -> Option<HS> {
         match self {
             DeTable::DnaDe1 => de1_lookup(seq_pair),
@@ -682,6 +726,38 @@ fn salt_correction(
     Ok(corr)
 }
 
+/// Calculate the melting temperature using nearest neighbor thermodynamics.
+///
+/// This is a port of Biopython's `Bio.SeqUtils.MeltingTemp.Tm_NN`. It sums
+/// enthalpy and entropy contributions from initiation, terminal base pairs,
+/// dangling ends, terminal mismatches and nearest-neighbor pairs, then applies
+/// an optional salt correction.
+///
+/// `sequence` is the primer/probe sequence. For RNA/DNA hybridizations it must
+/// be the RNA strand, expressed with `T` rather than `U` (matching the
+/// thermodynamic tables). `c_sequence` is the complementary target/template
+/// sequence in 3'→5' direction; it is required for mismatch and dangling-end
+/// correction. When `None`, the perfect complement is used.
+///
+/// # Examples
+///
+/// ```
+/// use bio::seq_analysis::melting_temp::{tm_nn, NnTable, TmNnParams};
+///
+/// let tm = tm_nn(b"CGTTCCAAAGATGTGGGCATGAGCTTAC", None, TmNnParams::default()).unwrap();
+/// assert!((tm - 60.32).abs() < 0.01);
+///
+/// let tm = tm_nn(
+///     b"CGTTCCAAAGATGTGGGCATGAGCTTAC",
+///     None,
+///     TmNnParams {
+///         nn_table: NnTable::DnaNn1,
+///         ..Default::default()
+///     },
+/// )
+/// .unwrap();
+/// assert!((tm - 72.19).abs() < 0.01);
+/// ```
 pub fn tm_nn(
     sequence: &[u8],
     c_sequence: Option<&[u8]>,
