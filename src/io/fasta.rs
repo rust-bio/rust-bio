@@ -334,7 +334,15 @@ where
     fn read(&mut self, record: &mut Record) -> io::Result<()> {
         record.clear();
         if self.line.is_empty() {
-            self.reader.read_line(&mut self.line)?;
+            // Skip comment lines (starting with ';') before the first record,
+            // as in the original (Pearson) FASTA format.
+            loop {
+                self.reader.read_line(&mut self.line)?;
+                if !self.line.starts_with(';') {
+                    break;
+                }
+                self.line.clear();
+            }
             if self.line.is_empty() {
                 return Ok(());
             }
@@ -1266,6 +1274,29 @@ TTTA
         assert!(
             reader.read(&mut record).is_err(),
             "read() should return Err if FASTA header is malformed"
+        );
+    }
+
+    #[test]
+    fn test_reader_leading_comments() {
+        let reader = Reader::new(&b";comment\n;\n>id desc\nACGT\n>id2\nGGGG\nCC\n"[..]);
+        let records: Vec<Record> = reader.records().map(|r| r.unwrap()).collect();
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0].id(), "id");
+        assert_eq!(records[0].desc(), Some("desc"));
+        assert_eq!(records[0].seq(), b"ACGT");
+        assert_eq!(records[1].id(), "id2");
+        assert_eq!(records[1].seq(), b"GGGGCC");
+
+        let mut reader = Reader::new(&b";only a comment\n"[..]);
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap();
+        assert!(record.is_empty());
+
+        let mut reader = Reader::new(&b"text\n>id\nACGT\n"[..]);
+        assert!(
+            reader.read(&mut record).is_err(),
+            "read() should still return Err for other text before the first record"
         );
     }
 
