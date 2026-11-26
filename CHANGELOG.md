@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [4.3.0](https://github.com/rust-bio/rust-bio/compare/v4.2.2...v4.3.0) (2026-11-26)
+
+
+### Features
+
+* skip ';' comment lines before the first FASTA record ([#722](https://github.com/rust-bio/rust-bio/issues/722)) ([8d25b66](https://github.com/rust-bio/rust-bio/commit/8d25b66819326467a308cf8eea3c4d5a14ccf136))
+
+
+### Miscellaneous
+
+* bump MSRV to 1.88 ([#724](https://github.com/rust-bio/rust-bio/issues/724)) ([95576a7](https://github.com/rust-bio/rust-bio/commit/95576a717478c3ab6ea23cb5a1c5a7cceaf01a61))
+
 ## [4.2.2](https://github.com/rust-bio/rust-bio/compare/v4.2.1...v4.2.2) (2026-10-09)
 
 
