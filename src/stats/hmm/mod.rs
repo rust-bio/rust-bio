@@ -5,6 +5,9 @@
 
 //! An implementation of Hidden Markov Models in Rust.
 //!
+//! Profile HMMs, which model a multiple sequence alignment with match, insert and delete states
+//! and align queries to it, live in the [`profile`] submodule.
+//!
 //! ## Examples
 //!
 //! ### Discrete Emission Distribution
@@ -79,6 +82,7 @@
 //! - Eisner, Jason "An interactive spreadsheet for teaching the forward-backward algorithm.
 //!   in speech recognition." In ACL Workshop on Teaching NLP and CL (2002).
 pub mod errors;
+pub mod profile;
 
 use std::cmp::Ordering;
 
