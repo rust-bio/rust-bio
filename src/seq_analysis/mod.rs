@@ -6,4 +6,5 @@
 //! Sequence analysis algorithms.
 
 pub mod gc;
+pub mod melting_temp;
 pub mod orf;
