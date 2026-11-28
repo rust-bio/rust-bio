@@ -584,7 +584,9 @@ impl<F: MatchFunc> Poa<F> {
         let (m, n) = (self.graph.node_count(), query.len());
         // save score location of the max scoring node for the query for suffix clipping
         let (gap_open, gap_extend) = (self.scoring.gap_open, self.scoring.gap_extend);
-        let mut traceback = Traceback::with_capacity(m, n, gap_open != gap_extend);
+        // with a linear gap penalty, the insertion and deletion matrices are redundant
+        let affine = gap_open != gap_extend;
+        let mut traceback = Traceback::with_capacity(m, n, affine);
         traceback.initialize_scores(gap_open, gap_extend, self.scoring.yclip_prefix);
         // construct the score matrix (O(n^2) space)
         let mut topo = Topo::new(&self.graph);
@@ -625,20 +627,17 @@ impl<F: MatchFunc> Poa<F> {
                             max_cell,
                             traceback.get(i_p, j - 1) + self.scoring.match_fn.score(r, *query_base),
                         );
-                        del = max(
-                            del,
-                            max(
-                                traceback.get(i_p, j) + gap_open,
-                                traceback.get_del(i_p, j) + gap_extend,
-                            ),
-                        );
+                        del = max(del, traceback.get(i_p, j) + gap_open);
+                        if affine {
+                            del = max(del, traceback.get_del(i_p, j) + gap_extend);
+                        }
                     }
                     (max_cell, del)
                 };
-                let ins = max(
-                    traceback.get(i, j - 1) + gap_open,
-                    traceback.get_ins(i, j - 1) + gap_extend,
-                );
+                let mut ins = traceback.get(i, j - 1) + gap_open;
+                if affine {
+                    ins = max(ins, traceback.get_ins(i, j - 1) + gap_extend);
+                }
                 let score = max(max_cell, max(del, ins));
                 if score > max_score_last_row {
                     max_score_last_row = score;
@@ -668,7 +667,9 @@ impl<F: MatchFunc> Poa<F> {
         // dimensions of the traceback matrix
         let (m, n) = (self.graph.node_count(), query.len());
         let (gap_open, gap_extend) = (self.scoring.gap_open, self.scoring.gap_extend);
-        let mut traceback = Traceback::with_capacity(m, n, gap_open != gap_extend);
+        // with a linear gap penalty, the insertion and deletion matrices are redundant
+        let affine = gap_open != gap_extend;
+        let mut traceback = Traceback::with_capacity(m, n, affine);
         traceback.initialize_scores(gap_open, gap_extend, self.scoring.yclip_prefix);
 
         traceback.set(0, 0, 0, MIN_SCORE, MIN_SCORE);
@@ -714,20 +715,17 @@ impl<F: MatchFunc> Poa<F> {
                             max_cell,
                             traceback.get(i_p, j - 1) + self.scoring.match_fn.score(r, *query_base),
                         );
-                        del = max(
-                            del,
-                            max(
-                                traceback.get(i_p, j) + gap_open,
-                                traceback.get_del(i_p, j) + gap_extend,
-                            ),
-                        );
+                        del = max(del, traceback.get(i_p, j) + gap_open);
+                        if affine {
+                            del = max(del, traceback.get_del(i_p, j) + gap_extend);
+                        }
                     }
                     (max_cell, del)
                 };
-                let ins = max(
-                    traceback.get(i, j - 1) + gap_open,
-                    traceback.get_ins(i, j - 1) + gap_extend,
-                );
+                let mut ins = traceback.get(i, j - 1) + gap_open;
+                if affine {
+                    ins = max(ins, traceback.get_ins(i, j - 1) + gap_extend);
+                }
 
                 let score = max(max_cell, max(del, ins));
                 if score > max_score_for_row {
