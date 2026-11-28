@@ -362,12 +362,128 @@ impl<PosteriorEvent> ModelInstance<NotNan<f64>, PosteriorEvent>
 where
     PosteriorEvent: Hash + Eq,
 {
+    /// Posterior expected value of the base events, i.e. the sum of each event weighted by
+    /// its posterior probability `Pr(event | data)`.
+    ///
+    /// Runs in `O(b)` time, where `b` is the number of distinct base events cached by
+    /// [`Model::compute`].
     pub fn expected_value(&self) -> NotNan<f64> {
         self.joint_probs
             .iter()
-            .map(|(event, prob)| *event * NotNan::new(**prob).unwrap())
+            .map(|(event, prob)| *event * NotNan::new((prob - self.marginal).exp()).unwrap())
             .fold(NotNan::default(), |s, e| s + e)
     }
 }
 
-mod tests {}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use approx::assert_relative_eq;
+    use proptest::prelude::*;
+
+    type Bias = NotNan<f64>;
+
+    // `LogProb::ln_sum_exp` (used for the marginal) relies on `fastexp`, whose relative
+    // error is around 1e-7, so results are compared with this relative tolerance.
+    const TOL: f64 = 1e-5;
+
+    struct Flips {
+        heads: u32,
+        tails: u32,
+    }
+
+    struct BinomialLikelihood;
+
+    impl Likelihood for BinomialLikelihood {
+        type Event = Bias;
+        type Data = Flips;
+
+        fn compute(&self, event: &Bias, data: &Flips, _payload: &mut ()) -> LogProb {
+            let p = **event;
+            LogProb(f64::from(data.heads) * p.ln() + f64::from(data.tails) * (1. - p).ln())
+        }
+    }
+
+    struct UniformPrior {
+        n: usize,
+    }
+
+    impl Prior for UniformPrior {
+        type Event = Bias;
+
+        fn compute(&self, _event: &Bias) -> LogProb {
+            LogProb((1. / self.n as f64).ln())
+        }
+    }
+
+    struct DirectPosterior;
+
+    impl Posterior for DirectPosterior {
+        type Event = Bias;
+        type BaseEvent = Bias;
+        type Data = Flips;
+
+        fn compute<F: FnMut(&Bias, &Flips) -> LogProb>(
+            &self,
+            event: &Bias,
+            data: &Flips,
+            joint_prob: &mut F,
+        ) -> LogProb {
+            joint_prob(event, data)
+        }
+    }
+
+    fn coin_instance(heads: u32, tails: u32) -> ModelInstance<Bias, Bias> {
+        let universe: Vec<Bias> = (1..10)
+            .map(|i| NotNan::new(i as f64 / 10.).unwrap())
+            .collect();
+        let model = Model::new(
+            BinomialLikelihood,
+            UniformPrior { n: universe.len() },
+            DirectPosterior,
+        );
+        model.compute(universe, &Flips { heads, tails })
+    }
+
+    /// Posterior mean of the discretized coin bias, computed directly as
+    /// `sum_i b_i * L(b_i) / sum_i L(b_i)` (the uniform prior cancels out).
+    fn analytic_posterior_mean(heads: u32, tails: u32) -> f64 {
+        let lik = |b: f64| b.powi(heads as i32) * (1. - b).powi(tails as i32);
+        let biases = (1..10).map(|i| i as f64 / 10.);
+        let num: f64 = biases.clone().map(|b| b * lik(b)).sum();
+        let den: f64 = biases.map(lik).sum();
+        num / den
+    }
+
+    #[test]
+    fn test_expected_value_coin() {
+        let instance = coin_instance(8, 2);
+        assert_relative_eq!(
+            *instance.expected_value(),
+            analytic_posterior_mean(8, 2),
+            max_relative = TOL
+        );
+    }
+
+    #[test]
+    fn test_expected_value_uninformative_data() {
+        // Without data the posterior equals the uniform prior, so the mean is 0.5.
+        let instance = coin_instance(0, 0);
+        assert_relative_eq!(*instance.expected_value(), 0.5, max_relative = TOL);
+    }
+
+    proptest! {
+        #[test]
+        fn test_expected_value_within_event_range(heads in 0u32..200, tails in 0u32..200) {
+            let ev = *coin_instance(heads, tails).expected_value();
+            prop_assert!((0.1 * (1. - TOL)..=0.9 * (1. + TOL)).contains(&ev), "ev = {}", ev);
+            let expected = analytic_posterior_mean(heads, tails);
+            prop_assert!(
+                (ev - expected).abs() <= TOL * expected,
+                "ev = {}, expected = {}",
+                ev,
+                expected
+            );
+        }
+    }
+}
